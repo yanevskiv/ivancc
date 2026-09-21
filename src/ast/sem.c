@@ -6,6 +6,9 @@
 // The program being analysed, for resolving calls against its definitions.
 static Ast_Func *Sem_Prog;
 
+// The function whose body is being analysed.
+static Ast_Func *Sem_CurFunc;
+
 // Return the function of that name defined in this program, or NULL.
 Ast_Func *Sem_FindFunc(const char *name)
 {
@@ -56,6 +59,12 @@ void Sem_CheckCall(Ast_Node *node)
         return;
     }
     int given = Sem_CountNodes(node->an_args);
+    if (func->af_variadic) {
+        if (given < func->af_nparams) {
+            Log_ShowErrorAt(node->an_line, "too few arguments to '%s': got %d, expected at least %d", node->an_funcname, given, func->af_nparams);
+        }
+        return;
+    }
     if (given != func->af_nparams) {
         Log_ShowErrorAt(node->an_line, "wrong number of arguments to '%s': got %d, expected %d", node->an_funcname, given, func->af_nparams);
     }
@@ -204,6 +213,13 @@ void Sem_Node(Ast_Node *node)
             node->an_type = &Ast_TypeInt;
         } break;
 
+        case AST_NODE_KIND_VA_ARG: {
+            if (! Sem_CurFunc->af_variadic) {
+                Log_ShowErrorAt(node->an_line, "__builtin_va_arg outside a variadic function");
+            }
+            node->an_type = &Ast_TypeInt;
+        } break;
+
         case AST_NODE_KIND_RETURN:
         case AST_NODE_KIND_IF:
         case AST_NODE_KIND_FOR:
@@ -221,6 +237,7 @@ void Sem_Analyze(Ast_Func *prog)
     Sem_Prog = prog;
 
     for (Ast_Func *func = prog; func; func = func->af_next) {
+        Sem_CurFunc = func;
         Sem_Node(func->af_body);
     }
 }

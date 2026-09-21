@@ -84,6 +84,7 @@ ALNUM   [A-Za-z_0-9]
 "break"                 return BREAK;
 "continue"              return CONTINUE;
 "sizeof"                return SIZEOF;
+"__builtin_va_arg"      return BUILTIN_VA_ARG;
 
 {ALPHA}{ALNUM}*         { yylval.str = strdup(yytext); return IDENT; }
 

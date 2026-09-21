@@ -15,14 +15,18 @@
 // Required %rsp alignment, in bytes, at the point of a `call`.
 #define STACK_ALIGN 16
 
+// Bytes a variadic function reserves at the top of its frame to spill the
+// argument registers into.
+#define VA_SAVE_SIZE (MAX_REG_ARGS * WORD_SIZE)
+
 // Number of values currently pushed with Gen_x86_64_EmitPush().
 static int Gen_x86_64_Depth;
 
 // Source of unique label numbers.
 static int Gen_x86_64_LabelId;
 
-// Name of the function currently being emitted.
-static const char *Gen_x86_64_CurrFunc;
+// The function currently being emitted.
+static const Ast_Func *Gen_x86_64_CurrFunc;
 
 // Registers used to pass the first six integer arguments, in ABI order.
 static const Asm_x86_64_Reg Gen_x86_64_ArgReg[6] = {
@@ -107,6 +111,26 @@ void Gen_x86_64_EmitCast(const Ast_Type *type)
             // already as wide as a register
         } break;
     }
+}
+
+// Spill every argument register into the register save area, so that a variadic
+// function can reach the arguments it has no parameter for.
+void Gen_x86_64_EmitVaSaveArea(void)
+{
+    for (int i = 0; i < MAX_REG_ARGS; i++) {
+        Asm_x86_64_EmitMovStore(Gen_x86_64_ArgReg[i], ASM_X86_64_REG_RBP, -VA_SAVE_SIZE + i * WORD_SIZE, ASM_X86_64_WIDTH_64);
+    }
+}
+
+// Compute the address of the argument slot indexed by %rdi into %rax, counting
+// from base off %rbp.
+void Gen_x86_64_EmitVaSlotAddr(int base)
+{
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovImm(WORD_SIZE, ASM_X86_64_REG_RDI);
+    Asm_x86_64_EmitImul(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, base, ASM_X86_64_REG_RDI);
+    Asm_x86_64_EmitAdd(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
 }
 
 // Count the arguments in a call's argument list.
@@ -205,6 +229,30 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Asm_x86_64_EmitMovImm(1, ASM_X86_64_REG_RAX);
             Asm_x86_64_EmitLabel(".L.end.%d", count);
         } break;
+        case AST_NODE_KIND_VA_ARG: {
+            int count = Gen_x86_64_Count();
+            Gen_x86_64_EmitExpr(node->an_lhs);
+            Asm_x86_64_EmitAddImm(Gen_x86_64_CurrFunc->af_nparams, ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
+
+            Asm_x86_64_EmitCmpImm(MAX_REG_ARGS, ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitSetl(ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitMovzb(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitJe(".L.va.stack.%d", count);
+
+            Gen_x86_64_EmitVaSlotAddr(-VA_SAVE_SIZE);
+            Asm_x86_64_EmitJmp(".L.va.end.%d", count);
+
+            // Past the sixth argument the caller passed it above the return
+            // address instead, so the index restarts there.
+            Asm_x86_64_EmitLabel(".L.va.stack.%d", count);
+            Asm_x86_64_EmitSubImm(MAX_REG_ARGS, ASM_X86_64_REG_RDI);
+            Gen_x86_64_EmitVaSlotAddr(2 * WORD_SIZE);
+
+            Asm_x86_64_EmitLabel(".L.va.end.%d", count);
+            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RAX, 0, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+        } break;
         case AST_NODE_KIND_CALL: {
             int nArgs  = Gen_x86_64_CallCountArgs(node->an_args);
             int nReg   = nArgs < MAX_REG_ARGS ? nArgs : MAX_REG_ARGS;
@@ -290,7 +338,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             } else {
                 Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RAX);
             }
-            Asm_x86_64_EmitJmp(".L.return.%s", Gen_x86_64_CurrFunc);
+            Asm_x86_64_EmitJmp(".L.return.%s", Gen_x86_64_CurrFunc->af_name);
         } break;
         case AST_NODE_KIND_IF: {
             int count = Gen_x86_64_Count();
@@ -343,7 +391,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
 // Assign each local a stack slot and record the frame size.
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
 {
-    int offset = 0;
+    int offset = func->af_variadic ? VA_SAVE_SIZE : 0;
     for (Ast_Var *var = func->af_locals; var; var = var->av_next) {
         offset += var->av_type->at_size;
         offset = Gen_x86_64_AlignTo(offset, var->av_type->at_align);
@@ -372,7 +420,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
 {
     for (Ast_Func *func = prog; func; func = func->af_next) {
         Gen_x86_64_AssignLvarOffsets(func);
-        Gen_x86_64_CurrFunc = func->af_name;
+        Gen_x86_64_CurrFunc = func;
 
         Asm_x86_64_EmitGlobl(func->af_name);
         Asm_x86_64_EmitLabel(func->af_name);
@@ -382,6 +430,10 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RSP, ASM_X86_64_REG_RBP);
         if (func->af_stack_size) {
             Asm_x86_64_EmitSubImm(func->af_stack_size, ASM_X86_64_REG_RSP);
+        }
+
+        if (func->af_variadic) {
+            Gen_x86_64_EmitVaSaveArea();
         }
 
         // spill incoming parameters
