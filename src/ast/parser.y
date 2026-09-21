@@ -27,58 +27,58 @@ void yyerror(const char *s);
 #define YYLLOC_DEFAULT(cur, rhs, n)  ((cur) = (n) ? YYRHSLOC(rhs, 1) : YYRHSLOC(rhs, 0))
 
 /* State for the function definition currently being parsed. */
-static char     *Par_CurFuncName;
-static Ast_Var  *Par_CurParams;
-static Ast_Var  *Par_CurParamsTail;
-static int       Par_CurNumParams;
-static int       Par_CurVariadic;
+static char     *Parser_CurFuncName;
+static Ast_Var  *Parser_CurParams;
+static Ast_Var  *Parser_CurParamsTail;
+static int       Parser_CurNumParams;
+static int       Parser_CurVariadic;
 
 /* The program assembled so far, as functions are reduced. */
-static Ast_Func *Par_ProgHead;
-static Ast_Func *Par_ProgTail;
+static Ast_Func *Parser_ProgHead;
+static Ast_Func *Parser_ProgTail;
 
 /* Append a parameter to the function currently being parsed. */
-static void Par_AddParam(Ast_Var *v)
+static void Parser_AddParam(Ast_Var *v)
 {
     v->av_param_next = NULL;
-    if (! Par_CurParams) {
-        Par_CurParams = Par_CurParamsTail = v;
+    if (! Parser_CurParams) {
+        Parser_CurParams = Parser_CurParamsTail = v;
     } else {
-        Par_CurParamsTail->av_param_next = v;
-        Par_CurParamsTail = v;
+        Parser_CurParamsTail->av_param_next = v;
+        Parser_CurParamsTail = v;
     }
-    Par_CurNumParams++;
+    Parser_CurNumParams++;
 }
 
 /* Wrap base in the array dimensions listed outermost first. */
-static Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims)
+static Ast_Type *Parser_ArrayType(Ast_Type *base, Ast_Node *dims)
 {
     if (! dims) {
         return base;
     }
-    return Ast_NewArray(Par_ArrayType(base, dims->an_next), (int) dims->an_val);
+    return Ast_NewArray(Parser_ArrayType(base, dims->an_next), (int) dims->an_val);
 }
 
 /* Give a parameter its adjusted type: an array parameter is really a pointer. */
-static Ast_Type *Par_ParamType(Ast_Type *base, Ast_Node *dims)
+static Ast_Type *Parser_ParamType(Ast_Type *base, Ast_Node *dims)
 {
     if (! dims) {
         return base;
     }
-    return Ast_NewPointer(Par_ArrayType(base, dims->an_next));
+    return Ast_NewPointer(Parser_ArrayType(base, dims->an_next));
 }
 
 /* Append a finished function to the program. */
-static void Par_AddFunction(Ast_Func *fn)
+static void Parser_AddFunction(Ast_Func *fn)
 {
     fn->af_next = NULL;
-    if (! Par_ProgHead) {
-        Par_ProgHead = Par_ProgTail = fn;
+    if (! Parser_ProgHead) {
+        Parser_ProgHead = Parser_ProgTail = fn;
     } else {
-        Par_ProgTail->af_next = fn;
-        Par_ProgTail = fn;
+        Parser_ProgTail->af_next = fn;
+        Parser_ProgTail = fn;
     }
-    Ast_Program = Par_ProgHead;
+    Ast_Program = Parser_ProgHead;
 }
 %}
 
@@ -132,11 +132,11 @@ translation_unit
 external_decl
     : type_name IDENT LPAREN
         {
-            Par_CurFuncName   = $2;
-            Par_CurParams     = NULL;
-            Par_CurParamsTail = NULL;
-            Par_CurNumParams  = 0;
-            Par_CurVariadic   = 0;
+            Parser_CurFuncName   = $2;
+            Parser_CurParams     = NULL;
+            Parser_CurParamsTail = NULL;
+            Parser_CurNumParams  = 0;
+            Parser_CurVariadic   = 0;
             Ast_BeginScope();
         }
       params RPAREN func_tail
@@ -146,13 +146,13 @@ func_tail
     : compound_stmt
         {
             Ast_Func *fn = calloc(1, sizeof(Ast_Func));
-            fn->af_name     = Par_CurFuncName;
+            fn->af_name     = Parser_CurFuncName;
             fn->af_body     = $1;
-            fn->af_params   = Par_CurParams;
-            fn->af_nparams  = Par_CurNumParams;
-            fn->af_variadic = Par_CurVariadic;
+            fn->af_params   = Parser_CurParams;
+            fn->af_nparams  = Parser_CurNumParams;
+            fn->af_variadic = Parser_CurVariadic;
             fn->af_locals   = Ast_CurrentLocals();
-            Par_AddFunction(fn);
+            Parser_AddFunction(fn);
         }
     | SEMI  /* a prototype, e.g. `int printf(const char *, ...);` -- discard */
     ;
@@ -169,9 +169,9 @@ param_list
 
 param
     : type_name IDENT param_dims
-        { Par_AddParam(Ast_DeclareVar($2, Par_ParamType($1, $3), @2)); }
+        { Parser_AddParam(Ast_DeclareVar($2, Parser_ParamType($1, $3), @2)); }
     | type_name         /* unnamed parameter, e.g. `void` */
-    | ELLIPSIS          { Par_CurVariadic = 1; }
+    | ELLIPSIS          { Parser_CurVariadic = 1; }
     ;
 
 /* A parameter may leave its first dimension empty, as `int a[]` does. */
@@ -241,7 +241,8 @@ stmt
 
 decl
     : type_name IDENT array_dims
-        { Ast_DeclareVar($2, Par_ArrayType($1, $3), @2); $$ = Ast_NewNode(AST_NODE_KIND_NOP, @2); }
+        { Ast_DeclareVar($2, Parser_ArrayType($1, $3), @2);
+          $$ = Ast_NewNode(AST_NODE_KIND_NOP, @2); }
     | type_name IDENT ASSIGN expr
         { Ast_Var *v = Ast_DeclareVar($2, $1, @2);
           Ast_Node *n = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(v, @2), $4, @3);
