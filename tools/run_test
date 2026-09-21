@@ -56,13 +56,14 @@ setup()
     trap 'rm -rf "$WORK_DIR"' EXIT INT TERM
     BINARY=$WORK_DIR/a.out
     COMPILE_ERR=$WORK_DIR/compile.err
+    RUN_OUT=$WORK_DIR/run.out
     STATUS=0
 
     "$COMPILER" "$SOURCE" -o "$BINARY" >"$COMPILE_ERR" 2>&1
     COMPILE_STATUS=$?
 
     if [ "$COMPILE_STATUS" -eq 0 ]; then
-        timeout "$TIMEOUT" "$BINARY" >/dev/null 2>&1
+        timeout "$TIMEOUT" "$BINARY" >"$RUN_OUT" 2>/dev/null
         STATUS=$?
     fi
 }
@@ -94,12 +95,13 @@ $(cat "$COMPILE_ERR")"
     [ "$EXPECT_STATUS" -eq 0 ] || pass
 }
 
-# Check the run against `// (Test) Return:`.
+# Check the run against `// (Test) Return:`, which a test asserting only on
+# output may leave out.
 test_return()
 {
     EXPECT=$(get_value 'return')
 
-    [ -n "$EXPECT" ] || fail "No expectation declared"
+    [ -n "$EXPECT" ] || return 0
 
     case $EXPECT in
         *[!0-9]*) fail "Return expects a number between 0 and 255, got '$EXPECT'" ;;
@@ -108,7 +110,7 @@ test_return()
 
     # Checked before the signal cases below, which a status of 204 is otherwise
     # indistinguishable from.
-    [ "$STATUS" -ne "$EXPECT" ] || pass
+    [ "$STATUS" -ne "$EXPECT" ] || return 0
 
     [ "$STATUS" -ne 124 ] || fail "Timed out after ${TIMEOUT}s"
     [ "$STATUS" -le 128 ] || fail "Died from signal $((STATUS - 128)), expected to return $EXPECT"
@@ -116,6 +118,35 @@ test_return()
     fail "Returned $STATUS but expected $EXPECT"
 }
 
+# Check what the program printed against `// (Test) Output:`. The expectation is
+# one line, so `\n` stands for a newline in it, and a trailing newline on either
+# side is ignored.
+test_output()
+{
+    EXPECT_OUTPUT=$(get_value 'output')
+
+    [ -n "$EXPECT_OUTPUT" ] || return 0
+    [ "$STATUS" -ne 124 ] || fail "Timed out after ${TIMEOUT}s"
+
+    EXPECT_OUTPUT=$(printf '%b' "$EXPECT_OUTPUT")
+    ACTUAL=$(cat "$RUN_OUT")
+
+    [ "$ACTUAL" = "$EXPECT_OUTPUT" ] || fail "Printed:
+$ACTUAL
+but expected:
+$EXPECT_OUTPUT"
+}
+
+# Fail a test that asserts nothing at all, so that a key typed `// (Test)
+# Retrun:` cannot pass by declaring no expectation.
+test_declared()
+{
+    [ -n "$EXPECT" ] || [ -n "$EXPECT_OUTPUT" ] || fail "No expectation declared"
+}
+
 setup
 test_compile
 test_return
+test_output
+test_declared
+pass
