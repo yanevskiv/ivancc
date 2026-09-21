@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "util/log.h"
+#include "obj/Elf/buf.h"
 #include "obj/Elf/elf.h"
+#include "obj/Elf/sec.h"
+#include "obj/Elf/rela.h"
 #include "arch/x86_64/rel.h"
 
 // Virtual address a symbol resolves to: its section's load address plus its offset.
@@ -15,7 +18,7 @@ uint64_t Rel_x86_64_SymbolAddr(const Elf_Sym *sym)
 // Patch width little-endian bytes at a section offset with value.
 void Rel_x86_64_PatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, int width)
 {
-    uint8_t *at = Elf_Buffer_At(Elf_SectionData(sec), offset);
+    uint8_t *at = Elf_Buffer_At(Elf_Section_Data(sec), offset);
     for (int i = 0; i < width; i++) {
         at[i] = (value >> (8 * i)) & 0xFF;
     }
@@ -49,10 +52,10 @@ void Rel_x86_64_One(Elf_Sec *sec, const Elf_Rela *rel)
 // Apply every relocation in a placed object, patching each section's bytes.
 void Rel_x86_64_Apply(Elf *elf)
 {
-    for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
-        Elf_Sec *sec = Elf_SectionAt(elf, i);
-        for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
-            Rel_x86_64_One(sec, Elf_RelaAt(sec, r));
+    for (size_t i = 0; i < Elf_Section_Count(elf); i++) {
+        Elf_Sec *sec = Elf_Section_At(elf, i);
+        for (size_t r = 0; r < Elf_Rela_Count(sec); r++) {
+            Rel_x86_64_One(sec, Elf_Rela_At(sec, r));
         }
     }
 }

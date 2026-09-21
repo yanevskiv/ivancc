@@ -9,7 +9,6 @@
 #include "util/log.h"
 #include "ast/ast.h"
 #include "ast/sem.h"
-#include "obj/Elf/elf.h"
 #include "obj/Elf/link.h"
 #include "util/str.h"
 #include "arch/x86_64/gen.h"
@@ -139,7 +138,7 @@ static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix)
     }
 
     Elf *obj = Enc_x86_64_GetObject();
-    Elf_Link_Options opts = { .lo_entry = "_start" };
+    Elf_LinkOptions opts = { .lo_entry = "_start" };
     Elf_Link_MergeFiles(obj, (const char *const *) runtime, nruntime);
     Elf_Link_Exec(obj, &opts);
 
