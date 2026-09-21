@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/emu.h"
@@ -545,6 +546,18 @@ void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
 {
     uint64_t nr = cpu->ec_reg[EMU_X86_64_REG_RAX];
     switch (nr) {
+        case EMU_X86_64_SYS_WRITE: {
+            uint64_t fd  = cpu->ec_reg[EMU_X86_64_REG_RDI];
+            uint64_t buf = cpu->ec_reg[EMU_X86_64_REG_RSI];
+            uint64_t len = cpu->ec_reg[EMU_X86_64_REG_RDX];
+            const uint8_t *p = Elf_Load_At(cpu->ec_img, buf, len);
+            if (! p) {
+                Emu_x86_64_Fault(cpu, "write from unmapped memory", buf);
+                return;
+            }
+            ssize_t n = write((int) fd, p, (size_t) len);
+            cpu->ec_reg[EMU_X86_64_REG_RAX] = n < 0 ? ~(uint64_t) 0 : (uint64_t) n;
+        } break;
         case EMU_X86_64_SYS_EXIT: {
             cpu->ec_halted = 1;
             cpu->ec_status = cpu->ec_reg[EMU_X86_64_REG_RDI] & 0xFF;
