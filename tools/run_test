@@ -7,7 +7,7 @@ set -u
 PROG=$(basename "$0")
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
-COMPILER="$HERE/build/bin/ivan-cc"
+COMPILER="$HERE/build/bin/ivancc"
 TIMEOUT=5
 HEAD_LINES=10
 SOURCE=${1:-}

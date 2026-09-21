@@ -29,9 +29,9 @@ TEST_TOOL  := tools/run_test
 TEST_SRCS  := $(sort $(wildcard tests/test*.c))
 TEST_NAMES := $(patsubst tests/%.c,%,$(TEST_SRCS))
 
-CC_BIN := $(BUILD)/bin/$(TARGET)-cc
-AS_BIN := $(BUILD)/bin/$(TARGET)-as
-LD_BIN := $(BUILD)/bin/$(TARGET)-ld
+CC_BIN := $(BUILD)/bin/$(TARGET)cc
+AS_BIN := $(BUILD)/bin/$(TARGET)as
+LD_BIN := $(BUILD)/bin/$(TARGET)ld
 
 # --- phony recipes ---
 all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(CRT_OBJ) $(LIBC_OBJ)
