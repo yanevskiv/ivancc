@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include "obj/elf/buf.h"
+#include "obj/Elf/buf.h"
 
 // Object file types (e_type).
 #define ELF_ET_REL  1
@@ -95,7 +95,7 @@ struct Elf_Sec {
     uint64_t    sec_addr;    // load address, 0 = unplaced
     uint64_t    sec_addralign;
     uint64_t    sec_entsize;
-    Buf_Elf     sec_data;    // raw contents (PROGBITS)
+    Elf_Buffer  sec_data;    // raw contents (PROGBITS)
     Elf_Rela   *sec_relas;   // relocations patching THIS section
     size_t      sec_nrelas;
     size_t      sec_caprelas;
@@ -195,13 +195,13 @@ uint16_t    Elf_GetType(const Elf *elf);
 const char *Elf_Error(const Elf *elf);
 
 // Sections
-Elf_Sec *Elf_SectionAdd(Elf *elf, const char *name, uint32_t type, uint64_t flags);
-Elf_Sec *Elf_SectionFind(Elf *elf, const char *name);
-Elf_Sec *Elf_SectionGet(Elf *elf, const char *name, uint32_t type, uint64_t flags);
-size_t   Elf_SectionCount(const Elf *elf);
-Elf_Sec *Elf_SectionAt(const Elf *elf, size_t i);
-Buf_Elf *Elf_SectionData(Elf_Sec *sec);
-void     Elf_SectionAddr(Elf_Sec *sec, uint64_t addr);
+Elf_Sec    *Elf_SectionAdd(Elf *elf, const char *name, uint32_t type, uint64_t flags);
+Elf_Sec    *Elf_SectionFind(Elf *elf, const char *name);
+Elf_Sec    *Elf_SectionGet(Elf *elf, const char *name, uint32_t type, uint64_t flags);
+size_t      Elf_SectionCount(const Elf *elf);
+Elf_Sec    *Elf_SectionAt(const Elf *elf, size_t i);
+Elf_Buffer *Elf_SectionData(Elf_Sec *sec);
+void        Elf_SectionAddr(Elf_Sec *sec, uint64_t addr);
 
 // Symbols
 Elf_Sym *Elf_SymbolAdd(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value, uint8_t bind, uint8_t type);
@@ -215,10 +215,10 @@ size_t    Elf_RelaCount(const Elf_Sec *target);
 Elf_Rela *Elf_RelaAt(const Elf_Sec *target, size_t i);
 
 // Writing ELF files
-uint32_t Elf_WriteStr(Buf_Elf *strtab, const char *name);
+uint32_t Elf_WriteStr(Elf_Buffer *strtab, const char *name);
 uint32_t Elf_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *secidx);
-void     Elf_WriteSymtab(const Elf *elf, const uint32_t *secidx, Buf_Elf *symtab, Buf_Elf *strtab, uint32_t *slot, uint32_t *first_global);
-void     Elf_WriteRelas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Buf_Elf *out);
+void     Elf_WriteSymtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab, Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global);
+void     Elf_WriteRelas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Elf_Buffer *out);
 int      Elf_WriteRel(const Elf *elf, FILE *out);
 uint64_t Elf_PlaceOffset(uint64_t pos, uint64_t vaddr);
 int      Elf_WriteExec(const Elf *elf, FILE *out);
