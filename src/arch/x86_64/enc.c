@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "util/elf.h"
+#include "obj/elf/elf.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/rel.h"
@@ -30,25 +30,25 @@ static size_t Enc_x86_64_CapFixes;
 // Append one byte to the current section.
 void Enc_x86_64_Emit8(int byte)
 {
-    Elf_BufByte(Elf_SectionData(Enc_x86_64_Cur), (uint8_t) byte);
+    Buf_Elf_Byte(Elf_SectionData(Enc_x86_64_Cur), (uint8_t) byte);
 }
 
 // Append a little-endian 32-bit value to the current section.
 void Enc_x86_64_Emit32(uint32_t val)
 {
-    Elf_BufU32(Elf_SectionData(Enc_x86_64_Cur), val);
+    Buf_Elf_U32(Elf_SectionData(Enc_x86_64_Cur), val);
 }
 
 // Append a little-endian 64-bit value to the current section.
 void Enc_x86_64_Emit64(uint64_t val)
 {
-    Elf_BufU64(Elf_SectionData(Enc_x86_64_Cur), val);
+    Buf_Elf_U64(Elf_SectionData(Enc_x86_64_Cur), val);
 }
 
 // Append a run of raw bytes to the current section.
 void Enc_x86_64_EmitRaw(const void *data, int len)
 {
-    Elf_BufData(Elf_SectionData(Enc_x86_64_Cur), data, (size_t) len);
+    Buf_Elf_Data(Elf_SectionData(Enc_x86_64_Cur), data, (size_t) len);
 }
 
 // Record a label at the current position in the current section.
@@ -61,7 +61,7 @@ void Enc_x86_64_RecordLabel(const char *name)
     Enc_x86_64_Labels[Enc_x86_64_NumLabels++] = (Enc_x86_64_Label) {
         .al_name = name,
         .al_sec  = Enc_x86_64_Cur,
-        .al_off  = Elf_SectionData(Enc_x86_64_Cur)->eb_len
+        .al_off  = Elf_SectionData(Enc_x86_64_Cur)->be_len
     };
 }
 
@@ -84,7 +84,7 @@ void Enc_x86_64_RecordFixup(const char *name, uint32_t type)
     }
     Enc_x86_64_Fixes[Enc_x86_64_NumFixes++] = (Enc_x86_64_Fix) {
         .af_sec  = Enc_x86_64_Cur,
-        .af_off  = Elf_SectionData(Enc_x86_64_Cur)->eb_len,
+        .af_off  = Elf_SectionData(Enc_x86_64_Cur)->be_len,
         .af_name = name,
         .af_type = type
     };

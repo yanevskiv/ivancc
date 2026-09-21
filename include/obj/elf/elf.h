@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "obj/elf/buf.h"
+
 // Object file types (e_type).
 #define ELF_ET_REL  1
 #define ELF_ET_EXEC 2
@@ -61,14 +63,6 @@
 #define ELF_R_SYM(info)  ((uint32_t) ((info) >> 32))
 #define ELF_R_TYPE(info) ((uint32_t) ((info) & 0xFFFFFFFF))
 
-// A growable byte buffer -- the only storage primitive, with no ELF knowledge.
-typedef struct Elf_Buf Elf_Buf;
-struct Elf_Buf {
-    uint8_t *eb_data;
-    size_t   eb_len;
-    size_t   eb_cap;
-};
-
 // Forward declaration: a symbol's defining section is a pointer to one of these.
 typedef struct Elf_Sec Elf_Sec;
 
@@ -101,7 +95,7 @@ struct Elf_Sec {
     uint64_t    sec_addr;    // load address, 0 = unplaced
     uint64_t    sec_addralign;
     uint64_t    sec_entsize;
-    Elf_Buf     sec_data;    // raw contents (PROGBITS)
+    Buf_Elf     sec_data;    // raw contents (PROGBITS)
     Elf_Rela   *sec_relas;   // relocations patching THIS section
     size_t      sec_nrelas;
     size_t      sec_caprelas;
@@ -191,19 +185,6 @@ struct Elf {
 };
 typedef struct Elf Elf;
 
-// Growable byte buffers
-void   Elf_BufInit(Elf_Buf *buf);
-void   Elf_BufFree(Elf_Buf *buf);
-void   Elf_BufReserve(Elf_Buf *buf, size_t n);
-void  *Elf_BufAt(Elf_Buf *buf, size_t off);
-size_t Elf_BufByte(Elf_Buf *buf, uint8_t value);
-size_t Elf_BufData(Elf_Buf *buf, const void *data, size_t n);
-size_t Elf_BufU16(Elf_Buf *buf, uint16_t value);
-size_t Elf_BufU32(Elf_Buf *buf, uint32_t value);
-size_t Elf_BufU64(Elf_Buf *buf, uint64_t value);
-size_t Elf_BufZero(Elf_Buf *buf, size_t n);
-size_t Elf_BufAlign(Elf_Buf *buf, size_t align);
-
 // Object lifecycle and header fields
 const char *Elf_Intern(Elf *elf, const char *name);
 Elf        *Elf_New(uint16_t type, uint16_t machine);
@@ -219,7 +200,7 @@ Elf_Sec *Elf_SectionFind(Elf *elf, const char *name);
 Elf_Sec *Elf_SectionGet(Elf *elf, const char *name, uint32_t type, uint64_t flags);
 size_t   Elf_SectionCount(const Elf *elf);
 Elf_Sec *Elf_SectionAt(const Elf *elf, size_t i);
-Elf_Buf *Elf_SectionData(Elf_Sec *sec);
+Buf_Elf *Elf_SectionData(Elf_Sec *sec);
 void     Elf_SectionAddr(Elf_Sec *sec, uint64_t addr);
 
 // Symbols
@@ -234,10 +215,10 @@ size_t    Elf_RelaCount(const Elf_Sec *target);
 Elf_Rela *Elf_RelaAt(const Elf_Sec *target, size_t i);
 
 // Writing ELF files
-uint32_t Elf_WriteStr(Elf_Buf *strtab, const char *name);
+uint32_t Elf_WriteStr(Buf_Elf *strtab, const char *name);
 uint32_t Elf_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *secidx);
-void     Elf_WriteSymtab(const Elf *elf, const uint32_t *secidx, Elf_Buf *symtab, Elf_Buf *strtab, uint32_t *slot, uint32_t *first_global);
-void     Elf_WriteRelas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Elf_Buf *out);
+void     Elf_WriteSymtab(const Elf *elf, const uint32_t *secidx, Buf_Elf *symtab, Buf_Elf *strtab, uint32_t *slot, uint32_t *first_global);
+void     Elf_WriteRelas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Buf_Elf *out);
 int      Elf_WriteRel(const Elf *elf, FILE *out);
 uint64_t Elf_PlaceOffset(uint64_t pos, uint64_t vaddr);
 int      Elf_WriteExec(const Elf *elf, FILE *out);
