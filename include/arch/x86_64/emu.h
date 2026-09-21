@@ -10,6 +10,71 @@
 #define EMU_X86_64_WIDTH_32 32
 #define EMU_X86_64_WIDTH_64 64
 
+// Bits in a byte, for turning an operand width into a count of bytes.
+#define EMU_X86_64_BITS_PER_BYTE 8
+
+// The value a result of each width is truncated to.
+#define EMU_X86_64_MASK_8  0xFF
+#define EMU_X86_64_MASK_32 0xFFFFFFFF
+#define EMU_X86_64_MASK_64 (~(uint64_t) 0)
+
+// A shift count wraps at the operand's width, as the hardware masks it.
+#define EMU_X86_64_SHIFT_MASK_32 31
+#define EMU_X86_64_SHIFT_MASK_64 63
+
+// Bytes an immediate operand occupies.
+#define EMU_X86_64_IMM8  1
+#define EMU_X86_64_IMM32 4
+#define EMU_X86_64_IMM64 8
+
+// The register file: how many there are, and the mask that indexes it.
+#define EMU_X86_64_REG_COUNT      16
+#define EMU_X86_64_REG_INDEX_MASK 15
+
+// A REX prefix is any byte with this nibble, and REX.R or REX.B adds this much
+// to the register number the ModRM byte carries.
+#define EMU_X86_64_REX_PREFIX_MASK 0xF0
+#define EMU_X86_64_REG_HIGH_BIT    8
+
+// The bits of an opcode that remain once a register is baked into its low three.
+#define EMU_X86_64_OPCODE_REG_MASK 0xF8
+
+// Bytes push, pop, call and ret move %rsp by.
+#define EMU_X86_64_STACK_SLOT 8
+
+// Registers the SysV ABI and our code generator name, numbered as ModRM does.
+#define EMU_X86_64_REG_RAX 0
+#define EMU_X86_64_REG_RCX 1
+#define EMU_X86_64_REG_RDX 2
+#define EMU_X86_64_REG_RSP 4
+#define EMU_X86_64_REG_RSI 6
+#define EMU_X86_64_REG_RDI 7
+
+// Memory-mapped device registers, far above anything the linker places. A
+// freestanding program has no kernel to ask, so these are its whole world.
+#define EMU_X86_64_DEV_BASE       0x10000000
+#define EMU_X86_64_DEV_DATA_OFF   0  // store: a byte to the terminal
+#define EMU_X86_64_DEV_STATUS_OFF 4  // load: nonzero, always ready
+#define EMU_X86_64_DEV_HALT_OFF   8  // store: stop with that status
+#define EMU_X86_64_DEV_SIZE       16
+
+#define EMU_X86_64_DEV_DATA   (EMU_X86_64_DEV_BASE + EMU_X86_64_DEV_DATA_OFF)
+#define EMU_X86_64_DEV_STATUS (EMU_X86_64_DEV_BASE + EMU_X86_64_DEV_STATUS_OFF)
+#define EMU_X86_64_DEV_HALT   (EMU_X86_64_DEV_BASE + EMU_X86_64_DEV_HALT_OFF)
+
+// The descriptor the UART writes its bytes to.
+#define EMU_X86_64_UART_FD 1
+
+// ei_op2 when an instruction has no second opcode byte.
+#define EMU_X86_64_NO_OPCODE2 (-1)
+
+// Linux syscall numbers the interpreter answers.
+#define EMU_X86_64_SYS_WRITE 1
+#define EMU_X86_64_SYS_EXIT  60
+
+// Exit status reserved for a fault in the machine rather than in the program.
+#define EMU_X86_64_STATUS_FAULT 125
+
 // How an instruction reaches its r/m operand.
 typedef enum Emu_x86_64_RmKind Emu_x86_64_RmKind;
 enum Emu_x86_64_RmKind {
@@ -34,34 +99,11 @@ struct Emu_x86_64_Insn {
     int64_t ei_imm;     // immediate or branch displacement, sign-extended
 };
 
-// Registers the SysV ABI and our code generator name, numbered as ModRM does.
-#define EMU_X86_64_REG_RAX 0
-#define EMU_X86_64_REG_RCX 1
-#define EMU_X86_64_REG_RDX 2
-#define EMU_X86_64_REG_RSI 6
-#define EMU_X86_64_REG_RSP 4
-#define EMU_X86_64_REG_RDI 7
-
-// Memory-mapped device registers, far above anything the linker places. A
-// freestanding program has no kernel to ask, so these are its whole world.
-#define EMU_X86_64_DEV_BASE   0x10000000
-#define EMU_X86_64_DEV_DATA   (EMU_X86_64_DEV_BASE + 0)  // store: a byte to the terminal
-#define EMU_X86_64_DEV_STATUS (EMU_X86_64_DEV_BASE + 4)  // load: nonzero, always ready
-#define EMU_X86_64_DEV_HALT   (EMU_X86_64_DEV_BASE + 8)  // store: stop with that status
-#define EMU_X86_64_DEV_SIZE   16
-
-// Linux syscall numbers the interpreter answers.
-#define EMU_X86_64_SYS_WRITE 1
-#define EMU_X86_64_SYS_EXIT  60
-
-// Exit status reserved for a fault in the machine rather than in the program.
-#define EMU_X86_64_STATUS_FAULT 125
-
 // A running program: the register file, the flags a compare leaves behind, and
 // the image the two address.
 typedef struct Emu_x86_64_Cpu Emu_x86_64_Cpu;
 struct Emu_x86_64_Cpu {
-    uint64_t ec_reg[16];
+    uint64_t ec_reg[EMU_X86_64_REG_COUNT];
     uint64_t ec_rip;
     int      ec_zf;      // the result was zero
     int      ec_sf;      // the result was negative

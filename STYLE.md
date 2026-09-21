@@ -13,7 +13,13 @@
   `Ast_Node` fields start `an_`. This makes a field unambiguous when read
   out of context (in a debugger, a grep, an error message).
 - Macros and enum constants are `SCREAMING_SNAKE_CASE`, prefixed with the
-  module or type name: `LINK_MAX_PLACE`, `AST_NODE_KIND_ADD`.
+  module or type name: `ELF_LINK_MAX_PLACE`, `AST_NODE_KIND_ADD`.
+- Every number that means something gets a name, even when the meaning looks
+  obvious. `8` is `EMU_X86_64_BITS_PER_BYTE` or `EMU_X86_64_STACK_SLOT`
+  depending on which 8 it is, and that difference is the point: the name says
+  which quantity a reader is looking at, and a grep for it finds every place
+  that quantity is assumed. Only 0 and 1 as plain counts or flags, and an
+  index stepping through a loop, are exempt.
 - Local variables and parameters are short, lowercase, no prefix.
 
 ## Layout
