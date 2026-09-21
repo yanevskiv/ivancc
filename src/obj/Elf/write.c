@@ -138,7 +138,7 @@ int Elf_Write_Rel(const Elf *elf, FILE *out)
             .sh_entsize   = sec->sec_entsize
         };
         bodies[secidx[i]] = sec->sec_data.eb_data;
-        sizes[secidx[i]]  = sec->sec_data.eb_len;
+        sizes[secidx[i]]  = sec->sec_type == ELF_SHT_NOBITS ? 0 : sec->sec_data.eb_len;
     }
 
     shdrs[idx_symtab] = (Elf64_Shdr) {
@@ -248,13 +248,27 @@ int Elf_Write_Rel(const Elf *elf, FILE *out)
     return 0;
 }
 
+// Return the segment permissions a section's flags call for.
+uint32_t Elf_Write_SegFlags(const Elf_Sec *sec)
+{
+    uint32_t flags = ELF_PF_R;
+    if (sec->sec_flags & ELF_SHF_EXECINSTR) {
+        flags |= ELF_PF_X;
+    }
+    if (sec->sec_flags & ELF_SHF_WRITE) {
+        flags |= ELF_PF_W;
+    }
+    return flags;
+}
+
 // Smallest file offset >= pos that is page-congruent with vaddr, as PT_LOAD requires.
 uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr)
 {
     return pos + (vaddr - pos) % ELF_PAGE;
 }
 
-// Serialize a static executable (ET_EXEC): one R+X PT_LOAD per placed section.
+// Serialize a static executable (ET_EXEC): one PT_LOAD per placed section, each
+// with the permissions its section asks for and no file bytes for a .bss.
 int Elf_Write_Exec(const Elf *elf, FILE *out)
 {
     // Phase: select the loadable sections.
@@ -272,7 +286,9 @@ int Elf_Write_Exec(const Elf *elf, FILE *out)
     uint64_t pos = sizeof(Elf64_Ehdr) + (uint64_t) nseg * sizeof(Elf64_Phdr);
     for (int i = 0; i < nseg; i++) {
         offs[i] = Elf_Write_PlaceOffset(pos, segs[i]->sec_addr);
-        pos = offs[i] + segs[i]->sec_data.eb_len;
+        if (segs[i]->sec_type != ELF_SHT_NOBITS) {
+            pos = offs[i] + segs[i]->sec_data.eb_len;
+        }
     }
 
     Elf64_Ehdr ehdr = {
@@ -288,13 +304,14 @@ int Elf_Write_Exec(const Elf *elf, FILE *out)
     };
     fwrite(&ehdr, sizeof(ehdr), 1, out);
     for (int i = 0; i < nseg; i++) {
+        int nobits = segs[i]->sec_type == ELF_SHT_NOBITS;
         Elf64_Phdr phdr = {
             .p_type   = ELF_PT_LOAD,
-            .p_flags  = ELF_PF_R | ELF_PF_X,
+            .p_flags  = Elf_Write_SegFlags(segs[i]),
             .p_offset = offs[i],
             .p_vaddr  = segs[i]->sec_addr,
             .p_paddr  = segs[i]->sec_addr,
-            .p_filesz = segs[i]->sec_data.eb_len,
+            .p_filesz = nobits ? 0 : segs[i]->sec_data.eb_len,
             .p_memsz  = segs[i]->sec_data.eb_len,
             .p_align  = ELF_PAGE
         };
@@ -302,6 +319,9 @@ int Elf_Write_Exec(const Elf *elf, FILE *out)
     }
     long pos2 = sizeof(Elf64_Ehdr) + (long) nseg * sizeof(Elf64_Phdr);
     for (int i = 0; i < nseg; i++) {
+        if (segs[i]->sec_type == ELF_SHT_NOBITS) {
+            continue;
+        }
         while (pos2 < (long) offs[i]) {
             fputc(0, out);
             pos2++;

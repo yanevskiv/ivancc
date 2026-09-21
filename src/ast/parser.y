@@ -140,7 +140,11 @@ translation_unit
     ;
 
 external_decl
-    : type_name IDENT LPAREN
+    : type_name IDENT array_dims SEMI
+        { Ast_DeclareGlobal($2, Parser_ArrayType($1, $3), @2); }
+    | type_name IDENT ASSIGN expr SEMI
+        { Ast_Var *v = Ast_DeclareGlobal($2, $1, @2); v->av_init = $4; }
+    | type_name IDENT LPAREN
         {
             Parser_CurFuncName   = $2;
             Parser_CurParams     = NULL;

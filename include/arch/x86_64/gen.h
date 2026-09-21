@@ -29,6 +29,8 @@ void Gen_x86_64_EmitExpr(Ast_Node *node);
 void Gen_x86_64_EmitStmt(Ast_Node *node);
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func);
 void Gen_x86_64_EmitDataSection(void);
+void Gen_x86_64_EmitGlobal(Ast_Var *var);
+void Gen_x86_64_EmitGlobals(void);
 
 // Text section
 void Gen_x86_64_EmitFunctions(Ast_Func *prog);

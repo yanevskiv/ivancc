@@ -15,6 +15,12 @@
 // Required %rsp alignment, in bytes, at the point of a `call`.
 #define STACK_ALIGN 16
 
+// Largest global a single scalar initializer may fill.
+#define GEN_X86_64_MAX_INIT 8
+
+// The bits of a byte, for splitting an initializer into them.
+#define GEN_X86_64_BYTE_MASK 0xFF
+
 // Bytes a variadic function reserves at the top of its frame to spill the
 // argument registers into.
 #define VA_SAVE_SIZE (MAX_REG_ARGS * WORD_SIZE)
@@ -80,7 +86,11 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
 {
     switch (node->an_kind) {
         case AST_NODE_KIND_VAR: {
-            Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_var->av_offset, ASM_X86_64_REG_RAX);
+            if (node->an_var->av_global) {
+                Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_var->av_name);
+            } else {
+                Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_var->av_offset, ASM_X86_64_REG_RAX);
+            }
         } break;
         case AST_NODE_KIND_DEREF: {
             Gen_x86_64_EmitExpr(node->an_lhs);
@@ -586,6 +596,47 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
     func->af_stack_size = Gen_x86_64_AlignTo(offset, STACK_ALIGN);
 }
 
+// Emit one global: its bytes in .data when it has an initializer, or the space
+// it asks for in .bss when it is zeroed.
+void Gen_x86_64_EmitGlobal(Ast_Var *var)
+{
+    int size = var->av_type->at_size;
+
+    if (! var->av_init) {
+        unsigned char *zeros = calloc(size ? size : 1, 1);
+        Asm_x86_64_EmitSection(".bss", ELF_SHT_NOBITS, ELF_SHF_ALLOC | ELF_SHF_WRITE);
+        Asm_x86_64_EmitGlobl("%s", var->av_name);
+        Asm_x86_64_EmitLabel("%s", var->av_name);
+        Asm_x86_64_EmitBytes(zeros, size);
+        free(zeros);
+        return;
+    }
+
+    if (var->av_init->an_kind != AST_NODE_KIND_NUM) {
+        Log_ShowErrorAt(var->av_line, "initializer for '%s' is not a constant", var->av_name);
+    }
+    if (size > GEN_X86_64_MAX_INIT) {
+        Log_ShowErrorAt(var->av_line, "'%s' needs an initializer list, which is stage 6 work", var->av_name);
+    }
+
+    unsigned char bytes[GEN_X86_64_MAX_INIT] = {0};
+    for (int i = 0; i < size; i++) {
+        bytes[i] = (var->av_init->an_val >> (i * ASM_X86_64_BITS_PER_BYTE)) & GEN_X86_64_BYTE_MASK;
+    }
+    Asm_x86_64_EmitSection(".data", ELF_SHT_PROGBITS, ELF_SHF_ALLOC | ELF_SHF_WRITE);
+    Asm_x86_64_EmitGlobl("%s", var->av_name);
+    Asm_x86_64_EmitLabel("%s", var->av_name);
+    Asm_x86_64_EmitBytes(bytes, size);
+}
+
+// Emit every file-scope variable, before the code that refers to them.
+void Gen_x86_64_EmitGlobals(void)
+{
+    for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
+        Gen_x86_64_EmitGlobal(var);
+    }
+}
+
 // Emit the .rodata section holding all string literals.
 void Gen_x86_64_EmitDataSection(void)
 {
@@ -664,6 +715,7 @@ void Gen_x86_64_BuildProgram(Ast_Func *prog)
 
     Asm_x86_64_EmitDirective(".file \"cc\"");
     Gen_x86_64_EmitDataSection();
+    Gen_x86_64_EmitGlobals();
     Gen_x86_64_EmitTextSection(prog);
     Asm_x86_64_EmitDirective(".section .note.GNU-stack,\"\",@progbits");
 }

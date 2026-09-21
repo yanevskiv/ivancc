@@ -106,6 +106,9 @@ enum Ast_NodeKind {
     AST_NODE_KIND_NOP        // empty statement / bare declaration
 };
 
+// Forward declaration: a global's initializer is one of these.
+typedef struct Ast_Node Ast_Node;
+
 // A local variable or function parameter.
 typedef struct Ast_Var Ast_Var;
 struct Ast_Var {
@@ -116,6 +119,8 @@ struct Ast_Var {
     Ast_Type *av_type;      // declared type
     int      av_line;       // source line the declaration appeared on
     int      av_offset;     // offset from %rbp, filled in by the back end
+    int       av_global;    // true when the variable lives in .data or .bss
+    Ast_Node *av_init;      // initializer of a global, or NULL for zeroed
 };
 
 // One lexical scope: what was declared directly inside a pair of braces.
@@ -126,7 +131,6 @@ struct Ast_Scope {
 };
 
 // A node in the abstract syntax tree.
-typedef struct Ast_Node Ast_Node;
 struct Ast_Node {
     Ast_NodeKind an_kind;     // which kind of node this is
     Ast_NodeKind an_op;       // operation of AST_NODE_KIND_OPASSIGN
@@ -167,6 +171,9 @@ struct Ast_Func {
 // The finished program, produced by the parser.
 extern Ast_Func *Ast_Program;
 
+// Every variable declared at file scope, in declaration order.
+extern Ast_Var *Ast_Globals;
+
 // Type construction
 Ast_Type *Ast_NewPointer(Ast_Type *base);
 Ast_Type *Ast_NewArray(Ast_Type *base, int len);
@@ -186,6 +193,7 @@ void     Ast_PushScope(void);
 void     Ast_PopScope(void);
 Ast_Var *Ast_FindVar(const char *name);
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line);
+Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line);
 Ast_Var *Ast_CurrentLocals(void);
 
 // String literal interning
