@@ -18,7 +18,9 @@ static void Emu_Usage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [options] PROGRAM\n"
-        "  -d          disassemble from the entry point instead of running\n"
+        "  -d          disassemble instead of running\n"
+        "  -i          print what the loader made of the file and stop\n"
+        "  -t          trace each instruction to stderr as it runs\n"
         "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n",
         prog);
     exit(1);
@@ -60,6 +62,8 @@ int main(int argc, char **argv)
     const char *arch    = DEFAULT_ARCH;
     const char *program = NULL;
     int disasm = 0;
+    int info   = 0;
+    int trace  = 0;
 
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];
@@ -67,6 +71,10 @@ int main(int argc, char **argv)
             arch = arg + 2 + strlen(MARCH_PREFIX);
         } else if (strcmp(arg, "-d") == 0) {
             disasm = 1;
+        } else if (strcmp(arg, "-i") == 0) {
+            info = 1;
+        } else if (strcmp(arg, "-t") == 0) {
+            trace = 1;
         } else if (arg[0] == '-' && arg[1]) {
             Emu_Usage(argv[0]);
         } else {
@@ -90,11 +98,15 @@ int main(int argc, char **argv)
         Log_ShowError("'%s' is not an x86_64 executable", program);
     }
 
-    if (disasm) {
+    int status = 0;
+    if (info) {
+        Emu_ShowImage(&img);
+    } else if (disasm) {
         Emu_Disassemble(&img);
     } else {
-        Emu_ShowImage(&img);
+        status = Emu_x86_64_Run(&img, trace);
     }
+
     Elf_Load_Free(&img);
-    return 0;
+    return status;
 }

@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "obj/Elf/load.h"
+
 // Register widths a decoded operand can name, in bits.
 #define EMU_X86_64_WIDTH_8  8
 #define EMU_X86_64_WIDTH_32 32
@@ -31,6 +33,50 @@ struct Emu_x86_64_Insn {
     int32_t ei_disp;    // displacement of a MEM or RIP operand
     int64_t ei_imm;     // immediate or branch displacement, sign-extended
 };
+
+// Registers the SysV ABI and our code generator name, numbered as ModRM does.
+#define EMU_X86_64_REG_RAX 0
+#define EMU_X86_64_REG_RDX 2
+#define EMU_X86_64_REG_RSP 4
+#define EMU_X86_64_REG_RDI 7
+
+// Linux syscall numbers the interpreter answers.
+#define EMU_X86_64_SYS_WRITE 1
+#define EMU_X86_64_SYS_EXIT  60
+
+// Exit status reserved for a fault in the machine rather than in the program.
+#define EMU_X86_64_STATUS_FAULT 125
+
+// A running program: the register file, the flags a compare leaves behind, and
+// the image the two address.
+typedef struct Emu_x86_64_Cpu Emu_x86_64_Cpu;
+struct Emu_x86_64_Cpu {
+    uint64_t ec_reg[16];
+    uint64_t ec_rip;
+    int      ec_zf;      // the result was zero
+    int      ec_sf;      // the result was negative
+    int      ec_of;      // the result overflowed a signed operand
+    int      ec_cf;      // the result carried out of an unsigned operand
+    int      ec_halted;  // the program asked to stop, or faulted
+    int      ec_status;  // the status it stopped with
+    const Elf_LoadImage *ec_img;
+};
+
+// Running
+void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img);
+void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, const char *what, uint64_t addr);
+uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, int reg, int width);
+void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, int reg, uint64_t value, int width);
+uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, int width);
+void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, int width);
+uint64_t Emu_x86_64_RmAddr(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next);
+uint64_t Emu_x86_64_ReadRm(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, int width);
+void Emu_x86_64_WriteRm(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t value, int width);
+void Emu_x86_64_FlagsSub(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, int width);
+void Emu_x86_64_FlagsAdd(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, int width);
+void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu);
+void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, int trace);
+int  Emu_x86_64_Run(const Elf_LoadImage *img, int trace);
 
 // Decoding
 int64_t Emu_x86_64_ReadImm(const uint8_t *p, int n);

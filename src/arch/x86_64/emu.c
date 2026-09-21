@@ -403,3 +403,355 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
         }
     }
 }
+
+// Start a program: entry in %rip, the image's stack in %rsp, everything else
+// zero, which is what a freshly loaded image is entitled to assume.
+void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img)
+{
+    memset(cpu, 0, sizeof(*cpu));
+    cpu->ec_img = img;
+    cpu->ec_rip = img->li_entry;
+    cpu->ec_reg[EMU_X86_64_REG_RSP] = img->li_stack;
+}
+
+// Report a fault against the instruction that caused it and stop the program.
+void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, const char *what, uint64_t addr)
+{
+    fprintf(stderr, "ivanemu: %s at 0x%llx from %%rip = 0x%llx\n", what,
+            (unsigned long long) addr, (unsigned long long) cpu->ec_rip);
+    cpu->ec_halted = 1;
+    cpu->ec_status = EMU_X86_64_STATUS_FAULT;
+}
+
+// Read a register at the given width.
+uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, int reg, int width)
+{
+    uint64_t val = cpu->ec_reg[reg & 15];
+    switch (width) {
+        case EMU_X86_64_WIDTH_8:  { return val & 0xFF; } break;
+        case EMU_X86_64_WIDTH_32: { return val & 0xFFFFFFFF; } break;
+        default:                  { return val; }
+    }
+}
+
+// Write a register, zero-extending a 32-bit result and preserving the bits
+// above a byte, as the hardware does.
+void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, int reg, uint64_t value, int width)
+{
+    switch (width) {
+        case EMU_X86_64_WIDTH_8: {
+            cpu->ec_reg[reg & 15] = (cpu->ec_reg[reg & 15] & ~(uint64_t) 0xFF) | (value & 0xFF);
+        } break;
+        case EMU_X86_64_WIDTH_32: {
+            cpu->ec_reg[reg & 15] = value & 0xFFFFFFFF;
+        } break;
+        default: {
+            cpu->ec_reg[reg & 15] = value;
+        }
+    }
+}
+
+// Read width bits from the image, faulting if that address is not mapped.
+uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, int width)
+{
+    int n = width / 8;
+    const uint8_t *p = Elf_Load_At(cpu->ec_img, addr, n);
+    if (! p) {
+        Emu_x86_64_Fault(cpu, "read of unmapped memory", addr);
+        return 0;
+    }
+    uint64_t val = 0;
+    for (int i = 0; i < n; i++) {
+        val |= (uint64_t) p[i] << (8 * i);
+    }
+    return val;
+}
+
+// Write width bits into the image, faulting if that address is not mapped.
+void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, int width)
+{
+    int n = width / 8;
+    uint8_t *p = Elf_Load_At(cpu->ec_img, addr, n);
+    if (! p) {
+        Emu_x86_64_Fault(cpu, "write to unmapped memory", addr);
+        return;
+    }
+    for (int i = 0; i < n; i++) {
+        p[i] = (value >> (8 * i)) & 0xFF;
+    }
+}
+
+// Compute the address an instruction's memory operand names; next is the
+// address of the instruction after it, which is what %rip holds by then.
+uint64_t Emu_x86_64_RmAddr(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next)
+{
+    if (insn->ei_rmkind == EMU_X86_64_RM_RIP) {
+        return next + (int64_t) insn->ei_disp;
+    }
+    return cpu->ec_reg[insn->ei_rm & 15] + (int64_t) insn->ei_disp;
+}
+
+// Read an instruction's r/m operand, wherever it lives.
+uint64_t Emu_x86_64_ReadRm(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, int width)
+{
+    if (insn->ei_rmkind == EMU_X86_64_RM_REG) {
+        return Emu_x86_64_ReadReg(cpu, insn->ei_rm, width);
+    }
+    return Emu_x86_64_ReadMem(cpu, Emu_x86_64_RmAddr(cpu, insn, next), width);
+}
+
+// Write an instruction's r/m operand, wherever it lives.
+void Emu_x86_64_WriteRm(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t value, int width)
+{
+    if (insn->ei_rmkind == EMU_X86_64_RM_REG) {
+        Emu_x86_64_WriteReg(cpu, insn->ei_rm, value, width);
+        return;
+    }
+    Emu_x86_64_WriteMem(cpu, Emu_x86_64_RmAddr(cpu, insn, next), value, width);
+}
+
+// Set the flags a - b leaves behind, which is what every compare here needs.
+void Emu_x86_64_FlagsSub(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, int width)
+{
+    uint64_t mask = width == EMU_X86_64_WIDTH_64 ? ~(uint64_t) 0 : 0xFFFFFFFF;
+    int sign = width - 1;
+    a &= mask;
+    b &= mask;
+    uint64_t res = (a - b) & mask;
+
+    cpu->ec_zf = res == 0;
+    cpu->ec_sf = (res >> sign) & 1;
+    cpu->ec_cf = a < b;
+    cpu->ec_of = (((a ^ b) & (a ^ res)) >> sign) & 1;
+}
+
+// Set the flags a + b leaves behind.
+void Emu_x86_64_FlagsAdd(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, int width)
+{
+    uint64_t mask = width == EMU_X86_64_WIDTH_64 ? ~(uint64_t) 0 : 0xFFFFFFFF;
+    int sign = width - 1;
+    a &= mask;
+    b &= mask;
+    uint64_t res = (a + b) & mask;
+
+    cpu->ec_zf = res == 0;
+    cpu->ec_sf = (res >> sign) & 1;
+    cpu->ec_cf = res < a;
+    cpu->ec_of = ((~(a ^ b) & (a ^ res)) >> sign) & 1;
+}
+
+// Answer a syscall: the two the runtime makes, and nothing else.
+void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
+{
+    uint64_t nr = cpu->ec_reg[EMU_X86_64_REG_RAX];
+    switch (nr) {
+        case EMU_X86_64_SYS_EXIT: {
+            cpu->ec_halted = 1;
+            cpu->ec_status = cpu->ec_reg[EMU_X86_64_REG_RDI] & 0xFF;
+        } break;
+        default: {
+            fprintf(stderr, "ivanemu: unimplemented syscall %llu from %%rip = 0x%llx\n",
+                    (unsigned long long) nr, (unsigned long long) cpu->ec_rip);
+            cpu->ec_halted = 1;
+            cpu->ec_status = EMU_X86_64_STATUS_FAULT;
+        }
+    }
+}
+
+// Execute the instruction at %rip and leave %rip on the next one.
+void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, int trace)
+{
+    uint64_t rip = cpu->ec_rip;
+    int avail = (int) (cpu->ec_img->li_base + cpu->ec_img->li_size - rip);
+    const uint8_t *code = Elf_Load_At(cpu->ec_img, rip, 1);
+    Emu_x86_64_Insn insn;
+
+    if (! code || ! Emu_x86_64_Decode(code, avail, &insn)) {
+        Emu_x86_64_Fault(cpu, "undecodable instruction", rip);
+        return;
+    }
+    if (trace) {
+        char text[128];
+        Emu_x86_64_Format(&insn, rip, text, sizeof(text));
+        fprintf(stderr, "%016llx: %s\n", (unsigned long long) rip, text);
+    }
+
+    uint64_t next = rip + insn.ei_len;
+    int width = insn.ei_rexw ? EMU_X86_64_WIDTH_64 : EMU_X86_64_WIDTH_32;
+    uint64_t *rsp = &cpu->ec_reg[EMU_X86_64_REG_RSP];
+    cpu->ec_rip = next;
+
+    if (insn.ei_op == ENC_X86_64_OPCODE_ESCAPE) {
+        switch (insn.ei_op2) {
+            case ENC_X86_64_OPCODE2_SYSCALL: {
+                Emu_x86_64_Syscall(cpu);
+            } break;
+            case ENC_X86_64_OPCODE2_JE_REL32: {
+                if (cpu->ec_zf) {
+                    cpu->ec_rip = next + insn.ei_imm;
+                }
+            } break;
+            case ENC_X86_64_OPCODE2_JNE_REL32: {
+                if (! cpu->ec_zf) {
+                    cpu->ec_rip = next + insn.ei_imm;
+                }
+            } break;
+            case ENC_X86_64_OPCODE2_SETE: {
+                Emu_x86_64_WriteRm(cpu, &insn, next, cpu->ec_zf, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_SETNE: {
+                Emu_x86_64_WriteRm(cpu, &insn, next, ! cpu->ec_zf, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_SETL: {
+                Emu_x86_64_WriteRm(cpu, &insn, next, cpu->ec_sf != cpu->ec_of, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_SETLE: {
+                Emu_x86_64_WriteRm(cpu, &insn, next, cpu->ec_zf || cpu->ec_sf != cpu->ec_of, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_IMUL_R_RM: {
+                uint64_t a = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
+                uint64_t b = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+                Emu_x86_64_WriteReg(cpu, insn.ei_reg, a * b, width);
+            } break;
+            case ENC_X86_64_OPCODE2_MOVZX_R_RM8: {
+                uint64_t b = Emu_x86_64_ReadRm(cpu, &insn, next, EMU_X86_64_WIDTH_8);
+                Emu_x86_64_WriteReg(cpu, insn.ei_reg, b & 0xFF, width);
+            } break;
+            case ENC_X86_64_OPCODE2_MOVSX_R_RM8: {
+                uint64_t b = Emu_x86_64_ReadRm(cpu, &insn, next, EMU_X86_64_WIDTH_8);
+                Emu_x86_64_WriteReg(cpu, insn.ei_reg, (uint64_t) (int64_t) (int8_t) b, width);
+            } break;
+            default: {
+                Emu_x86_64_Fault(cpu, "unimplemented two-byte opcode", rip);
+            }
+        }
+        return;
+    }
+
+    switch (insn.ei_op) {
+        case ENC_X86_64_OPCODE_ADD_RM_R: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+            uint64_t b = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
+            Emu_x86_64_FlagsAdd(cpu, a, b, width);
+            Emu_x86_64_WriteRm(cpu, &insn, next, a + b, width);
+        } break;
+        case ENC_X86_64_OPCODE_SUB_RM_R: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+            uint64_t b = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
+            Emu_x86_64_FlagsSub(cpu, a, b, width);
+            Emu_x86_64_WriteRm(cpu, &insn, next, a - b, width);
+        } break;
+        case ENC_X86_64_OPCODE_CMP_RM_R: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+            uint64_t b = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
+            Emu_x86_64_FlagsSub(cpu, a, b, width);
+        } break;
+        case ENC_X86_64_OPCODE_PUSH_R: {
+            *rsp -= 8;
+            Emu_x86_64_WriteMem(cpu, *rsp, cpu->ec_reg[insn.ei_rm & 15], EMU_X86_64_WIDTH_64);
+        } break;
+        case ENC_X86_64_OPCODE_POP_R: {
+            uint64_t val = Emu_x86_64_ReadMem(cpu, *rsp, EMU_X86_64_WIDTH_64);
+            *rsp += 8;
+            cpu->ec_reg[insn.ei_rm & 15] = val;
+        } break;
+        case ENC_X86_64_OPCODE_MOVSXD_R_RM32: {
+            uint64_t b = Emu_x86_64_ReadRm(cpu, &insn, next, EMU_X86_64_WIDTH_32);
+            Emu_x86_64_WriteReg(cpu, insn.ei_reg, (uint64_t) (int64_t) (int32_t) b, EMU_X86_64_WIDTH_64);
+        } break;
+        case ENC_X86_64_OPCODE_MOV_RM8_R8: {
+            Emu_x86_64_WriteRm(cpu, &insn, next, Emu_x86_64_ReadReg(cpu, insn.ei_reg, EMU_X86_64_WIDTH_8), EMU_X86_64_WIDTH_8);
+        } break;
+        case ENC_X86_64_OPCODE_MOV_RM_R: {
+            Emu_x86_64_WriteRm(cpu, &insn, next, Emu_x86_64_ReadReg(cpu, insn.ei_reg, width), width);
+        } break;
+        case ENC_X86_64_OPCODE_MOV_R_RM: {
+            Emu_x86_64_WriteReg(cpu, insn.ei_reg, Emu_x86_64_ReadRm(cpu, &insn, next, width), width);
+        } break;
+        case ENC_X86_64_OPCODE_LEA_R_M: {
+            Emu_x86_64_WriteReg(cpu, insn.ei_reg, Emu_x86_64_RmAddr(cpu, &insn, next), width);
+        } break;
+        case ENC_X86_64_OPCODE_CQO: {
+            int64_t rax = (int64_t) cpu->ec_reg[EMU_X86_64_REG_RAX];
+            cpu->ec_reg[EMU_X86_64_REG_RDX] = rax < 0 ? ~(uint64_t) 0 : 0;
+        } break;
+        case ENC_X86_64_OPCODE_MOV_R8_IMM8: {
+            Emu_x86_64_WriteReg(cpu, insn.ei_rm, insn.ei_imm, EMU_X86_64_WIDTH_8);
+        } break;
+        case ENC_X86_64_OPCODE_MOV_R_IMM64: {
+            Emu_x86_64_WriteReg(cpu, insn.ei_rm, insn.ei_imm, width);
+        } break;
+        case ENC_X86_64_OPCODE_MOV_RM_IMM32: {
+            Emu_x86_64_WriteRm(cpu, &insn, next, insn.ei_imm, width);
+        } break;
+        case ENC_X86_64_OPCODE_RET: {
+            cpu->ec_rip = Emu_x86_64_ReadMem(cpu, *rsp, EMU_X86_64_WIDTH_64);
+            *rsp += 8;
+        } break;
+        case ENC_X86_64_OPCODE_CALL_REL32: {
+            *rsp -= 8;
+            Emu_x86_64_WriteMem(cpu, *rsp, next, EMU_X86_64_WIDTH_64);
+            cpu->ec_rip = next + insn.ei_imm;
+        } break;
+        case ENC_X86_64_OPCODE_JMP_REL32: {
+            cpu->ec_rip = next + insn.ei_imm;
+        } break;
+        case ENC_X86_64_OPCODE_GRP1_RM_IMM32: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+            uint64_t b = (uint64_t) insn.ei_imm;
+            switch (insn.ei_reg & ENC_X86_64_REG_MASK) {
+                case ENC_X86_64_GRP_ADD: {
+                    Emu_x86_64_FlagsAdd(cpu, a, b, width);
+                    Emu_x86_64_WriteRm(cpu, &insn, next, a + b, width);
+                } break;
+                case ENC_X86_64_GRP_SUB: {
+                    Emu_x86_64_FlagsSub(cpu, a, b, width);
+                    Emu_x86_64_WriteRm(cpu, &insn, next, a - b, width);
+                } break;
+                case ENC_X86_64_GRP_CMP: {
+                    Emu_x86_64_FlagsSub(cpu, a, b, width);
+                } break;
+                default: {
+                    Emu_x86_64_Fault(cpu, "unimplemented group 1 opcode", rip);
+                }
+            }
+        } break;
+        case ENC_X86_64_OPCODE_GRP3_RM: {
+            switch (insn.ei_reg & ENC_X86_64_REG_MASK) {
+                case ENC_X86_64_GRP_NEG: {
+                    uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+                    Emu_x86_64_FlagsSub(cpu, 0, a, width);
+                    Emu_x86_64_WriteRm(cpu, &insn, next, 0 - a, width);
+                } break;
+                case ENC_X86_64_GRP_IDIV: {
+                    int64_t d = (int64_t) Emu_x86_64_ReadRm(cpu, &insn, next, width);
+                    if (d == 0) {
+                        Emu_x86_64_Fault(cpu, "divide by zero", rip);
+                        return;
+                    }
+                    __int128 num = ((__int128) (int64_t) cpu->ec_reg[EMU_X86_64_REG_RDX] << 64)
+                                 | cpu->ec_reg[EMU_X86_64_REG_RAX];
+                    cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (int64_t) (num / d);
+                    cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (int64_t) (num % d);
+                } break;
+                default: {
+                    Emu_x86_64_Fault(cpu, "unimplemented group 3 opcode", rip);
+                }
+            }
+        } break;
+        default: {
+            Emu_x86_64_Fault(cpu, "unimplemented opcode", rip);
+        }
+    }
+}
+
+// Run a loaded program to completion and return the status it stopped with.
+int Emu_x86_64_Run(const Elf_LoadImage *img, int trace)
+{
+    Emu_x86_64_Cpu cpu;
+    Emu_x86_64_Init(&cpu, img);
+    while (! cpu.ec_halted) {
+        Emu_x86_64_Step(&cpu, trace);
+    }
+    return cpu.ec_status;
+}
