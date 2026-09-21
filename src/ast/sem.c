@@ -147,6 +147,12 @@ void Sem_Node(Ast_Node *node)
         case AST_NODE_KIND_MOD:
         case AST_NODE_KIND_NEG:
         case AST_NODE_KIND_NOT:
+        case AST_NODE_KIND_BITNOT:
+        case AST_NODE_KIND_BITAND:
+        case AST_NODE_KIND_BITOR:
+        case AST_NODE_KIND_BITXOR:
+        case AST_NODE_KIND_SHL:
+        case AST_NODE_KIND_SHR:
         case AST_NODE_KIND_EQ:
         case AST_NODE_KIND_NE:
         case AST_NODE_KIND_LT:

@@ -49,17 +49,26 @@ enum Enc_x86_64_Sib {
 typedef enum Enc_x86_64_Grp Enc_x86_64_Grp;
 enum Enc_x86_64_Grp {
     ENC_X86_64_GRP_ADD  = 0,
+    ENC_X86_64_GRP_OR   = 1,
+    ENC_X86_64_GRP_NOT  = 2,
     ENC_X86_64_GRP_NEG  = 3,
+    ENC_X86_64_GRP_AND  = 4,
+    ENC_X86_64_GRP_SHL  = 4,
     ENC_X86_64_GRP_SUB  = 5,
+    ENC_X86_64_GRP_XOR  = 6,
     ENC_X86_64_GRP_CMP  = 7,
-    ENC_X86_64_GRP_IDIV = 7
+    ENC_X86_64_GRP_IDIV = 7,
+    ENC_X86_64_GRP_SAR  = 7
 };
 
 // Primary opcode bytes, named <mnemonic>_<dst>_<src> as the Intel tables list them.
 typedef enum Enc_x86_64_Opcode Enc_x86_64_Opcode;
 enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_ADD_RM_R      = 0x01,
+    ENC_X86_64_OPCODE_OR_RM_R       = 0x09,
+    ENC_X86_64_OPCODE_AND_RM_R      = 0x21,
     ENC_X86_64_OPCODE_SUB_RM_R      = 0x29,
+    ENC_X86_64_OPCODE_XOR_RM_R      = 0x31,
     ENC_X86_64_OPCODE_CMP_RM_R      = 0x39,
     ENC_X86_64_OPCODE_PUSH_R        = 0x50, // + the low 3 bits of the register
     ENC_X86_64_OPCODE_POP_R         = 0x58, // + the low 3 bits of the register
@@ -76,7 +85,8 @@ enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_CALL_REL32    = 0xE8,
     ENC_X86_64_OPCODE_JMP_REL32     = 0xE9,
     ENC_X86_64_OPCODE_GRP1_RM_IMM32 = 0x81, // add/sub/cmp, selected by Enc_x86_64_Grp
-    ENC_X86_64_OPCODE_GRP3_RM       = 0xF7, // neg/idiv, selected by Enc_x86_64_Grp
+    ENC_X86_64_OPCODE_GRP2_RM_CL    = 0xD3, // shl/sar by %cl, selected by Enc_x86_64_Grp
+    ENC_X86_64_OPCODE_GRP3_RM       = 0xF7, // neg/not/idiv, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_ESCAPE        = 0x0F  // introduces a two-byte opcode
 };
 
@@ -139,6 +149,7 @@ void Enc_x86_64_EmitMemForm(int opcode, Asm_x86_64_Reg reg, Asm_x86_64_Reg base,
 void Enc_x86_64_EmitMovsx(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitLeaRip(Asm_x86_64_Reg dst, const char *label);
 void Enc_x86_64_EmitGrpUnary(int grp, Asm_x86_64_Reg reg);
+void Enc_x86_64_EmitShift(int grp, Asm_x86_64_Reg dst);
 void Enc_x86_64_EmitSetcc(int opcode, Asm_x86_64_Reg reg);
 void Enc_x86_64_EmitBranch(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitMov(const Asm_x86_64_Item *item);

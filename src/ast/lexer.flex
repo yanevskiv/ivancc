@@ -101,6 +101,8 @@ ALNUM   [A-Za-z_0-9]
 "!="                    return NE;
 "<="                    return LE;
 ">="                    return GE;
+"<<"                    return SHL;
+">>"                    return SHR;
 "&&"                    return AND;
 "||"                    return OR;
 "..."                   return ELLIPSIS;
@@ -115,6 +117,9 @@ ALNUM   [A-Za-z_0-9]
 ">"                     return GT;
 "!"                     return NOT;
 "&"                     return AMP;
+"|"                     return PIPE;
+"^"                     return CARET;
+"~"                     return TILDE;
 
 "("                     return LPAREN;
 ")"                     return RPAREN;

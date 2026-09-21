@@ -58,8 +58,12 @@ int Emu_x86_64_HasModRM(int op)
 {
     switch (op) {
         case ENC_X86_64_OPCODE_ADD_RM_R:
+        case ENC_X86_64_OPCODE_OR_RM_R:
+        case ENC_X86_64_OPCODE_AND_RM_R:
         case ENC_X86_64_OPCODE_SUB_RM_R:
+        case ENC_X86_64_OPCODE_XOR_RM_R:
         case ENC_X86_64_OPCODE_CMP_RM_R:
+        case ENC_X86_64_OPCODE_GRP2_RM_CL:
         case ENC_X86_64_OPCODE_MOVSXD_R_RM32:
         case ENC_X86_64_OPCODE_MOV_RM8_R8:
         case ENC_X86_64_OPCODE_MOV_RM_R:
@@ -278,6 +282,9 @@ const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
 
     switch (insn->ei_op) {
         case ENC_X86_64_OPCODE_ADD_RM_R:      { return "add";   } break;
+        case ENC_X86_64_OPCODE_OR_RM_R:       { return "or";    } break;
+        case ENC_X86_64_OPCODE_AND_RM_R:      { return "and";   } break;
+        case ENC_X86_64_OPCODE_XOR_RM_R:      { return "xor";   } break;
         case ENC_X86_64_OPCODE_SUB_RM_R:      { return "sub";   } break;
         case ENC_X86_64_OPCODE_CMP_RM_R:      { return "cmp";   } break;
         case ENC_X86_64_OPCODE_PUSH_R:        { return "push";  } break;
@@ -302,8 +309,16 @@ const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
                 default:                 { return "(bad)"; }
             }
         } break;
+        case ENC_X86_64_OPCODE_GRP2_RM_CL: {
+            switch (insn->ei_reg & ENC_X86_64_REG_MASK) {
+                case ENC_X86_64_GRP_SHL: { return "shl"; } break;
+                case ENC_X86_64_GRP_SAR: { return "sar"; } break;
+                default:                 { return "(bad)"; }
+            }
+        } break;
         case ENC_X86_64_OPCODE_GRP3_RM: {
             switch (insn->ei_reg & ENC_X86_64_REG_MASK) {
+                case ENC_X86_64_GRP_NOT:  { return "not";  } break;
                 case ENC_X86_64_GRP_NEG:  { return "neg";  } break;
                 case ENC_X86_64_GRP_IDIV: { return "idiv"; } break;
                 default:                  { return "(bad)"; }
@@ -376,12 +391,19 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
             Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
             snprintf(out, n, "%s %s", name, rm);
         } break;
+        case ENC_X86_64_OPCODE_GRP2_RM_CL: {
+            Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
+            snprintf(out, n, "%s %%cl, %s", name, rm);
+        } break;
         case ENC_X86_64_OPCODE_MOV_RM8_R8: {
             Emu_x86_64_FormatRm(insn, EMU_X86_64_WIDTH_8, next, rm, sizeof(rm));
             snprintf(out, n, "%s %%%s, %s", name, Emu_x86_64_RegName(insn->ei_reg, EMU_X86_64_WIDTH_8), rm);
         } break;
         case ENC_X86_64_OPCODE_ADD_RM_R:
+        case ENC_X86_64_OPCODE_OR_RM_R:
+        case ENC_X86_64_OPCODE_AND_RM_R:
         case ENC_X86_64_OPCODE_SUB_RM_R:
+        case ENC_X86_64_OPCODE_XOR_RM_R:
         case ENC_X86_64_OPCODE_CMP_RM_R:
         case ENC_X86_64_OPCODE_MOV_RM_R: {
             Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
@@ -395,12 +417,14 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
             } else if (insn->ei_op == ENC_X86_64_OPCODE_MOVSXD_R_RM32) {
                 srcw = EMU_X86_64_WIDTH_32;
             }
-            Emu_x86_64_FormatRm(insn, srcw, next, rm, sizeof(rm));
-            if (insn->ei_op2 >= 0 && insn->ei_op2 >= ENC_X86_64_OPCODE2_SETE && insn->ei_op2 <= ENC_X86_64_OPCODE2_SETLE) {
+            // A setcc writes one byte and names its operand that way.
+            if (insn->ei_op2 >= ENC_X86_64_OPCODE2_SETE && insn->ei_op2 <= ENC_X86_64_OPCODE2_SETLE) {
+                Emu_x86_64_FormatRm(insn, EMU_X86_64_WIDTH_8, next, rm, sizeof(rm));
                 snprintf(out, n, "%s %s", name, rm);
-            } else {
-                snprintf(out, n, "%s %s, %%%s", name, rm, Emu_x86_64_RegName(insn->ei_reg, width));
+                return;
             }
+            Emu_x86_64_FormatRm(insn, srcw, next, rm, sizeof(rm));
+            snprintf(out, n, "%s %s, %%%s", name, rm, Emu_x86_64_RegName(insn->ei_reg, width));
         }
     }
 }
@@ -699,6 +723,37 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, int trace)
             uint64_t b = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
             Emu_x86_64_FlagsSub(cpu, a, b, width);
         } break;
+        case ENC_X86_64_OPCODE_AND_RM_R: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+            uint64_t b = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
+            Emu_x86_64_WriteRm(cpu, &insn, next, a & b, width);
+        } break;
+        case ENC_X86_64_OPCODE_OR_RM_R: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+            uint64_t b = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
+            Emu_x86_64_WriteRm(cpu, &insn, next, a | b, width);
+        } break;
+        case ENC_X86_64_OPCODE_XOR_RM_R: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+            uint64_t b = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
+            Emu_x86_64_WriteRm(cpu, &insn, next, a ^ b, width);
+        } break;
+        case ENC_X86_64_OPCODE_GRP2_RM_CL: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+            int count = cpu->ec_reg[EMU_X86_64_REG_RCX] & (width == EMU_X86_64_WIDTH_64 ? 63 : 31);
+            switch (insn.ei_reg & ENC_X86_64_REG_MASK) {
+                case ENC_X86_64_GRP_SHL: {
+                    Emu_x86_64_WriteRm(cpu, &insn, next, a << count, width);
+                } break;
+                case ENC_X86_64_GRP_SAR: {
+                    int64_t signed_a = width == EMU_X86_64_WIDTH_64 ? (int64_t) a : (int32_t) a;
+                    Emu_x86_64_WriteRm(cpu, &insn, next, (uint64_t) (signed_a >> count), width);
+                } break;
+                default: {
+                    Emu_x86_64_Fault(cpu, "unimplemented group 2 opcode", rip);
+                }
+            }
+        } break;
         case ENC_X86_64_OPCODE_PUSH_R: {
             *rsp -= 8;
             Emu_x86_64_WriteMem(cpu, *rsp, cpu->ec_reg[insn.ei_rm & 15], EMU_X86_64_WIDTH_64);
@@ -775,6 +830,10 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, int trace)
                     uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
                     Emu_x86_64_FlagsSub(cpu, 0, a, width);
                     Emu_x86_64_WriteRm(cpu, &insn, next, 0 - a, width);
+                } break;
+                case ENC_X86_64_GRP_NOT: {
+                    uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
+                    Emu_x86_64_WriteRm(cpu, &insn, next, ~a, width);
                 } break;
                 case ENC_X86_64_GRP_IDIV: {
                     int64_t d = (int64_t) Emu_x86_64_ReadRm(cpu, &insn, next, width);

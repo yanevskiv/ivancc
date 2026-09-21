@@ -36,6 +36,7 @@ struct Emu_x86_64_Insn {
 
 // Registers the SysV ABI and our code generator name, numbered as ModRM does.
 #define EMU_X86_64_REG_RAX 0
+#define EMU_X86_64_REG_RCX 1
 #define EMU_X86_64_REG_RDX 2
 #define EMU_X86_64_REG_RSI 6
 #define EMU_X86_64_REG_RSP 4
