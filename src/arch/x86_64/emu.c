@@ -452,9 +452,44 @@ void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, int reg, uint64_t value, int width
     }
 }
 
+// Return whether an address names a device register rather than memory.
+int Emu_x86_64_IsDevice(uint64_t addr)
+{
+    return addr >= EMU_X86_64_DEV_BASE && addr < EMU_X86_64_DEV_BASE + EMU_X86_64_DEV_SIZE;
+}
+
+// Read a device register. The UART is write-only and its status is always ready.
+uint64_t Emu_x86_64_ReadDev(Emu_x86_64_Cpu *cpu, uint64_t addr)
+{
+    (void) cpu;
+    return addr == EMU_X86_64_DEV_STATUS ? 1 : 0;
+}
+
+// Write a device register: a byte to the terminal, or the status to stop with.
+void Emu_x86_64_WriteDev(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value)
+{
+    switch (addr) {
+        case EMU_X86_64_DEV_DATA: {
+            uint8_t byte = value & 0xFF;
+            write(1, &byte, 1);
+        } break;
+        case EMU_X86_64_DEV_HALT: {
+            cpu->ec_halted = 1;
+            cpu->ec_status = value & 0xFF;
+        } break;
+        default: {
+            // the status register is read-only, and the rest is unassigned
+        } break;
+    }
+}
+
 // Read width bits from the image, faulting if that address is not mapped.
 uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, int width)
 {
+    if (Emu_x86_64_IsDevice(addr)) {
+        return Emu_x86_64_ReadDev(cpu, addr);
+    }
+
     int n = width / 8;
     const uint8_t *p = Elf_Load_At(cpu->ec_img, addr, n);
     if (! p) {
@@ -471,6 +506,11 @@ uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, int width)
 // Write width bits into the image, faulting if that address is not mapped.
 void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, int width)
 {
+    if (Emu_x86_64_IsDevice(addr)) {
+        Emu_x86_64_WriteDev(cpu, addr, value);
+        return;
+    }
+
     int n = width / 8;
     uint8_t *p = Elf_Load_At(cpu->ec_img, addr, n);
     if (! p) {

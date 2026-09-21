@@ -41,6 +41,14 @@ struct Emu_x86_64_Insn {
 #define EMU_X86_64_REG_RSP 4
 #define EMU_X86_64_REG_RDI 7
 
+// Memory-mapped device registers, far above anything the linker places. A
+// freestanding program has no kernel to ask, so these are its whole world.
+#define EMU_X86_64_DEV_BASE   0x10000000
+#define EMU_X86_64_DEV_DATA   (EMU_X86_64_DEV_BASE + 0)  // store: a byte to the terminal
+#define EMU_X86_64_DEV_STATUS (EMU_X86_64_DEV_BASE + 4)  // load: nonzero, always ready
+#define EMU_X86_64_DEV_HALT   (EMU_X86_64_DEV_BASE + 8)  // store: stop with that status
+#define EMU_X86_64_DEV_SIZE   16
+
 // Linux syscall numbers the interpreter answers.
 #define EMU_X86_64_SYS_WRITE 1
 #define EMU_X86_64_SYS_EXIT  60
@@ -68,6 +76,9 @@ void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img);
 void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, const char *what, uint64_t addr);
 uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, int reg, int width);
 void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, int reg, uint64_t value, int width);
+int Emu_x86_64_IsDevice(uint64_t addr);
+uint64_t Emu_x86_64_ReadDev(Emu_x86_64_Cpu *cpu, uint64_t addr);
+void Emu_x86_64_WriteDev(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value);
 uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, int width);
 void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, int width);
 uint64_t Emu_x86_64_RmAddr(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next);
