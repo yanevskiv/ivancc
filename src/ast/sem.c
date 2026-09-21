@@ -300,6 +300,10 @@ void Sem_Node(Ast_Node *node)
             node->an_type = node->an_then->an_type;
         } break;
 
+        case AST_NODE_KIND_INIT: {
+            node->an_type = node->an_lhs->an_type;
+        } break;
+
         case AST_NODE_KIND_COMMA: {
             node->an_type = node->an_rhs->an_type;
         } break;

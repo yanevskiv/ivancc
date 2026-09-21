@@ -85,6 +85,11 @@ ALNUM   [A-Za-z_0-9]
 "do"                    return DO;
 "switch"                return SWITCH;
 "goto"                  return GOTO;
+"static"                return STATIC;
+"extern"                return EXTERN;
+"register"              return REGISTER;
+"auto"                  return AUTO;
+"inline"                return INLINE;
 "case"                  return CASE;
 "default"               return DEFAULT;
 "continue"              return CONTINUE;

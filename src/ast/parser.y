@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "util/log.h"
+#include "util/str.h"
 #include "ast/ast.h"
 
 int  yylex(void);
@@ -32,6 +33,12 @@ static Ast_Var  *Parser_CurParams;
 static Ast_Var  *Parser_CurParamsTail;
 static int       Parser_CurNumParams;
 static int       Parser_CurVariadic;
+static int       Parser_CurStatic;
+
+/* The type and storage class the declarators being parsed all share. */
+static Ast_Type   *Parser_DeclType;
+static Ast_Storage Parser_DeclStorage;
+static char       *Parser_DeclName;
 
 /* The program assembled so far, as functions are reduced. */
 static Ast_Func *Parser_ProgHead;
@@ -68,6 +75,65 @@ static Ast_Type *Parser_ParamType(Ast_Type *base, Ast_Node *dims)
     return Ast_NewPointer(Parser_ArrayType(base, dims->an_next));
 }
 
+/* Build the statement `var[index] = value`. */
+static Ast_Node *Parser_InitElement(Ast_Var *var, long index, Ast_Node *value, int line)
+{
+    Ast_Node *at = Ast_NewBinary(AST_NODE_KIND_ADD, Ast_NewVarNode(var, line), Ast_NewNum(index, line), line);
+    Ast_Node *elem = Ast_NewUnary(AST_NODE_KIND_DEREF, at, line);
+    Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, elem, value, line);
+    return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
+}
+
+/* Index the next element of an initializer list takes, which a designator
+   resets. C numbers from zero and steps by one unless told otherwise. */
+static long Parser_InitIndex;
+
+/* Lower a local's initializer to the statements that fill it: every element
+   zeroed first, so that what the list leaves out is zero as C requires. */
+static Ast_Node *Parser_InitLocal(Ast_Var *var, Ast_Node *init, int line)
+{
+    if (init->an_kind != AST_NODE_KIND_INIT) {
+        Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(var, line), init, line);
+        return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
+    }
+
+    if (var->av_type->at_kind != AST_TYPE_KIND_ARRAY) {
+        Log_ShowErrorAt(line, "'%s' is not an array, so it takes no initializer list", var->av_name);
+    }
+
+    Ast_Node head = {0};
+    Ast_Node *tail = &head;
+    for (int i = 0; i < var->av_type->at_len; i++) {
+        tail->an_next = Parser_InitElement(var, i, Ast_NewNum(0, line), line);
+        tail = tail->an_next;
+    }
+    for (Ast_Node *item = init; item; item = item->an_next) {
+        tail->an_next = Parser_InitElement(var, item->an_val, item->an_lhs, line);
+        tail = tail->an_next;
+    }
+    return head.an_next;
+}
+
+/* Declare one file-scope variable of the declaration being parsed. */
+static void Parser_AddGlobal(const char *name, Ast_Node *dims, Ast_Node *init, int line)
+{
+    Ast_Var *var = Ast_DeclareGlobal(name, Parser_ArrayType(Parser_DeclType, dims), line);
+    var->av_storage = Parser_DeclStorage;
+    var->av_init = init;
+}
+
+/* Declare a variable inside a function, which `static` moves to file scope. */
+static Ast_Var *Parser_DeclareLocal(const char *name, Ast_Type *type, int line)
+{
+    if (Parser_DeclStorage != AST_STORAGE_STATIC) {
+        return Ast_DeclareVar(name, type, line);
+    }
+    char *symbol = Str_Format("%s.%s", Parser_CurFuncName, name);
+    Ast_Var *var = Ast_DeclareStaticLocal(name, symbol, type, line);
+    var->av_storage = AST_STORAGE_STATIC;
+    return var;
+}
+
 /* Append a finished function to the program. */
 static void Parser_AddFunction(Ast_Func *fn)
 {
@@ -98,6 +164,7 @@ static void Parser_AddFunction(Ast_Func *fn)
 %token <str_lit> STR
 %token INT CHAR VOID CONST RETURN IF ELSE FOR WHILE DO BREAK CONTINUE SIZEOF
 %token SWITCH CASE DEFAULT GOTO
+%token STATIC EXTERN REGISTER AUTO INLINE
 %token BUILTIN_VA_ARG
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
@@ -106,10 +173,12 @@ static void Parser_AddFunction(Ast_Func *fn)
 %token EQ NE LT GT LE GE AND OR
 %token LPAREN RPAREN LSQUARE RSQUARE LBRACE RBRACE SEMI COMMA ELLIPSIS
 
-%type <node> stmt stmt_list compound_stmt decl for_init expr expr_comma expr_opt args arg_list
+%type <node> stmt stmt_list compound_stmt decl local_list local_decl
+%type <node> for_init expr expr_comma expr_opt args arg_list
+%type <node> initializer init_list init_item
 %type <node> cast unary postfix primary array_dims param_dims
 %type <type> type_name base
-%type <num>  stars
+%type <num>  stars storage
 
 /* Lowest precedence first. */
 %nonassoc LOWER_THAN_ELSE
@@ -139,14 +208,19 @@ translation_unit
     | translation_unit external_decl
     ;
 
+/* A declaration and a definition share `storage type_name IDENT`, so the name
+   is recorded before the parser decides which of the two it is reading. */
 external_decl
-    : type_name IDENT array_dims SEMI
-        { Ast_DeclareGlobal($2, Parser_ArrayType($1, $3), @2); }
-    | type_name IDENT ASSIGN expr SEMI
-        { Ast_Var *v = Ast_DeclareGlobal($2, $1, @2); v->av_init = $4; }
-    | type_name IDENT LPAREN
+    : storage type_name IDENT
+        { Parser_DeclStorage = $1; Parser_DeclType = $2; Parser_DeclName = $3; }
+      decl_tail
+    ;
+
+decl_tail
+    : LPAREN
         {
-            Parser_CurFuncName   = $2;
+            Parser_CurStatic     = Parser_DeclStorage == AST_STORAGE_STATIC;
+            Parser_CurFuncName   = Parser_DeclName;
             Parser_CurParams     = NULL;
             Parser_CurParamsTail = NULL;
             Parser_CurNumParams  = 0;
@@ -154,6 +228,28 @@ external_decl
             Ast_BeginScope();
         }
       params RPAREN func_tail
+    | array_dims               { Parser_AddGlobal(Parser_DeclName, $1, NULL, @1); } global_rest SEMI
+    | array_dims ASSIGN initializer { Parser_AddGlobal(Parser_DeclName, $1, $3, @1); } global_rest SEMI
+    ;
+
+global_rest
+    : /* empty */
+    | global_rest COMMA global_decl
+    ;
+
+/* Storage classes. register, auto and inline parse and do nothing. */
+storage
+    : /* empty */          { $$ = AST_STORAGE_NONE; }
+    | STATIC               { $$ = AST_STORAGE_STATIC; }
+    | EXTERN               { $$ = AST_STORAGE_EXTERN; }
+    | REGISTER             { $$ = AST_STORAGE_NONE; }
+    | AUTO                 { $$ = AST_STORAGE_NONE; }
+    | INLINE               { $$ = AST_STORAGE_NONE; }
+    ;
+
+global_decl
+    : IDENT array_dims             { Parser_AddGlobal($1, $2, NULL, @1); }
+    | IDENT array_dims ASSIGN initializer { Parser_AddGlobal($1, $2, $4, @1); }
     ;
 
 func_tail
@@ -165,6 +261,7 @@ func_tail
             fn->af_params   = Parser_CurParams;
             fn->af_nparams  = Parser_CurNumParams;
             fn->af_variadic = Parser_CurVariadic;
+            fn->af_static   = Parser_CurStatic;
             fn->af_locals   = Ast_CurrentLocals();
             Parser_AddFunction(fn);
         }
@@ -280,13 +377,57 @@ for_init
     ;
 
 decl
-    : type_name IDENT array_dims
-        { Ast_DeclareVar($2, Parser_ArrayType($1, $3), @2);
-          $$ = Ast_NewNode(AST_NODE_KIND_NOP, @2); }
-    | type_name IDENT ASSIGN expr
-        { Ast_Var *v = Ast_DeclareVar($2, $1, @2);
-          Ast_Node *n = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(v, @2), $4, @3);
-          $$ = Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, n, @2); }
+    : storage type_name { Parser_DeclType = $2; Parser_DeclStorage = $1; } local_list
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @2); n->an_body = $4; $$ = n; }
+    ;
+
+local_list
+    : local_decl                 { $$ = $1; }
+    | local_list COMMA local_decl
+        { Ast_Node *last = $1;
+          while (last->an_next) { last = last->an_next; }
+          last->an_next = $3; $$ = $1; }
+    ;
+
+local_decl
+    : IDENT array_dims
+        { Parser_DeclareLocal($1, Parser_ArrayType(Parser_DeclType, $2), @1);
+          $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
+    | IDENT array_dims ASSIGN initializer
+        { Ast_Var *v = Parser_DeclareLocal($1, Parser_ArrayType(Parser_DeclType, $2), @1);
+          if (v->av_global) {
+              v->av_init = $4;
+              $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1);
+          } else {
+              $$ = Parser_InitLocal(v, $4, @1);
+          }
+        }
+    ;
+
+/* A scalar initializer, or a braced list of elements. */
+initializer
+    : expr                       { $$ = $1; }
+    | LBRACE { Parser_InitIndex = 0; } init_list RBRACE { $$ = $3; }
+    ;
+
+init_list
+    : init_item                  { $$ = $1; }
+    | init_list COMMA            { $$ = $1; }
+    | init_list COMMA init_item
+        { Ast_Node *last = $1;
+          while (last->an_next) { last = last->an_next; }
+          last->an_next = $3; $$ = $1; }
+    ;
+
+init_item
+    : expr
+        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $1, @1);
+          n->an_val = Parser_InitIndex++; $$ = n; }
+    | LSQUARE NUM RSQUARE ASSIGN expr
+        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $5, @1);
+          Parser_InitIndex = $2; n->an_val = Parser_InitIndex++; $$ = n; }
+    | LBRACE init_list RBRACE
+        { Log_ShowErrorAt(@1, "nested initializer lists are not supported yet"); $$ = $2; }
     ;
 
 array_dims

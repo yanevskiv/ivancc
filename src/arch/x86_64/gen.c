@@ -87,7 +87,7 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
     switch (node->an_kind) {
         case AST_NODE_KIND_VAR: {
             if (node->an_var->av_global) {
-                Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_var->av_name);
+                Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_var->av_symbol);
             } else {
                 Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_var->av_offset, ASM_X86_64_REG_RAX);
             }
@@ -596,37 +596,52 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
     func->af_stack_size = Gen_x86_64_AlignTo(offset, STACK_ALIGN);
 }
 
+// Write a constant initializer's bytes into a global's image at offset.
+void Gen_x86_64_EmitConstant(unsigned char *bytes, int size, int offset, const Ast_Node *value, const Ast_Var *var)
+{
+    if (value->an_kind != AST_NODE_KIND_NUM) {
+        Log_ShowErrorAt(var->av_line, "initializer for '%s' is not a constant", var->av_name);
+    }
+    if (offset + size > var->av_type->at_size) {
+        Log_ShowErrorAt(var->av_line, "initializer for '%s' is larger than it is", var->av_name);
+    }
+    for (int i = 0; i < size; i++) {
+        bytes[offset + i] = (value->an_val >> (i * ASM_X86_64_BITS_PER_BYTE)) & GEN_X86_64_BYTE_MASK;
+    }
+}
+
 // Emit one global: its bytes in .data when it has an initializer, or the space
 // it asks for in .bss when it is zeroed.
 void Gen_x86_64_EmitGlobal(Ast_Var *var)
 {
     int size = var->av_type->at_size;
 
-    if (! var->av_init) {
-        unsigned char *zeros = calloc(size ? size : 1, 1);
-        Asm_x86_64_EmitSection(".bss", ELF_SHT_NOBITS, ELF_SHF_ALLOC | ELF_SHF_WRITE);
-        Asm_x86_64_EmitGlobl("%s", var->av_name);
-        Asm_x86_64_EmitLabel("%s", var->av_name);
-        Asm_x86_64_EmitBytes(zeros, size);
-        free(zeros);
+    // An extern declaration defines nothing; the symbol comes from elsewhere.
+    if (var->av_storage == AST_STORAGE_EXTERN) {
         return;
     }
 
-    if (var->av_init->an_kind != AST_NODE_KIND_NUM) {
-        Log_ShowErrorAt(var->av_line, "initializer for '%s' is not a constant", var->av_name);
-    }
-    if (size > GEN_X86_64_MAX_INIT) {
-        Log_ShowErrorAt(var->av_line, "'%s' needs an initializer list, which is stage 6 work", var->av_name);
+    unsigned char *bytes = calloc(size ? size : 1, 1);
+    if (var->av_init && var->av_init->an_kind == AST_NODE_KIND_INIT) {
+        int elem = var->av_type->at_base->at_size;
+        for (Ast_Node *item = var->av_init; item; item = item->an_next) {
+            Gen_x86_64_EmitConstant(bytes, elem, (int) item->an_val * elem, item->an_lhs, var);
+        }
+    } else if (var->av_init) {
+        Gen_x86_64_EmitConstant(bytes, size, 0, var->av_init, var);
     }
 
-    unsigned char bytes[GEN_X86_64_MAX_INIT] = {0};
-    for (int i = 0; i < size; i++) {
-        bytes[i] = (var->av_init->an_val >> (i * ASM_X86_64_BITS_PER_BYTE)) & GEN_X86_64_BYTE_MASK;
+    if (var->av_init) {
+        Asm_x86_64_EmitSection(".data", ELF_SHT_PROGBITS, ELF_SHF_ALLOC | ELF_SHF_WRITE);
+    } else {
+        Asm_x86_64_EmitSection(".bss", ELF_SHT_NOBITS, ELF_SHF_ALLOC | ELF_SHF_WRITE);
     }
-    Asm_x86_64_EmitSection(".data", ELF_SHT_PROGBITS, ELF_SHF_ALLOC | ELF_SHF_WRITE);
-    Asm_x86_64_EmitGlobl("%s", var->av_name);
-    Asm_x86_64_EmitLabel("%s", var->av_name);
+    if (var->av_storage != AST_STORAGE_STATIC) {
+        Asm_x86_64_EmitGlobl("%s", var->av_symbol);
+    }
+    Asm_x86_64_EmitLabel("%s", var->av_symbol);
     Asm_x86_64_EmitBytes(bytes, size);
+    free(bytes);
 }
 
 // Emit every file-scope variable, before the code that refers to them.
@@ -660,7 +675,9 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         Gen_x86_64_CurrFunc = func;
         Gen_x86_64_BreakId = Gen_x86_64_ContinueId = -1;
 
-        Asm_x86_64_EmitGlobl(func->af_name);
+        if (! func->af_static) {
+            Asm_x86_64_EmitGlobl(func->af_name);
+        }
         Asm_x86_64_EmitLabel(func->af_name);
 
         // prologue

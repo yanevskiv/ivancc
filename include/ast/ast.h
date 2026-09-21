@@ -88,6 +88,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_POSTINC,   // lhs++ or lhs--, stepping by an_val
     AST_NODE_KIND_COND,      // cond ? then : els
     AST_NODE_KIND_COMMA,     // lhs, rhs
+    AST_NODE_KIND_INIT,      // one initializer element: an_val indexes, an_lhs is the value
     AST_NODE_KIND_CALL,      // function call
     AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs), the lhs-th anonymous argument
     AST_NODE_KIND_RETURN,    // return lhs;
@@ -106,6 +107,15 @@ enum Ast_NodeKind {
     AST_NODE_KIND_NOP        // empty statement / bare declaration
 };
 
+// What a declaration's storage class asks for. register, auto and inline are
+// accepted by the grammar and mean nothing here, so they map to NONE.
+typedef enum Ast_Storage Ast_Storage;
+enum Ast_Storage {
+    AST_STORAGE_NONE,
+    AST_STORAGE_STATIC, // visible only to this translation unit
+    AST_STORAGE_EXTERN  // declared here, defined elsewhere
+};
+
 // Forward declaration: a global's initializer is one of these.
 typedef struct Ast_Node Ast_Node;
 
@@ -119,7 +129,9 @@ struct Ast_Var {
     Ast_Type *av_type;      // declared type
     int      av_line;       // source line the declaration appeared on
     int      av_offset;     // offset from %rbp, filled in by the back end
+    char     *av_symbol;    // name the symbol takes, which a static local mangles
     int       av_global;    // true when the variable lives in .data or .bss
+    Ast_Storage av_storage; // storage class the declaration asked for
     Ast_Node *av_init;      // initializer of a global, or NULL for zeroed
 };
 
@@ -164,6 +176,7 @@ struct Ast_Func {
     Ast_Var  *af_params;     // parameters, in declaration order
     int       af_nparams;    // number of parameters
     int       af_variadic;   // true if the parameter list ended in `...`
+    int       af_static;     // true when the function is local to this file
     Ast_Var  *af_locals;     // every local, including parameters
     int       af_stack_size; // frame size, filled in by the code generator
 };
@@ -194,6 +207,7 @@ void     Ast_PopScope(void);
 Ast_Var *Ast_FindVar(const char *name);
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line);
 Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line);
+Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line);
 Ast_Var *Ast_CurrentLocals(void);
 
 // String literal interning
