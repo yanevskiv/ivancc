@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "obj/elf/elf.h"
+#include "obj/Elf/elf.h"
 #include "util/str.h"
 
 // Intern a name into the object's string pool, returning an owned copy.
@@ -36,7 +36,7 @@ void Elf_Free(Elf *elf)
         return;
     }
     for (size_t i = 0; i < elf->elf_nsecs; i++) {
-        Buf_Elf_Free(&elf->elf_secs[i]->sec_data);
+        Elf_Buffer_Free(&elf->elf_secs[i]->sec_data);
         free(elf->elf_secs[i]->sec_relas);
         free(elf->elf_secs[i]);
     }
@@ -84,7 +84,7 @@ Elf_Sec *Elf_SectionAdd(Elf *elf, const char *name, uint32_t type, uint64_t flag
     sec->sec_type      = type;
     sec->sec_flags     = flags;
     sec->sec_addralign = 1;
-    Buf_Elf_Init(&sec->sec_data);
+    Elf_Buffer_Init(&sec->sec_data);
 
     if (elf->elf_nsecs == elf->elf_capsecs) {
         elf->elf_capsecs = elf->elf_capsecs ? elf->elf_capsecs * 2 : 8;
@@ -128,7 +128,7 @@ Elf_Sec *Elf_SectionAt(const Elf *elf, size_t i)
 }
 
 // Return the byte buffer a section's contents are appended to.
-Buf_Elf *Elf_SectionData(Elf_Sec *sec)
+Elf_Buffer *Elf_SectionData(Elf_Sec *sec)
 {
     return &sec->sec_data;
 }
@@ -210,10 +210,10 @@ Elf_Rela *Elf_RelaAt(const Elf_Sec *target, size_t i)
 }
 
 // Append name and a NUL to a string table, returning name's start offset.
-uint32_t Elf_WriteStr(Buf_Elf *strtab, const char *name)
+uint32_t Elf_WriteStr(Elf_Buffer *strtab, const char *name)
 {
-    uint32_t off = (uint32_t) strtab->be_len;
-    Buf_Elf_Data(strtab, name, strlen(name) + 1);
+    uint32_t off = (uint32_t) strtab->eb_len;
+    Elf_Buffer_Data(strtab, name, strlen(name) + 1);
     return off;
 }
 
@@ -229,12 +229,12 @@ uint32_t Elf_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *se
 }
 
 // Build the .symtab and .strtab bodies, locals before globals, recording indices in slot[].
-void Elf_WriteSymtab(const Elf *elf, const uint32_t *secidx, Buf_Elf *symtab,
-                            Buf_Elf *strtab, uint32_t *slot, uint32_t *first_global)
+void Elf_WriteSymtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab,
+                            Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global)
 {
     Elf64_Sym null = {0};
-    Buf_Elf_Data(symtab, &null, sizeof(null));
-    Buf_Elf_Byte(strtab, 0);
+    Elf_Buffer_Data(symtab, &null, sizeof(null));
+    Elf_Buffer_Byte(strtab, 0);
 
     uint32_t si = 1;
     for (int pass = 0; pass < 2; pass++) {
@@ -262,14 +262,14 @@ void Elf_WriteSymtab(const Elf *elf, const uint32_t *secidx, Buf_Elf *symtab,
             } else {
                 out.st_shndx = ELF_SHN_UNDEF;
             }
-            Buf_Elf_Data(symtab, &out, sizeof(out));
+            Elf_Buffer_Data(symtab, &out, sizeof(out));
         }
     }
 }
 
 // Build one .rela.* body from a section's relocations, using final indices.
 void Elf_WriteRelas(const Elf_Sec *sec, const uint32_t *slot,
-                           const Elf *elf, Buf_Elf *out)
+                           const Elf *elf, Elf_Buffer *out)
 {
     for (size_t r = 0; r < sec->sec_nrelas; r++) {
         uint32_t symi = 0;
@@ -285,7 +285,7 @@ void Elf_WriteRelas(const Elf_Sec *sec, const uint32_t *slot,
             .r_info   = ELF_R_INFO(symi, rel->rel_type),
             .r_addend = rel->rel_addend
         };
-        Buf_Elf_Data(out, &disk, sizeof(disk));
+        Elf_Buffer_Data(out, &disk, sizeof(disk));
     }
 }
 
@@ -313,17 +313,17 @@ int Elf_WriteRel(const Elf *elf, FILE *out)
 
     // Phase: build the symbol table and per-section relocation bodies.
     uint32_t first_global = 1;
-    Buf_Elf symtab, strtab, shstr;
+    Elf_Buffer symtab, strtab, shstr;
     uint32_t *slot = calloc(elf->elf_nsyms ? elf->elf_nsyms : 1, sizeof(*slot));
-    Buf_Elf_Init(&symtab);
-    Buf_Elf_Init(&strtab);
-    Buf_Elf_Init(&shstr);
-    Buf_Elf_Byte(&shstr, 0);
+    Elf_Buffer_Init(&symtab);
+    Elf_Buffer_Init(&strtab);
+    Elf_Buffer_Init(&shstr);
+    Elf_Buffer_Byte(&shstr, 0);
     Elf_WriteSymtab(elf, secidx, &symtab, &strtab, slot, &first_global);
 
-    Buf_Elf *relas = calloc(nuser ? nuser : 1, sizeof(*relas));
+    Elf_Buffer *relas = calloc(nuser ? nuser : 1, sizeof(*relas));
     for (size_t i = 0; i < nuser; i++) {
-        Buf_Elf_Init(&relas[i]);
+        Elf_Buffer_Init(&relas[i]);
         if (relaidx[i]) {
             Elf_WriteRelas(elf->elf_secs[i], slot, elf, &relas[i]);
         }
@@ -340,34 +340,34 @@ int Elf_WriteRel(const Elf *elf, FILE *out)
             .sh_name      = Elf_WriteStr(&shstr, sec->sec_name),
             .sh_type      = sec->sec_type,
             .sh_flags     = sec->sec_flags,
-            .sh_size      = sec->sec_data.be_len,
+            .sh_size      = sec->sec_data.eb_len,
             .sh_addralign = sec->sec_addralign,
             .sh_entsize   = sec->sec_entsize
         };
-        bodies[secidx[i]] = sec->sec_data.be_data;
-        sizes[secidx[i]]  = sec->sec_data.be_len;
+        bodies[secidx[i]] = sec->sec_data.eb_data;
+        sizes[secidx[i]]  = sec->sec_data.eb_len;
     }
 
     shdrs[idx_symtab] = (Elf64_Shdr) {
         .sh_name      = Elf_WriteStr(&shstr, ".symtab"),
         .sh_type      = ELF_SHT_SYMTAB,
-        .sh_size      = symtab.be_len,
+        .sh_size      = symtab.eb_len,
         .sh_link      = idx_strtab,
         .sh_info      = first_global,
         .sh_addralign = 8,
         .sh_entsize   = sizeof(Elf64_Sym)
     };
-    bodies[idx_symtab] = symtab.be_data;
-    sizes[idx_symtab]  = symtab.be_len;
+    bodies[idx_symtab] = symtab.eb_data;
+    sizes[idx_symtab]  = symtab.eb_len;
 
     shdrs[idx_strtab] = (Elf64_Shdr) {
         .sh_name      = Elf_WriteStr(&shstr, ".strtab"),
         .sh_type      = ELF_SHT_STRTAB,
-        .sh_size      = strtab.be_len,
+        .sh_size      = strtab.eb_len,
         .sh_addralign = 1
     };
-    bodies[idx_strtab] = strtab.be_data;
-    sizes[idx_strtab]  = strtab.be_len;
+    bodies[idx_strtab] = strtab.eb_data;
+    sizes[idx_strtab]  = strtab.eb_len;
 
     for (size_t i = 0; i < nuser; i++) {
         if (! relaidx[i]) {
@@ -378,14 +378,14 @@ int Elf_WriteRel(const Elf *elf, FILE *out)
         shdrs[relaidx[i]] = (Elf64_Shdr) {
             .sh_name      = Elf_WriteStr(&shstr, name),
             .sh_type      = ELF_SHT_RELA,
-            .sh_size      = relas[i].be_len,
+            .sh_size      = relas[i].eb_len,
             .sh_link      = idx_symtab,
             .sh_info      = secidx[i],
             .sh_addralign = 8,
             .sh_entsize   = sizeof(Elf64_Rela)
         };
-        bodies[relaidx[i]] = relas[i].be_data;
-        sizes[relaidx[i]]  = relas[i].be_len;
+        bodies[relaidx[i]] = relas[i].eb_data;
+        sizes[relaidx[i]]  = relas[i].eb_len;
     }
 
     shdrs[idx_shstrtab] = (Elf64_Shdr) {
@@ -393,9 +393,9 @@ int Elf_WriteRel(const Elf *elf, FILE *out)
         .sh_type      = ELF_SHT_STRTAB,
         .sh_addralign = 1
     };
-    bodies[idx_shstrtab] = shstr.be_data;
-    sizes[idx_shstrtab]  = shstr.be_len;
-    shdrs[idx_shstrtab].sh_size = shstr.be_len;
+    bodies[idx_shstrtab] = shstr.eb_data;
+    sizes[idx_shstrtab]  = shstr.eb_len;
+    shdrs[idx_shstrtab].sh_size = shstr.eb_len;
 
     // Phase: assign file offsets, then write header, bodies and shdr table.
     uint64_t off = sizeof(Elf64_Ehdr);
@@ -439,11 +439,11 @@ int Elf_WriteRel(const Elf *elf, FILE *out)
     }
     fwrite(shdrs, sizeof(Elf64_Shdr), shnum, out);
 
-    Buf_Elf_Free(&symtab);
-    Buf_Elf_Free(&strtab);
-    Buf_Elf_Free(&shstr);
+    Elf_Buffer_Free(&symtab);
+    Elf_Buffer_Free(&strtab);
+    Elf_Buffer_Free(&shstr);
     for (size_t i = 0; i < nuser; i++) {
-        Buf_Elf_Free(&relas[i]);
+        Elf_Buffer_Free(&relas[i]);
     }
     free(relas);
     free(secidx);
@@ -470,7 +470,7 @@ int Elf_WriteExec(const Elf *elf, FILE *out)
     int nseg = 0;
     for (size_t i = 0; i < elf->elf_nsecs; i++) {
         Elf_Sec *sec = elf->elf_secs[i];
-        if ((sec->sec_flags & ELF_SHF_ALLOC) && sec->sec_data.be_len) {
+        if ((sec->sec_flags & ELF_SHF_ALLOC) && sec->sec_data.eb_len) {
             segs[nseg++] = sec;
         }
     }
@@ -479,7 +479,7 @@ int Elf_WriteExec(const Elf *elf, FILE *out)
     uint64_t pos = sizeof(Elf64_Ehdr) + (uint64_t) nseg * sizeof(Elf64_Phdr);
     for (int i = 0; i < nseg; i++) {
         offs[i] = Elf_PlaceOffset(pos, segs[i]->sec_addr);
-        pos = offs[i] + segs[i]->sec_data.be_len;
+        pos = offs[i] + segs[i]->sec_data.eb_len;
     }
 
     Elf64_Ehdr ehdr = {
@@ -501,8 +501,8 @@ int Elf_WriteExec(const Elf *elf, FILE *out)
             .p_offset = offs[i],
             .p_vaddr  = segs[i]->sec_addr,
             .p_paddr  = segs[i]->sec_addr,
-            .p_filesz = segs[i]->sec_data.be_len,
-            .p_memsz  = segs[i]->sec_data.be_len,
+            .p_filesz = segs[i]->sec_data.eb_len,
+            .p_memsz  = segs[i]->sec_data.eb_len,
             .p_align  = ELF_PAGE
         };
         fwrite(&phdr, sizeof(phdr), 1, out);
@@ -513,8 +513,8 @@ int Elf_WriteExec(const Elf *elf, FILE *out)
             fputc(0, out);
             pos2++;
         }
-        fwrite(segs[i]->sec_data.be_data, 1, segs[i]->sec_data.be_len, out);
-        pos2 += segs[i]->sec_data.be_len;
+        fwrite(segs[i]->sec_data.eb_data, 1, segs[i]->sec_data.eb_len, out);
+        pos2 += segs[i]->sec_data.eb_len;
     }
 
     free(segs);
@@ -583,7 +583,7 @@ Elf *Elf_ReadMem(const void *buf, size_t n)
         sec->sec_addr      = sh[i].sh_addr;
         sec->sec_addralign = sh[i].sh_addralign ? sh[i].sh_addralign : 1;
         sec->sec_entsize   = sh[i].sh_entsize;
-        Buf_Elf_Data(&sec->sec_data, data + sh[i].sh_offset, sh[i].sh_size);
+        Elf_Buffer_Data(&sec->sec_data, data + sh[i].sh_offset, sh[i].sh_size);
         secmap[i] = sec;
     }
 

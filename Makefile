@@ -21,10 +21,10 @@ LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
 GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/parser.tab.o
 
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
-AS_OBJS := $(OUT)/as.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/obj/elf/elf.o $(OUT)/obj/elf/buf.o \
+AS_OBJS := $(OUT)/as.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/obj/Elf/elf.o $(OUT)/obj/Elf/buf.o \
 	$(OUT)/arch/$(TARGET_ARCH)/txt.o $(OUT)/arch/$(TARGET_ARCH)/asm.o \
 	$(OUT)/arch/$(TARGET_ARCH)/enc.o
-LD_OBJS := $(OUT)/ld.o $(OUT)/util/str.o $(OUT)/obj/elf/elf.o $(OUT)/obj/elf/buf.o $(OUT)/obj/elf/link.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
+LD_OBJS := $(OUT)/ld.o $(OUT)/util/str.o $(OUT)/obj/Elf/elf.o $(OUT)/obj/Elf/buf.o $(OUT)/obj/Elf/link.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
 
 TEST_TOOL  := tools/run_test
 TEST_SRCS  := $(sort $(wildcard tests/test*.c))
