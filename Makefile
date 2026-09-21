@@ -1,5 +1,6 @@
-TARGET      := ivan
-TARGET_ARCH := x86_64
+TARGET          := ivan
+TARGET_ARCH     := x86_64
+TARGET_PLATFORM := linux
 
 OUT     := out
 BUILD   := build
@@ -14,7 +15,7 @@ LEX     := flex
 YACC    := bison
 
 MAIN_SRCS := src/cc.c src/ld.c src/as.c
-ALL_SRCS  := $(shell find src -name '*.c' -not -path 'src/libc/*')
+ALL_SRCS  := $(shell find src -name '*.c')
 LIB_SRCS  := $(filter-out $(MAIN_SRCS),$(ALL_SRCS))
 LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
 GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/parser.tab.o
@@ -74,10 +75,10 @@ $(OUT)/%.o: src/%.c $(OUT)/parser.tab.h | $(OUT)
 	$(CC) $(CFLAGS) $(WARN) -c $< -o $@
 
 # --- runtime (libc/) recipes ---
-$(CRT_OBJ): src/libc/arch/$(TARGET_ARCH)/crt0.s $(AS_BIN) | $(BUILD)/lib
+$(CRT_OBJ): libc/src/$(TARGET_ARCH)/target/$(TARGET_PLATFORM)/crt0.s $(AS_BIN) | $(BUILD)/lib
 	$(AS_BIN) $< -o $@
 
-$(LIBC_OBJ): src/libc/libc.c $(CC_BIN) | $(BUILD)/lib
+$(LIBC_OBJ): libc/src/libc.c $(CC_BIN) | $(BUILD)/lib
 	$(CC_BIN) -c $< -o $@
 
 # --- build/ recipes ---
