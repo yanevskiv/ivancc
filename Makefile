@@ -14,7 +14,7 @@ WARN    := -Wall -Wextra
 LEX     := flex
 YACC    := bison
 
-MAIN_SRCS := src/cc.c src/ld.c src/as.c
+MAIN_SRCS := src/cc.c src/ld.c src/as.c src/emu.c
 ALL_SRCS  := $(shell find src -name '*.c')
 LIB_SRCS  := $(filter-out $(MAIN_SRCS),$(ALL_SRCS))
 LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
@@ -24,6 +24,9 @@ CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
 AS_OBJS := $(OUT)/as.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/obj/Elf/elf.o $(OUT)/obj/Elf/sec.o $(OUT)/obj/Elf/sym.o $(OUT)/obj/Elf/rela.o $(OUT)/obj/Elf/write.o $(OUT)/obj/Elf/buf.o \
 	$(OUT)/arch/$(TARGET_ARCH)/txt.o $(OUT)/arch/$(TARGET_ARCH)/asm.o \
 	$(OUT)/arch/$(TARGET_ARCH)/enc.o
+EMU_OBJS := $(OUT)/emu.o $(OUT)/util/file.o $(OUT)/util/str.o \
+	$(OUT)/obj/Elf/elf.o $(OUT)/obj/Elf/buf.o $(OUT)/obj/Elf/sec.o $(OUT)/obj/Elf/sym.o \
+	$(OUT)/obj/Elf/rela.o $(OUT)/obj/Elf/read.o $(OUT)/obj/Elf/load.o
 LD_OBJS := $(OUT)/ld.o $(OUT)/util/str.o $(OUT)/obj/Elf/elf.o $(OUT)/obj/Elf/sec.o $(OUT)/obj/Elf/sym.o $(OUT)/obj/Elf/rela.o $(OUT)/obj/Elf/write.o $(OUT)/obj/Elf/buf.o $(OUT)/obj/Elf/read.o $(OUT)/obj/Elf/link.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
 
 TEST_TOOL  := tools/run_test
@@ -33,9 +36,10 @@ TEST_NAMES := $(patsubst tests/%.c,%,$(TEST_SRCS))
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
 LD_BIN := $(BUILD)/bin/$(TARGET)ld
+EMU_BIN := $(BUILD)/bin/$(TARGET)emu
 
 # --- phony recipes ---
-all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(CRT_OBJ) $(LIBC_OBJ)
+all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(CRT_OBJ) $(LIBC_OBJ)
 
 clean:
 	rm -rf $(BUILD) $(OUT)
@@ -50,6 +54,9 @@ $(AS_BIN): $(AS_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 $(LD_BIN): $(LD_OBJS) | $(BUILD)/bin
+	$(CC) $(CFLAGS) $(WARN) $^ -o $@
+
+$(EMU_BIN): $(EMU_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 # --- test recipes (one target per test, so `make test05_logical` works) ---
