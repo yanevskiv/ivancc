@@ -99,10 +99,13 @@ static void Parser_AddFunction(Ast_Func *fn)
 %token INT CHAR VOID CONST RETURN IF ELSE FOR WHILE BREAK CONTINUE SIZEOF
 %token BUILTIN_VA_ARG
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
+%token INC DEC QUESTION COLON
+%token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
+%token AND_ASSIGN OR_ASSIGN XOR_ASSIGN SHL_ASSIGN SHR_ASSIGN
 %token EQ NE LT GT LE GE AND OR
 %token LPAREN RPAREN LSQUARE RSQUARE LBRACE RBRACE SEMI COMMA ELLIPSIS
 
-%type <node> stmt stmt_list compound_stmt decl expr expr_opt args arg_list
+%type <node> stmt stmt_list compound_stmt decl expr expr_comma expr_opt args arg_list
 %type <node> cast unary postfix primary array_dims param_dims
 %type <type> type_name base
 %type <num>  stars
@@ -110,7 +113,9 @@ static void Parser_AddFunction(Ast_Func *fn)
 /* Lowest precedence first. */
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE
-%right ASSIGN
+%right ASSIGN ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
+%right AND_ASSIGN OR_ASSIGN XOR_ASSIGN SHL_ASSIGN SHR_ASSIGN
+%right QUESTION COLON
 %left OR
 %left AND
 %left PIPE
@@ -239,7 +244,7 @@ stmt
           n->an_cond = $3; n->an_body = $5; $$ = n; }
     | compound_stmt        { $$ = $1; }
     | decl SEMI            { $$ = $1; }
-    | expr SEMI            { $$ = Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, $1, @1); }
+    | expr_comma SEMI      { $$ = Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, $1, @1); }
     | SEMI                 { $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
     ;
 
@@ -259,9 +264,15 @@ array_dims
         { Ast_Node *n = Ast_NewNum($2, @1); n->an_next = $4; $$ = n; }
     ;
 
+/* A comma expression, which an argument list deliberately cannot contain. */
+expr_comma
+    : expr                       { $$ = $1; }
+    | expr_comma COMMA expr      { $$ = Ast_NewBinary(AST_NODE_KIND_COMMA, $1, $3, @2); }
+    ;
+
 expr_opt
     : /* empty */          { $$ = NULL; }
-    | expr                 { $$ = $1; }
+    | expr_comma           { $$ = $1; }
     ;
 
 /* ---- expressions --------------------------------------------------- */
@@ -287,6 +298,19 @@ expr
     | expr AND expr        { $$ = Ast_NewBinary(AST_NODE_KIND_AND, $1, $3, @2); }
     | expr OR expr         { $$ = Ast_NewBinary(AST_NODE_KIND_OR, $1, $3, @2); }
     | expr ASSIGN expr     { $$ = Ast_NewBinary(AST_NODE_KIND_ASSIGN, $1, $3, @2); }
+    | expr QUESTION expr COLON expr
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_COND, @2);
+          n->an_cond = $1; n->an_then = $3; n->an_els = $5; $$ = n; }
+    | expr ADD_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_ADD, $1, $3, @2); }
+    | expr SUB_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_SUB, $1, $3, @2); }
+    | expr MUL_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_MUL, $1, $3, @2); }
+    | expr DIV_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_DIV, $1, $3, @2); }
+    | expr MOD_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_MOD, $1, $3, @2); }
+    | expr AND_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_BITAND, $1, $3, @2); }
+    | expr OR_ASSIGN expr  { $$ = Ast_NewOpAssign(AST_NODE_KIND_BITOR, $1, $3, @2); }
+    | expr XOR_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_BITXOR, $1, $3, @2); }
+    | expr SHL_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_SHL, $1, $3, @2); }
+    | expr SHR_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_SHR, $1, $3, @2); }
     ;
 
 cast
@@ -303,6 +327,8 @@ unary
     | ADD cast             { $$ = $2; }
     | MUL cast             { $$ = Ast_NewUnary(AST_NODE_KIND_DEREF, $2, @1); }
     | AMP cast             { $$ = Ast_NewUnary(AST_NODE_KIND_ADDR, $2, @1); }
+    | INC unary            { $$ = Ast_NewOpAssign(AST_NODE_KIND_ADD, $2, Ast_NewNum(1, @1), @1); }
+    | DEC unary            { $$ = Ast_NewOpAssign(AST_NODE_KIND_SUB, $2, Ast_NewNum(1, @1), @1); }
     | SIZEOF unary         { $$ = Ast_NewUnary(AST_NODE_KIND_SIZEOF, $2, @1); }
     | SIZEOF LPAREN type_name RPAREN
         { $$ = Ast_NewNum($3->at_size, @1); }
@@ -310,6 +336,8 @@ unary
 
 postfix
     : primary              { $$ = $1; }
+    | postfix INC          { $$ = Ast_NewPostInc($1, 1, @2); }
+    | postfix DEC          { $$ = Ast_NewPostInc($1, -1, @2); }
     | postfix LSQUARE expr RSQUARE
         { Ast_Node *n = Ast_NewBinary(AST_NODE_KIND_ADD, $1, $3, @2);
           $$ = Ast_NewUnary(AST_NODE_KIND_DEREF, n, @2); }
@@ -326,7 +354,7 @@ primary
     | IDENT LPAREN args RPAREN
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_CALL, @1);
           n->an_funcname = $1; n->an_args = $3; $$ = n; }
-    | LPAREN expr RPAREN   { $$ = $2; }
+    | LPAREN expr_comma RPAREN { $$ = $2; }
     | BUILTIN_VA_ARG LPAREN expr RPAREN
         { $$ = Ast_NewUnary(AST_NODE_KIND_VA_ARG, $3, @1); }
     ;

@@ -84,6 +84,10 @@ enum Ast_NodeKind {
     AST_NODE_KIND_AND,       // lhs && rhs
     AST_NODE_KIND_OR,        // lhs || rhs
     AST_NODE_KIND_ASSIGN,    // lhs = rhs
+    AST_NODE_KIND_OPASSIGN,  // lhs an_op= rhs, with the address evaluated once
+    AST_NODE_KIND_POSTINC,   // lhs++ or lhs--, stepping by an_val
+    AST_NODE_KIND_COND,      // cond ? then : els
+    AST_NODE_KIND_COMMA,     // lhs, rhs
     AST_NODE_KIND_CALL,      // function call
     AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs), the lhs-th anonymous argument
     AST_NODE_KIND_RETURN,    // return lhs;
@@ -109,6 +113,7 @@ struct Ast_Var {
 typedef struct Ast_Node Ast_Node;
 struct Ast_Node {
     Ast_NodeKind an_kind;     // which kind of node this is
+    Ast_NodeKind an_op;       // operation of AST_NODE_KIND_OPASSIGN
     Ast_Type    *an_type;     // type of the value, filled in by the Sem_ pass
     int          an_line;     // source line the construct started on
     Ast_Node    *an_next;     // next node in a statement / argument list
@@ -153,6 +158,8 @@ Ast_Node *Ast_NewBinary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Node *rhs, int lin
 Ast_Node *Ast_NewUnary(Ast_NodeKind kind, Ast_Node *lhs, int line);
 Ast_Node *Ast_NewNum(long val, int line);
 Ast_Node *Ast_NewVarNode(Ast_Var *var, int line);
+Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, int line);
+Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line);
 
 // Variable scopes
 void     Ast_BeginScope(void);
