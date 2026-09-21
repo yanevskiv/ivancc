@@ -27,11 +27,15 @@
 // Target architecture selected when no -march= is given.
 #define DEFAULT_ARCH "x86_64"
 
-// Machine-option prefix recognised inside -m (e.g. -march=x86_64).
+// Runtime target selected when no -mtarget= is given.
+#define DEFAULT_TARGET "linux"
+
+// Machine-option prefixes recognised inside -m (e.g. -march=x86_64).
 #define MARCH_PREFIX "arch="
+#define MTARGET_PREFIX "target="
 
 // Where the runtime objects sit relative to the directory holding this binary.
-#define RUNTIME_DIR "/../lib"
+#define RUNTIME_DIR "/../lib/"
 
 // Input stream read by the generated lexer.
 extern FILE *yyin;
@@ -51,6 +55,7 @@ static void Cc_ShowUsage(const char *prog)
         "  -S          write assembly text instead of an executable\n"
         "  -c          write a relocatable object (.o) instead of an executable\n"
         "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n"
+        "  -mtarget=T  runtime to link against (default: " DEFAULT_TARGET ")\n"
         "  -B DIR      read the runtime objects from DIR\n",
         prog);
     exit(1);
@@ -74,8 +79,8 @@ static char *Cc_GetExeDir(void)
     return strdup(buf);
 }
 
-// Return the directory to read the runtime objects from, honouring -B.
-static char *Cc_GetRuntimeDir(const char *prefix)
+// Return the directory to read the target's runtime objects from, honouring -B.
+static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
 {
     if (prefix) {
         return strdup(prefix);
@@ -85,7 +90,7 @@ static char *Cc_GetRuntimeDir(const char *prefix)
     if (! exedir) {
         Log_ShowError("cannot locate the runtime directory; pass -B DIR");
     }
-    char *dir = Str_Format("%s" RUNTIME_DIR, exedir);
+    char *dir = Str_Format("%s" RUNTIME_DIR "%s", exedir, target);
     Str_Free(exedir);
     return dir;
 }
@@ -125,13 +130,13 @@ static void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
 }
 
 // Write the program linked against the runtime as a static executable.
-static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix)
+static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *target)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();
 
     int nruntime = (int) (sizeof(Cc_RuntimeNames) / sizeof(Cc_RuntimeNames[0]));
-    char *libdir = Cc_GetRuntimeDir(prefix);
+    char *libdir = Cc_GetRuntimeDir(prefix, target);
     char *runtime[sizeof(Cc_RuntimeNames) / sizeof(Cc_RuntimeNames[0])];
     for (int i = 0; i < nruntime; i++) {
         runtime[i] = Str_Format("%s/%s", libdir, Cc_RuntimeNames[i]);
@@ -155,6 +160,7 @@ int main(int argc, char **argv)
 {
     const char *output = NULL;
     const char *arch = DEFAULT_ARCH;
+    const char *target = DEFAULT_TARGET;
     const char *prefix = NULL;
     int emit_text = 0;
     int emit_obj = 0;
@@ -182,6 +188,8 @@ int main(int argc, char **argv)
                 // -m carries machine options; only -march=ARCH is recognised.
                 if (Str_StartsWith(optarg, MARCH_PREFIX)) {
                     arch = optarg + strlen(MARCH_PREFIX);
+                } else if (Str_StartsWith(optarg, MTARGET_PREFIX)) {
+                    target = optarg + strlen(MTARGET_PREFIX);
                 }
             } break;
             case 'E': case 'g':
@@ -238,7 +246,7 @@ int main(int argc, char **argv)
     } else if (emit_obj) {
         Cc_x86_64_WriteObject(out, Ast_Program);
     } else {
-        Cc_x86_64_WriteExec(out, Ast_Program, prefix);
+        Cc_x86_64_WriteExec(out, Ast_Program, prefix, target);
     }
     Cc_CloseOutput(out);
 

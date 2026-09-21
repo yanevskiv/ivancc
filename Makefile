@@ -1,12 +1,14 @@
-TARGET          := ivan
-TARGET_ARCH     := x86_64
-TARGET_PLATFORM := linux
+TARGET      := ivan
+TARGET_ARCH := x86_64
 
 OUT     := out
 BUILD   := build
 
-CRT_OBJ  := $(BUILD)/lib/crt0.o
-LIBC_OBJ := $(BUILD)/lib/libc.o
+# One runtime per platform, in the directory ivancc's -mtarget selects.
+LINUX_DIR := $(BUILD)/lib/linux
+EMU_DIR   := $(BUILD)/lib/ivanemu
+RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.o $(EMU_DIR)/crt0.o $(EMU_DIR)/libc.o
+TARGET_SRC := libc/src/$(TARGET_ARCH)/target
 
 CC      := gcc
 CFLAGS  := -std=gnu99 -O2 -Iinclude -Iout -DTARGET_ARCH=$(TARGET_ARCH)
@@ -39,7 +41,7 @@ LD_BIN := $(BUILD)/bin/$(TARGET)ld
 EMU_BIN := $(BUILD)/bin/$(TARGET)emu
 
 # --- phony recipes ---
-all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(CRT_OBJ) $(LIBC_OBJ)
+all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME)
 
 clean:
 	rm -rf $(BUILD) $(OUT)
@@ -60,7 +62,7 @@ $(EMU_BIN): $(EMU_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 # --- test recipes (one target per test, so `make test05_logical` works) ---
-$(TEST_NAMES): %: tests/%.c $(TEST_TOOL) $(CC_BIN) $(CRT_OBJ) $(LIBC_OBJ)
+$(TEST_NAMES): %: tests/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
 	@$(TEST_TOOL) $<
 
 # --- front-end generators ---
@@ -81,12 +83,27 @@ $(OUT)/%.o: src/%.c $(OUT)/parser.tab.h | $(OUT)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(WARN) -c $< -o $@
 
-# --- runtime (libc/) recipes ---
-$(CRT_OBJ): libc/src/$(TARGET_ARCH)/target/$(TARGET_PLATFORM)/crt0.s $(AS_BIN) | $(BUILD)/lib
+# --- runtime (libc/) recipes, one directory per platform ---
+$(LINUX_DIR)/crt0.o: $(TARGET_SRC)/linux/crt0.s $(AS_BIN) | $(LINUX_DIR)
 	$(AS_BIN) $< -o $@
 
-$(LIBC_OBJ): libc/src/libc.c $(CC_BIN) | $(BUILD)/lib
+$(LINUX_DIR)/libc.o: libc/src/libc.c $(CC_BIN) | $(LINUX_DIR)
 	$(CC_BIN) -c $< -o $@
+
+$(EMU_DIR)/crt0.o: $(TARGET_SRC)/ivanemu/crt0.s $(AS_BIN) | $(EMU_DIR)
+	$(AS_BIN) $< -o $@
+
+# The emulator's libc is the portable half bundled with its own I/O primitives.
+$(OUT)/libc/ivanemu/core.o: libc/src/libc.c $(CC_BIN)
+	@mkdir -p $(dir $@)
+	$(CC_BIN) -c $< -o $@
+
+$(OUT)/libc/ivanemu/sys.o: $(TARGET_SRC)/ivanemu/sys.s $(AS_BIN)
+	@mkdir -p $(dir $@)
+	$(AS_BIN) $< -o $@
+
+$(EMU_DIR)/libc.o: $(OUT)/libc/ivanemu/core.o $(OUT)/libc/ivanemu/sys.o $(LD_BIN) | $(EMU_DIR)
+	$(LD_BIN) -r $(OUT)/libc/ivanemu/core.o $(OUT)/libc/ivanemu/sys.o -o $@
 
 # --- build/ recipes ---
 $(OUT):
@@ -98,7 +115,10 @@ $(BUILD):
 $(BUILD)/bin: | $(BUILD)
 	mkdir -p $(BUILD)/bin
 
-$(BUILD)/lib: | $(BUILD)
-	mkdir -p $(BUILD)/lib
+$(LINUX_DIR): | $(BUILD)
+	mkdir -p $(LINUX_DIR)
+
+$(EMU_DIR): | $(BUILD)
+	mkdir -p $(EMU_DIR)
 
 .PHONY: all clean tests $(TEST_NAMES)
