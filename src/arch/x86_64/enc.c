@@ -243,6 +243,15 @@ void Enc_x86_64_EmitGrpUnary(int grp, Asm_x86_64_Reg reg)
 }
 
 // Emit a `setcc %reg` byte-setting instruction.
+// Emit a shift of dst by %cl, with grp selecting the direction.
+void Enc_x86_64_EmitShift(int grp, Asm_x86_64_Reg dst)
+{
+    Enc_x86_64_EmitRexW(0, Enc_x86_64_RegHigh(dst));
+    Enc_x86_64_Emit8(ENC_X86_64_OPCODE_GRP2_RM_CL);
+    Enc_x86_64_EmitModRR(grp, dst);
+}
+
+// Emit `setcc %reg`, storing a condition into the low byte of a register.
 void Enc_x86_64_EmitSetcc(int opcode, Asm_x86_64_Reg reg)
 {
     if (reg >= ASM_X86_64_REG_R8) {
@@ -369,6 +378,24 @@ void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item)
         } break;
         case ASM_X86_64_OP_NEG: {
             Enc_x86_64_EmitGrpUnary(ENC_X86_64_GRP_NEG, dst);
+        } break;
+        case ASM_X86_64_OP_NOT: {
+            Enc_x86_64_EmitGrpUnary(ENC_X86_64_GRP_NOT, dst);
+        } break;
+        case ASM_X86_64_OP_AND: {
+            Enc_x86_64_EmitRR(ENC_X86_64_OPCODE_AND_RM_R, src, dst);
+        } break;
+        case ASM_X86_64_OP_OR: {
+            Enc_x86_64_EmitRR(ENC_X86_64_OPCODE_OR_RM_R, src, dst);
+        } break;
+        case ASM_X86_64_OP_XOR: {
+            Enc_x86_64_EmitRR(ENC_X86_64_OPCODE_XOR_RM_R, src, dst);
+        } break;
+        case ASM_X86_64_OP_SHL: {
+            Enc_x86_64_EmitShift(ENC_X86_64_GRP_SHL, dst);
+        } break;
+        case ASM_X86_64_OP_SAR: {
+            Enc_x86_64_EmitShift(ENC_X86_64_GRP_SAR, dst);
         } break;
         case ASM_X86_64_OP_CQO: {
             Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | ENC_X86_64_REX_W);

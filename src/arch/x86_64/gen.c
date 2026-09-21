@@ -195,6 +195,23 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitExpr(node->an_lhs);
             Asm_x86_64_EmitNeg(ASM_X86_64_REG_RAX);
         } break;
+        case AST_NODE_KIND_BITNOT: {
+            Gen_x86_64_EmitExpr(node->an_lhs);
+            Asm_x86_64_EmitNot(ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_SHL:
+        case AST_NODE_KIND_SHR: {
+            // The shift count has to reach %cl, so it is the operand popped.
+            Gen_x86_64_EmitExpr(node->an_rhs);
+            Gen_x86_64_EmitPush();
+            Gen_x86_64_EmitExpr(node->an_lhs);
+            Gen_x86_64_EmitPop(ASM_X86_64_REG_RCX);
+            if (node->an_kind == AST_NODE_KIND_SHL) {
+                Asm_x86_64_EmitShl(ASM_X86_64_REG_RAX);
+            } else {
+                Asm_x86_64_EmitSar(ASM_X86_64_REG_RAX);
+            }
+        } break;
         case AST_NODE_KIND_NOT: {
             Gen_x86_64_EmitExpr(node->an_lhs);
             Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
@@ -294,6 +311,15 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                 case AST_NODE_KIND_DIV: {
                     Asm_x86_64_EmitCqo();
                     Asm_x86_64_EmitIdiv(ASM_X86_64_REG_RDI);
+                } break;
+                case AST_NODE_KIND_BITAND: {
+                    Asm_x86_64_EmitAnd(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
+                } break;
+                case AST_NODE_KIND_BITOR: {
+                    Asm_x86_64_EmitOr(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
+                } break;
+                case AST_NODE_KIND_BITXOR: {
+                    Asm_x86_64_EmitXor(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
                 } break;
                 case AST_NODE_KIND_MOD: {
                     Asm_x86_64_EmitCqo();

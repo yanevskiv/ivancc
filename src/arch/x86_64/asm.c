@@ -216,6 +216,33 @@ void Asm_x86_64_EmitMovsx(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Wid
     item->ai_src = Asm_x86_64_RegWidth(src, width);
 }
 
+// Emit `and %src, %dst`.
+void Asm_x86_64_EmitAnd(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_AND;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg64(src);
+}
+
+// Emit `or %src, %dst`.
+void Asm_x86_64_EmitOr(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_OR;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg64(src);
+}
+
+// Emit `xor %src, %dst`.
+void Asm_x86_64_EmitXor(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_XOR;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg64(src);
+}
+
 // Emit `idiv %reg`.
 void Asm_x86_64_EmitIdiv(Asm_x86_64_Reg reg)
 {
@@ -230,6 +257,32 @@ void Asm_x86_64_EmitNeg(Asm_x86_64_Reg reg)
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_NEG;
     item->ai_dst = Asm_x86_64_Reg64(reg);
+}
+
+// Emit `not %reg`.
+void Asm_x86_64_EmitNot(Asm_x86_64_Reg reg)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_NOT;
+    item->ai_dst = Asm_x86_64_Reg64(reg);
+}
+
+// Emit `shl %cl, %dst`, the only shift count the code generator uses.
+void Asm_x86_64_EmitShl(Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_SHL;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg8(ASM_X86_64_REG_RCX);
+}
+
+// Emit `sar %cl, %dst`, which is what >> means on a signed operand.
+void Asm_x86_64_EmitSar(Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_SAR;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg8(ASM_X86_64_REG_RCX);
 }
 
 // Emit `cqo` (sign-extend %rax into %rdx:%rax).

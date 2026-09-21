@@ -48,6 +48,12 @@ enum Asm_x86_64_Op {
     ASM_X86_64_OP_SUB,
     ASM_X86_64_OP_IMUL,
     ASM_X86_64_OP_IDIV,
+    ASM_X86_64_OP_AND,
+    ASM_X86_64_OP_OR,
+    ASM_X86_64_OP_XOR,
+    ASM_X86_64_OP_NOT,
+    ASM_X86_64_OP_SHL,
+    ASM_X86_64_OP_SAR,
     ASM_X86_64_OP_CQO,
     ASM_X86_64_OP_NEG,
     ASM_X86_64_OP_CMP,
@@ -139,6 +145,9 @@ void Asm_x86_64_EmitDirective(const char *text, ...);
 void Asm_x86_64_EmitAdd(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitSub(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitImul(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitAnd(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitOr(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitXor(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitCmp(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitMovRR(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitMovsx(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
@@ -146,6 +155,11 @@ void Asm_x86_64_EmitMovsx(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Wid
 // Single register
 void Asm_x86_64_EmitIdiv(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitNeg(Asm_x86_64_Reg reg);
+void Asm_x86_64_EmitNot(Asm_x86_64_Reg reg);
+
+// Shifts of a register by %cl
+void Asm_x86_64_EmitShl(Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitSar(Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitCqo(void);
 
 // Condition flags to a register

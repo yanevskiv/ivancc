@@ -67,6 +67,12 @@ enum Ast_NodeKind {
     AST_NODE_KIND_MOD,       // lhs % rhs
     AST_NODE_KIND_NEG,       // -lhs
     AST_NODE_KIND_NOT,       // !lhs
+    AST_NODE_KIND_BITNOT,    // ~lhs
+    AST_NODE_KIND_BITAND,    // lhs & rhs
+    AST_NODE_KIND_BITOR,     // lhs | rhs
+    AST_NODE_KIND_BITXOR,    // lhs ^ rhs
+    AST_NODE_KIND_SHL,       // lhs << rhs
+    AST_NODE_KIND_SHR,       // lhs >> rhs, arithmetic on a signed operand
     AST_NODE_KIND_ADDR,      // &lhs
     AST_NODE_KIND_DEREF,     // *lhs
     AST_NODE_KIND_CAST,      // (type) lhs
