@@ -101,6 +101,18 @@ ALNUM   [A-Za-z_0-9]
 "!="                    return NE;
 "<="                    return LE;
 ">="                    return GE;
+"++"                    return INC;
+"--"                    return DEC;
+"+="                    return ADD_ASSIGN;
+"-="                    return SUB_ASSIGN;
+"*="                    return MUL_ASSIGN;
+"/="                    return DIV_ASSIGN;
+"%="                    return MOD_ASSIGN;
+"&="                    return AND_ASSIGN;
+"|="                    return OR_ASSIGN;
+"^="                    return XOR_ASSIGN;
+"<<="                   return SHL_ASSIGN;
+">>="                   return SHR_ASSIGN;
 "<<"                    return SHL;
 ">>"                    return SHR;
 "&&"                    return AND;
@@ -127,6 +139,8 @@ ALNUM   [A-Za-z_0-9]
 "]"                     return RSQUARE;
 "{"                     return LBRACE;
 "}"                     return RBRACE;
+"?"                     return QUESTION;
+":"                     return COLON;
 ";"                     return SEMI;
 ","                     return COMMA;
 

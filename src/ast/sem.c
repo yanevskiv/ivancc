@@ -214,6 +214,36 @@ void Sem_Node(Ast_Node *node)
             node->an_type = node->an_lhs->an_type;
         } break;
 
+        case AST_NODE_KIND_OPASSIGN: {
+            if (! Sem_IsLvalue(node->an_lhs)) {
+                Log_ShowErrorAt(node->an_line, "expression is not assignable");
+            }
+            Ast_Type *type = node->an_lhs->an_type;
+            if (Sem_IsPointer(type) && (node->an_op == AST_NODE_KIND_ADD || node->an_op == AST_NODE_KIND_SUB)) {
+                node->an_rhs = Sem_ScaleBy(node->an_rhs, type->at_base->at_size);
+            }
+            node->an_type = type;
+        } break;
+
+        case AST_NODE_KIND_POSTINC: {
+            if (! Sem_IsLvalue(node->an_lhs)) {
+                Log_ShowErrorAt(node->an_line, "expression is not assignable");
+            }
+            Ast_Type *type = node->an_lhs->an_type;
+            if (Sem_IsPointer(type)) {
+                node->an_val *= type->at_base->at_size;
+            }
+            node->an_type = type;
+        } break;
+
+        case AST_NODE_KIND_COND: {
+            node->an_type = node->an_then->an_type;
+        } break;
+
+        case AST_NODE_KIND_COMMA: {
+            node->an_type = node->an_rhs->an_type;
+        } break;
+
         case AST_NODE_KIND_CALL: {
             Sem_CheckCall(node);
             node->an_type = &Ast_TypeInt;

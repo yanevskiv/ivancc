@@ -24,6 +24,7 @@ void Gen_x86_64_CallPushArgs(Ast_Node *arg);
 void Gen_x86_64_CallPopArgs(int nReg);
 
 // Expressions, statements and data
+void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, int line);
 void Gen_x86_64_EmitExpr(Ast_Node *node);
 void Gen_x86_64_EmitStmt(Ast_Node *node);
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func);

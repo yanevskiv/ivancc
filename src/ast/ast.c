@@ -86,6 +86,22 @@ Ast_Node *Ast_NewVarNode(Ast_Var *var, int line)
     return node;
 }
 
+// Build a compound assignment, with op naming the operation it applies.
+Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, int line)
+{
+    Ast_Node *node = Ast_NewBinary(AST_NODE_KIND_OPASSIGN, lhs, rhs, line);
+    node->an_op = op;
+    return node;
+}
+
+// Build a postfix ++ or --, which steps by step and yields the old value.
+Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
+{
+    Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_POSTINC, lhs, line);
+    node->an_val = step;
+    return node;
+}
+
 // Start a fresh variable scope for a new function.
 void Ast_BeginScope(void)
 {

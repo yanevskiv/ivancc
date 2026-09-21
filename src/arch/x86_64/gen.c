@@ -162,6 +162,50 @@ void Gen_x86_64_CallPopArgs(int nReg)
     }
 }
 
+// Apply a compound assignment's operation to the value in %rax and the one in
+// %rcx, leaving the result in %rax. A shift finds its count in %cl already.
+void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, int line)
+{
+    switch (op) {
+        case AST_NODE_KIND_ADD: {
+            Asm_x86_64_EmitAdd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_SUB: {
+            Asm_x86_64_EmitSub(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_MUL: {
+            Asm_x86_64_EmitImul(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_DIV: {
+            Asm_x86_64_EmitCqo();
+            Asm_x86_64_EmitIdiv(ASM_X86_64_REG_RCX);
+        } break;
+        case AST_NODE_KIND_MOD: {
+            Asm_x86_64_EmitCqo();
+            Asm_x86_64_EmitIdiv(ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RDX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_BITAND: {
+            Asm_x86_64_EmitAnd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_BITOR: {
+            Asm_x86_64_EmitOr(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_BITXOR: {
+            Asm_x86_64_EmitXor(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_SHL: {
+            Asm_x86_64_EmitShl(ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_SHR: {
+            Asm_x86_64_EmitSar(ASM_X86_64_REG_RAX);
+        } break;
+        default: {
+            Log_ShowErrorAt(line, "codegen: unexpected compound assignment %d", op);
+        }
+    }
+}
+
 // Emit code for an expression, leaving its result in %rax.
 void Gen_x86_64_EmitExpr(Ast_Node *node)
 {
@@ -190,6 +234,41 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitExpr(node->an_rhs);
             Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
             Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI, 0, Gen_x86_64_TypeWidth(node->an_type));
+        } break;
+        case AST_NODE_KIND_OPASSIGN: {
+            Asm_x86_64_Width width = Gen_x86_64_TypeWidth(node->an_type);
+            Gen_x86_64_EmitAddr(node->an_lhs);
+            Gen_x86_64_EmitPush();
+            Gen_x86_64_EmitExpr(node->an_rhs);
+            Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
+            Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, 0, ASM_X86_64_REG_RAX, width);
+            Gen_x86_64_EmitOpAssign(node->an_op, node->an_line);
+            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI, 0, width);
+        } break;
+        case AST_NODE_KIND_POSTINC: {
+            Asm_x86_64_Width width = Gen_x86_64_TypeWidth(node->an_type);
+            Gen_x86_64_EmitAddr(node->an_lhs);
+            Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
+            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, 0, ASM_X86_64_REG_RAX, width);
+            Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitAddImm(node->an_val, ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, 0, width);
+        } break;
+        case AST_NODE_KIND_COND: {
+            int count = Gen_x86_64_Count();
+            Gen_x86_64_EmitExpr(node->an_cond);
+            Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitJe(".L.else.%d", count);
+            Gen_x86_64_EmitExpr(node->an_then);
+            Asm_x86_64_EmitJmp(".L.endif.%d", count);
+            Asm_x86_64_EmitLabel(".L.else.%d", count);
+            Gen_x86_64_EmitExpr(node->an_els);
+            Asm_x86_64_EmitLabel(".L.endif.%d", count);
+        } break;
+        case AST_NODE_KIND_COMMA: {
+            Gen_x86_64_EmitExpr(node->an_lhs);
+            Gen_x86_64_EmitExpr(node->an_rhs);
         } break;
         case AST_NODE_KIND_NEG: {
             Gen_x86_64_EmitExpr(node->an_lhs);
