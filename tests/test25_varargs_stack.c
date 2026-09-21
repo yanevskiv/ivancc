@@ -1,0 +1,30 @@
+// (Test) Return: 165
+// Ten arguments, so the last four sit in the overflow area above the return
+// address rather than in the register save area.
+
+int weigh(int n, ...)
+{
+    int i;
+    int total;
+
+    total = 0;
+    for (i = 0; i < n; i = i + 1) {
+        total = total + __builtin_va_arg(i) * (i + 1);
+    }
+    return total;
+}
+
+// Two named parameters, so the anonymous ones start two slots further on.
+int pick(int k, int n, ...)
+{
+    return __builtin_va_arg(k);
+}
+
+int main()
+{
+    if (pick(0, 5, 11, 22, 33, 44, 55) != 11) return 1;
+    if (pick(3, 5, 11, 22, 33, 44, 55) != 44) return 2;
+    if (pick(4, 5, 11, 22, 33, 44, 55) != 55) return 3;
+
+    return weigh(9, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+}

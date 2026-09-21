@@ -14,6 +14,10 @@ void             Gen_x86_64_EmitAddr(Ast_Node *node);
 void             Gen_x86_64_EmitLoad(const Ast_Type *type);
 void             Gen_x86_64_EmitCast(const Ast_Type *type);
 
+// Variadic arguments
+void Gen_x86_64_EmitVaSaveArea(void);
+void Gen_x86_64_EmitVaSlotAddr(int base);
+
 // Function call arguments
 int  Gen_x86_64_CallCountArgs(Ast_Node *args);
 void Gen_x86_64_CallPushArgs(Ast_Node *arg);

@@ -31,6 +31,7 @@ static char     *Par_CurFuncName;
 static Ast_Var  *Par_CurParams;
 static Ast_Var  *Par_CurParamsTail;
 static int       Par_CurNumParams;
+static int       Par_CurVariadic;
 
 /* The program assembled so far, as functions are reduced. */
 static Ast_Func *Par_ProgHead;
@@ -96,6 +97,7 @@ static void Par_AddFunction(Ast_Func *fn)
 %token <str>     IDENT
 %token <str_lit> STR
 %token INT CHAR VOID CONST RETURN IF ELSE FOR WHILE BREAK CONTINUE SIZEOF
+%token BUILTIN_VA_ARG
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP
 %token EQ NE LT GT LE GE AND OR
 %token LPAREN RPAREN LSQUARE RSQUARE LBRACE RBRACE SEMI COMMA ELLIPSIS
@@ -134,6 +136,7 @@ external_decl
             Par_CurParams     = NULL;
             Par_CurParamsTail = NULL;
             Par_CurNumParams  = 0;
+            Par_CurVariadic   = 0;
             Ast_BeginScope();
         }
       params RPAREN func_tail
@@ -143,11 +146,12 @@ func_tail
     : compound_stmt
         {
             Ast_Func *fn = calloc(1, sizeof(Ast_Func));
-            fn->af_name    = Par_CurFuncName;
-            fn->af_body    = $1;
-            fn->af_params  = Par_CurParams;
-            fn->af_nparams = Par_CurNumParams;
-            fn->af_locals  = Ast_CurrentLocals();
+            fn->af_name     = Par_CurFuncName;
+            fn->af_body     = $1;
+            fn->af_params   = Par_CurParams;
+            fn->af_nparams  = Par_CurNumParams;
+            fn->af_variadic = Par_CurVariadic;
+            fn->af_locals   = Ast_CurrentLocals();
             Par_AddFunction(fn);
         }
     | SEMI  /* a prototype, e.g. `int printf(const char *, ...);` -- discard */
@@ -167,7 +171,7 @@ param
     : type_name IDENT param_dims
         { Par_AddParam(Ast_DeclareVar($2, Par_ParamType($1, $3), @2)); }
     | type_name         /* unnamed parameter, e.g. `void` */
-    | ELLIPSIS          /* variadic marker, ignored */
+    | ELLIPSIS          { Par_CurVariadic = 1; }
     ;
 
 /* A parameter may leave its first dimension empty, as `int a[]` does. */
@@ -311,6 +315,8 @@ primary
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_CALL, @1);
           n->an_funcname = $1; n->an_args = $3; $$ = n; }
     | LPAREN expr RPAREN   { $$ = $2; }
+    | BUILTIN_VA_ARG LPAREN expr RPAREN
+        { $$ = Ast_NewUnary(AST_NODE_KIND_VA_ARG, $3, @1); }
     ;
 
 args

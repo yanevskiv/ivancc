@@ -79,6 +79,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_OR,        // lhs || rhs
     AST_NODE_KIND_ASSIGN,    // lhs = rhs
     AST_NODE_KIND_CALL,      // function call
+    AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs), the lhs-th anonymous argument
     AST_NODE_KIND_RETURN,    // return lhs;
     AST_NODE_KIND_IF,        // if (cond) then; else els;
     AST_NODE_KIND_FOR,       // for (init; cond; inc) body;
@@ -128,6 +129,7 @@ struct Ast_Func {
     Ast_Node *af_body;       // function body (AST_NODE_KIND_BLOCK)
     Ast_Var  *af_params;     // parameters, in declaration order
     int       af_nparams;    // number of parameters
+    int       af_variadic;   // true if the parameter list ended in `...`
     Ast_Var  *af_locals;     // every local, including parameters
     int       af_stack_size; // frame size, filled in by the code generator
 };
