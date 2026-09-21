@@ -22,6 +22,9 @@
 // Default output name for a freestanding executable.
 #define DEFAULT_OUTPUT "a.out"
 
+// Output name that means standard output rather than a file.
+#define STDOUT_NAME "-"
+
 // Target architecture selected when no -march= is given.
 #define DEFAULT_ARCH "x86_64"
 
@@ -45,7 +48,7 @@ static void Cc_ShowUsage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [options] INPUT.c\n"
-        "  -o OUTPUT   write output to OUTPUT (default: " DEFAULT_OUTPUT ")\n"
+        "  -o OUTPUT   write output to OUTPUT (default: " DEFAULT_OUTPUT ", " STDOUT_NAME " is stdout)\n"
         "  -S          write assembly text instead of an executable\n"
         "  -c          write a relocatable object (.o) instead of an executable\n"
         "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n"
@@ -86,6 +89,25 @@ static char *Cc_GetRuntimeDir(const char *prefix)
     char *dir = Str_Format("%s" RUNTIME_DIR, exedir);
     Str_Free(exedir);
     return dir;
+}
+
+// Open the output stream, where the name "-" means standard output.
+static FILE *Cc_OpenOutput(const char *output, const char *mode)
+{
+    if (Str_Equals(output, STDOUT_NAME)) {
+        return stdout;
+    }
+    return fopen(output, mode);
+}
+
+// Close the output stream, leaving standard output open.
+static void Cc_CloseOutput(FILE *out)
+{
+    if (out == stdout) {
+        fflush(out);
+        return;
+    }
+    fclose(out);
 }
 
 // Write the program as AT&T assembly text.
@@ -206,7 +228,7 @@ int main(int argc, char **argv)
     fclose(yyin);
 
     // Back end: emit assembly text or a freestanding executable
-    FILE *out = fopen(output, emit_text ? "w" : "wb");
+    FILE *out = Cc_OpenOutput(output, emit_text ? "w" : "wb");
     if (! out) {
         perror(output);
         result = 1;
@@ -219,10 +241,11 @@ int main(int argc, char **argv)
     } else {
         Cc_x86_64_WriteExec(out, Ast_Program, prefix);
     }
-    fclose(out);
+    Cc_CloseOutput(out);
 
-    // Only the freestanding executable is made runnable; .s and .o are not.
-    if (! emit_text && ! emit_obj) {
+    // Only the freestanding executable is made runnable; .s and .o are not,
+    // and standard output has no mode of its own to set.
+    if (! emit_text && ! emit_obj && ! Str_Equals(output, STDOUT_NAME)) {
         chmod(output, ELF_MODE);
     }
 
