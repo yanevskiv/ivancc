@@ -28,55 +28,55 @@ void yyerror(const char *s);
 #define YYLLOC_DEFAULT(cur, rhs, n)  ((cur) = (n) ? YYRHSLOC(rhs, 1) : YYRHSLOC(rhs, 0))
 
 /* State for the function definition currently being parsed. */
-static char     *Parser_CurFuncName;
-static Ast_Var  *Parser_CurParams;
-static Ast_Var  *Parser_CurParamsTail;
-static int       Parser_CurNumParams;
-static int       Parser_CurVariadic;
-static int       Parser_CurStatic;
+static char     *Par_CurFuncName;
+static Ast_Var  *Par_CurParams;
+static Ast_Var  *Par_CurParamsTail;
+static int       Par_CurNumParams;
+static int       Par_CurVariadic;
+static int       Par_CurStatic;
 
 /* The type and storage class the declarators being parsed all share. */
-static Ast_Type   *Parser_DeclType;
-static Ast_Storage Parser_DeclStorage;
-static char       *Parser_DeclName;
+static Ast_Type   *Par_DeclType;
+static Ast_Storage Par_DeclStorage;
+static char       *Par_DeclName;
 
 /* The program assembled so far, as functions are reduced. */
-static Ast_Func *Parser_ProgHead;
-static Ast_Func *Parser_ProgTail;
+static Ast_Func *Par_ProgHead;
+static Ast_Func *Par_ProgTail;
 
 /* Append a parameter to the function currently being parsed. */
-static void Parser_AddParam(Ast_Var *v)
+static void Par_AddParam(Ast_Var *v)
 {
     v->av_param_next = NULL;
-    if (! Parser_CurParams) {
-        Parser_CurParams = Parser_CurParamsTail = v;
+    if (! Par_CurParams) {
+        Par_CurParams = Par_CurParamsTail = v;
     } else {
-        Parser_CurParamsTail->av_param_next = v;
-        Parser_CurParamsTail = v;
+        Par_CurParamsTail->av_param_next = v;
+        Par_CurParamsTail = v;
     }
-    Parser_CurNumParams++;
+    Par_CurNumParams++;
 }
 
 /* Wrap base in the array dimensions listed outermost first. */
-static Ast_Type *Parser_ArrayType(Ast_Type *base, Ast_Node *dims)
+static Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims)
 {
     if (! dims) {
         return base;
     }
-    return Ast_NewArray(Parser_ArrayType(base, dims->an_next), (int) dims->an_val);
+    return Ast_NewArray(Par_ArrayType(base, dims->an_next), (int) dims->an_val);
 }
 
 /* Give a parameter its adjusted type: an array parameter is really a pointer. */
-static Ast_Type *Parser_ParamType(Ast_Type *base, Ast_Node *dims)
+static Ast_Type *Par_ParamType(Ast_Type *base, Ast_Node *dims)
 {
     if (! dims) {
         return base;
     }
-    return Ast_NewPointer(Parser_ArrayType(base, dims->an_next));
+    return Ast_NewPointer(Par_ArrayType(base, dims->an_next));
 }
 
 /* Build the statement `var[index] = value`. */
-static Ast_Node *Parser_InitElement(Ast_Var *var, long index, Ast_Node *value, int line)
+static Ast_Node *Par_InitElement(Ast_Var *var, long index, Ast_Node *value, int line)
 {
     Ast_Node *at = Ast_NewBinary(AST_NODE_KIND_ADD, Ast_NewVarNode(var, line), Ast_NewNum(index, line), line);
     Ast_Node *elem = Ast_NewUnary(AST_NODE_KIND_DEREF, at, line);
@@ -86,11 +86,11 @@ static Ast_Node *Parser_InitElement(Ast_Var *var, long index, Ast_Node *value, i
 
 /* Index the next element of an initializer list takes, which a designator
    resets. C numbers from zero and steps by one unless told otherwise. */
-static long Parser_InitIndex;
+static long Par_InitIndex;
 
 /* Lower a local's initializer to the statements that fill it: every element
    zeroed first, so that what the list leaves out is zero as C requires. */
-static Ast_Node *Parser_InitLocal(Ast_Var *var, Ast_Node *init, int line)
+static Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
 {
     if (init->an_kind != AST_NODE_KIND_INIT) {
         Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(var, line), init, line);
@@ -104,47 +104,47 @@ static Ast_Node *Parser_InitLocal(Ast_Var *var, Ast_Node *init, int line)
     Ast_Node head = {0};
     Ast_Node *tail = &head;
     for (int i = 0; i < var->av_type->at_len; i++) {
-        tail->an_next = Parser_InitElement(var, i, Ast_NewNum(0, line), line);
+        tail->an_next = Par_InitElement(var, i, Ast_NewNum(0, line), line);
         tail = tail->an_next;
     }
     for (Ast_Node *item = init; item; item = item->an_next) {
-        tail->an_next = Parser_InitElement(var, item->an_val, item->an_lhs, line);
+        tail->an_next = Par_InitElement(var, item->an_val, item->an_lhs, line);
         tail = tail->an_next;
     }
     return head.an_next;
 }
 
 /* Declare one file-scope variable of the declaration being parsed. */
-static void Parser_AddGlobal(const char *name, Ast_Node *dims, Ast_Node *init, int line)
+static void Par_AddGlobal(const char *name, Ast_Node *dims, Ast_Node *init, int line)
 {
-    Ast_Var *var = Ast_DeclareGlobal(name, Parser_ArrayType(Parser_DeclType, dims), line);
-    var->av_storage = Parser_DeclStorage;
+    Ast_Var *var = Ast_DeclareGlobal(name, Par_ArrayType(Par_DeclType, dims), line);
+    var->av_storage = Par_DeclStorage;
     var->av_init = init;
 }
 
 /* Declare a variable inside a function, which `static` moves to file scope. */
-static Ast_Var *Parser_DeclareLocal(const char *name, Ast_Type *type, int line)
+static Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, int line)
 {
-    if (Parser_DeclStorage != AST_STORAGE_STATIC) {
+    if (Par_DeclStorage != AST_STORAGE_STATIC) {
         return Ast_DeclareVar(name, type, line);
     }
-    char *symbol = Str_Format("%s.%s", Parser_CurFuncName, name);
+    char *symbol = Str_Format("%s.%s", Par_CurFuncName, name);
     Ast_Var *var = Ast_DeclareStaticLocal(name, symbol, type, line);
     var->av_storage = AST_STORAGE_STATIC;
     return var;
 }
 
 /* Append a finished function to the program. */
-static void Parser_AddFunction(Ast_Func *fn)
+static void Par_AddFunction(Ast_Func *fn)
 {
     fn->af_next = NULL;
-    if (! Parser_ProgHead) {
-        Parser_ProgHead = Parser_ProgTail = fn;
+    if (! Par_ProgHead) {
+        Par_ProgHead = Par_ProgTail = fn;
     } else {
-        Parser_ProgTail->af_next = fn;
-        Parser_ProgTail = fn;
+        Par_ProgTail->af_next = fn;
+        Par_ProgTail = fn;
     }
-    Ast_Program = Parser_ProgHead;
+    Ast_Program = Par_ProgHead;
 }
 %}
 
@@ -212,24 +212,24 @@ translation_unit
    is recorded before the parser decides which of the two it is reading. */
 external_decl
     : storage type_name IDENT
-        { Parser_DeclStorage = $1; Parser_DeclType = $2; Parser_DeclName = $3; }
+        { Par_DeclStorage = $1; Par_DeclType = $2; Par_DeclName = $3; }
       decl_tail
     ;
 
 decl_tail
     : LPAREN
         {
-            Parser_CurStatic     = Parser_DeclStorage == AST_STORAGE_STATIC;
-            Parser_CurFuncName   = Parser_DeclName;
-            Parser_CurParams     = NULL;
-            Parser_CurParamsTail = NULL;
-            Parser_CurNumParams  = 0;
-            Parser_CurVariadic   = 0;
+            Par_CurStatic     = Par_DeclStorage == AST_STORAGE_STATIC;
+            Par_CurFuncName   = Par_DeclName;
+            Par_CurParams     = NULL;
+            Par_CurParamsTail = NULL;
+            Par_CurNumParams  = 0;
+            Par_CurVariadic   = 0;
             Ast_BeginScope();
         }
       params RPAREN func_tail
-    | array_dims               { Parser_AddGlobal(Parser_DeclName, $1, NULL, @1); } global_rest SEMI
-    | array_dims ASSIGN initializer { Parser_AddGlobal(Parser_DeclName, $1, $3, @1); } global_rest SEMI
+    | array_dims               { Par_AddGlobal(Par_DeclName, $1, NULL, @1); } global_rest SEMI
+    | array_dims ASSIGN initializer { Par_AddGlobal(Par_DeclName, $1, $3, @1); } global_rest SEMI
     ;
 
 global_rest
@@ -248,22 +248,22 @@ storage
     ;
 
 global_decl
-    : IDENT array_dims             { Parser_AddGlobal($1, $2, NULL, @1); }
-    | IDENT array_dims ASSIGN initializer { Parser_AddGlobal($1, $2, $4, @1); }
+    : IDENT array_dims             { Par_AddGlobal($1, $2, NULL, @1); }
+    | IDENT array_dims ASSIGN initializer { Par_AddGlobal($1, $2, $4, @1); }
     ;
 
 func_tail
     : compound_stmt
         {
             Ast_Func *fn = calloc(1, sizeof(Ast_Func));
-            fn->af_name     = Parser_CurFuncName;
+            fn->af_name     = Par_CurFuncName;
             fn->af_body     = $1;
-            fn->af_params   = Parser_CurParams;
-            fn->af_nparams  = Parser_CurNumParams;
-            fn->af_variadic = Parser_CurVariadic;
-            fn->af_static   = Parser_CurStatic;
+            fn->af_params   = Par_CurParams;
+            fn->af_nparams  = Par_CurNumParams;
+            fn->af_variadic = Par_CurVariadic;
+            fn->af_static   = Par_CurStatic;
             fn->af_locals   = Ast_CurrentLocals();
-            Parser_AddFunction(fn);
+            Par_AddFunction(fn);
         }
     | SEMI  /* a prototype, e.g. `int printf(const char *, ...);` -- discard */
     ;
@@ -280,9 +280,9 @@ param_list
 
 param
     : type_name IDENT param_dims
-        { Parser_AddParam(Ast_DeclareVar($2, Parser_ParamType($1, $3), @2)); }
+        { Par_AddParam(Ast_DeclareVar($2, Par_ParamType($1, $3), @2)); }
     | type_name         /* unnamed parameter, e.g. `void` */
-    | ELLIPSIS          { Parser_CurVariadic = 1; }
+    | ELLIPSIS          { Par_CurVariadic = 1; }
     ;
 
 /* A parameter may leave its first dimension empty, as `int a[]` does. */
@@ -377,7 +377,7 @@ for_init
     ;
 
 decl
-    : storage type_name { Parser_DeclType = $2; Parser_DeclStorage = $1; } local_list
+    : storage type_name { Par_DeclType = $2; Par_DeclStorage = $1; } local_list
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @2); n->an_body = $4; $$ = n; }
     ;
 
@@ -391,15 +391,15 @@ local_list
 
 local_decl
     : IDENT array_dims
-        { Parser_DeclareLocal($1, Parser_ArrayType(Parser_DeclType, $2), @1);
+        { Par_DeclareLocal($1, Par_ArrayType(Par_DeclType, $2), @1);
           $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
     | IDENT array_dims ASSIGN initializer
-        { Ast_Var *v = Parser_DeclareLocal($1, Parser_ArrayType(Parser_DeclType, $2), @1);
+        { Ast_Var *v = Par_DeclareLocal($1, Par_ArrayType(Par_DeclType, $2), @1);
           if (v->av_global) {
               v->av_init = $4;
               $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1);
           } else {
-              $$ = Parser_InitLocal(v, $4, @1);
+              $$ = Par_InitLocal(v, $4, @1);
           }
         }
     ;
@@ -407,7 +407,7 @@ local_decl
 /* A scalar initializer, or a braced list of elements. */
 initializer
     : expr                       { $$ = $1; }
-    | LBRACE { Parser_InitIndex = 0; } init_list RBRACE { $$ = $3; }
+    | LBRACE { Par_InitIndex = 0; } init_list RBRACE { $$ = $3; }
     ;
 
 init_list
@@ -422,10 +422,10 @@ init_list
 init_item
     : expr
         { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $1, @1);
-          n->an_val = Parser_InitIndex++; $$ = n; }
+          n->an_val = Par_InitIndex++; $$ = n; }
     | LSQUARE NUM RSQUARE ASSIGN expr
         { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $5, @1);
-          Parser_InitIndex = $2; n->an_val = Parser_InitIndex++; $$ = n; }
+          Par_InitIndex = $2; n->an_val = Par_InitIndex++; $$ = n; }
     | LBRACE init_list RBRACE
         { Log_ShowErrorAt(@1, "nested initializer lists are not supported yet"); $$ = $2; }
     ;

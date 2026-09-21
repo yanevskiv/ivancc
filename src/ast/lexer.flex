@@ -17,7 +17,7 @@
 #define YY_USER_ACTION  yylloc = yylineno;
 
 /* Decode a C literal body into raw bytes, reporting the decoded length. */
-static char *Lexer_Unescape(const char *p, int len, int *out_len)
+static char *Lex_Unescape(const char *p, int len, int *out_len)
 {
     int n = 0;
     char *buf = malloc(len + 1);
@@ -102,9 +102,9 @@ ALNUM   [A-Za-z_0-9]
 {DIGIT}+                { yylval.num = strtol(yytext, NULL, 10); return NUM; }
 
 \"([^"\\\n]|\\.)*\"     { Ast_Str *lit = &yylval.str_lit;
-                          lit->as_data = Lexer_Unescape(yytext + 1, yyleng - 2, &lit->as_len);
+                          lit->as_data = Lex_Unescape(yytext + 1, yyleng - 2, &lit->as_len);
                           return STR; }
-'([^'\\\n]|\\.)'        { int n; char *s = Lexer_Unescape(yytext + 1, yyleng - 2, &n);
+'([^'\\\n]|\\.)'        { int n; char *s = Lex_Unescape(yytext + 1, yyleng - 2, &n);
                           yylval.num = (unsigned char) s[0]; Str_Free(s); return NUM; }
 
 "=="                    return EQ;
