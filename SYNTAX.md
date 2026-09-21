@@ -94,7 +94,7 @@ Checklist toward ISO C99.
 ## Functions
 
 - [x] definitions with a fixed parameter list
-- [x] variadic marker `...` (parsed, no varargs access — no `va_list`)
+- [x] variadic marker `...` (arguments reachable via `__builtin_va_arg`, no `va_list`)
 - [x] prototypes (parsed, no-op)
 - [ ] function-pointer parameters/variables actually callable
 - [ ] old-style (K&R) parameter lists (not planned — obsolete)
