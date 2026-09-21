@@ -2,7 +2,7 @@
 
 #include "util/log.h"
 #include "ast/ast.h"
-#include "util/elf.h"
+#include "obj/elf/elf.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/gen.h"
 

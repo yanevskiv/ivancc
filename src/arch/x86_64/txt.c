@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "util/log.h"
-#include "util/elf.h"
+#include "obj/elf/elf.h"
 #include "util/str.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/txt.h"

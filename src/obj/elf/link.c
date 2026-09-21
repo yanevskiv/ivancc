@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "util/log.h"
-#include "util/elf.h"
-#include "util/link.h"
+#include "obj/elf/elf.h"
+#include "obj/elf/link.h"
 #include "arch/x86_64/rel.h"
 
 // Virtual address an executable is loaded at, and the page segments align to.
@@ -11,7 +11,7 @@
 #define LINK_PAGE 0x1000
 
 // Index of a section within an object, or -1 if it holds none.
-long Link_SectionIndex(const Elf *elf, const Elf_Sec *target)
+long Link_Elf_SectionIndex(const Elf *elf, const Elf_Sec *target)
 {
     for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
         if (Elf_SectionAt(elf, i) == target) {
@@ -22,7 +22,7 @@ long Link_SectionIndex(const Elf *elf, const Elf_Sec *target)
 }
 
 // Index of a symbol within an object, or -1 if it holds none.
-long Link_SymbolIndex(const Elf *elf, const Elf_Sym *target)
+long Link_Elf_SymbolIndex(const Elf *elf, const Elf_Sym *target)
 {
     for (size_t i = 0; i < Elf_SymbolCount(elf); i++) {
         if (Elf_SymbolAt(elf, i) == target) {
@@ -33,7 +33,7 @@ long Link_SymbolIndex(const Elf *elf, const Elf_Sym *target)
 }
 
 // Find an existing global symbol by name, or return NULL.
-Elf_Sym *Link_FindGlobal(Elf *elf, const char *name)
+Elf_Sym *Link_Elf_FindGlobal(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < Elf_SymbolCount(elf); i++) {
         Elf_Sym *sym = Elf_SymbolAt(elf, i);
@@ -45,7 +45,7 @@ Elf_Sym *Link_FindGlobal(Elf *elf, const char *name)
 }
 
 // Merge one input object into the output, unifying globals and rebasing relocations.
-void Link_Merge(Elf *out, Elf *in)
+void Link_Elf_Merge(Elf *out, Elf *in)
 {
     size_t nsec = Elf_SectionCount(in);
     size_t nsym = Elf_SymbolCount(in);
@@ -58,13 +58,13 @@ void Link_Merge(Elf *out, Elf *in)
     for (size_t i = 0; i < nsec; i++) {
         Elf_Sec *sec   = Elf_SectionAt(in, i);
         Elf_Sec *dst = Elf_SectionGet(out, sec->sec_name, sec->sec_type, sec->sec_flags);
-        Elf_Buf *db  = Elf_SectionData(dst);
+        Buf_Elf *db  = Elf_SectionData(dst);
         if (sec->sec_addralign > dst->sec_addralign) {
             dst->sec_addralign = sec->sec_addralign;
         }
-        Elf_BufAlign(db, sec->sec_addralign);
-        secbase[i] = db->eb_len;
-        Elf_BufData(db, sec->sec_data.eb_data, sec->sec_data.eb_len);
+        Buf_Elf_Align(db, sec->sec_addralign);
+        secbase[i] = db->be_len;
+        Buf_Elf_Data(db, sec->sec_data.be_data, sec->sec_data.be_len);
         secmap[i] = dst;
     }
 
@@ -74,7 +74,7 @@ void Link_Merge(Elf *out, Elf *in)
         Elf_Sec *dsec  = NULL;
         uint64_t value = 0;
         if (sym->sym_sec) {
-            long j = Link_SectionIndex(in, sym->sym_sec);
+            long j = Link_Elf_SectionIndex(in, sym->sym_sec);
             dsec  = secmap[j];
             value = secbase[j] + sym->sym_value;
         }
@@ -84,7 +84,7 @@ void Link_Merge(Elf *out, Elf *in)
             continue;
         }
 
-        Elf_Sym *existing = Link_FindGlobal(out, sym->sym_name);
+        Elf_Sym *existing = Link_Elf_FindGlobal(out, sym->sym_name);
         if (! existing) {
             symmap[i] = Elf_SymbolAdd(out, sym->sym_name, dsec, value, sym->sym_bind, sym->sym_type);
             continue;
@@ -105,7 +105,7 @@ void Link_Merge(Elf *out, Elf *in)
         Elf_Sec *sec = Elf_SectionAt(in, i);
         for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
             Elf_Rela *rel = Elf_RelaAt(sec, r);
-            long k = Link_SymbolIndex(in, rel->rel_sym);
+            long k = Link_Elf_SymbolIndex(in, rel->rel_sym);
             if (k < 0) {
                 continue;
             }
@@ -119,20 +119,20 @@ void Link_Merge(Elf *out, Elf *in)
 }
 
 // Read each object file and merge it into out.
-void Link_MergeFiles(Elf *out, const char *const *paths, int npaths)
+void Link_Elf_MergeFiles(Elf *out, const char *const *paths, int npaths)
 {
     for (int i = 0; i < npaths; i++) {
         Elf *in = Elf_Read(paths[i]);
         if (! in) {
             Log_ShowError("cannot read object '%s'", paths[i]);
         }
-        Link_Merge(out, in);
+        Link_Elf_Merge(out, in);
         Elf_Free(in);
     }
 }
 
 // Load address requested for a section by name, or 0 if it is unplaced.
-uint64_t Link_PlacedAddr(const Link_Options *opts, const char *name, int *placed)
+uint64_t Link_Elf_PlacedAddr(const Link_Elf_Options *opts, const char *name, int *placed)
 {
     for (int i = 0; i < opts->lo_nplaces; i++) {
         if (strcmp(opts->lo_places[i].lp_name, name) == 0) {
@@ -145,7 +145,7 @@ uint64_t Link_PlacedAddr(const Link_Options *opts, const char *name, int *placed
 }
 
 // Assign each allocatable section its -place address, else the next free page.
-void Link_PlaceSections(Elf *elf, const Link_Options *opts)
+void Link_Elf_PlaceSections(Elf *elf, const Link_Elf_Options *opts)
 {
     uint64_t next = LINK_BASE + LINK_PAGE;
     for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
@@ -154,12 +154,12 @@ void Link_PlaceSections(Elf *elf, const Link_Options *opts)
             continue;
         }
         int placed;
-        uint64_t addr = Link_PlacedAddr(opts, sec->sec_name, &placed);
+        uint64_t addr = Link_Elf_PlacedAddr(opts, sec->sec_name, &placed);
         if (! placed) {
             addr = next;
         }
         Elf_SectionAddr(sec, addr);
-        uint64_t end = addr + sec->sec_data.eb_len;
+        uint64_t end = addr + sec->sec_data.be_len;
         if (end > next) {
             next = (end + LINK_PAGE - 1) / LINK_PAGE * LINK_PAGE;
         }
@@ -167,7 +167,7 @@ void Link_PlaceSections(Elf *elf, const Link_Options *opts)
 }
 
 // Abort if any relocation references a symbol that was never defined.
-void Link_CheckDefined(Elf *elf)
+void Link_Elf_CheckDefined(Elf *elf)
 {
     for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
         Elf_Sec *sec = Elf_SectionAt(elf, i);
@@ -181,12 +181,12 @@ void Link_CheckDefined(Elf *elf)
 }
 
 // Finalize an in-memory object into a static executable.
-void Link_Exec(Elf *elf, const Link_Options *opts)
+void Link_Elf_Exec(Elf *elf, const Link_Elf_Options *opts)
 {
     const char *entry = opts->lo_entry ? opts->lo_entry : "_start";
 
-    Link_PlaceSections(elf, opts);
-    Link_CheckDefined(elf);
+    Link_Elf_PlaceSections(elf, opts);
+    Link_Elf_CheckDefined(elf);
 
     Elf_Sym *sym = Elf_SymbolFind(elf, entry);
     if (! sym || ! sym->sym_sec) {
@@ -199,13 +199,13 @@ void Link_Exec(Elf *elf, const Link_Options *opts)
 }
 
 // Read and link the given objects into one Elf.
-Elf *Link_Run(const char *const *paths, int npaths, const Link_Options *opts)
+Elf *Link_Elf_Run(const char *const *paths, int npaths, const Link_Elf_Options *opts)
 {
     Elf *out = Elf_New(ELF_ET_REL, ELF_EM_X86_64);
-    Link_MergeFiles(out, paths, npaths);
+    Link_Elf_MergeFiles(out, paths, npaths);
 
     if (! opts->lo_relocatable) {
-        Link_Exec(out, opts);
+        Link_Elf_Exec(out, opts);
     }
     return out;
 }

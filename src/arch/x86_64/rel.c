@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "util/log.h"
-#include "util/elf.h"
+#include "obj/elf/elf.h"
 #include "arch/x86_64/rel.h"
 
 // Virtual address a symbol resolves to: its section's load address plus its offset.
@@ -15,7 +15,7 @@ uint64_t Rel_x86_64_SymbolAddr(const Elf_Sym *sym)
 // Patch width little-endian bytes at a section offset with value.
 void Rel_x86_64_PatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, int width)
 {
-    uint8_t *at = Elf_BufAt(Elf_SectionData(sec), offset);
+    uint8_t *at = Buf_Elf_At(Elf_SectionData(sec), offset);
     for (int i = 0; i < width; i++) {
         at[i] = (value >> (8 * i)) & 0xFF;
     }
