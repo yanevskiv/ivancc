@@ -58,12 +58,12 @@ Checklist toward ISO C99.
 - [x] equality: `== !=`
 - [x] logical: `&& ||`
 - [x] unary `-` and `!`
-- [ ] unary `+`
-- [ ] bitwise: `& | ^ ~ << >>`
-- [ ] compound assignment: `+= -= *= /= %= &= |= ^= <<= >>=`
-- [ ] increment / decrement: `++ --` (prefix and postfix)
-- [ ] ternary `?:`
-- [ ] comma operator
+- [x] unary `+`
+- [x] bitwise: `& | ^ ~ << >>`
+- [x] compound assignment: `+= -= *= /= %= &= |= ^= <<= >>=`
+- [x] increment / decrement: `++ --` (prefix and postfix)
+- [x] ternary `?:`
+- [x] comma operator
 - [x] assignment `=` (to a variable, `*p`, or `a[i]`)
 - [x] address-of `&` (unary)
 - [x] dereference `*` (unary)
