@@ -18,6 +18,12 @@ static Ast_Str Ast_Strings[MAX_STRINGS];
 // Number of entries currently used in Ast_Strings.
 static int Ast_NumStrings;
 
+// Every variable declared at file scope, in declaration order.
+Ast_Var *Ast_Globals;
+
+// The last global declared, so the list keeps source order.
+static Ast_Var *Ast_GlobalsTail;
+
 // The innermost scope currently open.
 static Ast_Scope *Ast_CurScope;
 
@@ -128,7 +134,7 @@ void Ast_PopScope(void)
     Ast_CurScope = Ast_CurScope->as_parent;
 }
 
-// Look up a variable by name, innermost scope first, or NULL.
+// Look up a variable by name: the innermost scope outwards, then file scope.
 Ast_Var *Ast_FindVar(const char *name)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
@@ -138,7 +144,36 @@ Ast_Var *Ast_FindVar(const char *name)
             }
         }
     }
+    for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
+        if (strcmp(var->av_name, name) == 0) {
+            return var;
+        }
+    }
     return NULL;
+}
+
+// Declare a variable at file scope, reusing the slot if it is already there.
+Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
+{
+    for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
+        if (strcmp(var->av_name, name) == 0) {
+            return var;
+        }
+    }
+
+    Ast_Var *var = calloc(1, sizeof(Ast_Var));
+    var->av_name   = strdup(name);
+    var->av_type   = type;
+    var->av_line   = line;
+    var->av_global = 1;
+
+    if (Ast_GlobalsTail) {
+        Ast_GlobalsTail->av_next = var;
+    } else {
+        Ast_Globals = var;
+    }
+    Ast_GlobalsTail = var;
+    return var;
 }
 
 // Declare a variable in the innermost scope. A name already declared in that

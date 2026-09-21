@@ -45,6 +45,7 @@
 // Loadable program-header segment, readable and executable.
 #define ELF_PT_LOAD 1
 #define ELF_PF_R 4
+#define ELF_PF_W 2
 #define ELF_PF_X 1
 
 // The undefined section index used by external references.

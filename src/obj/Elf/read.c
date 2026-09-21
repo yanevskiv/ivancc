@@ -41,7 +41,7 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
     // Phase: reconstruct the model's own sections (skip the synthesized ones).
     Elf_Sec **secmap = calloc(shnum ? shnum : 1, sizeof(*secmap));
     for (int i = 1; i < shnum; i++) {
-        if (sh[i].sh_type != ELF_SHT_PROGBITS) {
+        if (sh[i].sh_type != ELF_SHT_PROGBITS && sh[i].sh_type != ELF_SHT_NOBITS) {
             continue;
         }
         const char *name = shstr + sh[i].sh_name;
@@ -49,7 +49,12 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
         sec->sec_addr      = sh[i].sh_addr;
         sec->sec_addralign = sh[i].sh_addralign ? sh[i].sh_addralign : 1;
         sec->sec_entsize   = sh[i].sh_entsize;
-        Elf_Buffer_Data(&sec->sec_data, data + sh[i].sh_offset, sh[i].sh_size);
+        // A NOBITS section carries no bytes, only the space it asks for.
+        if (sh[i].sh_type == ELF_SHT_NOBITS) {
+            Elf_Buffer_Zero(&sec->sec_data, sh[i].sh_size);
+        } else {
+            Elf_Buffer_Data(&sec->sec_data, data + sh[i].sh_offset, sh[i].sh_size);
+        }
         secmap[i] = sec;
     }
 
