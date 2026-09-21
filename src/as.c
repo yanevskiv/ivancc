@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "util/log.h"
-#include "obj/Elf/elf.h"
 #include "util/file.h"
 #include "util/str.h"
 #include "arch/x86_64/enc.h"

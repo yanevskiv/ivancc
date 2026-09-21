@@ -5,6 +5,7 @@
 
 #include "util/log.h"
 #include "obj/Elf/elf.h"
+#include "obj/Elf/write.h"
 #include "util/str.h"
 #include "obj/Elf/link.h"
 
@@ -45,25 +46,20 @@ static char *Ld_PlaceName(const char *spec, int len)
 }
 
 // Parse a -place=SEC@ADDR argument into opts, or abort on a malformed value.
-static void Ld_ParsePlace(const char *spec, Elf_Link_Options *opts)
+static void Ld_ParsePlace(const char *spec, Elf_LinkOptions *opts)
 {
     const char *at = strchr(spec, '@');
     if (! at) {
         Log_ShowError("malformed -place (expected SEC@ADDR): '%s'", spec);
     }
-    if (opts->lo_nplaces >= ELF_LINK_MAX_PLACE) {
-        Log_ShowError("too many -place options (max %d)", ELF_LINK_MAX_PLACE);
-    }
-    opts->lo_places[opts->lo_nplaces].lp_name = Ld_PlaceName(spec, (int) (at - spec));
-    opts->lo_places[opts->lo_nplaces].lp_addr = strtoull(at + 1, NULL, 0);
-    opts->lo_nplaces++;
+    Elf_Link_AddPlace(opts, Ld_PlaceName(spec, (int) (at - spec)), strtoull(at + 1, NULL, 0));
 }
 
 // Main function
 int main(int argc, char **argv)
 {
     const char  *output = LD_DEFAULT_OUTPUT;
-    Elf_Link_Options opts    = {0};
+    Elf_LinkOptions opts    = {0};
 
     // ld's flags (-r, -place=) use the single-dash forms its roadmap spells
     // out, so the arguments are walked by hand rather than through getopt.
@@ -94,7 +90,7 @@ int main(int argc, char **argv)
     // Link the inputs into one Elf, write it, then mark executables runnable
     // (-r leaves a relocatable object, which stays non-executable).
     Elf *e = Elf_Link_Run((const char *const *) objs, nobjs, &opts);
-    if (Elf_Write(e, output) != 0) {
+    if (Elf_Write_Path(e, output) != 0) {
         perror(output);
         return 1;
     }
@@ -103,6 +99,7 @@ int main(int argc, char **argv)
         chmod(output, LD_MODE);
     }
 
+    free(opts.lo_places);
     free(objs);
     return 0;
 }

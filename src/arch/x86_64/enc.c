@@ -1,7 +1,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "obj/Elf/buf.h"
 #include "obj/Elf/elf.h"
+#include "obj/Elf/sec.h"
+#include "obj/Elf/sym.h"
+#include "obj/Elf/rela.h"
+#include "obj/Elf/write.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/rel.h"
@@ -30,25 +35,25 @@ static size_t Enc_x86_64_CapFixes;
 // Append one byte to the current section.
 void Enc_x86_64_Emit8(int byte)
 {
-    Elf_Buffer_Byte(Elf_SectionData(Enc_x86_64_Cur), (uint8_t) byte);
+    Elf_Buffer_Byte(Elf_Section_Data(Enc_x86_64_Cur), (uint8_t) byte);
 }
 
 // Append a little-endian 32-bit value to the current section.
 void Enc_x86_64_Emit32(uint32_t val)
 {
-    Elf_Buffer_U32(Elf_SectionData(Enc_x86_64_Cur), val);
+    Elf_Buffer_U32(Elf_Section_Data(Enc_x86_64_Cur), val);
 }
 
 // Append a little-endian 64-bit value to the current section.
 void Enc_x86_64_Emit64(uint64_t val)
 {
-    Elf_Buffer_U64(Elf_SectionData(Enc_x86_64_Cur), val);
+    Elf_Buffer_U64(Elf_Section_Data(Enc_x86_64_Cur), val);
 }
 
 // Append a run of raw bytes to the current section.
 void Enc_x86_64_EmitRaw(const void *data, int len)
 {
-    Elf_Buffer_Data(Elf_SectionData(Enc_x86_64_Cur), data, (size_t) len);
+    Elf_Buffer_Data(Elf_Section_Data(Enc_x86_64_Cur), data, (size_t) len);
 }
 
 // Record a label at the current position in the current section.
@@ -61,7 +66,7 @@ void Enc_x86_64_RecordLabel(const char *name)
     Enc_x86_64_Labels[Enc_x86_64_NumLabels++] = (Enc_x86_64_Label) {
         .al_name = name,
         .al_sec  = Enc_x86_64_Cur,
-        .al_off  = Elf_SectionData(Enc_x86_64_Cur)->eb_len
+        .al_off  = Elf_Section_Data(Enc_x86_64_Cur)->eb_len
     };
 }
 
@@ -84,7 +89,7 @@ void Enc_x86_64_RecordFixup(const char *name, uint32_t type)
     }
     Enc_x86_64_Fixes[Enc_x86_64_NumFixes++] = (Enc_x86_64_Fix) {
         .af_sec  = Enc_x86_64_Cur,
-        .af_off  = Elf_SectionData(Enc_x86_64_Cur)->eb_len,
+        .af_off  = Elf_Section_Data(Enc_x86_64_Cur)->eb_len,
         .af_name = name,
         .af_type = type
     };
@@ -429,7 +434,7 @@ int Enc_x86_64_IsGlobl(const char *name)
 // Switch the current section to the named one, creating it on first use.
 void Enc_x86_64_SelectSection(const char *name, uint32_t type, uint64_t flags)
 {
-    Enc_x86_64_Cur = Elf_SectionGet(Enc_x86_64_Out, name, type, flags);
+    Enc_x86_64_Cur = Elf_Section_Get(Enc_x86_64_Out, name, type, flags);
 }
 
 // Create a symbol for every label, then an undefined symbol for each unresolved target.
@@ -444,12 +449,12 @@ void Enc_x86_64_BuildSymbols(void)
             type = (l->al_sec->sec_flags & ELF_SHF_EXECINSTR) ? ELF_TYPE_FUNC
                                                               : ELF_TYPE_OBJECT;
         }
-        Elf_SymbolAdd(Enc_x86_64_Out, l->al_name, l->al_sec, l->al_off, bind, type);
+        Elf_Symbol_Add(Enc_x86_64_Out, l->al_name, l->al_sec, l->al_off, bind, type);
     }
     for (size_t i = 0; i < Enc_x86_64_NumFixes; i++) {
         const char *name = Enc_x86_64_Fixes[i].af_name;
-        if (! Elf_SymbolFind(Enc_x86_64_Out, name)) {
-            Elf_SymbolAdd(Enc_x86_64_Out, name, NULL, 0, ELF_BIND_GLOBAL, ELF_TYPE_NOTYPE);
+        if (! Elf_Symbol_Find(Enc_x86_64_Out, name)) {
+            Elf_Symbol_Add(Enc_x86_64_Out, name, NULL, 0, ELF_BIND_GLOBAL, ELF_TYPE_NOTYPE);
         }
     }
 }
@@ -459,8 +464,8 @@ void Enc_x86_64_BuildRelocs(void)
 {
     for (size_t i = 0; i < Enc_x86_64_NumFixes; i++) {
         Enc_x86_64_Fix *f   = &Enc_x86_64_Fixes[i];
-        Elf_Sym        *sym = Elf_SymbolFind(Enc_x86_64_Out, f->af_name);
-        Elf_RelaAdd(f->af_sec, f->af_off, sym, f->af_type, ENC_X86_64_REL32_ADDEND);
+        Elf_Sym        *sym = Elf_Symbol_Find(Enc_x86_64_Out, f->af_name);
+        Elf_Rela_Add(f->af_sec, f->af_off, sym, f->af_type, ENC_X86_64_REL32_ADDEND);
     }
 }
 
@@ -519,5 +524,5 @@ Elf *Enc_x86_64_GetObject(void)
 // Write the encoded object to out, returning nonzero on failure.
 int Enc_x86_64_Write(FILE *out)
 {
-    return Elf_WriteFile(Enc_x86_64_Out, out);
+    return Elf_Write_File(Enc_x86_64_Out, out);
 }
