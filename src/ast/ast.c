@@ -18,6 +18,9 @@ static Ast_Str Ast_Strings[MAX_STRINGS];
 // Number of entries currently used in Ast_Strings.
 static int Ast_NumStrings;
 
+// The innermost scope currently open.
+static Ast_Scope *Ast_CurScope;
+
 // Locals of the function currently being parsed.
 static Ast_Var *Ast_Locals;
 
@@ -102,36 +105,61 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
     return node;
 }
 
-// Start a fresh variable scope for a new function.
+// Start a fresh function: no locals, and one scope for its parameters.
 void Ast_BeginScope(void)
 {
-    Ast_Locals = NULL;
+    Ast_Locals   = NULL;
+    Ast_CurScope = NULL;
+    Ast_PushScope();
 }
 
-// Look up a variable by name in the current scope, or NULL.
+// Enter a nested scope, which shadows the ones around it.
+void Ast_PushScope(void)
+{
+    Ast_Scope *scope = calloc(1, sizeof(Ast_Scope));
+    scope->as_parent = Ast_CurScope;
+    Ast_CurScope = scope;
+}
+
+// Leave a scope. Its variables keep their frame slots, which the code
+// generator has already been told about; only the names go out of reach.
+void Ast_PopScope(void)
+{
+    Ast_CurScope = Ast_CurScope->as_parent;
+}
+
+// Look up a variable by name, innermost scope first, or NULL.
 Ast_Var *Ast_FindVar(const char *name)
 {
-    for (Ast_Var *var = Ast_Locals; var; var = var->av_next) {
-        if (strcmp(var->av_name, name) == 0) {
-            return var;
+    for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
+        for (Ast_Var *var = scope->as_vars; var; var = var->av_scope_next) {
+            if (strcmp(var->av_name, name) == 0) {
+                return var;
+            }
         }
     }
     return NULL;
 }
 
-// Declare a variable in the current scope, reusing any existing slot.
+// Declare a variable in the innermost scope. A name already declared in that
+// same scope keeps its slot; one from an enclosing scope is shadowed instead.
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
 {
-    Ast_Var *var = Ast_FindVar(name);
-    if (var) {
-        return var;
+    for (Ast_Var *var = Ast_CurScope->as_vars; var; var = var->av_scope_next) {
+        if (strcmp(var->av_name, name) == 0) {
+            return var;
+        }
     }
-    var = calloc(1, sizeof(Ast_Var));
+
+    Ast_Var *var = calloc(1, sizeof(Ast_Var));
     var->av_name = strdup(name);
     var->av_type = type;
     var->av_line = line;
     var->av_next = Ast_Locals;
     Ast_Locals = var;
+
+    var->av_scope_next = Ast_CurScope->as_vars;
+    Ast_CurScope->as_vars = var;
     return var;
 }
 

@@ -84,12 +84,12 @@ Checklist toward ISO C99.
 - [x] `if` / `else`
 - [x] `while`
 - [x] `for` (expression-only init; no `for (int i = 0; ...)`)
-- [ ] declaration as a `for`-loop initializer
-- [ ] `do`-`while`
-- [ ] `switch` / `case` / `default`
-- [ ] `break`
-- [ ] `continue`
-- [ ] `goto` and labels
+- [x] declaration as a `for`-loop initializer
+- [x] `do`-`while`
+- [x] `switch` / `case` / `default`
+- [x] `break`
+- [x] `continue`
+- [x] `goto` and labels
 
 ## Functions
 

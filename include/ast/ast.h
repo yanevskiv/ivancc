@@ -93,6 +93,14 @@ enum Ast_NodeKind {
     AST_NODE_KIND_RETURN,    // return lhs;
     AST_NODE_KIND_IF,        // if (cond) then; else els;
     AST_NODE_KIND_FOR,       // for (init; cond; inc) body;
+    AST_NODE_KIND_DO,        // do body; while (cond);
+    AST_NODE_KIND_SWITCH,    // switch (cond) body;
+    AST_NODE_KIND_CASE,      // case cond: lhs;
+    AST_NODE_KIND_DEFAULT,   // default: lhs;
+    AST_NODE_KIND_GOTO,      // goto an_funcname;
+    AST_NODE_KIND_LABEL,     // an_funcname: lhs;
+    AST_NODE_KIND_BREAK,     // break;
+    AST_NODE_KIND_CONTINUE,  // continue;
     AST_NODE_KIND_BLOCK,     // { ... }
     AST_NODE_KIND_EXPR_STMT, // expression used as a statement
     AST_NODE_KIND_NOP        // empty statement / bare declaration
@@ -103,10 +111,18 @@ typedef struct Ast_Var Ast_Var;
 struct Ast_Var {
     Ast_Var *av_next;       // chains every local in a function
     Ast_Var *av_param_next; // chains parameters in declaration order
+    Ast_Var *av_scope_next; // chains the variables of one lexical scope
     char     *av_name;      // identifier as written in the source
     Ast_Type *av_type;      // declared type
     int      av_line;       // source line the declaration appeared on
     int      av_offset;     // offset from %rbp, filled in by the back end
+};
+
+// One lexical scope: what was declared directly inside a pair of braces.
+typedef struct Ast_Scope Ast_Scope;
+struct Ast_Scope {
+    Ast_Scope *as_parent; // the scope this one is nested in
+    Ast_Var   *as_vars;   // declared here, innermost names first
 };
 
 // A node in the abstract syntax tree.
@@ -125,8 +141,11 @@ struct Ast_Node {
     Ast_Node    *an_init;     // initialiser of AST_NODE_KIND_FOR
     Ast_Node    *an_inc;      // increment of AST_NODE_KIND_FOR
     Ast_Node    *an_body;     // statement list for AST_NODE_KIND_BLOCK / FOR body
-    char        *an_funcname; // callee name for AST_NODE_KIND_CALL
+    char        *an_funcname; // callee of a CALL, or the label a GOTO names
     Ast_Node    *an_args;     // argument list for AST_NODE_KIND_CALL
+    Ast_Node    *an_cases;    // cases of AST_NODE_KIND_SWITCH, in source order
+    Ast_Node    *an_case_next; // next case of the switch this one belongs to
+    int          an_label;    // label number a case is emitted with
     long         an_val;      // integer value for AST_NODE_KIND_NUM
     int          an_str_idx;  // string table slot for AST_NODE_KIND_STR
     Ast_Var     *an_var;      // referenced variable for AST_NODE_KIND_VAR
@@ -163,6 +182,8 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line);
 
 // Variable scopes
 void     Ast_BeginScope(void);
+void     Ast_PushScope(void);
+void     Ast_PopScope(void);
 Ast_Var *Ast_FindVar(const char *name);
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line);
 Ast_Var *Ast_CurrentLocals(void);

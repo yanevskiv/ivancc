@@ -70,6 +70,66 @@ void Sem_CheckCall(Ast_Node *node)
     }
 }
 
+// Attach every case and default of a switch to it, in source order. A nested
+// switch owns its own cases, so the walk stops there.
+void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
+{
+    if (! node || node->an_kind == AST_NODE_KIND_SWITCH) {
+        return;
+    }
+
+    if (node->an_kind == AST_NODE_KIND_CASE || node->an_kind == AST_NODE_KIND_DEFAULT) {
+        for (Ast_Node *seen = sw->an_cases; seen; seen = seen->an_case_next) {
+            if (seen->an_kind == node->an_kind
+                && (node->an_kind == AST_NODE_KIND_DEFAULT || seen->an_val == node->an_val)) {
+                Log_ShowErrorAt(node->an_line, "duplicate case in switch");
+            }
+        }
+        if (*tail) {
+            (*tail)->an_case_next = node;
+        } else {
+            sw->an_cases = node;
+        }
+        *tail = node;
+    }
+
+    Sem_CollectCases(node->an_lhs, sw, tail);
+    Sem_CollectCases(node->an_then, sw, tail);
+    Sem_CollectCases(node->an_els, sw, tail);
+    Sem_CollectCases(node->an_body, sw, tail);
+    Sem_CollectCases(node->an_next, sw, tail);
+}
+
+// Return whether the statements under node define a label of this name.
+int Sem_FindLabel(Ast_Node *node, const char *name)
+{
+    if (! node) {
+        return 0;
+    }
+    if (node->an_kind == AST_NODE_KIND_LABEL && strcmp(node->an_funcname, name) == 0) {
+        return 1;
+    }
+    return Sem_FindLabel(node->an_lhs, name) || Sem_FindLabel(node->an_then, name)
+        || Sem_FindLabel(node->an_els, name) || Sem_FindLabel(node->an_body, name)
+        || Sem_FindLabel(node->an_next, name);
+}
+
+// Reject a goto that names a label its function never defines.
+void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
+{
+    if (! node) {
+        return;
+    }
+    if (node->an_kind == AST_NODE_KIND_GOTO && ! Sem_FindLabel(body, node->an_funcname)) {
+        Log_ShowErrorAt(node->an_line, "goto names an undefined label '%s'", node->an_funcname);
+    }
+    Sem_CheckGotos(node->an_lhs, body);
+    Sem_CheckGotos(node->an_then, body);
+    Sem_CheckGotos(node->an_els, body);
+    Sem_CheckGotos(node->an_body, body);
+    Sem_CheckGotos(node->an_next, body);
+}
+
 // Wrap node in a multiplication by size, so it steps whole elements.
 Ast_Node *Sem_ScaleBy(Ast_Node *node, int size)
 {
@@ -256,9 +316,27 @@ void Sem_Node(Ast_Node *node)
             node->an_type = &Ast_TypeInt;
         } break;
 
+        case AST_NODE_KIND_CASE: {
+            if (node->an_cond->an_kind != AST_NODE_KIND_NUM) {
+                Log_ShowErrorAt(node->an_line, "case label is not a constant");
+            }
+            node->an_val = node->an_cond->an_val;
+        } break;
+
+        case AST_NODE_KIND_SWITCH: {
+            Ast_Node *tail = NULL;
+            Sem_CollectCases(node->an_body, node, &tail);
+        } break;
+
+        case AST_NODE_KIND_GOTO:
+        case AST_NODE_KIND_LABEL:
+        case AST_NODE_KIND_DEFAULT:
         case AST_NODE_KIND_RETURN:
         case AST_NODE_KIND_IF:
         case AST_NODE_KIND_FOR:
+        case AST_NODE_KIND_DO:
+        case AST_NODE_KIND_BREAK:
+        case AST_NODE_KIND_CONTINUE:
         case AST_NODE_KIND_BLOCK:
         case AST_NODE_KIND_EXPR_STMT:
         case AST_NODE_KIND_NOP: {
@@ -275,5 +353,6 @@ void Sem_Analyze(Ast_Func *prog)
     for (Ast_Func *func = prog; func; func = func->af_next) {
         Sem_CurFunc = func;
         Sem_Node(func->af_body);
+        Sem_CheckGotos(func->af_body, func->af_body);
     }
 }

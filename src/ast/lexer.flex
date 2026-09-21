@@ -82,6 +82,11 @@ ALNUM   [A-Za-z_0-9]
 "for"                   return FOR;
 "while"                 return WHILE;
 "break"                 return BREAK;
+"do"                    return DO;
+"switch"                return SWITCH;
+"goto"                  return GOTO;
+"case"                  return CASE;
+"default"               return DEFAULT;
 "continue"              return CONTINUE;
 "sizeof"                return SIZEOF;
 "__builtin_va_arg"      return BUILTIN_VA_ARG;
