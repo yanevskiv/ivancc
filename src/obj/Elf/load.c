@@ -82,7 +82,9 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
     // Phase: the bytes themselves, leaving p_memsz beyond p_filesz zeroed.
     for (int i = 0; i < eh->e_phnum; i++) {
         const Elf64_Phdr *ph = (const Elf64_Phdr *) (data + eh->e_phoff + (uint64_t) i * eh->e_phentsize);
-        if (ph->p_type != ELF_PT_LOAD) {
+        // A segment with no file bytes, such as .bss, has nothing to copy and
+        // no file offset worth checking.
+        if (ph->p_type != ELF_PT_LOAD || ph->p_filesz == 0) {
             continue;
         }
         if (ph->p_offset + ph->p_filesz > (uint64_t) len) {

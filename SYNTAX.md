@@ -43,12 +43,12 @@ Checklist toward ISO C99.
 ## Declarations
 
 - [x] single declarator with optional initializer
-- [ ] multiple declarators per statement (`int a, b, c;`)
-- [ ] array initializers (`{1, 2, 3}`)
-- [ ] designated initializers (`.field = v`, `[i] = v`)
-- [ ] storage classes: `static`, `extern`, `register`, `auto`
-- [ ] `inline`
-- [ ] top-level (global) variable declarations
+- [x] multiple declarators per statement (`int a, b, c;`)
+- [x] array initializers (`{1, 2, 3}`)
+- [ ] designated initializers (`[i] = v` works; `.field = v` needs structs)
+- [x] storage classes: `static`, `extern`, `register`, `auto`
+- [x] `inline`
+- [x] top-level (global) variable declarations
 - [x] function prototypes (parsed; currently a no-op)
 
 ## Expressions and operators

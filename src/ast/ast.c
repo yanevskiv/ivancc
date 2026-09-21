@@ -111,6 +111,18 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
     return node;
 }
 
+// Declare a static local: it answers to name inside its scope, but lives in
+// .data or .bss under symbol, which carries the function it was declared in.
+Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line)
+{
+    Ast_Var *var = Ast_DeclareGlobal(symbol, type, line);
+    var->av_name = strdup(name);
+
+    var->av_scope_next = Ast_CurScope->as_vars;
+    Ast_CurScope->as_vars = var;
+    return var;
+}
+
 // Start a fresh function: no locals, and one scope for its parameters.
 void Ast_BeginScope(void)
 {
@@ -163,6 +175,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
 
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
     var->av_name   = strdup(name);
+    var->av_symbol = var->av_name;
     var->av_type   = type;
     var->av_line   = line;
     var->av_global = 1;
@@ -187,10 +200,11 @@ Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
     }
 
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
-    var->av_name = strdup(name);
-    var->av_type = type;
-    var->av_line = line;
-    var->av_next = Ast_Locals;
+    var->av_name   = strdup(name);
+    var->av_symbol = var->av_name;
+    var->av_type   = type;
+    var->av_line   = line;
+    var->av_next   = Ast_Locals;
     Ast_Locals = var;
 
     var->av_scope_next = Ast_CurScope->as_vars;
