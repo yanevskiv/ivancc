@@ -96,7 +96,8 @@ static void Parser_AddFunction(Ast_Func *fn)
 %token <num>     NUM
 %token <str>     IDENT
 %token <str_lit> STR
-%token INT CHAR VOID CONST RETURN IF ELSE FOR WHILE BREAK CONTINUE SIZEOF
+%token INT CHAR VOID CONST RETURN IF ELSE FOR WHILE DO BREAK CONTINUE SIZEOF
+%token SWITCH CASE DEFAULT GOTO
 %token BUILTIN_VA_ARG
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
@@ -105,7 +106,7 @@ static void Parser_AddFunction(Ast_Func *fn)
 %token EQ NE LT GT LE GE AND OR
 %token LPAREN RPAREN LSQUARE RSQUARE LBRACE RBRACE SEMI COMMA ELLIPSIS
 
-%type <node> stmt stmt_list compound_stmt decl expr expr_comma expr_opt args arg_list
+%type <node> stmt stmt_list compound_stmt decl for_init expr expr_comma expr_opt args arg_list
 %type <node> cast unary postfix primary array_dims param_dims
 %type <type> type_name base
 %type <num>  stars
@@ -218,8 +219,9 @@ stars
 /* ---- statements ---------------------------------------------------- */
 
 compound_stmt
-    : LBRACE stmt_list RBRACE
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @1); n->an_body = $2; $$ = n; }
+    : LBRACE { Ast_PushScope(); } stmt_list RBRACE
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @1); n->an_body = $3;
+          Ast_PopScope(); $$ = n; }
     ;
 
 stmt_list
@@ -236,9 +238,28 @@ stmt
     | IF LPAREN expr RPAREN stmt ELSE stmt
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_IF, @1);
           n->an_cond = $3; n->an_then = $5; n->an_els = $7; $$ = n; }
-    | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
+    | FOR LPAREN { Ast_PushScope(); } for_init expr_opt SEMI expr_opt RPAREN stmt
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_FOR, @1);
-          n->an_init = $3; n->an_cond = $5; n->an_inc = $7; n->an_body = $9; $$ = n; }
+          n->an_init = $4; n->an_cond = $5; n->an_inc = $7; n->an_body = $9;
+          Ast_PopScope(); $$ = n; }
+    | DO stmt WHILE LPAREN expr_comma RPAREN SEMI
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DO, @1);
+          n->an_body = $2; n->an_cond = $5; $$ = n; }
+    | SWITCH LPAREN expr_comma RPAREN stmt
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_SWITCH, @1);
+          n->an_cond = $3; n->an_body = $5; $$ = n; }
+    | CASE expr COLON stmt
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_CASE, @1);
+          n->an_cond = $2; n->an_lhs = $4; $$ = n; }
+    | DEFAULT COLON stmt
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DEFAULT, @1); n->an_lhs = $3; $$ = n; }
+    | GOTO IDENT SEMI
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_GOTO, @1); n->an_funcname = $2; $$ = n; }
+    | IDENT COLON stmt
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_LABEL, @1);
+          n->an_funcname = $1; n->an_lhs = $3; $$ = n; }
+    | BREAK SEMI           { $$ = Ast_NewNode(AST_NODE_KIND_BREAK, @1); }
+    | CONTINUE SEMI        { $$ = Ast_NewNode(AST_NODE_KIND_CONTINUE, @1); }
     | WHILE LPAREN expr RPAREN stmt
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_FOR, @1);
           n->an_cond = $3; n->an_body = $5; $$ = n; }
@@ -246,6 +267,12 @@ stmt
     | decl SEMI            { $$ = $1; }
     | expr_comma SEMI      { $$ = Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, $1, @1); }
     | SEMI                 { $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
+    ;
+
+/* A for-loop's first clause, which may declare the variable it counts with. */
+for_init
+    : expr_opt SEMI        { $$ = $1 ? Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, $1, @1) : NULL; }
+    | decl SEMI            { $$ = $1; }
     ;
 
 decl

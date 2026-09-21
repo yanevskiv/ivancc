@@ -25,6 +25,11 @@ static int Gen_x86_64_Depth;
 // Source of unique label numbers.
 static int Gen_x86_64_LabelId;
 
+// Label numbers the innermost loop uses for break and continue, or -1 when
+// there is no loop to leave.
+static int Gen_x86_64_BreakId = -1;
+static int Gen_x86_64_ContinueId = -1;
+
 // The function currently being emitted.
 static const Ast_Func *Gen_x86_64_CurrFunc;
 
@@ -460,21 +465,97 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
         } break;
         case AST_NODE_KIND_FOR: {
             int count = Gen_x86_64_Count();
+            int brk = Gen_x86_64_BreakId;
+            int cnt = Gen_x86_64_ContinueId;
+            Gen_x86_64_BreakId = Gen_x86_64_ContinueId = count;
+
             if (node->an_init) {
-                Gen_x86_64_EmitExpr(node->an_init);
+                Gen_x86_64_EmitStmt(node->an_init);
             }
             Asm_x86_64_EmitLabel(".L.begin.%d", count);
             if (node->an_cond) {
                 Gen_x86_64_EmitExpr(node->an_cond);
                 Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
-                Asm_x86_64_EmitJe(".L.endfor.%d", count);
+                Asm_x86_64_EmitJe(".L.brk.%d", count);
             }
             Gen_x86_64_EmitStmt(node->an_body);
+            Asm_x86_64_EmitLabel(".L.cnt.%d", count);
             if (node->an_inc) {
                 Gen_x86_64_EmitExpr(node->an_inc);
             }
             Asm_x86_64_EmitJmp(".L.begin.%d", count);
-            Asm_x86_64_EmitLabel(".L.endfor.%d", count);
+            Asm_x86_64_EmitLabel(".L.brk.%d", count);
+
+            Gen_x86_64_BreakId = brk;
+            Gen_x86_64_ContinueId = cnt;
+        } break;
+        case AST_NODE_KIND_DO: {
+            int count = Gen_x86_64_Count();
+            int brk = Gen_x86_64_BreakId;
+            int cnt = Gen_x86_64_ContinueId;
+            Gen_x86_64_BreakId = Gen_x86_64_ContinueId = count;
+
+            Asm_x86_64_EmitLabel(".L.begin.%d", count);
+            Gen_x86_64_EmitStmt(node->an_body);
+            Asm_x86_64_EmitLabel(".L.cnt.%d", count);
+            Gen_x86_64_EmitExpr(node->an_cond);
+            Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitJne(".L.begin.%d", count);
+            Asm_x86_64_EmitLabel(".L.brk.%d", count);
+
+            Gen_x86_64_BreakId = brk;
+            Gen_x86_64_ContinueId = cnt;
+        } break;
+        case AST_NODE_KIND_SWITCH: {
+            int count = Gen_x86_64_Count();
+            int brk = Gen_x86_64_BreakId;
+            Gen_x86_64_BreakId = count;
+
+            // Compare and branch once per case, then fall to default or out.
+            Gen_x86_64_EmitExpr(node->an_cond);
+            Ast_Node *deflt = NULL;
+            for (Ast_Node *c = node->an_cases; c; c = c->an_case_next) {
+                c->an_label = Gen_x86_64_Count();
+                if (c->an_kind == AST_NODE_KIND_DEFAULT) {
+                    deflt = c;
+                    continue;
+                }
+                Asm_x86_64_EmitCmpImm(c->an_val, ASM_X86_64_REG_RAX);
+                Asm_x86_64_EmitJe(".L.case.%d", c->an_label);
+            }
+            if (deflt) {
+                Asm_x86_64_EmitJmp(".L.case.%d", deflt->an_label);
+            } else {
+                Asm_x86_64_EmitJmp(".L.brk.%d", count);
+            }
+
+            Gen_x86_64_EmitStmt(node->an_body);
+            Asm_x86_64_EmitLabel(".L.brk.%d", count);
+            Gen_x86_64_BreakId = brk;
+        } break;
+        case AST_NODE_KIND_CASE:
+        case AST_NODE_KIND_DEFAULT: {
+            Asm_x86_64_EmitLabel(".L.case.%d", node->an_label);
+            Gen_x86_64_EmitStmt(node->an_lhs);
+        } break;
+        case AST_NODE_KIND_LABEL: {
+            Asm_x86_64_EmitLabel(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_funcname);
+            Gen_x86_64_EmitStmt(node->an_lhs);
+        } break;
+        case AST_NODE_KIND_GOTO: {
+            Asm_x86_64_EmitJmp(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_funcname);
+        } break;
+        case AST_NODE_KIND_BREAK: {
+            if (Gen_x86_64_BreakId < 0) {
+                Log_ShowErrorAt(node->an_line, "break outside a loop");
+            }
+            Asm_x86_64_EmitJmp(".L.brk.%d", Gen_x86_64_BreakId);
+        } break;
+        case AST_NODE_KIND_CONTINUE: {
+            if (Gen_x86_64_ContinueId < 0) {
+                Log_ShowErrorAt(node->an_line, "continue outside a loop");
+            }
+            Asm_x86_64_EmitJmp(".L.cnt.%d", Gen_x86_64_ContinueId);
         } break;
         case AST_NODE_KIND_BLOCK: {
             for (Ast_Node *stmt = node->an_body; stmt; stmt = stmt->an_next) {
@@ -526,6 +607,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
     for (Ast_Func *func = prog; func; func = func->af_next) {
         Gen_x86_64_AssignLvarOffsets(func);
         Gen_x86_64_CurrFunc = func;
+        Gen_x86_64_BreakId = Gen_x86_64_ContinueId = -1;
 
         Asm_x86_64_EmitGlobl(func->af_name);
         Asm_x86_64_EmitLabel(func->af_name);

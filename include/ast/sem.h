@@ -18,6 +18,9 @@ void      Sem_CheckCall(Ast_Node *node);
 // Annotation
 Ast_Node *Sem_ScaleBy(Ast_Node *node, int size);
 void      Sem_Arith(Ast_Node *node);
+int       Sem_FindLabel(Ast_Node *node, const char *name);
+void      Sem_CheckGotos(Ast_Node *node, Ast_Node *body);
+void      Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail);
 void      Sem_Node(Ast_Node *node);
 void      Sem_Analyze(Ast_Func *prog);
 
