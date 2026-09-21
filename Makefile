@@ -26,7 +26,7 @@ AS_OBJS := $(OUT)/as.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/obj/Elf/elf.o
 	$(OUT)/arch/$(TARGET_ARCH)/enc.o
 EMU_OBJS := $(OUT)/emu.o $(OUT)/util/file.o $(OUT)/util/str.o \
 	$(OUT)/obj/Elf/elf.o $(OUT)/obj/Elf/buf.o $(OUT)/obj/Elf/sec.o $(OUT)/obj/Elf/sym.o \
-	$(OUT)/obj/Elf/rela.o $(OUT)/obj/Elf/read.o $(OUT)/obj/Elf/load.o
+	$(OUT)/obj/Elf/rela.o $(OUT)/obj/Elf/read.o $(OUT)/obj/Elf/load.o $(OUT)/arch/$(TARGET_ARCH)/emu.o
 LD_OBJS := $(OUT)/ld.o $(OUT)/util/str.o $(OUT)/obj/Elf/elf.o $(OUT)/obj/Elf/sec.o $(OUT)/obj/Elf/sym.o $(OUT)/obj/Elf/rela.o $(OUT)/obj/Elf/write.o $(OUT)/obj/Elf/buf.o $(OUT)/obj/Elf/read.o $(OUT)/obj/Elf/link.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
 
 TEST_TOOL  := tools/run_test
