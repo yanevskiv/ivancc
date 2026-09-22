@@ -1,18 +1,16 @@
 ## Tests
 
-Seven programs cover the stage, one per feature. Each returns 42 on success and a distinct small number at whichever check failed first. Every test that declares a type asserts on `sizeof`, because layout is the one place an error hides in plain sight.
+Seven programs cover the stage, one per feature. Each returns 42 on success and a distinct small number at whichever check failed first, so a failing run names the assertion rather than merely reporting a mismatch. Every test that declares a type also asserts on `sizeof`.
 
 ### Structure declaration and access
 
-The first program covers declaration, member access, and whole-structure assignment. `struct Point` is the simple shape and `struct Padded` is the one that checks layout. Both are declared at file scope and used inside `main()`.
+The first program covers declaration, member access, and whole-structure assignment. `struct Point` is the simple shape, with two `int` members and no padding, while `struct Padded` exists only to check layout.
 
-`q = p` is checked in both directions. The members must arrive in `q`, and `p` must be left untouched afterwards. The test on `p.y` after `q.y += 8` is what catches a copy that shared storage instead of duplicating it.
+`struct Padded` is chosen so that its size comes out wrong under any of the usual mistakes. Forgetting interior padding gives 6 and forgetting tail padding gives 9, rather than the correct 12.
 
-`struct Padded` is chosen so that its size comes out wrong under any of the usual mistakes. A `char`, an `int`, and a `char` occupy 12 bytes. Forgetting interior padding gives 6, and forgetting tail padding gives 9.
+`q = p` is checked in both directions. The test on `p.y` after `q.y += 8` catches a generator that copied the address rather than the bytes, which the first check alone would miss.
 
-`init` and `half` cover the two initializer cases a structure has. A complete list fills every member, while a short list leaves the rest at zero. The assertion on `half.y` is what catches a missing clear.
-
-Expectations such as 12 are worth confirming against a real compiler before trusting them. The expected value is easier to get wrong than the compiler under test. A wrong expectation is the one failure that teaches nothing.
+`init` and `half` cover the two initializer cases a structure has. The assertion on `half.y` catches a missing clear, since that member would otherwise hold whatever the stack slot contained.
 
 ```c
 struct Point {
@@ -58,13 +56,13 @@ int main()
 
 ### Structure pointers
 
-The second program covers `->`, self-reference, and a walk over a list. `struct Node` holds an `int` and a pointer to its own type. `sum()` walks from a head pointer to the end of the chain.
+The second program covers `->`, a structure that points at its own type, and a walk over a linked list. `sum()` uses `->` in both a loop condition and an expression, which a single access would not exercise.
 
-The declaration of `next` proves the tag was bound before the member list was read. An implementation that binds the tag at the closing brace fails here outright. Nothing else in the file gets a chance to run.
+The declaration of `next` proves the tag was bound before the member list was read. An implementation that binds it at the closing brace fails there outright, before anything else in the file can run.
 
-`sizeof(struct Node)` catches a layout pass that ignores alignment. Four bytes of `int` followed by an eight-byte pointer is 16 bytes rather than 12. Only the interior padding accounts for the difference.
+`sizeof(struct Node)` catches a layout pass that ignores alignment. Four bytes of `int` followed by an eight-byte pointer is 16 rather than 12, and no value check would expose the difference.
 
-`p->next->val` and `(*p).next->val` are both written deliberately. C defines the first as the second, so the two must take identical paths through the compiler. A grammar that builds `->` as its own node kind rather than as a dereference fails one of them.
+`p->next->val` and `(*p).next->val` are both written deliberately. C defines the first form as the second, and a grammar that builds `->` as its own node kind usually handles only one of them.
 
 ```c
 struct Node {
@@ -106,13 +104,13 @@ int main()
 
 ### Union member overlap
 
-The third program covers overlapping members and union sizing. `union Word` overlays an `int` on four `char`s. `union Mixed` exists only to check that a union takes its widest member's size.
+The third program covers overlapping members and union sizing. `union Word` overlays an `int` on four `char`s, while `union Mixed` exists only to check that a union takes its widest member's size.
 
-Writing one member and reading another is the only way the overlap becomes visible. `w.bytes[0] = 40` followed by a read of `w.whole` is that check. A union giving its members distinct offsets would pass every other assertion in the file.
+Writing one member and reading another is the only way the overlap becomes visible, so `w.bytes[0] = 40` is followed by a read of `w.whole`. A union giving its members distinct offsets would pass every other assertion.
 
-The second write puts 1 into the byte above the low one. `w.whole` then reads 296, which is 40 plus 256. The value depends on the target being little-endian, which this compiler assumes throughout.
+The second write puts 1 into the byte above the low one, so `w.whole` reads 296. That expectation assumes a little-endian target, which this compiler assumes throughout.
 
-`union Mixed` holds a `char`, an `int`, and a `char *`. Its size must be 8, taken from the pointer. A union sized from its first member would report 1 and still pass every value check in the program.
+`union Mixed` must be 8 bytes, taken from its pointer member. A union sized from its first member instead would report 1 and still pass every value check in the program.
 
 ```c
 union Word {
@@ -151,13 +149,13 @@ int main()
 
 ### Enumeration constants
 
-The fourth program covers counting, explicit values, and the two positions where a constant is read. `enum Color` checks the default count from zero. `enum Status` checks what an explicit value does to that count.
+The fourth program covers counting from zero, explicit values, and the two positions where a constant is read. Those positions are a `case` label and an array length, which different grammar rules usually handle.
 
-`RED`, `GREEN`, and `BLUE` must come out as 0, 1, and 2. `OK = 10` then makes `BUSY` 11 rather than 1. `FAILED = 20` resets the count again, which makes `GONE` 21.
+`OK = 10` makes `BUSY` 11 rather than 1, which proves the counter was reset rather than restarted. `FAILED = 20` resets it again, so `GONE` must come out as 21.
 
-`int table[GONE];` is the check that fails when constants fold only inside expressions. Folding in expressions is the easy half of the job to implement and then forget. Nothing in a normal program notices until an array is declared this way.
+`int table[GONE];` is the check that fails when constants fold only inside expressions. Folding there is the easy half of the job, and nothing notices the other half until an array is declared this way.
 
-The `case` labels in `classify()` are the other half. A label is read by a different rule from an expression in most grammars. A constant that folds in one may well not fold in the other.
+The `case` labels in `classify()` are that other half. `classify(BUSY)` returning 0 checks the default path, since a `switch` matching every label would pass the two positive cases unnoticed.
 
 ```c
 enum Color { RED, GREEN, BLUE };
@@ -193,13 +191,13 @@ int main()
 
 ### Typedef declarations
 
-The fifth program covers four typedef shapes. `Int` names a primitive and `String` names a pointer. `Point` names a structure declared in the same statement, and `Pair` names another typedef.
+The fifth program covers four typedef shapes: a primitive, a pointer, a structure declared in the same statement, and another typedef. Together they cover every form the declarator rules carry into a bound type.
 
-`Point` is the shape that exercises the lexer feedback. It is an ordinary identifier on the line that introduces it and a type specifier on every line after. That is the whole ordering constraint, expressed in a file that either compiles or does not.
+`Point` is the shape that exercises the lexer feedback. It is an ordinary identifier on the line that introduces it and a type specifier on every line after, which no assertion can test directly.
 
-`typedef Point Pair;` requires the feedback to have taken effect already. `Point` must arrive as `TYPEDEF_NAME` for that declaration to reduce at all. `area()` then takes a `Pair *` and reaches members declared as `Int`.
+`typedef Point Pair;` requires that feedback to have taken effect already. `area()` then reaches members declared as `Int` through a `Pair *`, which chains three typedefs in one expression.
 
-The `String` declaration checks that a typedef of a pointer keeps the pointer. A compiler that binds `String` to `char` and drops the star fails on the initializer. The check on `s[0]` confirms the subscript still works afterwards.
+The `String` declaration checks that a typedef of a pointer keeps the pointer. A compiler that binds `String` to `char` fails on the initializer rather than somewhere less obvious later.
 
 ```c
 typedef int Int;
@@ -240,13 +238,13 @@ int main()
 
 ### Flexible array members
 
-The sixth program covers a trailing member declared with empty brackets. `struct Buf` puts a `char` array after an `int`. `struct Wide` puts an `int` array after a `char`.
+The sixth program covers a trailing member declared with empty brackets. `struct Buf` puts a `char` array after an `int`, and `struct Wide` puts an `int` array after a `char`.
 
-Both structures are 4 bytes. The flexible member names the storage following the structure without occupying any of its own. A layout pass that gave it even one element would push both sizes up.
+Both structures are 4 bytes, since the flexible member names storage after the structure without occupying any of its own. A layout pass that gave it even one element would push both sizes up.
 
-`struct Wide` is the more interesting of the two. Its member contributes no size and still raises the alignment of the whole structure to 4. The single `char` before it is therefore padded out to four bytes.
+`struct Wide` is the more interesting of the two. Its member contributes no size and still raises the alignment to 4, so an implementation that skipped it entirely would report 1.
 
-Both structures are placed over a static array rather than allocated, since this stage has no allocator. The cast is what gives the trailing member real storage to address. Writing past `sizeof` is the entire point of the construct.
+Both structures are placed over a static array, since this stage has no allocator. The cast is what gives the trailing member real storage, and `store` is large enough to hold what is written.
 
 ```c
 struct Buf {
@@ -287,15 +285,15 @@ int main()
 
 ### Nested and designated initializers
 
-The seventh program covers every initializer form the flattener handles. The same declarations appear twice, once at file scope and once inside `main()`. A global writes bytes into an image, while a local emits stores.
+The seventh program covers every initializer form the flattener handles. The same declarations appear at file scope and again inside `main()`, since a global writes an image while a local emits stores.
 
-`line` and `grid` are ordinary nested lists. `flat` is brace elision, and `chain` is a designator walking two levels down. `rec` mixes a designator with a nested list and leaves gaps behind it.
+`flat` is brace elision and `chain` is a designator walking two levels down. `rec` mixes a designator with a nested list, which is the case that combines two features in one initializer.
 
-`sparse` writes its items out of order, with `[4]` ahead of `[1]`. A walk that only ever advances a cursor would get that wrong. `sparse[0]` is checked as well, since the items between the two designators must stay zero.
+`sparse` writes its items out of order, so a walk that only ever advances a cursor would get it wrong. `sparse[0]` is checked too, because the elements around the designators must stay zero.
 
-`rec` is the check on zeroing. `.n` and `.p.y` are written, while `c` and `p.x` are never mentioned. Both must read back as zero, which only a full clear before the stores can guarantee.
+`rec` is the check on zeroing. `c` and `p.x` are never mentioned in the initializer yet must read back as zero, which only a full clear before the stores can guarantee.
 
-The file-scope declarations and the locals are deliberately near-duplicates. A flattener shared between the two paths passes both sets of checks. One that quietly differs between them fails exactly half of them.
+The file-scope declarations and the locals are deliberately near-duplicates. A flattener that differs between the two paths fails exactly half the checks, which points straight at the path that diverged.
 
 ```c
 struct Point { int x; int y; };

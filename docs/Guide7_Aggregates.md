@@ -2,11 +2,13 @@
 
 This stage implements `struct`, `union`, `enum`, and `typedef` by reference rather than by value. That covers declaring them, laying their members out as the SysV ABI does, reaching a member with `.` and `->`, assigning one whole, and initializing them with braces and designators.
 
-Passing or returning an aggregate by value is out of scope here. It requires the ABI's argument classification algorithm, which belongs to a later stage, so the semantic pass rejects those cases rather than compiling them wrongly.
+Aggregates are the first types in this compiler whose size is not a property of the target alone. Almost every difficulty in the stage follows from that, because a type may now be named long before it is defined.
 
-The stage is split into six parts, in the order the toolchain is built: [Lexer](Guide7.1_Lexer.md), [Parser](Guide7.2_Parser.md), [Ast](Guide7.3_Ast.md), [Sem](Guide7.4_Sem.md), [Gen](Guide7.5_Gen.md), and [Tests](Guide7.6_Tests.md). Each part stands on its own, and later phases of this stage extend the same six files rather than adding new ones.
+Passing or returning an aggregate by value is out of scope here. It requires the ABI's argument classification algorithm, which belongs to a later stage. The semantic pass therefore rejects those cases rather than compiling them wrongly, since the code generator would otherwise accept them.
 
-The program below is the whole target. A compiler that already handles scalars, pointers, and arrays compiles it once every part is in place.
+The stage is split into six parts, in the order the toolchain is built: [Lexer](Guide7.1_Lexer.md), [Parser](Guide7.2_Parser.md), [Ast](Guide7.3_Ast.md), [Sem](Guide7.4_Sem.md), [Gen](Guide7.5_Gen.md), and [Tests](Guide7.6_Tests.md). Later phases of this stage extend the same six files rather than adding new ones.
+
+The program below is the whole target. A compiler that already handles scalars, pointers, and arrays compiles it once every part is in place. It is worth reading first, since every piece of the stage exists to make one of its lines work.
 
 ```c
 struct Point { int x; int y; };
