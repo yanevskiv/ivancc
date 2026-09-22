@@ -65,16 +65,6 @@ Ast_Type *Sem_Decay(Ast_Type *type)
     return type;
 }
 
-// Reject the struct and union values the ABI does not yet know how to move.
-void Sem_CheckByValue(Ast_Node *node)
-{
-    for (Ast_Node *arg = node->an_args; arg; arg = arg->an_next) {
-        if (Sem_IsAggregate(arg->an_type)) {
-            Log_ShowErrorAt(node->an_line, "passing '%s' by value is not supported yet; pass its address", Sem_TypeName(arg->an_type));
-        }
-    }
-}
-
 // Check a call against the callee's definition, if this program has one.
 void Sem_CheckCall(Ast_Node *node)
 {
@@ -350,9 +340,9 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_CALL: {
-            Sem_CheckByValue(node);
+            Ast_Func *func = Sem_FindFunc(node->an_funcname);
             Sem_CheckCall(node);
-            node->an_type = &Ast_TypeInt;
+            node->an_type = func && func->af_ret ? func->af_ret : &Ast_TypeInt;
         } break;
 
         case AST_NODE_KIND_VA_ARG: {
@@ -374,12 +364,7 @@ void Sem_Node(Ast_Node *node)
             Sem_CollectCases(node->an_body, node, &tail);
         } break;
 
-        case AST_NODE_KIND_RETURN: {
-            if (node->an_lhs && Sem_IsAggregate(node->an_lhs->an_type)) {
-                Log_ShowErrorAt(node->an_line, "returning '%s' by value is not supported yet", Sem_TypeName(node->an_lhs->an_type));
-            }
-        } break;
-
+        case AST_NODE_KIND_RETURN:
         case AST_NODE_KIND_GOTO:
         case AST_NODE_KIND_LABEL:
         case AST_NODE_KIND_DEFAULT:
@@ -406,6 +391,9 @@ void Sem_Analyze(Ast_Func *prog)
     Sem_Prog = prog;
 
     for (Ast_Func *func = prog; func; func = func->af_next) {
+        if (! func->af_body) {
+            continue;  // a prototype declares a signature and nothing to walk
+        }
         Sem_CurFunc = func;
         Sem_Node(func->af_body);
         Sem_CheckGotos(func->af_body, func->af_body);

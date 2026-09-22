@@ -107,45 +107,45 @@ What does not get a comment:
 
 - Files:
   - Every stage must have a guide in `docs/`, named `Guide<N>_<Topic>.md`.
-  - Every stage guide must open with a title and the paragraphs saying what the stage implements.
-  - Every stage guide must name its parts in a paragraph of links, then end with the target program.
+  - Every stage guide must open with a title, then one paragraph, then the target program.
+  - Every stage guide must name its parts in the third sentence of that paragraph.
   - Every module a stage changed must have a part file, named `Guide<N>.<M>_<Module>.md`.
   - Every part must be numbered in the order the toolchain is built:
     - Log, File, Str.
     - Lexer, Parser, Ast, Sem, Elf.
-    - Asm, Gen, Rel, Enc, Txt, Emu.
+    - Abi, Asm, Gen, Rel, Enc, Txt, Emu.
     - Cc, As, Ld, Emu.
-    - Tests.
-  - Extend the existing part files in a later phase of a stage, rather than adding new ones.
   - Do not give a part file to a module the stage did not touch.
 - Structure:
   - Every part file must open with `## <Module>` followed by one paragraph.
-  - Every piece of the work must be a `###` heading naming its subject as a noun phrase.
-  - Every `###` heading must be two to four words long.
-  - **Every `###` must run: introduction, concept paragraphs, mechanical paragraphs, code block.**
+  - Every piece of the work must be a `###` heading naming the code it covers.
+  - Every heading must spell that name the way the source spells it, in backticks.
+  - Write a function as `Par_AddFunction()`, keeping its parentheses.
+  - Write a type as `Abi_x86_64_Class` and one field of it as `Ast_Node.an_tmp`.
+  - Write a switch arm as `case AST_NODE_KIND_CALL`, keeping the `case` keyword.
+  - Write a grammar rule as `decl_tail`, under the name the grammar gives it.
+  - Every heading must open with the action the stage took on that code.
+  - Write `Add:` for code the stage introduces, as in ``### Add: `Abi_x86_64_Class` ``.
+  - Write `Extend:` where a whole rule, case or block joins something that already existed.
+  - Write `Modify:` where existing code changes in a way no addition describes.
+  - Write `Delete:` for code the stage removes.
+  - **Every `###` must run: one paragraph, then one code block.**
   - Every `###` must end at its code block.
-  - Every Tests part must give one `###` per test, showing that test's code.
+  - Do not give a part file to the target program, which the guide itself ends with.
   - Do not write prose after a code block.
 - Paragraphs:
-  - Every subsection must open with a paragraph introducing the concepts the rest of it uses.
-  - Every paragraph after that introduction must defend or explain the code block.
-  - Every concept and every solution must get a paragraph of its own.
-  - Every rule, function, field or case the code block names must get a paragraph of its own.
-  - Every loop, branch or step inside a shown function must get a paragraph of its own.
-  - Every paragraph must hold two or three sentences.
-  - Every paragraph must run to between 20 and 55 words.
+  - Every `#`, `##` and `###` must hold one paragraph, and every paragraph three sentences.
+  - Write the first sentence as the problem the code in the heading exists to solve.
+  - Write the second sentence as what that code does about it.
+  - Write the third sentence as how it fits the project, such as what it defers or what will replace it.
+  - Read the three as one argument, and check that each sentence leads into the next.
+  - Every paragraph must run to between 40 and 70 words.
   - Every paragraph must occupy one line, however long that line gets.
-  - Every paragraph must do one job, and the jobs are these:
-    - Introduce a concept.
-    - Recognise a problem.
-    - Propose a solution.
-    - Show an example.
-    - Explain a concept or a solution.
   - Do not wrap a paragraph across two lines.
-  - Do not write a paragraph of one sentence.
+  - Do not write a second paragraph, and do not write a fourth sentence.
   - Do not refer back, since a paragraph refers forward to the code block below it.
 - Sentences:
-  - Every sentence must do one of the jobs a paragraph does.
+  - Every sentence must do the job its position in the paragraph gives it.
   - Use a connective to name the relation to the sentence before it.
   - Write "For example" before an illustration and "However" before a qualification.
   - Delete a sentence that neither motivates the code block nor explains part of it.
@@ -164,7 +164,9 @@ What does not get a comment:
   - Use a comment on its own line to label a group of lines.
   - Use a trailing comment, aligned in a column, to annotate one line.
   - Use a commented-out line to show the surrounding code a block does not change.
-  - Use `/* ... */` on its own line to elide code that stays as it was.
+  - Use an empty line to elide code that stays as it was.
+  - Elide everything a subsection does not discuss, down to the lines it defends.
+  - Keep the context an elision needs: the function's comment, its signature and its braces.
   - Do not put in a code comment what belongs in the prose.
   - Do not put a file path in a code block.
 - Scope:
@@ -173,6 +175,7 @@ What does not get a comment:
   - Write what to build and why it is built that way.
   - Write the traps, the orderings that matter and the mistakes that stay silent.
   - Correct a stale guide deliberately, and all at once.
+  - Extend the existing part files when a later stage changes the same modules.
   - Do not document renames, module splits, moved files or named constants.
   - Do not write a sentence that needs this compiler's source to make sense.
   - Do not edit a guide because a later refactor made it stale.

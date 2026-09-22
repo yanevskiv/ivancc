@@ -15,7 +15,6 @@ const char *Sem_TypeName(const Ast_Type *type);
 Ast_Type *Sem_Decay(Ast_Type *type);
 
 // Checks the parser cannot make
-void      Sem_CheckByValue(Ast_Node *node);
 void      Sem_CheckCall(Ast_Node *node);
 
 // Annotation

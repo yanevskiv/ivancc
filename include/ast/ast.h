@@ -218,6 +218,7 @@ struct Ast_Node {
     Ast_Var     *an_var;      // referenced variable for AST_NODE_KIND_VAR
     Ast_Member  *an_member;   // resolved member of AST_NODE_KIND_MEMBER
     char        *an_memname;  // member name a MEMBER node was written with
+    int          an_tmp;      // frame slot a CALL returning an aggregate lands in
 };
 
 // A function definition.
@@ -226,6 +227,7 @@ struct Ast_Func {
     Ast_Func *af_next;       // next function in the program
     char     *af_name;       // function name
     Ast_Node *af_body;       // function body (AST_NODE_KIND_BLOCK)
+    Ast_Type *af_ret;        // type the function returns
     Ast_Var  *af_params;     // parameters, in declaration order
     int       af_nparams;    // number of parameters
     int       af_variadic;   // true if the parameter list ended in `...`

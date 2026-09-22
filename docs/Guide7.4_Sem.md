@@ -1,18 +1,10 @@
 ## Sem
 
-The semantic pass resolves each member access against the type of its left operand. It also draws the line around what this stage supports, rejecting what the code generator cannot yet compile correctly. Three of its checks turn silently wrong code into a diagnostic.
+The semantic pass can type scalar expressions, but aggregate member access and assignment need resolution and checks that the original tree cannot supply. It resolves members, recognizes aggregate lvalues, compares aggregate identities, and rejects by-value arguments and returns until ABI support exists. This stage keeps unsupported cases diagnostic, while the later ABI stage lifts the temporary by-value boundary.
 
-### Member resolution
+### Extend: `case AST_NODE_KIND_MEMBER`
 
-A member access arrives carrying a name and nothing else. Resolution attaches the member that name refers to, and the pass walks bottom-up so the left operand already carries a type here.
-
-Three distinct failures are possible, and each gets a message of its own. The operand may not be an aggregate, the aggregate may never have been defined, or it may lack the named member.
-
-`Sem_IsAggregate()` runs first, on the type of `an_lhs`. Nothing below it would be meaningful on a scalar, so `n.x` where `n` is an `int` has to be rejected here.
-
-The `at_complete` test runs next. A type left incomplete by a bare `struct S;` has an empty member list, so without this test the lookup below would report every member as unknown.
-
-`Ast_FindMember()` then searches by name. `an_member` keeps the result for the code generator, and `an_type` takes the member's type so that `p->x + 1` checks as an `int` addition.
+A member access arrives from the grammar with a name and an operand, and no idea which member that name refers to. The arm looks the name up in the operand's type and takes the member's type as its own. A complaint about an unknown member says nothing useful when the type was never defined in this translation unit.
 
 ```c
 case AST_NODE_KIND_MEMBER: {
@@ -31,13 +23,9 @@ case AST_NODE_KIND_MEMBER: {
 } break;
 ```
 
-### Members as lvalues
+### Extend: `Sem_IsLvalue()`
 
-An lvalue is an expression that names an object rather than producing a value. A member access names one, since `p.x` designates storage inside `p` rather than a computed result.
-
-`Sem_IsLvalue()` therefore gains `AST_NODE_KIND_MEMBER` as a third accepted kind. Assignment and the address-of operator both consult it, so `p.x = 1` and `&p.x` depend on the addition.
-
-The test matters in both directions. Omitting the kind rejects correct code, which any test catches, while a test that is too permissive accepts `1 = p.x` and nothing catches that.
+An lvalue is an expression that names an object, which `Sem_IsLvalue()` recognised for a variable and a dereference. The member node kind joins the two the function already accepts. `f().x = 1` is accepted for that reason, which C rejects and a later stage will have to as well.
 
 ```c
 // True if node names an object, so it can be assigned to or have its address taken.
@@ -48,28 +36,24 @@ int Sem_IsLvalue(const Ast_Node *node)
 }
 ```
 
-### Aggregate assignment
+### Extend: `case AST_NODE_KIND_ASSIGN`
 
-Assigning one whole structure to another is the only operation on a complete aggregate this stage supports. The copy belongs to the code generator, and this pass decides only whether it is allowed.
-
-C defines no conversion between two structure types, so there is nothing to insert when they differ. Assignment between different aggregate types is therefore rejected rather than coerced.
-
-The check guards on `Sem_IsAggregate()` so that scalars keep their existing conversions. It then compares `an_type` directly, which suffices because every reference to a tag resolves to one type object.
+Assignment converts its right operand to the type of its left, which every scalar pair reaches through a promotion. A guard on `Sem_IsAggregate()` compares the two types and rejects them when they differ. A pointer comparison suffices here since every reference to a tag resolves to one type object.
 
 ```c
-/* Identity, not shape: two structs with the same members stay distinct. */
-if (Sem_IsAggregate(node->an_lhs->an_type) && node->an_lhs->an_type != node->an_rhs->an_type) {
-    Log_ShowErrorAt(node->an_line, "cannot assign a value of a different struct or union type");
-}
+case AST_NODE_KIND_ASSIGN: {
+
+    /* Identity, not shape: two structs with the same members stay distinct. */
+    if (Sem_IsAggregate(node->an_lhs->an_type) && node->an_lhs->an_type != node->an_rhs->an_type) {
+        Log_ShowErrorAt(node->an_line, "cannot assign a value of a different struct or union type");
+    }
+    node->an_type = node->an_lhs->an_type;
+} break;
 ```
 
-### By-value arguments
+### Add: `Sem_CheckByValue()`
 
-Passing an aggregate by value requires the SysV ABI's argument classification algorithm, which this stage does not implement. Everything else about a call already works, which is what makes the gap dangerous.
-
-The code generator will not refuse the case on its own. It leaves an aggregate as an address, so the callee reads its parameter from an address it was never given.
-
-`Sem_CheckByValue()` therefore walks `an_args` at every call, testing each argument with `Sem_IsAggregate()`. The message names passing the address as the workaround, so the reader is not left guessing.
+Passing a structure by value needs the SysV argument classification algorithm, which decides what travels in a register. `Sem_CheckByValue()` walks a call's arguments and rejects any that is an aggregate. The message names passing the address as the workaround, so the restriction is discoverable rather than merely enforced.
 
 ```c
 // Reject by-value aggregate arguments, which need the ABI's classification.
@@ -83,13 +67,9 @@ void Sem_CheckByValue(Ast_Node *node)
 }
 ```
 
-### By-value returns
+### Extend: `case AST_NODE_KIND_RETURN`
 
-Returning an aggregate by value needs the same classification algorithm as passing one. There is only ever one value to examine, so the check sits in the `AST_NODE_KIND_RETURN` case rather than a function.
-
-The generator would otherwise return the address of a local, which dies with its frame. That failure looks correct until the caller uses the value, and it reproduces inconsistently.
-
-The `an_lhs` test comes first, because `return;` with no value is legal in a `void` function. Returning a pointer to an aggregate stays legal, since a pointer is not itself an aggregate.
+Returning a structure by value needs the same classification algorithm that passing one does. The arm rejects a `return` whose expression is an aggregate, alongside the check on arguments. Returning a pointer to an aggregate stays legal too, because a pointer is not itself an aggregate.
 
 ```c
 case AST_NODE_KIND_RETURN: {
@@ -99,15 +79,9 @@ case AST_NODE_KIND_RETURN: {
 } break;
 ```
 
-### Incomplete type dereference
+### Extend: `case AST_NODE_KIND_DEREF`
 
-The `AST_NODE_KIND_DEREF` case types a `*p` expression from `at_base`. Three things can make that invalid, and all three are tested before the type is assigned.
-
-`Sem_IsPointer()` rejects an operand that is not a pointer, and the `AST_TYPE_KIND_VOID` test rejects a pointer to `void`, which has no size to load. Both predate this stage.
-
-The `at_complete` test is the addition. A pointer to an incomplete type has no size and no member list, so `struct undefined *p; *p;` cannot be given a result type.
-
-Catching it here is what makes the message useful. Without the check the complaint would come from the member lookup or the code generator, several steps from the missing definition.
+The dereference arm gives `*p` the type that `p` points at, which it reads from `at_base`. A test on `at_complete` joins the two checks the arm already performs. The check costs one flag read on an expression that is already being typed.
 
 ```c
 case AST_NODE_KIND_DEREF: {
