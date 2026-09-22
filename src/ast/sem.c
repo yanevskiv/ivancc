@@ -39,7 +39,21 @@ int Sem_IsPointer(const Ast_Type *type)
 // Return whether a node names an object, so that it can be assigned or addressed.
 int Sem_IsLvalue(const Ast_Node *node)
 {
-    return node->an_kind == AST_NODE_KIND_VAR || node->an_kind == AST_NODE_KIND_DEREF;
+    return node->an_kind == AST_NODE_KIND_VAR || node->an_kind == AST_NODE_KIND_DEREF
+        || node->an_kind == AST_NODE_KIND_MEMBER;
+}
+
+// Return whether this is a struct or union, which is to say a type whose values
+// are moved whole rather than held in a register.
+int Sem_IsAggregate(const Ast_Type *type)
+{
+    return type->at_kind == AST_TYPE_KIND_STRUCT || type->at_kind == AST_TYPE_KIND_UNION;
+}
+
+// Return the tag a struct or union was declared with, for a diagnostic to name.
+const char *Sem_TypeName(const Ast_Type *type)
+{
+    return type->at_tag ? type->at_tag : "<anonymous>";
 }
 
 // Return the type an expression of this type yields; an array yields a pointer.
@@ -49,6 +63,16 @@ Ast_Type *Sem_Decay(Ast_Type *type)
         return Ast_NewPointer(type->at_base);
     }
     return type;
+}
+
+// Reject the struct and union values the ABI does not yet know how to move.
+void Sem_CheckByValue(Ast_Node *node)
+{
+    for (Ast_Node *arg = node->an_args; arg; arg = arg->an_next) {
+        if (Sem_IsAggregate(arg->an_type)) {
+            Log_ShowErrorAt(node->an_line, "passing '%s' by value is not supported yet; pass its address", Sem_TypeName(arg->an_type));
+        }
+    }
 }
 
 // Check a call against the callee's definition, if this program has one.
@@ -246,7 +270,25 @@ void Sem_Node(Ast_Node *node)
             if (node->an_lhs->an_type->at_base->at_kind == AST_TYPE_KIND_VOID) {
                 Log_ShowErrorAt(node->an_line, "cannot dereference a pointer to void");
             }
+            if (! node->an_lhs->an_type->at_base->at_complete) {
+                Log_ShowErrorAt(node->an_line, "cannot dereference a pointer to an incomplete type");
+            }
             node->an_type = node->an_lhs->an_type->at_base;
+        } break;
+
+        case AST_NODE_KIND_MEMBER: {
+            Ast_Type *type = node->an_lhs->an_type;
+            if (! Sem_IsAggregate(type)) {
+                Log_ShowErrorAt(node->an_line, "request for member '%s' in something that is not a struct or union", node->an_memname);
+            }
+            if (! type->at_complete) {
+                Log_ShowErrorAt(node->an_line, "'%s' is an incomplete type", Sem_TypeName(type));
+            }
+            node->an_member = Ast_FindMember(type, node->an_memname);
+            if (! node->an_member) {
+                Log_ShowErrorAt(node->an_line, "no member named '%s' in '%s'", node->an_memname, Sem_TypeName(type));
+            }
+            node->an_type = node->an_member->am_type;
         } break;
 
         case AST_NODE_KIND_CAST: {
@@ -270,6 +312,9 @@ void Sem_Node(Ast_Node *node)
             }
             if (node->an_lhs->an_type->at_kind == AST_TYPE_KIND_ARRAY) {
                 Log_ShowErrorAt(node->an_line, "cannot assign to an array");
+            }
+            if (Sem_IsAggregate(node->an_lhs->an_type) && node->an_lhs->an_type != node->an_rhs->an_type) {
+                Log_ShowErrorAt(node->an_line, "cannot assign a value of a different struct or union type");
             }
             node->an_type = node->an_lhs->an_type;
         } break;
@@ -300,15 +345,12 @@ void Sem_Node(Ast_Node *node)
             node->an_type = node->an_then->an_type;
         } break;
 
-        case AST_NODE_KIND_INIT: {
-            node->an_type = node->an_lhs->an_type;
-        } break;
-
         case AST_NODE_KIND_COMMA: {
             node->an_type = node->an_rhs->an_type;
         } break;
 
         case AST_NODE_KIND_CALL: {
+            Sem_CheckByValue(node);
             Sem_CheckCall(node);
             node->an_type = &Ast_TypeInt;
         } break;
@@ -332,10 +374,15 @@ void Sem_Node(Ast_Node *node)
             Sem_CollectCases(node->an_body, node, &tail);
         } break;
 
+        case AST_NODE_KIND_RETURN: {
+            if (node->an_lhs && Sem_IsAggregate(node->an_lhs->an_type)) {
+                Log_ShowErrorAt(node->an_line, "returning '%s' by value is not supported yet", Sem_TypeName(node->an_lhs->an_type));
+            }
+        } break;
+
         case AST_NODE_KIND_GOTO:
         case AST_NODE_KIND_LABEL:
         case AST_NODE_KIND_DEFAULT:
-        case AST_NODE_KIND_RETURN:
         case AST_NODE_KIND_IF:
         case AST_NODE_KIND_FOR:
         case AST_NODE_KIND_DO:
@@ -343,6 +390,10 @@ void Sem_Node(Ast_Node *node)
         case AST_NODE_KIND_CONTINUE:
         case AST_NODE_KIND_BLOCK:
         case AST_NODE_KIND_EXPR_STMT:
+        case AST_NODE_KIND_INIT:
+        case AST_NODE_KIND_INITLIST:
+        case AST_NODE_KIND_DESIGNATOR:
+        case AST_NODE_KIND_ZERO:
         case AST_NODE_KIND_NOP: {
             // empty
         } break;

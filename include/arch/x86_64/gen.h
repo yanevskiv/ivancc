@@ -13,6 +13,8 @@ Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type);
 void             Gen_x86_64_EmitAddr(Ast_Node *node);
 void             Gen_x86_64_EmitLoad(const Ast_Type *type);
 void             Gen_x86_64_EmitCast(const Ast_Type *type);
+void             Gen_x86_64_EmitCopy(int size);
+void             Gen_x86_64_EmitZero(int size);
 
 // Variadic arguments
 void Gen_x86_64_EmitVaSaveArea(void);

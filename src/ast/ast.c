@@ -8,9 +8,9 @@
 Ast_Func *Ast_Program;
 
 // The primitive types.
-Ast_Type Ast_TypeVoid = { AST_TYPE_KIND_VOID, AST_TYPE_SIZE_VOID, AST_TYPE_ALIGN_VOID, NULL, 0 };
-Ast_Type Ast_TypeChar = { AST_TYPE_KIND_CHAR, AST_TYPE_SIZE_CHAR, AST_TYPE_ALIGN_CHAR, NULL, 0 };
-Ast_Type Ast_TypeInt  = { AST_TYPE_KIND_INT,  AST_TYPE_SIZE_INT,  AST_TYPE_ALIGN_INT,  NULL, 0 };
+Ast_Type Ast_TypeVoid = { AST_TYPE_KIND_VOID, AST_TYPE_SIZE_VOID, AST_TYPE_ALIGN_VOID, NULL, 0, NULL, NULL, 1 };
+Ast_Type Ast_TypeChar = { AST_TYPE_KIND_CHAR, AST_TYPE_SIZE_CHAR, AST_TYPE_ALIGN_CHAR, NULL, 0, NULL, NULL, 1 };
+Ast_Type Ast_TypeInt  = { AST_TYPE_KIND_INT,  AST_TYPE_SIZE_INT,  AST_TYPE_ALIGN_INT,  NULL, 0, NULL, NULL, 1 };
 
 // Table of interned string literals, indexed by AST_NODE_KIND_STR slot.
 static Ast_Str Ast_Strings[MAX_STRINGS];
@@ -24,20 +24,30 @@ Ast_Var *Ast_Globals;
 // The last global declared, so the list keeps source order.
 static Ast_Var *Ast_GlobalsTail;
 
+// The outermost scope, which holds file-scope tags and typedef names.
+static Ast_Scope Ast_FileScope;
+
 // The innermost scope currently open.
-static Ast_Scope *Ast_CurScope;
+static Ast_Scope *Ast_CurScope = &Ast_FileScope;
 
 // Locals of the function currently being parsed.
 static Ast_Var *Ast_Locals;
+
+// Round n up to the nearest multiple of align.
+int Ast_AlignTo(int n, int align)
+{
+    return (n + align - 1) / align * align;
+}
 
 // Build the pointer type that points at base.
 Ast_Type *Ast_NewPointer(Ast_Type *base)
 {
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
-    type->at_kind  = AST_TYPE_KIND_PTR;
-    type->at_size  = AST_TYPE_SIZE_PTR;
-    type->at_align = AST_TYPE_ALIGN_PTR;
-    type->at_base  = base;
+    type->at_kind     = AST_TYPE_KIND_PTR;
+    type->at_size     = AST_TYPE_SIZE_PTR;
+    type->at_align    = AST_TYPE_ALIGN_PTR;
+    type->at_base     = base;
+    type->at_complete = 1;
     return type;
 }
 
@@ -45,12 +55,102 @@ Ast_Type *Ast_NewPointer(Ast_Type *base)
 Ast_Type *Ast_NewArray(Ast_Type *base, int len)
 {
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
-    type->at_kind  = AST_TYPE_KIND_ARRAY;
-    type->at_size  = base->at_size * len;
-    type->at_align = base->at_align;
-    type->at_base  = base;
-    type->at_len   = len;
+    type->at_kind     = AST_TYPE_KIND_ARRAY;
+    type->at_size     = base->at_size * len;
+    type->at_align    = base->at_align;
+    type->at_base     = base;
+    type->at_len      = len;
+    type->at_complete = base->at_complete;
     return type;
+}
+
+// Build an as-yet empty struct or union type, which its tag may already name.
+Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
+{
+    Ast_Type *type = calloc(1, sizeof(Ast_Type));
+    type->at_kind  = kind;
+    type->at_align = 1;
+    type->at_tag   = tag ? strdup(tag) : NULL;
+    return type;
+}
+
+// Build one member of a struct or union, before layout gives it an offset.
+Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line)
+{
+    Ast_Member *member = calloc(1, sizeof(Ast_Member));
+    member->am_name = strdup(name);
+    member->am_type = type;
+    member->am_line = line;
+    return member;
+}
+
+// Place members in an aggregate, giving each an offset and the whole its size
+// and alignment. A union stacks every member at zero; a struct lays them out in
+// order, padding each to its own alignment and the total to the widest.
+void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
+{
+    int offset = 0;
+    int align = 1;
+
+    for (Ast_Member *member = members; member; member = member->am_next) {
+        if (member->am_flexible) {
+            if (type->at_kind == AST_TYPE_KIND_UNION) {
+                Log_ShowErrorAt(member->am_line, "a union cannot have a flexible array member");
+            }
+            if (member->am_next) {
+                Log_ShowErrorAt(member->am_line, "flexible array member '%s' must come last", member->am_name);
+            }
+            if (member == members) {
+                Log_ShowErrorAt(member->am_line, "a struct needs a member before a flexible array member");
+            }
+            member->am_offset = Ast_AlignTo(offset, member->am_type->at_align);
+            if (member->am_type->at_align > align) {
+                align = member->am_type->at_align;
+            }
+            continue;
+        }
+        if (! member->am_type->at_complete) {
+            Log_ShowErrorAt(member->am_line, "member '%s' has an incomplete type", member->am_name);
+        }
+        for (Ast_Member *seen = members; seen != member; seen = seen->am_next) {
+            if (strcmp(seen->am_name, member->am_name) == 0) {
+                Log_ShowErrorAt(member->am_line, "duplicate member '%s'", member->am_name);
+            }
+        }
+        if (member->am_type->at_align > align) {
+            align = member->am_type->at_align;
+        }
+        if (type->at_kind == AST_TYPE_KIND_UNION) {
+            member->am_offset = 0;
+            if (member->am_type->at_size > offset) {
+                offset = member->am_type->at_size;
+            }
+            continue;
+        }
+        offset = Ast_AlignTo(offset, member->am_type->at_align);
+        member->am_offset = offset;
+        offset += member->am_type->at_size;
+    }
+
+    if (! members) {
+        Log_ShowErrorAt(line, "an aggregate must declare at least one member");
+    }
+
+    type->at_members  = members;
+    type->at_complete = 1;
+    type->at_align    = align;
+    type->at_size     = Ast_AlignTo(offset, align);
+}
+
+// Return the named member of an aggregate, or NULL when it has none.
+Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name)
+{
+    for (Ast_Member *member = type->at_members; member; member = member->am_next) {
+        if (strcmp(member->am_name, name) == 0) {
+            return member;
+        }
+    }
+    return NULL;
 }
 
 // Allocate a zeroed node of the given kind.
@@ -111,6 +211,14 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
     return node;
 }
 
+// Build a member access, whose member the Sem_ pass resolves once it has a type.
+Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
+{
+    Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_MEMBER, lhs, line);
+    node->an_memname = strdup(name);
+    return node;
+}
+
 // Declare a static local: it answers to name inside its scope, but lives in
 // .data or .bss under symbol, which carries the function it was declared in.
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line)
@@ -127,8 +235,14 @@ Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *
 void Ast_BeginScope(void)
 {
     Ast_Locals   = NULL;
-    Ast_CurScope = NULL;
+    Ast_CurScope = &Ast_FileScope;
     Ast_PushScope();
+}
+
+// Leave a function, so that what follows it is read at file scope again.
+void Ast_EndScope(void)
+{
+    Ast_CurScope = &Ast_FileScope;
 }
 
 // Enter a nested scope, which shadows the ones around it.
@@ -210,6 +324,88 @@ Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
     var->av_scope_next = Ast_CurScope->as_vars;
     Ast_CurScope->as_vars = var;
     return var;
+}
+
+// Look up a tag by name, innermost scope outwards.
+Ast_Type *Ast_FindTag(const char *name)
+{
+    for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
+        for (Ast_Tag *tag = scope->as_tags; tag; tag = tag->ag_next) {
+            if (strcmp(tag->ag_name, name) == 0) {
+                return tag->ag_type;
+            }
+        }
+    }
+    return NULL;
+}
+
+// Look up a tag declared directly in the innermost scope, which is what decides
+// whether `struct s { ... }` completes an outer type or shadows it with a new one.
+Ast_Type *Ast_FindTagHere(const char *name)
+{
+    for (Ast_Tag *tag = Ast_CurScope->as_tags; tag; tag = tag->ag_next) {
+        if (strcmp(tag->ag_name, name) == 0) {
+            return tag->ag_type;
+        }
+    }
+    return NULL;
+}
+
+// Bind a tag to a type in the innermost scope.
+void Ast_DeclareTag(const char *name, Ast_Type *type)
+{
+    Ast_Tag *tag = calloc(1, sizeof(Ast_Tag));
+    tag->ag_name = strdup(name);
+    tag->ag_type = type;
+    tag->ag_next = Ast_CurScope->as_tags;
+    Ast_CurScope->as_tags = tag;
+}
+
+// Look up a typedef name, innermost scope outwards.
+Ast_Type *Ast_FindTypedef(const char *name)
+{
+    for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
+        for (Ast_Typedef *def = scope->as_typedefs; def; def = def->ad_next) {
+            if (strcmp(def->ad_name, name) == 0) {
+                return def->ad_type;
+            }
+        }
+    }
+    return NULL;
+}
+
+// Bind a typedef name to a type in the innermost scope.
+void Ast_DeclareTypedef(const char *name, Ast_Type *type)
+{
+    Ast_Typedef *def = calloc(1, sizeof(Ast_Typedef));
+    def->ad_name = strdup(name);
+    def->ad_type = type;
+    def->ad_next = Ast_CurScope->as_typedefs;
+    Ast_CurScope->as_typedefs = def;
+}
+
+// Look up an enumeration constant, reporting whether the name names one.
+int Ast_FindEnumConst(const char *name, long *value)
+{
+    for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
+        for (Ast_EnumConst *item = scope->as_enums; item; item = item->ae_next) {
+            if (strcmp(item->ae_name, name) == 0) {
+                *value = item->ae_value;
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+// Bind an enumeration constant in the innermost scope.
+void Ast_DeclareEnumConst(const char *name, long value)
+{
+    Ast_EnumConst *item = calloc(1, sizeof(Ast_EnumConst));
+    item->ae_name  = strdup(name);
+    item->ae_value = value;
+    item->ae_next  = Ast_CurScope->as_enums;
+    Ast_CurScope->as_enums = item;
 }
 
 // Return the list of locals declared in the current scope.
