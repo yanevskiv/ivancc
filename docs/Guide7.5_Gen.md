@@ -4,13 +4,13 @@ The back end needs less than might be expected. `lea`, `add`, and `mov` already 
 
 ### Aggregates as addresses
 
-No register holds a structure. Anything beyond eight bytes will not fit in one, and this generator has no way to split an object across several. Every use of an aggregate therefore wants its address.
+No register holds a structure. Anything beyond eight bytes will not fit in one, and this generator cannot split an object across several. Every use of an aggregate therefore wants its address.
 
-Arrays already work this way in the generator. An array expression evaluates to the address of its first element rather than to a value. Aggregates join that existing rule rather than needing one of their own.
+Arrays already work this way, which is why aggregates join the existing rule rather than getting one of their own. Only the set of covered types changes, so the decision stays in one function.
 
-`Gen_x86_64_EmitLoad()` is where the rule lives. It returns without emitting anything when the type is an array or an aggregate, leaving the address in `%rax`. Every other type gets the `mov` it always got.
+`Gen_x86_64_EmitLoad()` is where the rule lives. The test covers `AST_TYPE_KIND_ARRAY` and anything `Sem_IsAggregate()` accepts, returning before it emits, so the address the caller left in `%rax` stays there.
 
-Getting this wrong loads the first eight bytes and treats them as the whole object. The result compiles and runs. Anything larger than a register produces nonsense, while anything smaller happens to work.
+Getting this wrong loads the first eight bytes and treats them as the whole object. The result compiles and runs, and anything that fits in a register happens to work. Only a larger structure fails.
 
 ```c
 // Load the value at the address in %rax, unless the type lives as an address.
@@ -25,13 +25,13 @@ void Gen_x86_64_EmitLoad(const Ast_Type *type)
 
 ### Member addressing
 
-A member access needs the address of the member. That address is the address of the aggregate plus the member's offset. The layout pass computed that offset and the semantic pass attached it to the node.
+A member access needs the address of the member rather than of the aggregate. That address is the aggregate's address plus the member's offset, which the layout pass already computed.
 
-`Gen_x86_64_EmitAddr()` recurses into `an_lhs` to produce the aggregate's address in `%rax`. `Asm_x86_64_EmitAddImm()` then adds `am_offset` to it. Nothing further is required, because the offset is a compile-time constant.
+`Gen_x86_64_EmitAddr()` recurses into `an_lhs` for the aggregate's address. The recursion asks for an address rather than a value, so no load falls between the two steps.
 
-The test on `am_offset` skips the add when the offset is zero. A first member therefore costs no instruction at all. `p->val` on `struct Node` is exactly as cheap as `*p` would be.
+`Asm_x86_64_EmitAddImm()` then adds `am_offset`. The offset is a compile-time constant, so the access costs one immediate add. For example, `a.b.c` emits two such adds and no loads at all.
 
-Chaining costs one addition per step. `a.b.c` emits the address of `a` followed by two immediate adds. No load falls between them, because neither intermediate is a scalar.
+The test on `am_offset` skips the add when the offset is zero. A first member therefore costs no instruction, so `p->val` on `struct Node` emits exactly what `*p` would emit.
 
 ```c
 case AST_NODE_KIND_MEMBER: {
@@ -44,11 +44,11 @@ case AST_NODE_KIND_MEMBER: {
 
 ### Member evaluation
 
-Evaluating an expression for its value is separate from evaluating it for its address. Some node kinds do both, computing an address and then loading through it. A member access is one of them.
+Evaluating an expression for its value is separate from evaluating it for its address. A member access does both, as a variable and a dereference already do, so no new case is needed.
 
-`AST_NODE_KIND_MEMBER` joins `AST_NODE_KIND_VAR` and `AST_NODE_KIND_DEREF` on that shared case. `Gen_x86_64_EmitAddr()` produces the address and `Gen_x86_64_EmitLoad()` decides whether to load through it. Adding the label is the whole of the change.
+`AST_NODE_KIND_MEMBER` joins `AST_NODE_KIND_VAR` and `AST_NODE_KIND_DEREF` on one case. `Gen_x86_64_EmitAddr()` produces the address and `Gen_x86_64_EmitLoad()` decides whether to load, so the label is the whole change.
 
-Everything else follows from that pairing. `a.b.c` nests because each step takes the address of its operand, and `p->q` is a dereference followed by an offset. `&p.x` needs nothing new, since the address is what was computed first.
+Everything else follows from that pairing. For example, `a.b.c` nests because each step takes the address of its operand, and `&p.x` needs nothing new because that address is what the case computed.
 
 ```c
 case AST_NODE_KIND_VAR:
@@ -61,15 +61,19 @@ case AST_NODE_KIND_MEMBER: {
 
 ### Byte copying
 
-Assigning a whole aggregate copies its bytes from one address to another. `Gen_x86_64_EmitCopy()` emits that copy inline. The source address arrives in `%rax` and the destination in `%rdi`.
+Assigning a whole aggregate copies its bytes from one address to another. `Gen_x86_64_EmitCopy()` emits that copy inline, with the source address in `%rax` and the destination in `%rdi`.
 
-Three loops cover the size in eight-, four-, and one-byte moves. Each loop runs while at least that many bytes remain. A 16-byte structure therefore copies in two moves rather than sixteen.
+Emitting the moves inline keeps the compiler independent of `memcpy`, which does not yet exist for this target. A call would also need its argument registers loaded, which this generator does not manage.
 
-Emitting the moves inline keeps the compiler independent of `memcpy`. The C library for this target does not yet exist. A call would also need the argument registers, which this generator does not manage.
+The opening `Asm_x86_64_EmitMovRR()` moves the source out of `%rax` and into `%rsi`. Every subexpression returns in `%rax`, so the source cannot stay there while the loops run.
 
-`%rax` holds the destination once the copy finishes. An assignment is an expression whose value is the object assigned to. `a = b = c` depends on that, and so does any assignment used as a condition.
+The first loop runs while at least `GEN_X86_64_COPY_QUAD` bytes remain. Each iteration emits a load from `%rsi` into `%rcx` and a store into `%rdi`, both at `ASM_X86_64_WIDTH_64`.
 
-`%rsi` and `%rcx` are used freely here without being saved first. A stack-based generator carries values only in `%rax` between subexpressions. Which registers are free is a property of the generator rather than of the ABI.
+The second loop repeats that pattern at `ASM_X86_64_WIDTH_32`. It covers only what the first loop could not, so it emits at most one pair of instructions.
+
+The third loop finishes the tail at `ASM_X86_64_WIDTH_8`. It runs at most three times, since anything wider was taken already, so a 13-byte structure copies in three pairs.
+
+The closing `Asm_x86_64_EmitMovRR()` moves `%rdi` into `%rax`. An assignment is an expression whose value is the object assigned to, so `a = b = c` depends on that register.
 
 ```c
 // Copy size bytes from the address in %rax to the address in %rdi, leaving the
@@ -100,11 +104,13 @@ void Gen_x86_64_EmitCopy(int size)
 
 ### Byte clearing
 
-Clearing an object writes zero across a run of bytes. `Gen_x86_64_EmitZero()` emits that fill, taking the destination address in `%rdi`. It exists to serve the zero statement that local initialization emits.
+Clearing an object writes zero across a run of bytes. `Gen_x86_64_EmitZero()` emits that fill, taking the destination in `%rdi`, and serves the zero statement that local initialization emits.
 
-The walk is the same as the copy with one operand instead of two. Zero is loaded into `%rcx` once, then stored in the same three widths. Nothing is returned, because the statement it implements has no value.
+`Asm_x86_64_EmitMovImm()` loads zero into `%rcx` once, before any loop runs. No load is then needed inside the loops, which is the one structural difference from the copy.
 
-The widths matter for output size rather than for speed at this stage. A 64-byte object clears in eight stores rather than sixty-four. The emitted text shrinks by the same factor.
+The three loops mirror the copy at eight, four, and one byte. Nothing is returned in `%rax`, because the statement this implements has no value of its own.
+
+The widths matter for output size rather than for speed. A 64-byte object clears in eight stores rather than sixty-four, and this compiler assembles the text it writes.
 
 ```c
 // Write size zero bytes at the address in %rdi.
@@ -130,11 +136,11 @@ void Gen_x86_64_EmitZero(int size)
 
 ### Aggregate assignment
 
-An assignment node reaches the generator with its destination address on the stack and its source in `%rax`. What happens next depends on the type being assigned. This is the only place in the expression generator that has to tell an aggregate from a scalar.
+An assignment reaches the generator with its destination address on the stack and its source in `%rax`. This is the only place in the expression generator that has to tell an aggregate from a scalar.
 
-`Gen_x86_64_EmitPop()` recovers the destination address into `%rdi` first. `Sem_IsAggregate()` then selects between the two paths. An aggregate goes to `Gen_x86_64_EmitCopy()` with the size the layout pass assigned its type.
+`Gen_x86_64_EmitPop()` recovers the destination into `%rdi`. Both operands are addresses at this point, since `Gen_x86_64_EmitLoad()` declined to load either side, so the copy needs no preparation.
 
-Everything else stores from a register exactly as before this stage. `Gen_x86_64_TypeWidth()` picks the store width from the type. Neither path changed for scalars, so nothing that already worked needs retesting.
+`Sem_IsAggregate()` then selects between the two paths. An aggregate goes to `Gen_x86_64_EmitCopy()` with its type's size, and everything else stores from a register exactly as before.
 
 ```c
 Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);  /* the destination address */
@@ -147,11 +153,11 @@ if (Sem_IsAggregate(node->an_type)) {
 
 ### Object zeroing
 
-The zero statement clears an object before its initializer writes to it. It carries an address and a size, and nothing else. It is the one statement kind in the tree with no expression behind it.
+The zero statement clears an object before its initializer writes to it. It is the one statement kind in the tree with no expression behind it, which is why it needs a case of its own.
 
-`Gen_x86_64_EmitAddr()` produces the object's address from `an_lhs`. `Asm_x86_64_EmitMovRR()` moves it into `%rdi`, where `Gen_x86_64_EmitZero()` expects to find it. The size comes straight from `an_val`.
+`Gen_x86_64_EmitAddr()` leaves the address in `%rax`, so `Asm_x86_64_EmitMovRR()` moves it into `%rdi` where `Gen_x86_64_EmitZero()` expects it. The size comes straight from `an_val`.
 
-Taking the size from the node rather than from a type is deliberate. The object being cleared may be an array, whose element type says nothing about the total. A statement kind of its own is what lets the parser settle the size once.
+Taking the size from the node rather than from a type is what makes the statement general. The object may be an array, whose element type says nothing about the total to clear.
 
 ```c
 case AST_NODE_KIND_ZERO: {
@@ -163,13 +169,13 @@ case AST_NODE_KIND_ZERO: {
 
 ### Global initializers
 
-A global with an initializer needs an image of its bytes at compile time. Each flattened entry contributes one value at one offset. The finished image is what the assembler emits into `.data`.
+A global with an initializer needs an image of its bytes at compile time. Each flattened entry contributes one value at one offset, and the image is what the assembler emits into `.data`.
 
-`calloc()` allocates the image and zeroes it in the same call. The gaps a designator leaves therefore need no further attention. The entries may arrive in any order, since each one carries its own offset.
+`calloc()` zeroes the image as it allocates it, so the gaps a designator leaves need no further attention. `struct Rec rec = {.n = 5};` writes four bytes and leaves the rest alone.
 
-The loop walks `av_init` and calls `Gen_x86_64_EmitConstant()` once per entry. The width comes from `item->an_type->at_size`, which is the slot's own type. The offset comes from `an_val`, which the flattener already computed in bytes.
+The loop calls `Gen_x86_64_EmitConstant()` once per entry. The width comes from the slot's own type rather than the object's, and the offset from `an_val`, already computed in bytes.
 
-Any existing code that multiplies an element index by an element size is replaced here. That arithmetic only ever worked for an array of scalars. A structure whose members have different sizes cannot be expressed by it at all.
+Any code that multiplies an element index by an element size is replaced here. That arithmetic only worked for an array of scalars, and it cannot express a structure with members of different sizes.
 
 ```c
 unsigned char *bytes = calloc(size ? size : 1, 1);

@@ -105,33 +105,74 @@ What does not get a comment:
 
 ## Documentation
 
-- Every guide must live in `docs/`, one per stage or half-stage, named `Guide<N>[.<M>]_<Topic>.md`.
-- Every guide must be written for a competent C programmer implementing the same piece themselves.
-- Every guide must open with a title, one paragraph, then one short example the paragraph leans on.
-- Every guide must give one `##` section per module the stage changed, in build order:
-  - Log, File, Str.
-  - Lexer, Parser, Ast, Sem, Elf.
-  - Asm, Gen, Rel, Enc, Txt, Emu.
-  - Cc, As, Ld, Emu.
-  - Tests.
-- Every `##` section must open with one paragraph, then give one `###` per piece of the work.
-- **Every `###` must be a heading, then one paragraph, then one code block, in that order.**
-- Every `###` must end at its code block.
-- Every Tests section must give one `###` per test, showing that test's code.
-- Every code block must be ordinary code, as it stands once written.
-- Write the guide after implementing the stage, never before.
-- Write what to build and why it is built that way.
-- Write the traps, the orderings that matter and the mistakes that stay silent.
-- Write plain, active, present tense, addressed to the reader.
-  - "Add `Sem_CheckByValue()` to reject the struct values the ABI cannot move yet."
-- Write one idea per sentence.
-- Write a note in the prose where a piece replaces something a compiler already has.
-- Use a colon before a list or an explanation.
-- Correct a stale guide deliberately, and all at once.
-- Do not give a `##` section to a module the stage did not touch.
-- Do not document renames, module splits, moved files or named constants.
-- Do not write a sentence that needs this compiler's source to make sense.
-- Do not write prose after a code block.
-- Do not write two paragraphs or two code blocks under one `###`.
-- Do not use em dashes.
-- Do not edit a guide because a later refactor made it stale.
+- Files:
+  - Every stage must have a guide in `docs/`, named `Guide<N>_<Topic>.md`.
+  - Every stage guide must open with a title and the paragraphs saying what the stage implements.
+  - Every stage guide must name its parts in a paragraph of links, then end with the target program.
+  - Every module a stage changed must have a part file, named `Guide<N>.<M>_<Module>.md`.
+  - Every part must be numbered in the order the toolchain is built:
+    - Log, File, Str.
+    - Lexer, Parser, Ast, Sem, Elf.
+    - Asm, Gen, Rel, Enc, Txt, Emu.
+    - Cc, As, Ld, Emu.
+    - Tests.
+  - Extend the existing part files in a later phase of a stage, rather than adding new ones.
+  - Do not give a part file to a module the stage did not touch.
+- Structure:
+  - Every part file must open with `## <Module>` followed by one paragraph.
+  - Every piece of the work must be a `###` heading naming its subject as a noun phrase.
+  - Every `###` heading must be two to four words long.
+  - **Every `###` must run: introduction, concept paragraphs, mechanical paragraphs, code block.**
+  - Every `###` must end at its code block.
+  - Every Tests part must give one `###` per test, showing that test's code.
+  - Do not write prose after a code block.
+- Paragraphs:
+  - Every subsection must open with a paragraph introducing the concepts the rest of it uses.
+  - Every paragraph after that introduction must defend or explain the code block.
+  - Every concept and every solution must get a paragraph of its own.
+  - Every rule, function, field or case the code block names must get a paragraph of its own.
+  - Every loop, branch or step inside a shown function must get a paragraph of its own.
+  - Every paragraph must hold two or three sentences.
+  - Every paragraph must run to between 20 and 55 words.
+  - Every paragraph must occupy one line, however long that line gets.
+  - Every paragraph must do one job, and the jobs are these:
+    - Introduce a concept.
+    - Recognise a problem.
+    - Propose a solution.
+    - Show an example.
+    - Explain a concept or a solution.
+  - Do not wrap a paragraph across two lines.
+  - Do not write a paragraph of one sentence.
+  - Do not refer back, since a paragraph refers forward to the code block below it.
+- Sentences:
+  - Every sentence must do one of the jobs a paragraph does.
+  - Use a connective to name the relation to the sentence before it.
+  - Write "For example" before an illustration and "However" before a qualification.
+  - Delete a sentence that neither motivates the code block nor explains part of it.
+  - Do not join two jobs into one sentence with ", and".
+- Voice:
+  - Write plain, active, present tense prose.
+  - Write the compiler part as the subject of the sentence.
+  - Write "we" only where a choice is being made rather than a fact stated.
+  - Use an Oxford comma in a list of three or more.
+  - Use a colon before a list or an explanation.
+  - Do not write an imperative sentence.
+  - Do not use em dashes.
+- Code blocks:
+  - Every code block must be tagged `c`.
+  - Every code block must show ordinary code as it stands once written.
+  - Use a comment on its own line to label a group of lines.
+  - Use a trailing comment, aligned in a column, to annotate one line.
+  - Use a commented-out line to show the surrounding code a block does not change.
+  - Use `/* ... */` on its own line to elide code that stays as it was.
+  - Do not put in a code comment what belongs in the prose.
+  - Do not put a file path in a code block.
+- Scope:
+  - Write the guide after implementing the stage, never before.
+  - Write for a competent C programmer implementing the same piece themselves.
+  - Write what to build and why it is built that way.
+  - Write the traps, the orderings that matter and the mistakes that stay silent.
+  - Correct a stale guide deliberately, and all at once.
+  - Do not document renames, module splits, moved files or named constants.
+  - Do not write a sentence that needs this compiler's source to make sense.
+  - Do not edit a guide because a later refactor made it stale.
