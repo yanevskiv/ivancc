@@ -2,109 +2,138 @@
 
 ## Naming
 
-- Every module (roughly: one `.c`/`.h` pair) picks a short `PascalCase`
-  prefix and uses it everywhere: `Elf_`, `Link_`, `Str_`, `Ast_`.
-- Public functions are `Prefix_VerbNoun`, e.g. `Elf_BufReserve`,
-  `Link_PlaceSections`. The verb comes first; avoid `Prefix_NounVerb`.
-- Types are `Prefix_Noun` (`Link_Options`, `Ast_Node`). Struct tags match
-  their typedef name.
-- Struct/union fields get a short lowercase tag derived from the type name,
-  underscore, then the field name: `Link_Options` fields start `lo_`,
-  `Ast_Node` fields start `an_`. This makes a field unambiguous when read
-  out of context (in a debugger, a grep, an error message).
-- Macros and enum constants are `SCREAMING_SNAKE_CASE`, prefixed with the
-  module or type name: `ELF_LINK_MAX_PLACE`, `AST_NODE_KIND_ADD`.
-- Every number that means something gets a name, even when the meaning looks
-  obvious. `8` is `EMU_X86_64_BITS_PER_BYTE` or `EMU_X86_64_STACK_SLOT`
-  depending on which 8 it is, and that difference is the point: the name says
-  which quantity a reader is looking at, and a grep for it finds every place
-  that quantity is assumed. Only 0 and 1 as plain counts or flags, and an
-  index stepping through a loop, are exempt.
-- Local variables and parameters are short, lowercase, no prefix.
+- Every module must pick one short `PascalCase` prefix, roughly one per `.c`/`.h` pair.
+- Every name a module exports must carry that prefix: `Elf_`, `Link_`, `Str_`, `Ast_`.
+- Every public function must be named `Prefix_VerbNoun`: `Elf_BufReserve`, `Link_PlaceSections`.
+- Every type must be named `Prefix_Noun`: `Link_Options`, `Ast_Node`.
+- Every struct tag must match its typedef name.
+- Every struct and union field must carry a short lowercase tag derived from the type name.
+- Every field tag must be followed by an underscore, then the field name.
+- Every `Link_Options` field must start `lo_`, and every `Ast_Node` field must start `an_`.
+- Every field must stay unambiguous out of context: in a debugger, a grep, an error message.
+- Every macro and enum constant must be `SCREAMING_SNAKE_CASE`, prefixed with its module or type.
+- Every macro and enum constant must read like `ELF_LINK_MAX_PLACE` or `AST_NODE_KIND_ADD`.
+- Every number that means something must get a name, even when the meaning looks obvious.
+- Every `8` must be `EMU_X86_64_BITS_PER_BYTE` or `EMU_X86_64_STACK_SLOT`, whichever 8 it is.
+- Every local variable and parameter must be short, lowercase and unprefixed.
+- Do not name a function `Prefix_NounVerb`.
+- Do not name 0 or 1 used as a plain count or flag.
+- Do not name an index stepping through a loop.
 
 ## Layout
 
-- Indent with 4 spaces. No tabs, except where the tool requires them
-  (Makefile recipe lines).
-- Function definitions put the opening `{` on its own line. Control-flow
-  statements (`if`, `for`, `while`, `switch`) put `{` on the same line as
-  the keyword.
-- Always brace a controlled block, even a single statement.
-- Every `switch` case is a braced block written `case X: { ... } break;`,
-  with the `break` after the closing brace. No one-line cases, and an empty
-  body still gets its `{ }` with `// empty` inside, so a reader can tell a
-  deliberate no-op from an unfinished one. Labels that share a body stack
-  above it, and the brace opens on the last one.
-- Negation is written `! x`, not `!x` — a bare `!` reads too easily as a
-  typo or gets lost before a long expression.
-- Casts are written `(type) expr` with a space, not `(type)expr`.
-- Struct and enum members align their names/values in columns. Local
-  variables do not: declare each with a single space after its type.
-- Order local declarations shortest first, by the length of the type plus
-  the name, where the code allows it — `int x;`, then `char *hello;`, then
-  `unsigned long long big;`. A local that depends on an earlier one follows
-  it, and that wins over the length order.
-- `sizeof` always takes parentheses: `sizeof(int)`, `sizeof(*item)`,
-  `sizeof(buf)` — never `sizeof buf`.
-- Keep lines within roughly 100 columns. Calls and declarations are the
-  exception: a function declaration, definition or call stays on one line
-  however long it gets, never wrapped across two.
+- Every controlled block must be braced, even a single statement.
+- Every `switch` case must be a braced block written `case X: { ... } break;`.
+- Every empty case body must still get its `{ }` with `// empty` inside.
+- Every struct and enum member must align its name and value in a column.
+- Every local declaration must have a single space after its type.
+- Every line must stay within roughly 100 columns.
+- Every function declaration, definition and call must stay on one line, however long it gets.
+- Indent with 4 spaces.
+- Write the opening `{` of a function definition on its own line.
+- Write the opening `{` of an `if`, `for`, `while` or `switch` on the same line as the keyword.
+- Write the `break` of a `switch` case after the closing brace.
+- Write labels that share a body stacked above it, with the brace opening on the last one.
+- Write negation as `! x`, never `!x`.
+- Write a cast as `(type) expr`, never `(type)expr`.
+- Write `sizeof` with parentheses: `sizeof(int)`, `sizeof(*item)`, `sizeof(buf)`.
+- Order local declarations shortest first, where the code allows it.
+  - Measure length as the type plus the name.
+  - Order `int x;`, then `char *hello;`, then `unsigned long long big;`.
+  - Place a local that depends on an earlier one after it, ahead of the length order.
+- Do not use tabs, except where the tool requires them, as in a Makefile recipe line.
+- Do not write a one-line `switch` case.
+- Do not align local variables in columns.
+- Do not write `sizeof buf`.
+- Do not wrap a declaration, definition or call across two lines.
 
 ## Structure
 
-- Don't make functions `static`. Every function is declared in the module's
-  header, so the header reads as a complete overview of what the `.c` file
-  is and does. A reader should not have to open the `.c` to find out what is
-  in it.
-- File-scope variables are the opposite: keep them `static` and out of the
-  header, unless another module genuinely needs one (`Ast_Program`).
-- A `.c` file defines things in the same order its header declares them, so
-  the two can be read side by side.
-- A `.c` file is laid out in this order: includes, defines, enums, structs,
-  global variables, static global variables, function definitions. Defines,
-  enums and structs belong in the header where they can be, so most `.c`
-  files start at the variables.
+- Every function must be declared in the module's header.
+- Every header must read as a complete overview of what its `.c` file is and does.
+- Every file-scope variable must be `static` and kept out of the header.
+- Every define, enum and struct must live in the header wherever it can.
+- Every `.c` file must define things in the same order its header declares them.
+- Every `.c` file must follow one layout order.
+  - Put includes, defines, enums and structs first.
+  - Put global variables, then static global variables, then function definitions.
+- Do not make a function `static`.
+- Do not export a file-scope variable unless another module needs it, as with `Ast_Program`.
+- Do not make a reader open a `.c` file to find out what is in it.
 
 ## Comments
 
-Comments are load-bearing, not decorative. Every comment should tell the
-reader something the code cannot: intent, a non-obvious invariant, a reason
-a workaround exists, or what a name abbreviates. A comment that only
-restates the following line in English is worse than no comment — delete it.
-
 What gets a comment:
 
-- **Every function** gets exactly one comment directly above it, describing
-  what it does (and, if not obvious from the signature, why it exists or
-  what it assumes). One line normally suffices; wrap to a second only when
-  genuinely necessary.
-- Write those in the imperative: `// Emit a REX prefix`, not `// Emits a
-  REX prefix`. Every verb in the sentence follows, including after `and`
-  or `or` — `// Show usage information and exit`. A verb with its own
-  subject keeps its own form (`// The section it patches`), and comments
-  that are noun phrases rather than sentences stay as they are
-  (`// True if name was declared`, `// Jumps, calls and returns`).
-- **Every macro, typedef, struct, and enum** gets one comment above it for
-  the same reason. Struct fields and enum constants that aren't
-  self-explanatory get a short trailing `// comment` instead of one above.
-- **Section dividers** are allowed to group related declarations in a
-  header, or related phases inside a long function (`// Phase: ...`), when
-  the grouping itself is information.
-- A short inline comment is allowed at a specific line where the code does
-  something surprising (a non-obvious flag, a deliberate deviation, a
-  workaround for an external constraint) — never to narrate normal control
-  flow.
+- Every comment must tell the reader something the code cannot.
+  - Carry intent, a non-obvious invariant, or a reason a workaround exists.
+  - Carry what a name abbreviates.
+- Every function must have exactly one comment directly above it, saying what it does.
+- Every function comment must say why it exists or what it assumes, where the signature does not.
+- Every function comment must fit one line, and wrap to a second only when genuinely necessary.
+- Every function comment must be imperative.
+  - Write `// Emit a REX prefix`, never `// Emits a REX prefix`.
+- Every verb in a comment must be imperative, not only the first.
+- Every verb after an `and` or an `or` must follow: `// Show usage information and exit`.
+- Every verb with its own subject must keep that form, as in `// The section it patches`.
+- Every comment that is a noun phrase must stay as it is: `// True if name was declared`.
+- Every macro, typedef, struct and enum must have one comment above it.
+- Every non-obvious struct field and enum constant must get a short trailing `// comment`.
+- Use a section divider to group related declarations in a header.
+- Use a section divider to group related phases inside a long function, as `// Phase: ...`.
+- Use a section divider only where the grouping itself is information.
+- Use a short inline comment at a line where the code does something surprising.
+- Use an inline comment for a non-obvious flag, a deliberate deviation or an external workaround.
+- Use a comment in build configuration, glue code or boilerplate only where a choice is non-obvious.
 
 What does not get a comment:
 
-- Do not describe *what* a line of code does when the code already says so
-  in plain identifiers. Name things well instead of commenting them.
-- Do not leave commented-out code, TODOs-as-narration, or changelog-style
-  notes ("added X for the Y fix") — that belongs in commit messages, not
-  source.
-- Do not add a comment just because a block "looks like it needs one" —
-  build configuration, glue code and boilerplate are commented only where a
-  choice in them is non-obvious, never by default.
+- Do not restate the following line of code in English.
+- Do not describe *what* a line does when the code already says so in plain identifiers.
+- Do not comment a thing you can name well instead.
+- Do not narrate normal control flow with an inline comment.
+- Do not leave commented-out code.
+- Do not leave TODOs-as-narration.
+- Do not leave changelog-style notes such as "added X for the Y fix".
+- Do not put in a source file what belongs in a commit message.
+- Do not comment a block just because it looks like it needs one.
+- Do not comment build configuration, glue code or boilerplate by default.
+- Do not keep a comment you cannot point to a purpose for beyond the code itself.
 
-If you can't point to what a comment tells the reader beyond the code
-itself, delete it.
+## Documentation
+
+- Every guide must live in `docs/`, one per stage or half-stage, named `Guide<N>[.<M>]_<Topic>.md`.
+- Every guide must be written for a competent C programmer implementing the same piece themselves.
+- Every guide must open with a title, one paragraph, then one short example the paragraph leans on.
+- Every guide must give one `##` section per module the stage changed, in build order:
+  - Log, File, Str.
+  - Lexer, Parser, Ast, Sem, Elf.
+  - Asm, Gen, Rel, Enc, Txt, Emu.
+  - Cc, As, Ld, Emu.
+  - Tests.
+- Every `##` section must open with one paragraph, then give one `###` per piece of the work.
+- **Every `###` must be a heading, then one paragraph, then one code block, in that order.**
+- Every `###` must end at its code block.
+- Every Tests section must give one `###` per test, showing that test's code.
+- Every code block must be ordinary code, as it stands once written.
+- Write the guide after implementing the stage, never before.
+- Write what to build and why it is built that way.
+- Write the traps, the orderings that matter and the mistakes that stay silent.
+- Write plain, active, present tense, addressed to the reader.
+  - "Add `Sem_CheckByValue()` to reject the struct values the ABI cannot move yet."
+- Write one idea per sentence.
+- Write a note in the prose where a piece replaces something a compiler already has.
+- Use a colon before a list or an explanation.
+- Correct a stale guide deliberately, and all at once.
+- Do not give a `##` section to a module the stage did not touch.
+- Do not document renames, module splits, moved files or named constants.
+- Do not document anything but the language the compiler accepts.
+- Do not write a sentence that needs this compiler's source to make sense.
+- Do not write prose after a code block.
+- Do not write two paragraphs or two code blocks under one `###`.
+- Do not write a diff.
+- Do not write a test's filename in place of its code.
+- Do not use the editorial we.
+- Do not join two statements into one.
+- Do not use em dashes.
+- Do not edit a guide because a later refactor made it stale.
