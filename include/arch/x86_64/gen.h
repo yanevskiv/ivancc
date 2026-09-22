@@ -20,15 +20,22 @@ void             Gen_x86_64_EmitZero(int size);
 void Gen_x86_64_EmitVaSaveArea(void);
 void Gen_x86_64_EmitVaSlotAddr(int base);
 
-// Function call arguments
-int  Gen_x86_64_CallCountArgs(Ast_Node *args);
-void Gen_x86_64_CallPushArgs(Ast_Node *arg);
-void Gen_x86_64_CallPopArgs(int nReg);
+// The SysV call: returns, parameters and arguments
+void Gen_x86_64_EmitReturnValue(Ast_Node *node);
+void Gen_x86_64_EmitParam(Ast_Var *param, int *reg, int *stack);
+int  Gen_x86_64_ArgRegBase(Ast_Node *args, int index, int nHidden);
+int  Gen_x86_64_CallStackSlots(Ast_Node *args, int nHidden);
+void Gen_x86_64_PushArg(Ast_Node *arg);
+void Gen_x86_64_CallPushStack(Ast_Node *args, Ast_Node *arg, int index, int nHidden);
+void Gen_x86_64_CallPushReg(Ast_Node *args, Ast_Node *arg, int index, int nHidden);
+void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden);
+void Gen_x86_64_EmitCall(Ast_Node *node);
 
 // Expressions, statements and data
 void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, int line);
 void Gen_x86_64_EmitExpr(Ast_Node *node);
 void Gen_x86_64_EmitStmt(Ast_Node *node);
+void Gen_x86_64_AssignCallTemps(Ast_Node *node, int *offset);
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func);
 void Gen_x86_64_EmitDataSection(void);
 void Gen_x86_64_EmitConstant(unsigned char *bytes, int size, int offset, const Ast_Node *value, const Ast_Var *var);

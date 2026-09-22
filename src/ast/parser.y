@@ -17,6 +17,7 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "util/log.h"
 #include "util/str.h"
 #include "ast/ast.h"
@@ -35,6 +36,7 @@ static Ast_Var  *Par_CurParamsTail;
 static int       Par_CurNumParams;
 static int       Par_CurVariadic;
 static int       Par_CurStatic;
+static Ast_Type *Par_CurRetType;
 
 /* The type and storage class the declarators being parsed all share. */
 static Ast_Type   *Par_DeclType;
@@ -393,9 +395,30 @@ static Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, int line)
     return var;
 }
 
-/* Append a finished function to the program. */
+/* Find a function already declared or defined under name. */
+static Ast_Func *Par_FindFunction(const char *name)
+{
+    for (Ast_Func *fn = Par_ProgHead; fn; fn = fn->af_next) {
+        if (strcmp(fn->af_name, name) == 0) {
+            return fn;
+        }
+    }
+    return NULL;
+}
+
+/* Append a function to the program, or fill in one a prototype declared. */
 static void Par_AddFunction(Ast_Func *fn)
 {
+    Ast_Func *seen = Par_FindFunction(fn->af_name);
+    if (seen) {
+        if (fn->af_body) {
+            seen->af_body   = fn->af_body;
+            seen->af_locals = fn->af_locals;
+            seen->af_params = fn->af_params;
+        }
+        return;
+    }
+
     fn->af_next = NULL;
     if (! Par_ProgHead) {
         Par_ProgHead = Par_ProgTail = fn;
@@ -404,6 +427,22 @@ static void Par_AddFunction(Ast_Func *fn)
         Par_ProgTail = fn;
     }
     Ast_Program = Par_ProgHead;
+}
+
+/* Build the function the parser has just read a parameter list for. */
+static Ast_Func *Par_MakeFunction(Ast_Node *body)
+{
+    Ast_Func *fn = calloc(1, sizeof(Ast_Func));
+
+    fn->af_name     = Par_CurFuncName;
+    fn->af_ret      = Par_CurRetType;
+    fn->af_body     = body;
+    fn->af_params   = Par_CurParams;
+    fn->af_nparams  = Par_CurNumParams;
+    fn->af_variadic = Par_CurVariadic;
+    fn->af_static   = Par_CurStatic;
+    fn->af_locals   = body ? Ast_CurrentLocals() : NULL;
+    return fn;
 }
 %}
 
@@ -493,6 +532,7 @@ decl_tail
         {
             Par_CurStatic     = Par_DeclStorage == AST_STORAGE_STATIC;
             Par_CurFuncName   = Par_DeclName;
+            Par_CurRetType    = Par_DeclType;
             Par_CurParams     = NULL;
             Par_CurParamsTail = NULL;
             Par_CurNumParams  = 0;
@@ -527,20 +567,9 @@ global_decl
 
 func_tail
     : compound_stmt
-        {
-            Ast_Func *fn = calloc(1, sizeof(Ast_Func));
-            fn->af_name     = Par_CurFuncName;
-            fn->af_body     = $1;
-            fn->af_params   = Par_CurParams;
-            fn->af_nparams  = Par_CurNumParams;
-            fn->af_variadic = Par_CurVariadic;
-            fn->af_static   = Par_CurStatic;
-            fn->af_locals   = Ast_CurrentLocals();
-            Par_AddFunction(fn);
-            Ast_EndScope();
-        }
-    | SEMI  /* a prototype, e.g. `int printf(const char *, ...);` -- discard */
-        { Ast_EndScope(); }
+        { Par_AddFunction(Par_MakeFunction($1)); Ast_EndScope(); }
+    | SEMI  /* a prototype: kept, so a call can find the return type */
+        { Par_AddFunction(Par_MakeFunction(NULL)); Ast_EndScope(); }
     ;
 
 params
