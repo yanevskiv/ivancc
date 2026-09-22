@@ -2,6 +2,7 @@
 
 #include "util/log.h"
 #include "ast/ast.h"
+#include "ast/sem.h"
 #include "obj/Elf/types.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/gen.h"
@@ -20,6 +21,10 @@
 
 // The bits of a byte, for splitting an initializer into them.
 #define GEN_X86_64_BYTE_MASK 0xFF
+
+// Chunk sizes an aggregate copy moves, largest first.
+#define GEN_X86_64_COPY_QUAD (ASM_X86_64_WIDTH_64 / ASM_X86_64_BITS_PER_BYTE)
+#define GEN_X86_64_COPY_LONG (ASM_X86_64_WIDTH_32 / ASM_X86_64_BITS_PER_BYTE)
 
 // Bytes a variadic function reserves at the top of its frame to spill the
 // argument registers into.
@@ -95,16 +100,23 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
         case AST_NODE_KIND_DEREF: {
             Gen_x86_64_EmitExpr(node->an_lhs);
         } break;
+        case AST_NODE_KIND_MEMBER: {
+            Gen_x86_64_EmitAddr(node->an_lhs);
+            if (node->an_member->am_offset) {
+                Asm_x86_64_EmitAddImm(node->an_member->am_offset, ASM_X86_64_REG_RAX);
+            }
+        } break;
         default: {
             Log_ShowErrorAt(node->an_line, "codegen: not an lvalue");
         }
     }
 }
 
-// Load the value at the address in %rax; an array's value is that address.
+// Load the value at the address in %rax. An array or aggregate is left as that
+// address, because no register holds one and every use of it wants the address.
 void Gen_x86_64_EmitLoad(const Ast_Type *type)
 {
-    if (type->at_kind == AST_TYPE_KIND_ARRAY) {
+    if (type->at_kind == AST_TYPE_KIND_ARRAY || Sem_IsAggregate(type)) {
         return;
     }
     Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RAX, 0, ASM_X86_64_REG_RAX, Gen_x86_64_TypeWidth(type));
@@ -122,10 +134,57 @@ void Gen_x86_64_EmitCast(const Ast_Type *type)
         } break;
         case AST_TYPE_KIND_VOID:
         case AST_TYPE_KIND_PTR:
-        case AST_TYPE_KIND_ARRAY: {
-            // already as wide as a register
+        case AST_TYPE_KIND_ARRAY:
+        case AST_TYPE_KIND_STRUCT:
+        case AST_TYPE_KIND_UNION: {
+            // already as wide as a register, or addressed rather than held in one
         } break;
     }
+}
+
+// Write size zero bytes at the address in %rdi.
+void Gen_x86_64_EmitZero(int size)
+{
+    int off = 0;
+
+    Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RCX);
+    while (size - off >= GEN_X86_64_COPY_QUAD) {
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_64);
+        off += GEN_X86_64_COPY_QUAD;
+    }
+    while (size - off >= GEN_X86_64_COPY_LONG) {
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_32);
+        off += GEN_X86_64_COPY_LONG;
+    }
+    while (off < size) {
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_8);
+        off++;
+    }
+}
+
+// Copy size bytes from the address in %rax to the address in %rdi, leaving the
+// destination in %rax so that an assignment yields the object it assigned to.
+void Gen_x86_64_EmitCopy(int size)
+{
+    int off = 0;
+
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RSI);
+    while (size - off >= GEN_X86_64_COPY_QUAD) {
+        Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RSI, off, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_64);
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_64);
+        off += GEN_X86_64_COPY_QUAD;
+    }
+    while (size - off >= GEN_X86_64_COPY_LONG) {
+        Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RSI, off, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_32);
+        off += GEN_X86_64_COPY_LONG;
+    }
+    while (off < size) {
+        Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RSI, off, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_8);
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_8);
+        off++;
+    }
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
 }
 
 // Spill every argument register into the register save area, so that a variadic
@@ -232,7 +291,8 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, ".Lstr%d", node->an_str_idx);
         } break;
         case AST_NODE_KIND_VAR:
-        case AST_NODE_KIND_DEREF: {
+        case AST_NODE_KIND_DEREF:
+        case AST_NODE_KIND_MEMBER: {
             Gen_x86_64_EmitAddr(node);
             Gen_x86_64_EmitLoad(node->an_type);
         } break;
@@ -248,7 +308,11 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitPush();
             Gen_x86_64_EmitExpr(node->an_rhs);
             Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
-            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI, 0, Gen_x86_64_TypeWidth(node->an_type));
+            if (Sem_IsAggregate(node->an_type)) {
+                Gen_x86_64_EmitCopy(node->an_type->at_size);
+            } else {
+                Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI, 0, Gen_x86_64_TypeWidth(node->an_type));
+            }
         } break;
         case AST_NODE_KIND_OPASSIGN: {
             Asm_x86_64_Width width = Gen_x86_64_TypeWidth(node->an_type);
@@ -575,6 +639,11 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
         case AST_NODE_KIND_EXPR_STMT: {
             Gen_x86_64_EmitExpr(node->an_lhs);
         } break;
+        case AST_NODE_KIND_ZERO: {
+            Gen_x86_64_EmitAddr(node->an_lhs);
+            Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
+            Gen_x86_64_EmitZero((int) node->an_val);
+        } break;
         case AST_NODE_KIND_NOP: {
             // nothing to emit
         } break;
@@ -622,13 +691,8 @@ void Gen_x86_64_EmitGlobal(Ast_Var *var)
     }
 
     unsigned char *bytes = calloc(size ? size : 1, 1);
-    if (var->av_init && var->av_init->an_kind == AST_NODE_KIND_INIT) {
-        int elem = var->av_type->at_base->at_size;
-        for (Ast_Node *item = var->av_init; item; item = item->an_next) {
-            Gen_x86_64_EmitConstant(bytes, elem, (int) item->an_val * elem, item->an_lhs, var);
-        }
-    } else if (var->av_init) {
-        Gen_x86_64_EmitConstant(bytes, size, 0, var->av_init, var);
+    for (Ast_Node *item = var->av_init; item; item = item->an_next) {
+        Gen_x86_64_EmitConstant(bytes, item->an_type->at_size, (int) item->an_val, item->an_lhs, var);
     }
 
     if (var->av_init) {

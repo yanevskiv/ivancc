@@ -11,6 +11,7 @@
 #include <string.h>
 #include "util/log.h"
 #include "util/str.h"
+#include "ast/ast.h"
 #include "parser.tab.h"
 
 /* Stamp every token with the line it starts on. */
@@ -94,9 +95,14 @@ ALNUM   [A-Za-z_0-9]
 "default"               return DEFAULT;
 "continue"              return CONTINUE;
 "sizeof"                return SIZEOF;
+"struct"                return STRUCT;
+"union"                 return UNION;
+"enum"                  return ENUM;
+"typedef"               return TYPEDEF;
 "__builtin_va_arg"      return BUILTIN_VA_ARG;
 
-{ALPHA}{ALNUM}*         { yylval.str = strdup(yytext); return IDENT; }
+{ALPHA}{ALNUM}*         { yylval.str = strdup(yytext);
+                          return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }
 
 0[xX][0-9A-Fa-f]+       { yylval.num = strtol(yytext, NULL, 16); return NUM; }
 {DIGIT}+                { yylval.num = strtol(yytext, NULL, 10); return NUM; }
@@ -128,6 +134,7 @@ ALNUM   [A-Za-z_0-9]
 "&&"                    return AND;
 "||"                    return OR;
 "..."                   return ELLIPSIS;
+"->"                    return ARROW;
 
 "+"                     return ADD;
 "-"                     return SUB;
@@ -153,6 +160,7 @@ ALNUM   [A-Za-z_0-9]
 ":"                     return COLON;
 ";"                     return SEMI;
 ","                     return COMMA;
+"."                     return DOT;
 
 .                       { Log_ShowErrorAt(yylineno, "lexer: unexpected character '%s'", yytext); }
 

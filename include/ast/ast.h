@@ -11,7 +11,9 @@ enum Ast_TypeKind {
     AST_TYPE_KIND_CHAR,
     AST_TYPE_KIND_INT,
     AST_TYPE_KIND_PTR,
-    AST_TYPE_KIND_ARRAY
+    AST_TYPE_KIND_ARRAY,
+    AST_TYPE_KIND_STRUCT,
+    AST_TYPE_KIND_UNION
 };
 
 // The target ABI's sizes in bytes; C does not define void's.
@@ -32,14 +34,30 @@ enum Ast_TypeAlign {
     AST_TYPE_ALIGN_PTR  = 8
 };
 
-// A C type: a primitive, or a pointer or array built over another one.
+// Forward declaration: a struct type lists the members it is built from.
+typedef struct Ast_Member Ast_Member;
+
+// A C type: a primitive, or a pointer, array or aggregate built over others.
 typedef struct Ast_Type Ast_Type;
 struct Ast_Type {
     Ast_TypeKind at_kind;
-    int          at_size;  // bytes an object of this type occupies
-    int          at_align; // address multiple an object must sit on
-    Ast_Type    *at_base;  // pointee for PTR, element type for ARRAY
-    int          at_len;   // element count for ARRAY
+    int          at_size;    // bytes an object of this type occupies
+    int          at_align;   // address multiple an object must sit on
+    Ast_Type    *at_base;    // pointee for PTR, element type for ARRAY
+    int          at_len;     // element count for ARRAY
+    char        *at_tag;     // tag a STRUCT or UNION was declared with, or NULL
+    Ast_Member  *at_members; // members of a STRUCT or UNION, in declaration order
+    int          at_complete; // false until the member list has been seen
+};
+
+// One member of a struct or union, at the offset the ABI's layout gave it.
+struct Ast_Member {
+    Ast_Member *am_next;
+    char       *am_name;
+    Ast_Type   *am_type;
+    int         am_offset;   // bytes from the start of the enclosing aggregate
+    int         am_line;     // source line the member was declared on
+    int         am_flexible; // true for a trailing `d[]`, which takes no space
 };
 
 // The primitive types, shared by every declaration that names one.
@@ -75,6 +93,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_SHR,       // lhs >> rhs, arithmetic on a signed operand
     AST_NODE_KIND_ADDR,      // &lhs
     AST_NODE_KIND_DEREF,     // *lhs
+    AST_NODE_KIND_MEMBER,    // lhs.an_member, with `a->b` parsed as `(*a).b`
     AST_NODE_KIND_CAST,      // (type) lhs
     AST_NODE_KIND_SIZEOF,    // sizeof lhs, folded to a constant by the Sem_ pass
     AST_NODE_KIND_EQ,        // lhs == rhs
@@ -88,7 +107,10 @@ enum Ast_NodeKind {
     AST_NODE_KIND_POSTINC,   // lhs++ or lhs--, stepping by an_val
     AST_NODE_KIND_COND,      // cond ? then : els
     AST_NODE_KIND_COMMA,     // lhs, rhs
-    AST_NODE_KIND_INIT,      // one initializer element: an_val indexes, an_lhs is the value
+    AST_NODE_KIND_INIT,      // one flattened initializer: an_val is a byte offset into the object
+    AST_NODE_KIND_INITLIST,  // a braced initializer list, its items chained on an_body
+    AST_NODE_KIND_DESIGNATOR,// `[an_val]` or `.an_memname` naming where an item lands
+    AST_NODE_KIND_ZERO,      // zero an_val bytes of the object an_lhs addresses
     AST_NODE_KIND_CALL,      // function call
     AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs), the lhs-th anonymous argument
     AST_NODE_KIND_RETURN,    // return lhs;
@@ -112,8 +134,9 @@ enum Ast_NodeKind {
 typedef enum Ast_Storage Ast_Storage;
 enum Ast_Storage {
     AST_STORAGE_NONE,
-    AST_STORAGE_STATIC, // visible only to this translation unit
-    AST_STORAGE_EXTERN  // declared here, defined elsewhere
+    AST_STORAGE_STATIC,  // visible only to this translation unit
+    AST_STORAGE_EXTERN,  // declared here, defined elsewhere
+    AST_STORAGE_TYPEDEF  // binds a name to a type rather than declaring an object
 };
 
 // Forward declaration: a global's initializer is one of these.
@@ -135,11 +158,39 @@ struct Ast_Var {
     Ast_Node *av_init;      // initializer of a global, or NULL for zeroed
 };
 
+// A struct, union or enum tag. Tags live in a namespace of their own, so a
+// `struct stat` and a `stat` variable can coexist as C requires.
+typedef struct Ast_Tag Ast_Tag;
+struct Ast_Tag {
+    Ast_Tag  *ag_next;
+    char     *ag_name;
+    Ast_Type *ag_type;
+};
+
+// An enumeration constant: an int that answers to a name.
+typedef struct Ast_EnumConst Ast_EnumConst;
+struct Ast_EnumConst {
+    Ast_EnumConst *ae_next;
+    char          *ae_name;
+    long           ae_value;
+};
+
+// A name a typedef declaration bound to a type.
+typedef struct Ast_Typedef Ast_Typedef;
+struct Ast_Typedef {
+    Ast_Typedef *ad_next;
+    char        *ad_name;
+    Ast_Type    *ad_type;
+};
+
 // One lexical scope: what was declared directly inside a pair of braces.
 typedef struct Ast_Scope Ast_Scope;
 struct Ast_Scope {
-    Ast_Scope *as_parent; // the scope this one is nested in
-    Ast_Var   *as_vars;   // declared here, innermost names first
+    Ast_Scope   *as_parent;   // the scope this one is nested in
+    Ast_Var     *as_vars;     // declared here, innermost names first
+    Ast_Tag     *as_tags;     // struct, union and enum tags declared here
+    Ast_Typedef *as_typedefs; // typedef names declared here
+    Ast_EnumConst *as_enums;  // enumeration constants declared here
 };
 
 // A node in the abstract syntax tree.
@@ -165,6 +216,8 @@ struct Ast_Node {
     long         an_val;      // integer value for AST_NODE_KIND_NUM
     int          an_str_idx;  // string table slot for AST_NODE_KIND_STR
     Ast_Var     *an_var;      // referenced variable for AST_NODE_KIND_VAR
+    Ast_Member  *an_member;   // resolved member of AST_NODE_KIND_MEMBER
+    char        *an_memname;  // member name a MEMBER node was written with
 };
 
 // A function definition.
@@ -188,8 +241,13 @@ extern Ast_Func *Ast_Program;
 extern Ast_Var *Ast_Globals;
 
 // Type construction
+int       Ast_AlignTo(int n, int align);
 Ast_Type *Ast_NewPointer(Ast_Type *base);
 Ast_Type *Ast_NewArray(Ast_Type *base, int len);
+Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
+Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line);
+void      Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line);
+Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name);
 
 // Node construction
 Ast_Node *Ast_NewNode(Ast_NodeKind kind, int line);
@@ -199,9 +257,11 @@ Ast_Node *Ast_NewNum(long val, int line);
 Ast_Node *Ast_NewVarNode(Ast_Var *var, int line);
 Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, int line);
 Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line);
+Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line);
 
 // Variable scopes
 void     Ast_BeginScope(void);
+void     Ast_EndScope(void);
 void     Ast_PushScope(void);
 void     Ast_PopScope(void);
 Ast_Var *Ast_FindVar(const char *name);
@@ -209,6 +269,15 @@ Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line);
 Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line);
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line);
 Ast_Var *Ast_CurrentLocals(void);
+
+// Tags and typedef names, each in a namespace of its own
+Ast_Type *Ast_FindTag(const char *name);
+Ast_Type *Ast_FindTagHere(const char *name);
+void      Ast_DeclareTag(const char *name, Ast_Type *type);
+Ast_Type *Ast_FindTypedef(const char *name);
+void      Ast_DeclareTypedef(const char *name, Ast_Type *type);
+int       Ast_FindEnumConst(const char *name, long *value);
+void      Ast_DeclareEnumConst(const char *name, long value);
 
 // String literal interning
 int      Ast_AddString(char *s, int len);

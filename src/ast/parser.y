@@ -20,6 +20,7 @@
 #include "util/log.h"
 #include "util/str.h"
 #include "ast/ast.h"
+#include "ast/sem.h"
 
 int  yylex(void);
 void yyerror(const char *s);
@@ -75,56 +76,314 @@ static Ast_Type *Par_ParamType(Ast_Type *base, Ast_Node *dims)
     return Ast_NewPointer(Par_ArrayType(base, dims->an_next));
 }
 
-/* Build the statement `var[index] = value`. */
-static Ast_Node *Par_InitElement(Ast_Var *var, long index, Ast_Node *value, int line)
+/* Value the next enumerator takes, which `= n` resets. */
+static long Par_EnumValue;
+
+/* Join two member lists, keeping declaration order. */
+static Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail)
 {
-    Ast_Node *at = Ast_NewBinary(AST_NODE_KIND_ADD, Ast_NewVarNode(var, line), Ast_NewNum(index, line), line);
-    Ast_Node *elem = Ast_NewUnary(AST_NODE_KIND_DEREF, at, line);
-    Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, elem, value, line);
-    return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
+    if (! head) {
+        return tail;
+    }
+    Ast_Member *last = head;
+    while (last->am_next) {
+        last = last->am_next;
+    }
+    last->am_next = tail;
+    return head;
 }
 
-/* Index the next element of an initializer list takes, which a designator
-   resets. C numbers from zero and steps by one unless told otherwise. */
-static long Par_InitIndex;
+/* Turn one member declaration's declarators into members of the shared type. */
+static Ast_Member *Par_MakeMembers(Ast_Type *type, Ast_Node *decls)
+{
+    Ast_Member head = {0};
+    Ast_Member *tail = &head;
 
-/* Lower a local's initializer to the statements that fill it: every element
+    for (Ast_Node *decl = decls; decl; decl = decl->an_next) {
+        tail->am_next = Ast_NewMember(decl->an_memname, Par_ArrayType(type, decl->an_lhs), decl->an_line);
+        tail = tail->am_next;
+        if (decl->an_val) {
+            tail->am_type = Ast_NewArray(type, 0);
+            tail->am_flexible = 1;
+        }
+    }
+    return head.am_next;
+}
+
+/* Open a struct or union definition, binding its tag before the members are
+   read so that a member may point back at the type being defined. */
+static Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, int line)
+{
+    Ast_Type *type = tag ? Ast_FindTagHere(tag) : NULL;
+
+    if (type && type->at_complete) {
+        Log_ShowErrorAt(line, "redefinition of '%s'", tag);
+    }
+    if (type && type->at_kind != kind) {
+        Log_ShowErrorAt(line, "'%s' was declared with a different aggregate keyword", tag);
+    }
+    if (! type) {
+        type = Ast_NewAggregate(kind, tag);
+        if (tag) {
+            Ast_DeclareTag(tag, type);
+        }
+    }
+    return type;
+}
+
+/* Name a struct or union that may not have been defined yet, which is what
+   makes `struct node *next;` legal inside `struct node`. */
+static Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int line)
+{
+    Ast_Type *type = Ast_FindTag(tag);
+
+    if (type && type->at_kind != kind) {
+        Log_ShowErrorAt(line, "'%s' was declared with a different aggregate keyword", tag);
+    }
+    if (! type) {
+        type = Ast_NewAggregate(kind, tag);
+        Ast_DeclareTag(tag, type);
+    }
+    return type;
+}
+
+/* Declare one enumeration constant and step the value the next one takes. */
+static void Par_AddEnumConst(const char *name, Ast_Node *value, int line)
+{
+    if (value) {
+        if (value->an_kind != AST_NODE_KIND_NUM) {
+            Log_ShowErrorAt(line, "enumerator '%s' is not a constant", name);
+        }
+        Par_EnumValue = value->an_val;
+    }
+    Ast_DeclareEnumConst(name, Par_EnumValue++);
+}
+
+/* Build the statement that writes one flattened initializer into its object:
+   `*(T *)((char *) &var + off) = value`. Going through `char *` keeps the
+   offset in bytes, which is what the flattener computed. */
+static Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Node *value, int line)
+{
+    Ast_Node *addr = Ast_NewUnary(AST_NODE_KIND_CAST, Ast_NewUnary(AST_NODE_KIND_ADDR, Ast_NewVarNode(var, line), line), line);
+    addr->an_type = Ast_NewPointer(&Ast_TypeChar);
+
+    Ast_Node *at = Ast_NewUnary(AST_NODE_KIND_CAST, Ast_NewBinary(AST_NODE_KIND_ADD, addr, Ast_NewNum(off, line), line), line);
+    at->an_type = Ast_NewPointer(type);
+
+    Ast_Node *slot = Ast_NewUnary(AST_NODE_KIND_DEREF, at, line);
+    return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, Ast_NewBinary(AST_NODE_KIND_ASSIGN, slot, value, line), line);
+}
+
+/* Record one flattened initializer: a value, the type of the slot it fills and
+   the byte offset of that slot from the start of the object. */
+static Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Node *value, int line)
+{
+    Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_INIT, value, line);
+    node->an_val  = off;
+    node->an_type = type;
+    return node;
+}
+
+/* Move a cursor to the subobject a designator names. */
+static void Par_Designate(Ast_Type *type, Ast_Node *desig, int *index, Ast_Member **member, int line)
+{
+    if (desig->an_memname) {
+        if (! Sem_IsAggregate(type)) {
+            Log_ShowErrorAt(line, "'.%s' designates a member of something that is not a struct or union", desig->an_memname);
+        }
+        *member = Ast_FindMember(type, desig->an_memname);
+        if (! *member) {
+            Log_ShowErrorAt(line, "no member named '%s' to initialize", desig->an_memname);
+        }
+        return;
+    }
+
+    if (type->at_kind != AST_TYPE_KIND_ARRAY) {
+        Log_ShowErrorAt(line, "an index designator needs an array");
+    }
+    if (desig->an_val < 0 || desig->an_val >= type->at_len) {
+        Log_ShowErrorAt(line, "initializer index %ld is outside the array", desig->an_val);
+    }
+    *index = (int) desig->an_val;
+}
+
+/* Step a type and offset into the subobject one designator selected. */
+static void Par_Step(Ast_Type **type, int *off, Ast_Node *desig, int index, Ast_Member *member)
+{
+    if (desig->an_memname) {
+        *off += member->am_offset;
+        *type = member->am_type;
+        return;
+    }
+    *off += index * (*type)->at_base->at_size;
+    *type = (*type)->at_base;
+}
+
+static void Par_Flatten(Ast_Type *type, int base, Ast_Node *init, Ast_Node **tail, int line);
+static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line);
+
+/* Fill one slot from the cursor, descending into it when it is an aggregate the
+   source did not brace -- which is the elision C allows. */
+static void Par_FlattenSlot(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int line)
+{
+    Ast_Node *value = (*item)->an_lhs;
+
+    if (value->an_kind == AST_NODE_KIND_INITLIST) {
+        Par_Flatten(type, base, value, tail, line);
+        *item = (*item)->an_next;
+        return;
+    }
+    if (type->at_kind == AST_TYPE_KIND_ARRAY || Sem_IsAggregate(type)) {
+        Par_FlattenList(type, base, item, tail, 0, line);
+        return;
+    }
+    (*tail)->an_next = Par_InitAt(base, type, value, line);
+    *tail = (*tail)->an_next;
+    *item = (*item)->an_next;
+}
+
+/* Walk the slots of an array, struct or union, taking items from the cursor. A
+   braced list ends with its items; an elided one ends when the object is full. */
+static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line)
+{
+    int index = 0;
+    Ast_Member *member = type->at_members;
+
+    while (*item) {
+        if ((*item)->an_cond) {
+            if (! braced) {
+                return;
+            }
+            int off = base;
+            Ast_Node *desig = (*item)->an_cond;
+            Ast_Type *slot = type;
+
+            Par_Designate(type, desig, &index, &member, line);
+            Par_Step(&slot, &off, desig, index, member);
+            for (Ast_Node *next = desig->an_next; next; next = next->an_next) {
+                int at = 0;
+                Ast_Member *inner = NULL;
+                Par_Designate(slot, next, &at, &inner, line);
+                Par_Step(&slot, &off, next, at, inner);
+            }
+
+            (*item)->an_cond = NULL;
+            Par_Flatten(slot, off, (*item)->an_lhs, tail, line);
+            *item = (*item)->an_next;
+            if (desig->an_memname) {
+                member = type->at_kind == AST_TYPE_KIND_UNION ? NULL : member->am_next;
+            } else {
+                index++;
+            }
+            continue;
+        }
+
+        if (type->at_kind == AST_TYPE_KIND_ARRAY) {
+            if (index >= type->at_len) {
+                if (! braced) {
+                    return;
+                }
+                Log_ShowErrorAt(line, "too many initializers for an array of %d", type->at_len);
+            }
+            Par_FlattenSlot(type->at_base, base + index * type->at_base->at_size, item, tail, line);
+            index++;
+            continue;
+        }
+
+        if (! member) {
+            if (! braced) {
+                return;
+            }
+            Log_ShowErrorAt(line, "too many initializers for '%s'", Sem_TypeName(type));
+        }
+        Par_FlattenSlot(member->am_type, base + member->am_offset, item, tail, line);
+        member = type->at_kind == AST_TYPE_KIND_UNION ? NULL : member->am_next;
+    }
+}
+
+/* Flatten one initializer, braced or not, into the object at base. */
+static void Par_Flatten(Ast_Type *type, int base, Ast_Node *init, Ast_Node **tail, int line)
+{
+    if (init->an_kind != AST_NODE_KIND_INITLIST) {
+        if (type->at_kind == AST_TYPE_KIND_ARRAY) {
+            Log_ShowErrorAt(line, "an array needs a braced initializer");
+        }
+        (*tail)->an_next = Par_InitAt(base, type, init, line);
+        *tail = (*tail)->an_next;
+        return;
+    }
+
+    Ast_Node *item = init->an_body;
+    if (type->at_kind != AST_TYPE_KIND_ARRAY && ! Sem_IsAggregate(type)) {
+        if (! item) {
+            Log_ShowErrorAt(line, "an empty initializer list has nothing to assign");
+        }
+        Par_Flatten(type, base, item->an_lhs, tail, line);
+        return;
+    }
+    Par_FlattenList(type, base, &item, tail, 1, line);
+}
+
+/* Flatten an initializer to the list of scalar writes that fill the object. */
+static Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, int line)
+{
+    Ast_Node head = {0};
+    Ast_Node *tail = &head;
+
+    Par_Flatten(type, 0, init, &tail, line);
+    return head.an_next;
+}
+
+/* Lower a local's initializer to the statements that fill it: the whole object
    zeroed first, so that what the list leaves out is zero as C requires. */
 static Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
 {
-    if (init->an_kind != AST_NODE_KIND_INIT) {
+    if (init->an_kind != AST_NODE_KIND_INITLIST && var->av_type->at_kind != AST_TYPE_KIND_ARRAY) {
         Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(var, line), init, line);
         return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
     }
 
-    if (var->av_type->at_kind != AST_TYPE_KIND_ARRAY) {
-        Log_ShowErrorAt(line, "'%s' is not an array, so it takes no initializer list", var->av_name);
-    }
+    Ast_Node *zero = Ast_NewUnary(AST_NODE_KIND_ZERO, Ast_NewVarNode(var, line), line);
+    zero->an_val = var->av_type->at_size;
 
-    Ast_Node head = {0};
-    Ast_Node *tail = &head;
-    for (int i = 0; i < var->av_type->at_len; i++) {
-        tail->an_next = Par_InitElement(var, i, Ast_NewNum(0, line), line);
+    Ast_Node *tail = zero;
+    for (Ast_Node *item = Par_FlattenInit(var->av_type, init, line); item; item = item->an_next) {
+        tail->an_next = Par_InitStore(var, (int) item->an_val, item->an_type, item->an_lhs, line);
         tail = tail->an_next;
     }
-    for (Ast_Node *item = init; item; item = item->an_next) {
-        tail->an_next = Par_InitElement(var, item->an_val, item->an_lhs, line);
-        tail = tail->an_next;
+    return zero;
+}
+
+/* Reject an object declared with a type whose size is not known here. An
+   extern is exempt: the definition that sizes it is in another file. */
+static void Par_CheckComplete(const char *name, Ast_Type *type, int line)
+{
+    if (! type->at_complete && Par_DeclStorage != AST_STORAGE_EXTERN) {
+        Log_ShowErrorAt(line, "'%s' has an incomplete type", name);
     }
-    return head.an_next;
 }
 
 /* Declare one file-scope variable of the declaration being parsed. */
 static void Par_AddGlobal(const char *name, Ast_Node *dims, Ast_Node *init, int line)
 {
+    if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
+        Ast_DeclareTypedef(name, Par_ArrayType(Par_DeclType, dims));
+        return;
+    }
+    Par_CheckComplete(name, Par_ArrayType(Par_DeclType, dims), line);
     Ast_Var *var = Ast_DeclareGlobal(name, Par_ArrayType(Par_DeclType, dims), line);
     var->av_storage = Par_DeclStorage;
-    var->av_init = init;
+    var->av_init = init ? Par_FlattenInit(var->av_type, init, line) : NULL;
 }
 
 /* Declare a variable inside a function, which `static` moves to file scope. */
 static Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, int line)
 {
+    if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
+        Ast_DeclareTypedef(name, type);
+        return NULL;
+    }
+    Par_CheckComplete(name, type, line);
     if (Par_DeclStorage != AST_STORAGE_STATIC) {
         return Ast_DeclareVar(name, type, line);
     }
@@ -152,17 +411,20 @@ static void Par_AddFunction(Ast_Func *fn)
 %define api.location.type {int}
 
 %union {
-    long      num;
-    char     *str;
-    Ast_Str   str_lit;
-    Ast_Node *node;
-    Ast_Type *type;
+    long        num;
+    char       *str;
+    Ast_Str     str_lit;
+    Ast_Node   *node;
+    Ast_Type   *type;
+    Ast_Member *member;
 }
 
 %token <num>     NUM
 %token <str>     IDENT
 %token <str_lit> STR
 %token INT CHAR VOID CONST RETURN IF ELSE FOR WHILE DO BREAK CONTINUE SIZEOF
+%token STRUCT UNION ENUM TYPEDEF
+%token <str> TYPEDEF_NAME
 %token SWITCH CASE DEFAULT GOTO
 %token STATIC EXTERN REGISTER AUTO INLINE
 %token BUILTIN_VA_ARG
@@ -171,14 +433,17 @@ static void Par_AddFunction(Ast_Func *fn)
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN SHL_ASSIGN SHR_ASSIGN
 %token EQ NE LT GT LE GE AND OR
-%token LPAREN RPAREN LSQUARE RSQUARE LBRACE RBRACE SEMI COMMA ELLIPSIS
+%token LPAREN RPAREN LSQUARE RSQUARE LBRACE RBRACE SEMI COMMA ELLIPSIS DOT ARROW
 
-%type <node> stmt stmt_list compound_stmt decl local_list local_decl
+%type <node> stmt stmt_list compound_stmt decl decl_body local_list local_decl
 %type <node> for_init expr expr_comma expr_opt args arg_list
-%type <node> initializer init_list init_item
+%type <node> initializer init_list init_item designators designator
 %type <node> cast unary postfix primary array_dims param_dims
+%type <node> member_declarators member_declarator enumerator_opt
+%type <member> members member_decl
 %type <type> type_name base
-%type <num>  stars storage
+%type <str>  tag_name
+%type <num>  stars storage struct_or_union array_len
 
 /* Lowest precedence first. */
 %nonassoc LOWER_THAN_ELSE
@@ -211,9 +476,16 @@ translation_unit
 /* A declaration and a definition share `storage type_name IDENT`, so the name
    is recorded before the parser decides which of the two it is reading. */
 external_decl
-    : storage type_name IDENT
-        { Par_DeclStorage = $1; Par_DeclType = $2; Par_DeclName = $3; }
-      decl_tail
+    : storage type_name
+        { Par_DeclStorage = $1; Par_DeclType = $2; }
+      external_tail
+    ;
+
+/* A struct, union or enum declaration stands alone; anything else goes on to
+   name something, and a definition and a declaration share the name itself. */
+external_tail
+    : SEMI
+    | IDENT { Par_DeclName = $1; } decl_tail
     ;
 
 decl_tail
@@ -242,6 +514,7 @@ storage
     : /* empty */          { $$ = AST_STORAGE_NONE; }
     | STATIC               { $$ = AST_STORAGE_STATIC; }
     | EXTERN               { $$ = AST_STORAGE_EXTERN; }
+    | TYPEDEF              { $$ = AST_STORAGE_TYPEDEF; }
     | REGISTER             { $$ = AST_STORAGE_NONE; }
     | AUTO                 { $$ = AST_STORAGE_NONE; }
     | INLINE               { $$ = AST_STORAGE_NONE; }
@@ -264,8 +537,10 @@ func_tail
             fn->af_static   = Par_CurStatic;
             fn->af_locals   = Ast_CurrentLocals();
             Par_AddFunction(fn);
+            Ast_EndScope();
         }
     | SEMI  /* a prototype, e.g. `int printf(const char *, ...);` -- discard */
+        { Ast_EndScope(); }
     ;
 
 params
@@ -310,6 +585,78 @@ base
     : INT                  { $$ = &Ast_TypeInt; }
     | CHAR                 { $$ = &Ast_TypeChar; }
     | VOID                 { $$ = &Ast_TypeVoid; }
+    | struct_or_union tag_name LBRACE
+        { $<type>$ = Par_BeginAggregate($1, $2, @2); }
+      members RBRACE
+        { Ast_LayoutAggregate($<type>4, $5, @1); $$ = $<type>4; }
+    | struct_or_union LBRACE
+        { $<type>$ = Par_BeginAggregate($1, NULL, @1); }
+      members RBRACE
+        { Ast_LayoutAggregate($<type>3, $4, @1); $$ = $<type>3; }
+    | struct_or_union tag_name
+        { $$ = Par_ReferenceAggregate($1, $2, @2); }
+    | ENUM tag_name LBRACE { Par_EnumValue = 0; } enumerators RBRACE
+        { Ast_DeclareTag($2, &Ast_TypeInt); $$ = &Ast_TypeInt; }
+    | ENUM LBRACE { Par_EnumValue = 0; } enumerators RBRACE
+        { $$ = &Ast_TypeInt; }
+    | ENUM tag_name        { $$ = &Ast_TypeInt; }
+    | TYPEDEF_NAME         { $$ = Ast_FindTypedef($1); }
+    ;
+
+struct_or_union
+    : STRUCT               { $$ = AST_TYPE_KIND_STRUCT; }
+    | UNION                { $$ = AST_TYPE_KIND_UNION; }
+    ;
+
+/* A tag shares no namespace with ordinary identifiers, so a name already bound
+   by a typedef -- as `typedef struct node node;` binds one -- is a tag here. */
+tag_name
+    : IDENT                { $$ = $1; }
+    | TYPEDEF_NAME         { $$ = $1; }
+    ;
+
+members
+    : /* empty */          { $$ = NULL; }
+    | members member_decl  { $$ = Par_AppendMembers($1, $2); }
+    ;
+
+member_decl
+    : type_name member_declarators SEMI  { $$ = Par_MakeMembers($1, $2); }
+    ;
+
+member_declarators
+    : member_declarator                          { $$ = $1; }
+    | member_declarators COMMA member_declarator
+        { Ast_Node *last = $1;
+          while (last->an_next) { last = last->an_next; }
+          last->an_next = $3; $$ = $1; }
+    ;
+
+/* A member carries only its name and dimensions; the declaration it belongs to
+   supplies the type they are built on. Empty brackets mark a flexible array
+   member, which an_val distinguishes from a dimension of its own. */
+member_declarator
+    : IDENT array_dims
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
+          n->an_memname = $1; n->an_lhs = $2; $$ = n; }
+    | IDENT LSQUARE RSQUARE
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
+          n->an_memname = $1; n->an_val = 1; $$ = n; }
+    ;
+
+enumerators
+    : enumerator
+    | enumerators COMMA
+    | enumerators COMMA enumerator
+    ;
+
+enumerator
+    : IDENT enumerator_opt { Par_AddEnumConst($1, $2, @1); }
+    ;
+
+enumerator_opt
+    : /* empty */          { $$ = NULL; }
+    | ASSIGN expr          { $$ = $2; }
     ;
 
 stars
@@ -377,8 +724,13 @@ for_init
     ;
 
 decl
-    : storage type_name { Par_DeclType = $2; Par_DeclStorage = $1; } local_list
+    : storage type_name { Par_DeclType = $2; Par_DeclStorage = $1; } decl_body
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @2); n->an_body = $4; $$ = n; }
+    ;
+
+decl_body
+    : /* empty */          { $$ = NULL; }
+    | local_list           { $$ = $1; }
     ;
 
 local_list
@@ -395,8 +747,10 @@ local_decl
           $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
     | IDENT array_dims ASSIGN initializer
         { Ast_Var *v = Par_DeclareLocal($1, Par_ArrayType(Par_DeclType, $2), @1);
-          if (v->av_global) {
-              v->av_init = $4;
+          if (! v) {
+              Log_ShowErrorAt(@1, "a typedef takes no initializer");
+          } else if (v->av_global) {
+              v->av_init = Par_FlattenInit(v->av_type, $4, @1);
               $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1);
           } else {
               $$ = Par_InitLocal(v, $4, @1);
@@ -404,14 +758,16 @@ local_decl
         }
     ;
 
-/* A scalar initializer, or a braced list of elements. */
+/* A scalar initializer, or a braced list of items. */
 initializer
     : expr                       { $$ = $1; }
-    | LBRACE { Par_InitIndex = 0; } init_list RBRACE { $$ = $3; }
+    | LBRACE init_list RBRACE
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_INITLIST, @1); n->an_body = $2; $$ = n; }
     ;
 
 init_list
-    : init_item                  { $$ = $1; }
+    : /* empty */                { $$ = NULL; }
+    | init_item                  { $$ = $1; }
     | init_list COMMA            { $$ = $1; }
     | init_list COMMA init_item
         { Ast_Node *last = $1;
@@ -419,21 +775,44 @@ init_list
           last->an_next = $3; $$ = $1; }
     ;
 
+/* One item, which a designator list may aim at a subobject of its own. */
 init_item
-    : expr
-        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $1, @1);
-          n->an_val = Par_InitIndex++; $$ = n; }
-    | LSQUARE NUM RSQUARE ASSIGN expr
-        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $5, @1);
-          Par_InitIndex = $2; n->an_val = Par_InitIndex++; $$ = n; }
-    | LBRACE init_list RBRACE
-        { Log_ShowErrorAt(@1, "nested initializer lists are not supported yet"); $$ = $2; }
+    : initializer                { $$ = Ast_NewUnary(AST_NODE_KIND_INIT, $1, @1); }
+    | designators ASSIGN initializer
+        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $3, @1); n->an_cond = $1; $$ = n; }
+    ;
+
+designators
+    : designator                 { $$ = $1; }
+    | designators designator
+        { Ast_Node *last = $1;
+          while (last->an_next) { last = last->an_next; }
+          last->an_next = $2; $$ = $1; }
+    ;
+
+designator
+    : LSQUARE array_len RSQUARE
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_val = $2; $$ = n; }
+    | DOT IDENT
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_memname = $2; $$ = n; }
     ;
 
 array_dims
     : /* empty */          { $$ = NULL; }
-    | LSQUARE NUM RSQUARE array_dims
+    | LSQUARE array_len RSQUARE array_dims
         { Ast_Node *n = Ast_NewNum($2, @1); n->an_next = $4; $$ = n; }
+    ;
+
+/* An array's length is a constant expression, of which we fold the two forms
+   that reach a declarator: a literal, and an enumeration constant. */
+array_len
+    : NUM                  { $$ = $1; }
+    | IDENT
+        { long val;
+          if (! Ast_FindEnumConst($1, &val)) {
+              Log_ShowErrorAt(@1, "'%s' is not a constant", $1);
+          }
+          $$ = val; }
     ;
 
 /* A comma expression, which an argument list deliberately cannot contain. */
@@ -513,6 +892,9 @@ postfix
     | postfix LSQUARE expr RSQUARE
         { Ast_Node *n = Ast_NewBinary(AST_NODE_KIND_ADD, $1, $3, @2);
           $$ = Ast_NewUnary(AST_NODE_KIND_DEREF, n, @2); }
+    | postfix DOT IDENT    { $$ = Ast_NewMemberNode($1, $3, @2); }
+    | postfix ARROW IDENT
+        { $$ = Ast_NewMemberNode(Ast_NewUnary(AST_NODE_KIND_DEREF, $1, @2), $3, @2); }
     ;
 
 primary
@@ -520,9 +902,13 @@ primary
     | STR                  { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_STR, @1);
                              n->an_str_idx = Ast_AddString($1.as_data, $1.as_len); $$ = n; }
     | IDENT
-        { Ast_Var *v = Ast_FindVar($1);
-          if (! v) Log_ShowErrorAt(@1, "use of undeclared identifier '%s'", $1);
-          $$ = Ast_NewVarNode(v, @1); }
+        { long val;
+          if (Ast_FindEnumConst($1, &val)) { $$ = Ast_NewNum(val, @1); }
+          else {
+              Ast_Var *v = Ast_FindVar($1);
+              if (! v) Log_ShowErrorAt(@1, "use of undeclared identifier '%s'", $1);
+              $$ = Ast_NewVarNode(v, @1);
+          } }
     | IDENT LPAREN args RPAREN
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_CALL, @1);
           n->an_funcname = $1; n->an_args = $3; $$ = n; }
