@@ -25,6 +25,7 @@ Checklist toward ISO C99.
 - [ ] `short`
 - [ ] `long`, `long long`
 - [ ] `float`, `double`
+- [ ] `long double` (80-bit x87, or aliased to `double` — both conform)
 - [ ] `_Bool`
 - [ ] `signed` / `unsigned`
 - [x] `const` qualifier
@@ -32,12 +33,14 @@ Checklist toward ISO C99.
 - [ ] `restrict` qualifier
 - [x] pointer declarators (`int *p`, any number of stars)
 - [x] array declarators, incl. multi-dimensional (`[N][M]`)
+- [ ] variable-length arrays (`int a[n]`, `sizeof` of one evaluated at run time)
 - [ ] function-pointer declarators
-- [ ] `struct`
-- [ ] `union`
-- [ ] `enum`
-- [ ] `typedef`
+- [x] `struct`
+- [x] `union`
+- [x] `enum`
+- [x] `typedef`
 - [ ] bitfields
+- [x] flexible array members (`struct s { int n; char d[]; }`)
 - [ ] compound literals (`(T){ ... }`)
 
 ## Declarations
@@ -45,7 +48,8 @@ Checklist toward ISO C99.
 - [x] single declarator with optional initializer
 - [x] multiple declarators per statement (`int a, b, c;`)
 - [x] array initializers (`{1, 2, 3}`)
-- [ ] designated initializers (`[i] = v` works; `.field = v` needs structs)
+- [x] designated initializers (`[i] = v` and `.field = v`)
+- [x] designated initializers, nested (`[1].f[2] = v`, and brace elision around them)
 - [x] storage classes: `static`, `extern`, `register`, `auto`
 - [x] `inline`
 - [x] top-level (global) variable declarations
@@ -68,7 +72,7 @@ Checklist toward ISO C99.
 - [x] address-of `&` (unary)
 - [x] dereference `*` (unary)
 - [x] array subscript `a[i]`
-- [ ] struct/union member access `.` and `->`
+- [x] struct/union member access `.` and `->`
 - [ ] call through a function pointer
 - [x] `sizeof` (type and expression forms)
 - [x] cast expressions (`(T) expr`)
@@ -97,7 +101,9 @@ Checklist toward ISO C99.
 - [x] variadic marker `...` (arguments reachable via `__builtin_va_arg`, no `va_list`)
 - [x] prototypes (parsed, no-op)
 - [ ] function-pointer parameters/variables actually callable
-- [ ] old-style (K&R) parameter lists (not planned — obsolete)
+- [ ] qualifiers and `static` in array parameters (`int a[static 4]`, `int a[const 4]`)
+- [ ] old-style (K&R) parameter lists (`int f(a, b) int a; char b; { ... }`)
+- [ ] unprototyped declarations (`int f();`) and default argument promotions
 
 ## Preprocessor
 
