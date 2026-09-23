@@ -1,6 +1,7 @@
 // (Test) Return: 60
 // Subscripting reads and writes elements, an array's name is its address, and
-// an array parameter is really a pointer.
+// an array parameter is really a pointer. A dimension is any constant
+// expression, since only a variable one would make the array a VLA.
 
 int third(int a[])
 {
@@ -11,6 +12,8 @@ int main()
 {
     char s[3];
     int a[5];
+    int b[2 + 3];
+    int c[sizeof(int)];
     int i;
 
     for (i = 0; i < 5; i = i + 1) {
@@ -28,6 +31,10 @@ int main()
     if (s[1] != 66) return 5;
     if (a[4] != 40) return 6;
     if (third(a) != 20) return 7;
+    if (sizeof(b) != 20) return 8;
+    if (sizeof(c) != 16) return 9;
+    b[4] = 7;
+    if (b[4] != 7) return 10;
 
     a[2] = a[2] + 5;
 

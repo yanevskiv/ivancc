@@ -68,6 +68,152 @@ Ast_Type *Sem_Decay(Ast_Type *type)
     return type;
 }
 
+// Narrow a folded value to the type a cast names, as the generated code would.
+long Sem_Truncate(const Ast_Type *type, long value)
+{
+    switch (type->at_kind) {
+        case AST_TYPE_KIND_CHAR: {
+            value = (signed char) value;
+        } break;
+        case AST_TYPE_KIND_INT: {
+            value = (int) value;
+        } break;
+        case AST_TYPE_KIND_VOID:
+        case AST_TYPE_KIND_PTR:
+        case AST_TYPE_KIND_ARRAY:
+        case AST_TYPE_KIND_STRUCT:
+        case AST_TYPE_KIND_UNION: {
+            // already as wide as the value is held
+        } break;
+    }
+    return value;
+}
+
+// Apply one operator to folded operands, rejecting the division by zero C leaves undefined.
+int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value)
+{
+    switch (kind) {
+        case AST_NODE_KIND_ADD: {
+            *value = lhs + rhs;
+        } break;
+        case AST_NODE_KIND_SUB: {
+            *value = lhs - rhs;
+        } break;
+        case AST_NODE_KIND_MUL: {
+            *value = lhs * rhs;
+        } break;
+        case AST_NODE_KIND_DIV:
+        case AST_NODE_KIND_MOD: {
+            if (rhs == 0) {
+                Log_ShowErrorAt(line, "division by zero in a constant expression");
+            }
+            *value = kind == AST_NODE_KIND_DIV ? lhs / rhs : lhs % rhs;
+        } break;
+        case AST_NODE_KIND_BITAND: {
+            *value = lhs & rhs;
+        } break;
+        case AST_NODE_KIND_BITOR: {
+            *value = lhs | rhs;
+        } break;
+        case AST_NODE_KIND_BITXOR: {
+            *value = lhs ^ rhs;
+        } break;
+        case AST_NODE_KIND_SHL: {
+            *value = lhs << rhs;
+        } break;
+        case AST_NODE_KIND_SHR: {
+            *value = lhs >> rhs;
+        } break;
+        case AST_NODE_KIND_EQ: {
+            *value = lhs == rhs;
+        } break;
+        case AST_NODE_KIND_NE: {
+            *value = lhs != rhs;
+        } break;
+        case AST_NODE_KIND_LT: {
+            *value = lhs < rhs;
+        } break;
+        case AST_NODE_KIND_LE: {
+            *value = lhs <= rhs;
+        } break;
+        case AST_NODE_KIND_AND: {
+            *value = lhs && rhs;
+        } break;
+        case AST_NODE_KIND_OR: {
+            *value = lhs || rhs;
+        } break;
+        case AST_NODE_KIND_NEG: {
+            *value = -lhs;
+        } break;
+        case AST_NODE_KIND_NOT: {
+            *value = ! lhs;
+        } break;
+        case AST_NODE_KIND_BITNOT: {
+            *value = ~lhs;
+        } break;
+        default: {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// Fold an integer constant expression to its value, or return false when it is not one.
+int Sem_Fold(const Ast_Node *node, long *value)
+{
+    long lhs = 0;
+    long rhs = 0;
+
+    if (! node) {
+        return 0;
+    }
+
+    switch (node->an_kind) {
+        case AST_NODE_KIND_NUM: {
+            *value = node->an_val;
+        } break;
+        case AST_NODE_KIND_SIZEOF: {
+            if (! node->an_lhs->an_type) {
+                return 0;  // the Sem_ pass has not typed the operand yet
+            }
+            *value = node->an_lhs->an_type->at_size;
+        } break;
+        case AST_NODE_KIND_CAST: {
+            if (! Sem_Fold(node->an_lhs, &lhs)) {
+                return 0;
+            }
+            *value = Sem_Truncate(node->an_type, lhs);
+        } break;
+        case AST_NODE_KIND_COND: {
+            if (! Sem_Fold(node->an_cond, &lhs)) {
+                return 0;
+            }
+            if (! Sem_Fold(lhs ? node->an_then : node->an_els, value)) {
+                return 0;
+            }
+        } break;
+        case AST_NODE_KIND_NEG:
+        case AST_NODE_KIND_NOT:
+        case AST_NODE_KIND_BITNOT: {
+            if (! Sem_Fold(node->an_lhs, &lhs)) {
+                return 0;
+            }
+            if (! Sem_FoldOp(node->an_kind, lhs, 0, node->an_line, value)) {
+                return 0;
+            }
+        } break;
+        default: {
+            if (! Sem_Fold(node->an_lhs, &lhs) || ! Sem_Fold(node->an_rhs, &rhs)) {
+                return 0;
+            }
+            if (! Sem_FoldOp(node->an_kind, lhs, rhs, node->an_line, value)) {
+                return 0;
+            }
+        } break;
+    }
+    return 1;
+}
+
 // Check a call against the callee's definition, if this program has one.
 void Sem_CheckCall(Ast_Node *node)
 {
@@ -365,10 +511,9 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_CASE: {
-            if (node->an_cond->an_kind != AST_NODE_KIND_NUM) {
+            if (! Sem_Fold(node->an_cond, &node->an_val)) {
                 Log_ShowErrorAt(node->an_line, "case label is not a constant");
             }
-            node->an_val = node->an_cond->an_val;
         } break;
 
         case AST_NODE_KIND_SWITCH: {

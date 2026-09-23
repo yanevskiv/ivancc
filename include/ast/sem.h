@@ -14,6 +14,11 @@ int       Sem_IsAggregate(const Ast_Type *type);
 const char *Sem_TypeName(const Ast_Type *type);
 Ast_Type *Sem_Decay(Ast_Type *type);
 
+// Constant expressions
+long      Sem_Truncate(const Ast_Type *type, long value);
+int       Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value);
+int       Sem_Fold(const Ast_Node *node, long *value);
+
 // Checks the parser cannot make
 void      Sem_CheckCall(Ast_Node *node);
 

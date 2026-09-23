@@ -15,14 +15,14 @@ struct Split {
     int  n  : 20;
 };
 
-// An unnamed field reserves bits no name can reach, and a width of none moves
-// the next field to the start of a fresh unit.
+// An unnamed field reserves bits no name can reach, a width of none moves the
+// next field to the start of a fresh unit, and any constant expression is one.
 struct Padded {
     int a : 4;
     int   : 2;
     int b : 4;
     int   : 0;
-    int c : 8;
+    int c : 4 * 2;
 };
 
 union Bits {
