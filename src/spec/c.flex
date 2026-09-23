@@ -100,7 +100,7 @@ ALNUM   [A-Za-z_0-9]
 "__builtin_va_arg"      return BUILTIN_VA_ARG;
 "__builtin_va_end"      return BUILTIN_VA_END;
 
-{ALPHA}{ALNUM}*         { yylval.str = Str_New(yytext);
+{ALPHA}{ALNUM}*         { yylval.str = Str_Duplicate(yytext);
                           return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }
 
 0[xX][0-9A-Fa-f]+       { yylval.num = strtol(yytext, NULL, 16); return NUM; }

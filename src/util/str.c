@@ -6,6 +6,12 @@
 
 #include "util/str.h"
 
+// Return an owned copy of str, passing NULL through so a caller need not check.
+char *Str_Duplicate(const char *str)
+{
+    return str ? strdup(str) : NULL;
+}
+
 // Return a freshly allocated string formatted like printf(3).
 char *Str_Format(const char *fmt, ...)
 {
@@ -70,12 +76,6 @@ char *Str_Trim(char *str)
         *--end = '\0';
     }
     return str;
-}
-
-// Return an owned copy of str, passing NULL through so a caller need not check.
-char *Str_New(const char *str)
-{
-    return str ? strdup(str) : NULL;
 }
 
 // Release a dynamically allocated string, ignoring a NULL one.

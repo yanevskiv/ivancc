@@ -21,7 +21,7 @@ static void As_Usage(const char *prog)
 // Read AT&T assembly from input and write a relocatable object to output.
 static void As_Assemble(const char *input, const char *output)
 {
-    char *text = File_GetContent(input, NULL);
+    char *text = File_GetContents(input, NULL);
     if (! text) {
         perror(input);
         exit(1);
