@@ -90,7 +90,8 @@ Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type)
     return type->at_size * ASM_X86_64_BITS_PER_BYTE;
 }
 
-// Compute the address of an lvalue into %rax.
+// Compute into %rax the address an expression designates. A struct-valued
+// expression is not an lvalue, yet every use of one still needs its address.
 void Gen_x86_64_EmitAddr(Ast_Node *node)
 {
     switch (node->an_kind) {
@@ -110,11 +111,14 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
                 Asm_x86_64_EmitAddImm(node->an_member->am_offset, ASM_X86_64_REG_RAX);
             }
         } break;
-        case AST_NODE_KIND_CALL: {
+        case AST_NODE_KIND_CALL:
+        case AST_NODE_KIND_ASSIGN:
+        case AST_NODE_KIND_COMMA:
+        case AST_NODE_KIND_COND: {
             if (! Sem_IsAggregate(node->an_type)) {
                 Log_ShowErrorAt(node->an_line, "codegen: not an lvalue");
             }
-            Gen_x86_64_EmitCall(node);
+            Gen_x86_64_EmitExpr(node);
         } break;
         case AST_NODE_KIND_COMPOUND: {
             for (Ast_Node *stmt = node->an_body; stmt; stmt = stmt->an_next) {

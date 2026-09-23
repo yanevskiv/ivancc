@@ -41,7 +41,7 @@ Checklist toward ISO C99.
 - [x] `typedef`
 - [ ] bitfields
 - [x] flexible array members (`struct s { int n; char d[]; }`)
-- [ ] compound literals (`(T){ ... }`)
+- [x] compound literals (`(T){ ... }`)
 
 ## Declarations
 
@@ -77,7 +77,7 @@ Checklist toward ISO C99.
 - [x] `sizeof` (type and expression forms)
 - [x] cast expressions (`(T) expr`)
 - [x] function calls, fixed arity
-- [ ] compound literals in expression position
+- [x] compound literals in expression position
 - [x] parenthesized expressions
 
 ## Statements
