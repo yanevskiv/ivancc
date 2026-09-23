@@ -8,10 +8,29 @@
 // The finished program, filled in by the parser.
 Ast_Func *Ast_Program;
 
-// The primitive types.
-Ast_Type Ast_TypeVoid = { AST_TYPE_KIND_VOID, AST_TYPE_SIZE_VOID, AST_TYPE_ALIGN_VOID, NULL, 0, NULL, NULL, 1 };
-Ast_Type Ast_TypeChar = { AST_TYPE_KIND_CHAR, AST_TYPE_SIZE_CHAR, AST_TYPE_ALIGN_CHAR, NULL, 0, NULL, NULL, 1 };
-Ast_Type Ast_TypeInt  = { AST_TYPE_KIND_INT,  AST_TYPE_SIZE_INT,  AST_TYPE_ALIGN_INT,  NULL, 0, NULL, NULL, 1 };
+// The incomplete type, which only a pointer or a return type may name.
+Ast_Type Ast_TypeVoid = {
+    .at_kind     = AST_TYPE_KIND_VOID,
+    .at_size     = AST_TYPE_SIZE_VOID,
+    .at_align    = AST_TYPE_ALIGN_VOID,
+    .at_complete = 1
+};
+
+// The byte, which is what a string literal is an array of.
+Ast_Type Ast_TypeChar = {
+    .at_kind     = AST_TYPE_KIND_CHAR,
+    .at_size     = AST_TYPE_SIZE_CHAR,
+    .at_align    = AST_TYPE_ALIGN_CHAR,
+    .at_complete = 1
+};
+
+// The default arithmetic type, which every integer literal and every promotion lands on.
+Ast_Type Ast_TypeInt = {
+    .at_kind     = AST_TYPE_KIND_INT,
+    .at_size     = AST_TYPE_SIZE_INT,
+    .at_align    = AST_TYPE_ALIGN_INT,
+    .at_complete = 1
+};
 
 // Table of interned string literals, indexed by AST_NODE_KIND_STR slot.
 static Ast_Str Ast_Strings[AST_MAX_STRINGS];
@@ -68,6 +87,22 @@ Ast_Type *Ast_NewArray(Ast_Type *base, int len)
     type->at_base     = base;
     type->at_len      = len;
     type->at_complete = base->at_complete;
+    return type;
+}
+
+// Build a function type; proto is false for `int f()`, which promises nothing about its parameters.
+Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int nparams, int variadic, int proto)
+{
+    Ast_Type *type = calloc(1, sizeof(Ast_Type));
+    type->at_kind     = AST_TYPE_KIND_FUNC;
+    type->at_size     = AST_TYPE_SIZE_FUNC;
+    type->at_align    = AST_TYPE_ALIGN_FUNC;
+    type->at_ret      = ret;
+    type->at_params   = params;
+    type->at_nparams  = nparams;
+    type->at_variadic = variadic;
+    type->at_proto    = proto;
+    type->at_complete = 1;
     return type;
 }
 
