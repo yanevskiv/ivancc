@@ -1,6 +1,7 @@
 // (Test) Return: 42
 // Designated initializers walking into subobjects, and the braces C lets a
-// nested initializer leave out. What no item reaches stays zero.
+// nested initializer leave out. What no item reaches stays zero, and a
+// compound literal is filled by the same rules a declaration is.
 
 struct Point { int x; int y; };
 struct Line  { struct Point a; struct Point b; };
@@ -12,6 +13,11 @@ struct Rec   rec    = {.n = 5, .p = {.y = 9}};
 int          grid[2][3] = {{1, 2, 3}, {4, 5, 6}};
 int          flat[2][2] = {1, 2, 3, 4};
 int          sparse[6]  = {[4] = 40, [1] = 10};
+
+int span(struct Line l)
+{
+    return l.b.x - l.a.x + l.b.y - l.a.y;
+}
 
 int main()
 {
@@ -31,6 +37,10 @@ int main()
     if (r.c != 'z' || r.n != 3 || r.p.x != 0) return 8;
     if (m[0][1] != 2 || m[1][0] != 3) return 9;
     if (e[0][1] != 2 || e[1][1] != 4) return 10;
+
+    if (span((struct Line){{1, 2}, {4, 6}}) != 7) return 11;
+    if (span((struct Line){1, 2, 4, 6}) != 7) return 12;
+    if ((struct Line){.b.y = 6}.b.y != 6) return 13;
 
     return sparse[4] + r.n - 1;
 }

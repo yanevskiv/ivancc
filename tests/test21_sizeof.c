@@ -1,6 +1,7 @@
 // (Test) Return: 60
 // sizeof reports the size of a named type, or of what an expression yields.
-// A string literal is an array of char, so its size counts the NUL.
+// A string literal is an array of char, so its size counts the NUL. An array
+// built on a folded dimension measures the length that expression came to.
 
 int main()
 {
@@ -8,6 +9,7 @@ int main()
     int n;
     int *p;
     int a[10];
+    int b[2 * 4 + 2];
 
     if (sizeof(char) != 1) return 1;
     if (sizeof(int) != 4) return 2;
@@ -26,6 +28,9 @@ int main()
 
     if (sizeof("abc") != 4) return 12;
     if (sizeof("") != 1) return 13;
+
+    if (sizeof(b) != 40) return 14;
+    if (sizeof(b) / sizeof(b[0]) != 10) return 15;
 
     return sizeof(a) + sizeof(int) * 5;
 }
