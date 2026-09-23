@@ -9,7 +9,7 @@
 #include "util/log.h"
 #include "ast/ast.h"
 #include "ast/sem.h"
-#include "obj/Elf/link.h"
+#include "obj/elf.h"
 #include "util/str.h"
 #include "arch/x86_64/gen.h"
 #include "arch/x86_64/enc.h"

@@ -3,7 +3,7 @@
 #include "util/log.h"
 #include "ast/ast.h"
 #include "ast/sem.h"
-#include "obj/Elf/types.h"
+#include "obj/elf.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/gen.h"
 #include "arch/x86_64/abi.h"

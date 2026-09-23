@@ -4,7 +4,7 @@
 
 #include "util/log.h"
 #include "util/str.h"
-#include "obj/Elf/load.h"
+#include "obj/elf.h"
 #include "arch/x86_64/emu.h"
 
 // Target architecture selected when no -march= is given.

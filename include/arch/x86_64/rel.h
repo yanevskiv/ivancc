@@ -2,7 +2,7 @@
 #define REL_X86_64_H
 
 #include <stdint.h>
-#include "obj/Elf/elf.h"
+#include "obj/elf.h"
 
 // x86-64 relocation type numbers, stored opaquely as an Elf_Rela's rel_type.
 #define R_X86_64_64    1
