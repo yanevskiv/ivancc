@@ -571,6 +571,7 @@ arg_list
 
 %%
 
+// Report a parse error and stop.
 void yyerror(const char *s)
 {
     fprintf(stderr, "cc: parse error: %s near line %d\n", s, yylloc);
