@@ -13,6 +13,7 @@ static char     *Par_CurFuncName;
 static Ast_Var  *Par_CurParams;
 static int       Par_CurNumParams;
 static int       Par_CurVariadic;
+static int       Par_CurProto;
 static int       Par_CurStatic;
 static Ast_Type *Par_CurRetType;
 static int       Par_InFunction;
@@ -182,6 +183,40 @@ Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
     var->av_type = type;
     var->av_line = line;
     return var;
+}
+
+// Build one old-style parameter, which arrives as a bare name and is an int until a declaration says otherwise.
+Ast_Var *Par_MakeKnrParam(char *name, int line)
+{
+    Ast_Var *var = calloc(1, sizeof(Ast_Var));
+
+    var->av_name = name;
+    var->av_line = line;
+    // The type stays NULL until the declaration list supplies one, which is how an omission is caught.
+    return var;
+}
+
+// Reject an old-style parameter the declaration list never typed, which C99 no longer defaults to int.
+void Par_CheckKnrParams(void)
+{
+    for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
+        if (! param->av_type) {
+            Log_ShowErrorAt(param->av_line, "parameter '%s' has no declaration", param->av_name);
+        }
+    }
+}
+
+// Give an old-style parameter the type its declaration list names, in place, so the body sees it.
+void Par_SetKnrParam(Par_Decl *decl, int line)
+{
+    Par_TakeArrayDecor(decl, line);
+    for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
+        if (param->av_name && strcmp(param->av_name, decl->pc_name) == 0) {
+            param->av_type = Par_AdjustParam(Par_ApplyDecl(Par_DeclType, decl));
+            return;
+        }
+    }
+    Log_ShowErrorAt(line, "'%s' is not a parameter of this function", decl->pc_name);
 }
 
 // Build one unnamed parameter, which a lone `void` declares none of.
@@ -702,6 +737,7 @@ void Par_AddFunction(Ast_Func *fn)
             seen->af_params   = fn->af_params;
             seen->af_nparams  = fn->af_nparams;
             seen->af_variadic = fn->af_variadic;
+            seen->af_proto    = seen->af_proto || fn->af_proto;
         }
         return;
     }
@@ -726,6 +762,7 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type)
     fn->af_params   = type->at_params;
     fn->af_nparams  = type->at_nparams;
     fn->af_variadic = type->at_variadic;
+    fn->af_proto    = type->at_proto;
     fn->af_static   = Par_DeclStorage == AST_STORAGE_STATIC;
     Par_AddFunction(fn);
 }
@@ -741,6 +778,7 @@ Ast_Func *Par_MakeFunction(Ast_Node *body)
     fn->af_params   = Par_CurParams;
     fn->af_nparams  = Par_CurNumParams;
     fn->af_variadic = Par_CurVariadic;
+    fn->af_proto    = Par_CurProto;
     fn->af_static   = Par_CurStatic;
     fn->af_locals   = body ? Ast_CurrentLocals() : NULL;
     return fn;
@@ -764,6 +802,7 @@ void Par_BeginExternal(Par_Decl *decl, int line)
     Par_CurParams    = type->at_params;
     Par_CurNumParams = type->at_nparams;
     Par_CurVariadic  = type->at_variadic;
+    Par_CurProto     = type->at_proto;
     Par_InFunction   = 1;
 
     // Declaring it before the body is what lets the body call it, which is how recursion resolves.

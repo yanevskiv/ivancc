@@ -59,7 +59,7 @@ void yyerror(const char *s);
 %type <member> members member_decl
 %type <type> type_name base decl_spec
 %type <decl> declarator direct_declarator
-%type <params> params param_list
+%type <params> params param_list ident_list
 %type <str>  tag_name
 %type <num>  stars storage struct_or_union array_len array_decor
 
@@ -106,7 +106,7 @@ external_tail
 
 /* Only a body settles that a function declarator was a definition, so the scope is opened before it. */
 decl_tail
-    : compound_stmt        { Par_EndFunction($1); }
+    : knr_opt compound_stmt { Par_EndFunction($2); }
     | SEMI                 { Par_EndExternal(NULL, @1); }
     | ASSIGN initializer   { Par_EndExternal($2, @2); } global_rest SEMI
     | COMMA                { Par_EndExternal(NULL, @1); } global_decl global_rest SEMI
@@ -115,6 +115,26 @@ decl_tail
 global_rest
     : /* empty */
     | global_rest COMMA global_decl
+    ;
+
+/* The declaration list an old-style definition puts between its `)` and its `{`. */
+knr_opt
+    : /* empty */          { Par_CheckKnrParams(); }
+    | knr_decls            { Par_CheckKnrParams(); }
+    ;
+
+knr_decls
+    : knr_decl
+    | knr_decls knr_decl
+    ;
+
+knr_decl
+    : storage decl_spec { Par_SetDeclSpec($1, $2); } knr_declarators SEMI
+    ;
+
+knr_declarators
+    : declarator                       { Par_SetKnrParam($1, @1); }
+    | knr_declarators COMMA declarator { Par_SetKnrParam($3, @3); }
     ;
 
 /* Storage classes. register, auto and inline parse and do nothing. */
@@ -139,6 +159,15 @@ params
     | param_list           { $$ = $1; }
     | param_list COMMA ELLIPSIS
         { $$ = $1; $$.pl_variadic = 1; }
+    | ident_list           { $$ = $1; }
+    ;
+
+/* An old-style definition names its parameters here and types them in the declaration list below. */
+ident_list
+    : IDENT
+        { Par_ClearParams(&$$); Par_PushParam(&$$, Par_MakeKnrParam($1, @1)); }
+    | ident_list COMMA IDENT
+        { $$ = $1; Par_PushParam(&$$, Par_MakeKnrParam($3, @3)); }
     ;
 
 param_list
