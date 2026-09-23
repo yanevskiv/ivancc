@@ -17,6 +17,11 @@ void             Gen_x86_64_EmitCast(const Ast_Type *type);
 void             Gen_x86_64_EmitCopy(int size);
 void             Gen_x86_64_EmitZero(int size);
 
+// Bitfields, which are reached through the storage unit that holds them
+const Ast_Member *Gen_x86_64_Bitfield(const Ast_Node *node);
+void              Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member);
+void              Gen_x86_64_EmitBitfieldStore(const Ast_Member *member);
+
 // Variadic arguments
 void Gen_x86_64_EmitVaSaveArea(void);
 void Gen_x86_64_EmitVaSlotAddr(int base);
@@ -39,7 +44,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node);
 void Gen_x86_64_AssignCallTemps(Ast_Node *node, int *offset);
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func);
 void Gen_x86_64_EmitDataSection(void);
-void Gen_x86_64_EmitConstant(unsigned char *bytes, int size, int offset, const Ast_Node *value, const Ast_Var *var);
+void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const Ast_Var *var);
 void Gen_x86_64_EmitGlobal(Ast_Var *var);
 void Gen_x86_64_EmitGlobals(void);
 

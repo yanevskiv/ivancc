@@ -25,6 +25,9 @@ enum Ast_TypeSize {
     AST_TYPE_SIZE_PTR  = 8
 };
 
+// Bits in a byte, for placing a bitfield inside the unit that holds it.
+#define AST_BITS_PER_BYTE 8
+
 // The target ABI's alignments in bytes.
 typedef enum Ast_TypeAlign Ast_TypeAlign;
 enum Ast_TypeAlign {
@@ -53,11 +56,14 @@ struct Ast_Type {
 // One member of a struct or union, at the offset the ABI's layout gave it.
 struct Ast_Member {
     Ast_Member *am_next;
-    char       *am_name;
+    char       *am_name;     // NULL for a bitfield declared only to pad
     Ast_Type   *am_type;
+    Ast_Type   *am_owner;    // aggregate the member was declared in
     int         am_offset;   // bytes from the start of the enclosing aggregate
     int         am_line;     // source line the member was declared on
     int         am_flexible; // true for a trailing `d[]`, which takes no space
+    int         am_bits;     // width of a bitfield, or 0 when it is not one
+    int         am_bitoff;   // bits into am_offset where a bitfield starts
 };
 
 // The primitive types, shared by every declaration that names one.
@@ -245,10 +251,13 @@ extern Ast_Var *Ast_Globals;
 
 // Type construction
 int       Ast_AlignTo(int n, int align);
+int       Ast_AlignDown(int n, int align);
 Ast_Type *Ast_NewPointer(Ast_Type *base);
 Ast_Type *Ast_NewArray(Ast_Type *base, int len);
 Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line);
+int       Ast_PlaceBitfield(Ast_Member *member, int bits);
+Ast_Member *Ast_NamedMembers(Ast_Member *members);
 void      Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line);
 Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name);
 

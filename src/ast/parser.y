@@ -108,6 +108,29 @@ static Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail)
     return head;
 }
 
+/* Narrow a member to the bits a `: width` gave it, rejecting a width C cannot grant. */
+static void Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line)
+{
+    Ast_TypeKind kind = member->am_type->at_kind;
+
+    if (width->an_kind != AST_NODE_KIND_NUM) {
+        Log_ShowErrorAt(line, "a bit-field width is not a constant");
+    }
+    if (kind != AST_TYPE_KIND_INT && kind != AST_TYPE_KIND_CHAR) {
+        Log_ShowErrorAt(line, "a bit-field must have an integer type");
+    }
+    if (width->an_val < 0) {
+        Log_ShowErrorAt(line, "a bit-field width cannot be negative");
+    }
+    if (width->an_val > member->am_type->at_size * AST_BITS_PER_BYTE) {
+        Log_ShowErrorAt(line, "a bit-field is wider than the type that holds it");
+    }
+    if (width->an_val == 0 && member->am_name) {
+        Log_ShowErrorAt(line, "a bit-field with a name cannot be zero bits wide");
+    }
+    member->am_bits = (int) width->an_val;
+}
+
 /* Turn one member declaration's declarators into members of the shared type. */
 static Ast_Member *Par_MakeMembers(Ast_Type *type, Ast_Node *decls)
 {
@@ -120,6 +143,9 @@ static Ast_Member *Par_MakeMembers(Ast_Type *type, Ast_Node *decls)
         if (decl->an_val) {
             tail->am_type = Ast_NewArray(type, 0);
             tail->am_flexible = 1;
+        }
+        if (decl->an_rhs) {
+            Par_AddBitfield(tail, decl->an_rhs, decl->an_line);
         }
     }
     return head.am_next;
@@ -174,28 +200,32 @@ static void Par_AddEnumConst(const char *name, Ast_Node *value, int line)
     Ast_DeclareEnumConst(name, Par_EnumValue++);
 }
 
-/* Build the statement that writes one flattened initializer into its object:
-   `*(T *)((char *) &var + off) = value`. Going through `char *` keeps the
-   offset in bytes, which is what the flattener computed. */
-static Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Node *value, int line)
+/* Build the statement writing one flattened initializer into its object, as `*(T *)((char *) &var + off) = value` or, for a bitfield, as a member of it. */
+static Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line)
 {
+    int at_off = bits ? off - bits->am_offset : off;
+    Ast_Type *outer = bits ? bits->am_owner : type;
+
     Ast_Node *addr = Ast_NewUnary(AST_NODE_KIND_CAST, Ast_NewUnary(AST_NODE_KIND_ADDR, Ast_NewVarNode(var, line), line), line);
     addr->an_type = Ast_NewPointer(&Ast_TypeChar);
 
-    Ast_Node *at = Ast_NewUnary(AST_NODE_KIND_CAST, Ast_NewBinary(AST_NODE_KIND_ADD, addr, Ast_NewNum(off, line), line), line);
-    at->an_type = Ast_NewPointer(type);
+    Ast_Node *at = Ast_NewUnary(AST_NODE_KIND_CAST, Ast_NewBinary(AST_NODE_KIND_ADD, addr, Ast_NewNum(at_off, line), line), line);
+    at->an_type = Ast_NewPointer(outer);
 
     Ast_Node *slot = Ast_NewUnary(AST_NODE_KIND_DEREF, at, line);
+    if (bits) {
+        slot = Ast_NewMemberNode(slot, bits->am_name, line);
+    }
     return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, Ast_NewBinary(AST_NODE_KIND_ASSIGN, slot, value, line), line);
 }
 
-/* Record one flattened initializer: a value, the type of the slot it fills and
-   the byte offset of that slot from the start of the object. */
-static Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Node *value, int line)
+/* Record one flattened initializer: a value, the slot's type and bitfield if it has one, and the byte offset of that slot within the object. */
+static Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_INIT, value, line);
-    node->an_val  = off;
-    node->an_type = type;
+    node->an_val    = off;
+    node->an_type   = type;
+    node->an_member = bits;
     return node;
 }
 
@@ -234,13 +264,11 @@ static void Par_Step(Ast_Type **type, int *off, Ast_Node *desig, int index, Ast_
     *type = (*type)->at_base;
 }
 
-static void Par_Flatten(Ast_Type *type, int base, Ast_Node *init, Ast_Node **tail, int line);
+static void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line);
 static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line);
 static Ast_Func *Par_FindFunction(const char *name);
 
-/* The type an expression already has, for the forms the parser can answer
-   without the Sem_ pass. NULL means it cannot tell, which the one caller reads
-   as a scalar. */
+/* The type an expression already has, for the forms the parser can answer without the Sem_ pass, or NULL where it cannot tell. */
 static Ast_Type *Par_ExprType(Ast_Node *node)
 {
     Ast_Type *type = NULL;
@@ -279,20 +307,18 @@ static Ast_Type *Par_ExprType(Ast_Node *node)
     return type;
 }
 
-/* Fill one slot from the cursor, descending into it when it is an aggregate the
-   source did not brace -- which is the elision C allows. A value of the slot's
-   own type fills it whole, since `{p, q}` means two structs and not two ints. */
-static void Par_FlattenSlot(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int line)
+/* Fill one slot from the cursor, descending into an aggregate the source left unbraced unless the value already has the slot's own type. */
+static void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, int line)
 {
     Ast_Node *value = (*item)->an_lhs;
 
     if (value->an_kind == AST_NODE_KIND_INITLIST) {
-        Par_Flatten(type, base, value, tail, line);
+        Par_Flatten(type, base, bits, value, tail, line);
         *item = (*item)->an_next;
         return;
     }
     if (Sem_IsAggregate(type) && Par_ExprType(value) == type) {
-        (*tail)->an_next = Par_InitAt(base, type, value, line);
+        (*tail)->an_next = Par_InitAt(base, type, bits, value, line);
         *tail = (*tail)->an_next;
         *item = (*item)->an_next;
         return;
@@ -301,7 +327,7 @@ static void Par_FlattenSlot(Ast_Type *type, int base, Ast_Node **item, Ast_Node 
         Par_FlattenList(type, base, item, tail, 0, line);
         return;
     }
-    (*tail)->an_next = Par_InitAt(base, type, value, line);
+    (*tail)->an_next = Par_InitAt(base, type, bits, value, line);
     *tail = (*tail)->an_next;
     *item = (*item)->an_next;
 }
@@ -324,15 +350,17 @@ static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node 
 
             Par_Designate(type, desig, &index, &member, line);
             Par_Step(&slot, &off, desig, index, member);
+            Ast_Member *bits = desig->an_memname && member->am_bits ? member : NULL;
             for (Ast_Node *next = desig->an_next; next; next = next->an_next) {
                 int at = 0;
                 Ast_Member *inner = NULL;
                 Par_Designate(slot, next, &at, &inner, line);
                 Par_Step(&slot, &off, next, at, inner);
+                bits = next->an_memname && inner->am_bits ? inner : NULL;
             }
 
             (*item)->an_cond = NULL;
-            Par_Flatten(slot, off, (*item)->an_lhs, tail, line);
+            Par_Flatten(slot, off, bits, (*item)->an_lhs, tail, line);
             *item = (*item)->an_next;
             if (desig->an_memname) {
                 member = type->at_kind == AST_TYPE_KIND_UNION ? NULL : member->am_next;
@@ -349,7 +377,7 @@ static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node 
                 }
                 Log_ShowErrorAt(line, "too many initializers for an array of %d", type->at_len);
             }
-            Par_FlattenSlot(type->at_base, base + index * type->at_base->at_size, item, tail, line);
+            Par_FlattenSlot(type->at_base, base + index * type->at_base->at_size, NULL, item, tail, line);
             index++;
             continue;
         }
@@ -360,19 +388,19 @@ static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node 
             }
             Log_ShowErrorAt(line, "too many initializers for '%s'", Sem_TypeName(type));
         }
-        Par_FlattenSlot(member->am_type, base + member->am_offset, item, tail, line);
+        Par_FlattenSlot(member->am_type, base + member->am_offset, member->am_bits ? member : NULL, item, tail, line);
         member = type->at_kind == AST_TYPE_KIND_UNION ? NULL : member->am_next;
     }
 }
 
 /* Flatten one initializer, braced or not, into the object at base. */
-static void Par_Flatten(Ast_Type *type, int base, Ast_Node *init, Ast_Node **tail, int line)
+static void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line)
 {
     if (init->an_kind != AST_NODE_KIND_INITLIST) {
         if (type->at_kind == AST_TYPE_KIND_ARRAY) {
             Log_ShowErrorAt(line, "an array needs a braced initializer");
         }
-        (*tail)->an_next = Par_InitAt(base, type, init, line);
+        (*tail)->an_next = Par_InitAt(base, type, bits, init, line);
         *tail = (*tail)->an_next;
         return;
     }
@@ -382,7 +410,7 @@ static void Par_Flatten(Ast_Type *type, int base, Ast_Node *init, Ast_Node **tai
         if (! item) {
             Log_ShowErrorAt(line, "an empty initializer list has nothing to assign");
         }
-        Par_Flatten(type, base, item->an_lhs, tail, line);
+        Par_Flatten(type, base, bits, item->an_lhs, tail, line);
         return;
     }
     Par_FlattenList(type, base, &item, tail, 1, line);
@@ -394,12 +422,11 @@ static Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, int line)
     Ast_Node head = {0};
     Ast_Node *tail = &head;
 
-    Par_Flatten(type, 0, init, &tail, line);
+    Par_Flatten(type, 0, NULL, init, &tail, line);
     return head.an_next;
 }
 
-/* Lower a local's initializer to the statements that fill it: the whole object
-   zeroed first, so that what the list leaves out is zero as C requires. */
+/* Lower a local's initializer to the statements that fill it, zeroing the whole object first so what the list leaves out is zero. */
 static Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
 {
     if (init->an_kind != AST_NODE_KIND_INITLIST && var->av_type->at_kind != AST_TYPE_KIND_ARRAY) {
@@ -412,15 +439,13 @@ static Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
 
     Ast_Node *tail = zero;
     for (Ast_Node *item = Par_FlattenInit(var->av_type, init, line); item; item = item->an_next) {
-        tail->an_next = Par_InitStore(var, (int) item->an_val, item->an_type, item->an_lhs, line);
+        tail->an_next = Par_InitStore(var, (int) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
         tail = tail->an_next;
     }
     return zero;
 }
 
-/* Build the unnamed object a compound literal names: a local of the literal's
-   type, zeroed and filled by its items as a declaration's initializer is. The
-   filling statements hang off the node, so each evaluation runs them again. */
+/* Build the unnamed object a compound literal names, hanging the statements that fill it off the node so each evaluation runs them again. */
 static Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
 {
     if (! Par_InFunction) {
@@ -750,9 +775,7 @@ member_declarators
           last->an_next = $3; $$ = $1; }
     ;
 
-/* A member carries only its name and dimensions; the declaration it belongs to
-   supplies the type they are built on. Empty brackets mark a flexible array
-   member, which an_val distinguishes from a dimension of its own. */
+/* A member carries its name, its dimensions, an_val for a flexible array and an_rhs for a bitfield width; the declaration supplies the type. */
 member_declarator
     : IDENT array_dims
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
@@ -760,6 +783,12 @@ member_declarator
     | IDENT LSQUARE RSQUARE
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
           n->an_memname = $1; n->an_val = 1; $$ = n; }
+    | IDENT COLON expr
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
+          n->an_memname = $1; n->an_rhs = $3; $$ = n; }
+    | COLON expr
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
+          n->an_rhs = $2; $$ = n; }
     ;
 
 enumerators
