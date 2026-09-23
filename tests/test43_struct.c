@@ -1,8 +1,8 @@
 // (Test) Return: 42
 // Struct declaration, member access and whole-struct assignment. The layout is
 // what sizeof has to agree with gcc about: padding between members and after
-// the last one. A `?:`, an assignment and a comma all yield a struct that has
-// no name, and a member still reads out of it.
+// the last one. A member may be named in an initializer, and a `?:`, an
+// assignment and a comma all yield a struct a member still reads out of.
 
 struct Point {
     int x;
@@ -34,8 +34,10 @@ int main()
 
     struct Point init = {1, 2};
     struct Point half = {4};
+    struct Point named = {.y = 5};
     if (init.x != 1 || init.y != 2) return 5;
     if (half.x != 4 || half.y != 0) return 6;
+    if (named.x != 0 || named.y != 5) return 11;
 
     if ((1 ? p : q).y != 7) return 7;
     if ((0 ? p : q).y != 15) return 8;
