@@ -263,12 +263,12 @@ void Gen_x86_64_EmitVaSaveArea(void)
 // Count the argument registers and stack slots the named parameters used, which is where the anonymous ones begin.
 void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int *reg, int *stack)
 {
-    *reg   = Abi_x86_64_ReturnsInMemory(func->af_ret) ? 1 : 0;
+    *reg   = Abi_x86_64_SysV_ReturnsInMemory(func->af_ret) ? 1 : 0;
     *stack = 0;
 
     for (Ast_Var *param = func->af_params; param; param = param->av_param_next) {
-        int slots = Abi_x86_64_Eightbytes(param->av_type);
-        if (! Abi_x86_64_InMemory(param->av_type) && *reg + slots <= MAX_REG_ARGS) {
+        int slots = Abi_x86_64_SysV_Eightbytes(param->av_type);
+        if (! Abi_x86_64_SysV_InMemory(param->av_type) && *reg + slots <= MAX_REG_ARGS) {
             *reg += slots;
         } else {
             *stack += slots;
@@ -284,13 +284,13 @@ void Gen_x86_64_EmitVaStart(void)
 
     Gen_x86_64_CountNamedArgs(Gen_x86_64_CurrFunc, &reg, &stack);
     Asm_x86_64_EmitMovImm(reg * WORD_SIZE, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_GP_OFFSET, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_SYSV_VA_GP_OFFSET, ASM_X86_64_WIDTH_32);
     Asm_x86_64_EmitMovImm(VA_SAVE_SIZE, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_FP_OFFSET, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_SYSV_VA_FP_OFFSET, ASM_X86_64_WIDTH_32);
     Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, 2 * WORD_SIZE + stack * WORD_SIZE, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
     Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, -VA_SAVE_SIZE, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_REG_SAVE, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_SYSV_VA_REG_SAVE, ASM_X86_64_WIDTH_64);
 }
 
 // Read into %rax the next argument the va_list at %rax reaches, from the save area until that runs out.
@@ -299,7 +299,7 @@ void Gen_x86_64_EmitVaArg(const Ast_Type *type)
     int count = Gen_x86_64_Count();
 
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
-    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_VA_GP_OFFSET, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_SYSV_VA_GP_OFFSET, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitCmpImm(VA_SAVE_SIZE, ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitSetl(ASM_X86_64_REG_RAX);
@@ -307,18 +307,18 @@ void Gen_x86_64_EmitVaArg(const Ast_Type *type)
     Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitJe(".L.va.stack.%d", count);
 
-    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_VA_REG_SAVE, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_SYSV_VA_REG_SAVE, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
     Asm_x86_64_EmitAdd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitAddImm(WORD_SIZE, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, ABI_X86_64_VA_GP_OFFSET, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, ABI_X86_64_SYSV_VA_GP_OFFSET, ASM_X86_64_WIDTH_32);
     Asm_x86_64_EmitJmp(".L.va.end.%d", count);
 
     // Past the save area the caller passed it above the return address instead.
     Asm_x86_64_EmitLabel(".L.va.stack.%d", count);
-    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_VA_OVERFLOW, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
     Asm_x86_64_EmitAddImm(WORD_SIZE, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, ABI_X86_64_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, ABI_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
 
     Asm_x86_64_EmitLabel(".L.va.end.%d", count);
     Gen_x86_64_EmitLoad(type);
@@ -330,7 +330,7 @@ void Gen_x86_64_EmitReturnValue(Ast_Node *node)
     if (! Sem_IsAggregate(node->an_type)) {
         return;
     }
-    if (Abi_x86_64_ReturnsInMemory(node->an_type)) {
+    if (Abi_x86_64_SysV_ReturnsInMemory(node->an_type)) {
         Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, Gen_x86_64_RetPtrOffset, ASM_X86_64_REG_RDI, ASM_X86_64_WIDTH_64);
         Gen_x86_64_EmitCopy(node->an_type->at_size);
         return;
@@ -338,7 +338,7 @@ void Gen_x86_64_EmitReturnValue(Ast_Node *node)
 
     // Small enough for registers: read the eightbytes out before %rax is reused.
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
-    if (Abi_x86_64_Eightbytes(node->an_type) > 1) {
+    if (Abi_x86_64_SysV_Eightbytes(node->an_type) > 1) {
         Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RCX, WORD_SIZE, ASM_X86_64_REG_RDX, ASM_X86_64_WIDTH_64);
     }
     Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RCX, 0, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
@@ -347,8 +347,8 @@ void Gen_x86_64_EmitReturnValue(Ast_Node *node)
 // Spill one incoming parameter into its frame slot.
 void Gen_x86_64_EmitParam(Ast_Var *param, int *reg, int *stack)
 {
-    int slots = Abi_x86_64_Eightbytes(param->av_type);
-    int inReg = ! Abi_x86_64_InMemory(param->av_type) && *reg + slots <= MAX_REG_ARGS;
+    int slots = Abi_x86_64_SysV_Eightbytes(param->av_type);
+    int inReg = ! Abi_x86_64_SysV_InMemory(param->av_type) && *reg + slots <= MAX_REG_ARGS;
 
     if (! Sem_IsAggregate(param->av_type)) {
         Asm_x86_64_Width width = Gen_x86_64_TypeWidth(param->av_type);
@@ -378,8 +378,8 @@ int Gen_x86_64_ArgRegBase(Ast_Node *args, int index, int nHidden)
     int i = 0;
 
     for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
-        int want = Abi_x86_64_Eightbytes(arg->an_type);
-        if (Abi_x86_64_InMemory(arg->an_type) || used + want > MAX_REG_ARGS) {
+        int want = Abi_x86_64_SysV_Eightbytes(arg->an_type);
+        if (Abi_x86_64_SysV_InMemory(arg->an_type) || used + want > MAX_REG_ARGS) {
             if (i == index) {
                 return -1;
             }
@@ -401,7 +401,7 @@ int Gen_x86_64_CallStackSlots(Ast_Node *args, int nHidden)
 
     for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
         if (Gen_x86_64_ArgRegBase(args, i, nHidden) < 0) {
-            slots += Abi_x86_64_Eightbytes(arg->an_type);
+            slots += Abi_x86_64_SysV_Eightbytes(arg->an_type);
         }
     }
     return slots;
@@ -416,7 +416,7 @@ void Gen_x86_64_PushArg(Ast_Node *arg)
         Gen_x86_64_EmitPush();
         return;
     }
-    for (int k = Abi_x86_64_Eightbytes(arg->an_type) - 1; k >= 0; k--) {
+    for (int k = Abi_x86_64_SysV_Eightbytes(arg->an_type) - 1; k >= 0; k--) {
         Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RAX, k * WORD_SIZE, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_64);
         Asm_x86_64_EmitPush(ASM_X86_64_REG_RCX);
         Gen_x86_64_Depth++;
@@ -457,7 +457,7 @@ void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden)
         if (base < 0) {
             continue;
         }
-        for (int k = 0; k < Abi_x86_64_Eightbytes(arg->an_type); k++) {
+        for (int k = 0; k < Abi_x86_64_SysV_Eightbytes(arg->an_type); k++) {
             Gen_x86_64_EmitPop(Gen_x86_64_ArgReg[base + k]);
         }
     }
@@ -466,7 +466,7 @@ void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden)
 // Emit a call, leaving its result in %rax, or an aggregate's address there.
 void Gen_x86_64_EmitCall(Ast_Node *node)
 {
-    int nHidden = Abi_x86_64_ReturnsInMemory(node->an_type) ? 1 : 0;
+    int nHidden = Abi_x86_64_SysV_ReturnsInMemory(node->an_type) ? 1 : 0;
     int nStack  = Gen_x86_64_CallStackSlots(node->an_args, nHidden);
 
     int nAlignPad = (Gen_x86_64_Depth + nStack) % (STACK_ALIGN / WORD_SIZE);
@@ -494,7 +494,7 @@ void Gen_x86_64_EmitCall(Ast_Node *node)
 
     // A register return arrives in %rax and %rdx, and has to become an address.
     if (Sem_IsAggregate(node->an_type) && ! nHidden) {
-        int slots = Abi_x86_64_Eightbytes(node->an_type);
+        int slots = Abi_x86_64_SysV_Eightbytes(node->an_type);
         Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_WIDTH_64);
         if (slots > 1) {
             Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RDX, ASM_X86_64_REG_RBP, node->an_tmp + WORD_SIZE, ASM_X86_64_WIDTH_64);
@@ -946,7 +946,7 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
     int offset = func->af_variadic ? VA_SAVE_SIZE : 0;
 
     // A memory return keeps the caller's buffer pointer in the first slot.
-    if (Abi_x86_64_ReturnsInMemory(func->af_ret)) {
+    if (Abi_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
         offset += WORD_SIZE;
         Gen_x86_64_RetPtrOffset = -offset;
     } else {
@@ -1101,7 +1101,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         // A memory return arrives as a hidden first argument in %rdi.
         int reg = 0;
         int stack = 0;
-        if (Abi_x86_64_ReturnsInMemory(func->af_ret)) {
+        if (Abi_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
             Asm_x86_64_EmitMovStore(Gen_x86_64_ArgReg[reg++], ASM_X86_64_REG_RBP, Gen_x86_64_RetPtrOffset, ASM_X86_64_WIDTH_64);
         }
 
@@ -1115,7 +1115,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         // epilogue
         Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RAX);
         Asm_x86_64_EmitLabel(".L.return.%s", func->af_name);
-        if (Abi_x86_64_ReturnsInMemory(func->af_ret)) {
+        if (Abi_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
             Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, Gen_x86_64_RetPtrOffset, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
         }
         Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RBP, ASM_X86_64_REG_RSP);
