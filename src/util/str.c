@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "util/str.h"
 
 // Return a freshly allocated string formatted like printf(3).

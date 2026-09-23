@@ -4,6 +4,9 @@
 // Maximum number of distinct string literals in one translation unit.
 #define MAX_STRINGS 1024
 
+// Bits in a byte, for placing a bitfield inside the unit that holds it.
+#define AST_BITS_PER_BYTE 8
+
 // The kind of a type.
 typedef enum Ast_TypeKind Ast_TypeKind;
 enum Ast_TypeKind {
@@ -24,9 +27,6 @@ enum Ast_TypeSize {
     AST_TYPE_SIZE_INT  = 4,
     AST_TYPE_SIZE_PTR  = 8
 };
-
-// Bits in a byte, for placing a bitfield inside the unit that holds it.
-#define AST_BITS_PER_BYTE 8
 
 // The target ABI's alignments in bytes.
 typedef enum Ast_TypeAlign Ast_TypeAlign;
@@ -65,11 +65,6 @@ struct Ast_Member {
     int         am_bits;     // width of a bitfield, or 0 when it is not one
     int         am_bitoff;   // bits into am_offset where a bitfield starts
 };
-
-// The primitive types, shared by every declaration that names one.
-extern Ast_Type Ast_TypeVoid;
-extern Ast_Type Ast_TypeChar;
-extern Ast_Type Ast_TypeInt;
 
 // An interned string literal, kept with its length because it may embed a NUL.
 typedef struct Ast_Str Ast_Str;
@@ -242,6 +237,11 @@ struct Ast_Func {
     Ast_Var  *af_locals;     // every local, including parameters
     int       af_stack_size; // frame size, filled in by the code generator
 };
+
+// The primitive types, shared by every declaration that names one.
+extern Ast_Type Ast_TypeVoid;
+extern Ast_Type Ast_TypeChar;
+extern Ast_Type Ast_TypeInt;
 
 // The finished program, produced by the parser.
 extern Ast_Func *Ast_Program;
