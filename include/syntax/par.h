@@ -58,6 +58,7 @@ void  Par_PushParam(Par_ParamList *list, Ast_Var *var);
 
 // Declarators
 Par_Decl  *Par_NewDecl(char *name);
+void       Par_NeedName(Par_Decl *decl, int line);
 Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line);
 Ast_Type  *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv);
 Ast_Type  *Par_ApplyDecl(Ast_Type *base, Par_Decl *decl);
