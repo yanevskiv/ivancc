@@ -254,7 +254,7 @@ Ast_Type *Sem_FuncAddrType(Ast_Node *node)
     if (! func) {
         return Ast_NewPointer(&Ast_TypeInt);
     }
-    return Ast_NewPointer(Ast_NewFunction(func->af_ret, func->af_params, func->af_nparams, func->af_variadic, 1));
+    return Ast_NewPointer(Ast_NewFunction(func->af_ret, func->af_params, func->af_nparams, func->af_variadic, func->af_proto));
 }
 
 // Give a call the type its callee returns, which an indirect call reads off the pointed-to function type.
@@ -301,11 +301,44 @@ void Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const cha
     }
 }
 
+// Promote the arguments no parameter type governs, which is what makes an unprototyped or variadic call safe.
+void Sem_PromoteArgs(Ast_Node *node, int nparams, int variadic, int proto)
+{
+    Ast_Node  head = {0};
+    Ast_Node *tail = &head;
+    Ast_Node *arg  = node->an_args;
+    int from = 0;
+    int i = 0;
+
+    // A prototype names a type for every argument it covers, so those convert to it instead.
+    if (proto && ! variadic) {
+        return;
+    }
+    if (proto) {
+        from = nparams;
+    }
+    while (arg) {
+        Ast_Node *next = arg->an_next;
+        arg->an_next = NULL;
+        if (i >= from && arg->an_type && arg->an_type->at_kind == AST_TYPE_KIND_CHAR) {
+            Ast_Node *cast = Ast_NewUnary(AST_NODE_KIND_CAST, arg, arg->an_line);
+            cast->an_type = &Ast_TypeInt;
+            arg = cast;
+        }
+        tail->an_next = arg;
+        tail = arg;
+        arg = next;
+        i++;
+    }
+    node->an_args = head.an_next;
+}
+
 void Sem_CheckCall(Ast_Node *node)
 {
     if (node->an_lhs) {
         Ast_Type *type = Sem_CalleeType(node);
         Sem_CheckArity(node, type->at_nparams, type->at_variadic, type->at_proto, "a call through a function pointer");
+        Sem_PromoteArgs(node, type->at_nparams, type->at_variadic, type->at_proto);
         return;
     }
     Ast_Func *func = Sem_FindFunc(node->an_funcname);
@@ -313,8 +346,9 @@ void Sem_CheckCall(Ast_Node *node)
         return;
     }
     char *what = Str_Format("'%s'", node->an_funcname);
-    Sem_CheckArity(node, func->af_nparams, func->af_variadic, 1, what);
+    Sem_CheckArity(node, func->af_nparams, func->af_variadic, func->af_proto, what);
     Str_Free(what);
+    Sem_PromoteArgs(node, func->af_nparams, func->af_variadic, func->af_proto);
 }
 
 // Attach every case and default of a switch to it in source order, stopping at a nested switch.

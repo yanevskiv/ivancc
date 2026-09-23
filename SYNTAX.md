@@ -34,7 +34,7 @@ Checklist toward ISO C99.
 - [x] pointer declarators (`int *p`, any number of stars)
 - [x] array declarators, incl. multi-dimensional (`[N][M]`)
 - [ ] variable-length arrays (`int a[n]`, `sizeof` of one evaluated at run time)
-- [ ] function-pointer declarators
+- [x] function-pointer declarators
 - [x] `struct`
 - [x] `union`
 - [x] `enum`
@@ -73,7 +73,7 @@ Checklist toward ISO C99.
 - [x] dereference `*` (unary)
 - [x] array subscript `a[i]`
 - [x] struct/union member access `.` and `->`
-- [ ] call through a function pointer
+- [x] call through a function pointer
 - [x] `sizeof` (type and expression forms)
 - [x] cast expressions (`(T) expr`)
 - [x] function calls, fixed arity
@@ -100,10 +100,10 @@ Checklist toward ISO C99.
 - [x] definitions with a fixed parameter list
 - [x] variadic marker `...` (arguments reachable through a real `va_list`)
 - [x] prototypes (parsed, no-op)
-- [ ] function-pointer parameters/variables actually callable
-- [ ] qualifiers and `static` in array parameters (`int a[static 4]`, `int a[const 4]`)
-- [ ] old-style (K&R) parameter lists (`int f(a, b) int a; char b; { ... }`)
-- [ ] unprototyped declarations (`int f();`) and default argument promotions
+- [x] function-pointer parameters/variables actually callable
+- [x] qualifiers and `static` in array parameters (`int a[static 4]`, `int a[const 4]`)
+- [x] old-style (K&R) parameter lists (`int f(a, b) int a; char b; { ... }`)
+- [x] unprototyped declarations (`int f();`) and default argument promotions
 
 ## Preprocessor
 

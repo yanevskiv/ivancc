@@ -64,6 +64,9 @@ Ast_Type  *Par_ApplyDecl(Ast_Type *base, Par_Decl *decl);
 Ast_Type  *Par_AdjustParam(Ast_Type *type);
 void       Par_TakeArrayDecor(Par_Decl *decl, int line);
 Ast_Var   *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line);
+Ast_Var   *Par_MakeKnrParam(char *name, int line);
+void       Par_SetKnrParam(Par_Decl *decl, int line);
+void       Par_CheckKnrParams(void);
 Ast_Var   *Par_MakeAnonParam(Ast_Type *type, int line);
 
 // Types
