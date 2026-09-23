@@ -57,6 +57,10 @@
 - Every enum and struct must be typedef'd on the line above its definition.
 - Every define, enum and struct must live in the header wherever it can.
 - Every file-scope variable must be `static` and kept out of the header.
+- Every header must declare its defines, enums and structs before its functions.
+- Every header must declare a type before the types and functions that use it.
+- Every divider group must open with what creates its subject and close with what frees it.
+- Every new declaration must join the group it belongs to, not the end of the header.
 - Every `.c` file must define things in the same order its header declares them.
 - Every `.c` file must include system headers first, then a blank line, then project headers.
 - Every project include must carry its module path: `#include "syntax/ast.h"`.
@@ -68,14 +72,19 @@
 
 ## Comments
 
+Every rule below applies to a `/* */` comment as much as a `//` one.
+
 What gets a comment:
 
 - Every comment must tell the reader something the code cannot.
   - Carry intent, a non-obvious invariant, or a reason a workaround exists.
   - Carry what a name abbreviates.
+- Every comment that annotates an entity must say what it is, not how it works.
 - Every function must have exactly one comment directly above it, saying what it does.
 - Every function comment must say why it exists or what it assumes, where the signature does not.
+- Every grammar rule must have one comment directly above it, as a function does.
 - Every comment must fit one line of at most 120 characters.
+- Every comment must be as short as it can be while staying descriptive.
 - Every function comment must be imperative.
   - Write `// Emit a REX prefix`, never `// Emits a REX prefix`.
 - Every verb in a comment must be imperative, not only the first.
@@ -109,6 +118,7 @@ What does not get a comment:
   - Shorten it, or drop the part that explains the implementation.
   - Write a file's banner as one line too, since what generates it belongs in the build.
 - Do not let a comment run past 120 characters, counting its indentation.
+- Do not treat 120 characters as a target, since it is the point a comment is already too long.
 
 ## Documentation
 
