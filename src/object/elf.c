@@ -1,3 +1,5 @@
+// C source file for ELF objects and executables.
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

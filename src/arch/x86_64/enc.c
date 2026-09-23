@@ -1,3 +1,5 @@
+// C source file for x86-64 machine code encoding.
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

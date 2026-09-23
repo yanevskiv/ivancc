@@ -1,3 +1,5 @@
+// C header file for x86-64 relocations.
+
 #ifndef REL_X86_64_H
 #define REL_X86_64_H
 

@@ -1,3 +1,5 @@
+// C source file for x86-64 relocations.
+
 #include <stdint.h>
 
 #include "util/log.h"

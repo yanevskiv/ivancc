@@ -1,3 +1,5 @@
+// C source file for the ivanemu emulator.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

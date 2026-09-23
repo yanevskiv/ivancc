@@ -1,3 +1,5 @@
+// C source file for semantic analysis.
+
 #include <string.h>
 
 #include "util/log.h"

@@ -1,3 +1,5 @@
+// C header file for the x86-64 System V calling convention.
+
 #ifndef ABI_X86_64_H
 #define ABI_X86_64_H
 

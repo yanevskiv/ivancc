@@ -1,3 +1,5 @@
+// C header file for diagnostics.
+
 #ifndef LOG_H
 #define LOG_H
 

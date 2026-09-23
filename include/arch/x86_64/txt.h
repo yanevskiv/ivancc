@@ -1,3 +1,5 @@
+// C header file for x86-64 assembly text in AT&T syntax.
+
 #ifndef TXT_X86_64_H
 #define TXT_X86_64_H
 
