@@ -15,6 +15,7 @@ enum Ast_TypeKind {
     AST_TYPE_KIND_INT,
     AST_TYPE_KIND_PTR,
     AST_TYPE_KIND_ARRAY,
+    AST_TYPE_KIND_FUNC,
     AST_TYPE_KIND_STRUCT,
     AST_TYPE_KIND_UNION
 };
@@ -25,7 +26,8 @@ enum Ast_TypeSize {
     AST_TYPE_SIZE_VOID = 1,
     AST_TYPE_SIZE_CHAR = 1,
     AST_TYPE_SIZE_INT  = 4,
-    AST_TYPE_SIZE_PTR  = 8
+    AST_TYPE_SIZE_PTR  = 8,
+    AST_TYPE_SIZE_FUNC = 1   // C gives a function no size; gcc answers 1 and so do we
 };
 
 // The target ABI's alignments in bytes.
@@ -34,11 +36,15 @@ enum Ast_TypeAlign {
     AST_TYPE_ALIGN_VOID = 1,
     AST_TYPE_ALIGN_CHAR = 1,
     AST_TYPE_ALIGN_INT  = 4,
-    AST_TYPE_ALIGN_PTR  = 8
+    AST_TYPE_ALIGN_PTR  = 8,
+    AST_TYPE_ALIGN_FUNC = 1
 };
 
 // Forward declaration: a struct type lists the members it is built from.
 typedef struct Ast_Member Ast_Member;
+
+// Forward declaration: a function type lists the parameters it takes.
+typedef struct Ast_Var Ast_Var;
 
 // A C type: a primitive, or a pointer, array or aggregate built over others.
 typedef struct Ast_Type Ast_Type;
@@ -51,6 +57,11 @@ struct Ast_Type {
     char        *at_tag;     // tag a STRUCT or UNION was declared with, or NULL
     Ast_Member  *at_members; // members of a STRUCT or UNION, in declaration order
     int          at_complete; // false until the member list has been seen
+    Ast_Type    *at_ret;     // return type of a FUNC
+    Ast_Var     *at_params;  // parameters of a FUNC, in declaration order
+    int          at_nparams; // number of parameters a FUNC declares
+    int          at_variadic; // true when a FUNC's parameter list ended in `...`
+    int          at_proto;   // false for `int f()`, whose parameter list is unspecified
 };
 
 // One member of a struct or union, at the offset the ABI's layout gave it.
@@ -145,7 +156,6 @@ enum Ast_Storage {
 typedef struct Ast_Node Ast_Node;
 
 // A local variable or function parameter.
-typedef struct Ast_Var Ast_Var;
 struct Ast_Var {
     Ast_Var *av_next;       // chains every local in a function
     Ast_Var *av_param_next; // chains parameters in declaration order
@@ -238,9 +248,13 @@ struct Ast_Func {
     int       af_stack_size; // frame size, filled in by the code generator
 };
 
-// The primitive types, shared by every declaration that names one.
+// The incomplete type, which only a pointer or a return type may name.
 extern Ast_Type Ast_TypeVoid;
+
+// The byte, which is what a string literal is an array of.
 extern Ast_Type Ast_TypeChar;
+
+// The default arithmetic type, which every integer literal and every promotion lands on.
 extern Ast_Type Ast_TypeInt;
 
 // The finished program, produced by the parser.
@@ -254,6 +268,7 @@ int       Ast_AlignTo(int n, int align);
 int       Ast_AlignDown(int n, int align);
 Ast_Type *Ast_NewPointer(Ast_Type *base);
 Ast_Type *Ast_NewArray(Ast_Type *base, int len);
+Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int nparams, int variadic, int proto);
 Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line);
 int       Ast_PlaceBitfield(Ast_Member *member, int bits);
