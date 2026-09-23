@@ -433,6 +433,14 @@ void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item)
         case ASM_X86_64_OP_CALL: {
             Enc_x86_64_EmitBranch(item);
         } break;
+        // `call *%reg` takes no REX.W: FF /2 is already 64-bit in long mode.
+        case ASM_X86_64_OP_CALL_REG: {
+            if (dst >= ASM_X86_64_REG_R8) {
+                Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | ENC_X86_64_REX_B);
+            }
+            Enc_x86_64_Emit8(ENC_X86_64_OPCODE_GRP5_RM);
+            Enc_x86_64_EmitModRR(ENC_X86_64_GRP_CALL, dst);
+        } break;
         case ASM_X86_64_OP_RET: {
             Enc_x86_64_Emit8(ENC_X86_64_OPCODE_RET);
         } break;

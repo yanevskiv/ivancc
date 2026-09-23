@@ -381,6 +381,17 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
 }
 
 // Declare a variable in the innermost scope, reusing a slot declared there and shadowing a name from above.
+// Bring a parameter a declarator already built into the scope its function's body will use.
+void Ast_DeclareParam(Ast_Var *var)
+{
+    var->av_symbol = var->av_name;
+    var->av_next   = Ast_Locals;
+    Ast_Locals     = var;
+
+    var->av_scope_next = Ast_CurScope->as_vars;
+    Ast_CurScope->as_vars = var;
+}
+
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
 {
     for (Ast_Var *var = Ast_CurScope->as_vars; var; var = var->av_scope_next) {

@@ -247,22 +247,74 @@ int Sem_FoldAddr(const Ast_Node *node, const char **symbol)
 }
 
 // Check a call against the callee's definition, if this program has one.
+// Give a function named as a value the pointer type it decays to, which is the only way C can use one.
+Ast_Type *Sem_FuncAddrType(Ast_Node *node)
+{
+    Ast_Func *func = Sem_FindFunc(node->an_funcname);
+    if (! func) {
+        return Ast_NewPointer(&Ast_TypeInt);
+    }
+    return Ast_NewPointer(Ast_NewFunction(func->af_ret, func->af_params, func->af_nparams, func->af_variadic, 1));
+}
+
+// Give a call the type its callee returns, which an indirect call reads off the pointed-to function type.
+Ast_Type *Sem_CallType(Ast_Node *node)
+{
+    if (! node->an_lhs) {
+        Ast_Func *func = Sem_FindFunc(node->an_funcname);
+        return func && func->af_ret ? func->af_ret : &Ast_TypeInt;
+    }
+    Ast_Type *type = Sem_CalleeType(node);
+    return type ? type->at_ret : &Ast_TypeInt;
+}
+
+// Unwrap the function type an indirect call's callee names, rejecting a callee that is not one.
+Ast_Type *Sem_CalleeType(Ast_Node *node)
+{
+    Ast_Type *type = node->an_lhs->an_type;
+
+    if (type && type->at_kind == AST_TYPE_KIND_PTR) {
+        type = type->at_base;
+    }
+    if (! type || type->at_kind != AST_TYPE_KIND_FUNC) {
+        Log_ShowErrorAt(node->an_line, "called object is not a function or function pointer");
+    }
+    return type;
+}
+
+// Check a call's argument count, which an unprototyped callee leaves unchecked because it promised nothing.
+void Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const char *what)
+{
+    int given = Sem_CountNodes(node->an_args);
+
+    if (! proto) {
+        return;
+    }
+    if (variadic) {
+        if (given < want) {
+            Log_ShowErrorAt(node->an_line, "too few arguments to %s: got %d, expected at least %d", what, given, want);
+        }
+        return;
+    }
+    if (given != want) {
+        Log_ShowErrorAt(node->an_line, "wrong number of arguments to %s: got %d, expected %d", what, given, want);
+    }
+}
+
 void Sem_CheckCall(Ast_Node *node)
 {
+    if (node->an_lhs) {
+        Ast_Type *type = Sem_CalleeType(node);
+        Sem_CheckArity(node, type->at_nparams, type->at_variadic, type->at_proto, "a call through a function pointer");
+        return;
+    }
     Ast_Func *func = Sem_FindFunc(node->an_funcname);
     if (! func) {
         return;
     }
-    int given = Sem_CountNodes(node->an_args);
-    if (func->af_variadic) {
-        if (given < func->af_nparams) {
-            Log_ShowErrorAt(node->an_line, "too few arguments to '%s': got %d, expected at least %d", node->an_funcname, given, func->af_nparams);
-        }
-        return;
-    }
-    if (given != func->af_nparams) {
-        Log_ShowErrorAt(node->an_line, "wrong number of arguments to '%s': got %d, expected %d", node->an_funcname, given, func->af_nparams);
-    }
+    char *what = Str_Format("'%s'", node->an_funcname);
+    Sem_CheckArity(node, func->af_nparams, func->af_variadic, 1, what);
+    Str_Free(what);
 }
 
 // Attach every case and default of a switch to it in source order, stopping at a nested switch.
@@ -427,6 +479,11 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_ADDR: {
+            // A function is already its own address, so `&f` and `f` are the same pointer.
+            if (node->an_lhs->an_kind == AST_NODE_KIND_FUNCADDR) {
+                node->an_type = node->an_lhs->an_type;
+                break;
+            }
             if (! Sem_IsLvalue(node->an_lhs)) {
                 Log_ShowErrorAt(node->an_line, "cannot take the address of this expression");
             }
@@ -437,6 +494,11 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_DEREF: {
+            // Dereferencing a function designator decays it to a pointer and arrives back at the function.
+            if (node->an_lhs->an_type && node->an_lhs->an_type->at_kind == AST_TYPE_KIND_FUNC) {
+                node->an_type = node->an_lhs->an_type;
+                break;
+            }
             if (! Sem_IsPointer(node->an_lhs->an_type)) {
                 Log_ShowErrorAt(node->an_line, "indirection requires a pointer operand");
             }
@@ -524,9 +586,11 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_CALL: {
-            Ast_Func *func = Sem_FindFunc(node->an_funcname);
             Sem_CheckCall(node);
-            node->an_type = func && func->af_ret ? func->af_ret : &Ast_TypeInt;
+            node->an_type = Sem_CallType(node);
+        } break;
+        case AST_NODE_KIND_FUNCADDR: {
+            node->an_type = Sem_FuncAddrType(node);
         } break;
 
         // Only va_start needs a variadic function; a va_list can be handed on.

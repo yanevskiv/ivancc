@@ -124,7 +124,8 @@ enum Ast_NodeKind {
     AST_NODE_KIND_DESIGNATOR,// `[an_val]` or `.an_memname` naming where an item lands
     AST_NODE_KIND_ZERO,      // zero an_val bytes of the object an_lhs addresses
     AST_NODE_KIND_COMPOUND,  // (type){...}: the unnamed an_var object the an_body statements fill
-    AST_NODE_KIND_CALL,      // function call
+    AST_NODE_KIND_CALL,      // function call, direct by name or indirect through an_lhs
+    AST_NODE_KIND_FUNCADDR,  // a function named as a value, which is its address
     AST_NODE_KIND_VA_START,  // __builtin_va_start(lhs, last), which fills the lhs va_list
     AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs, T), the next argument the lhs va_list reaches
     AST_NODE_KIND_RETURN,    // return lhs;
@@ -231,6 +232,7 @@ struct Ast_Node {
     Ast_Member  *an_member;   // resolved member of AST_NODE_KIND_MEMBER
     char        *an_memname;  // member name a MEMBER node was written with
     int          an_tmp;      // frame slot a CALL returning an aggregate lands in
+    int          an_calltmp;  // frame slot an indirect CALL parks its callee address in
 };
 
 // A function definition.
@@ -293,6 +295,7 @@ void     Ast_PushScope(void);
 void     Ast_PopScope(void);
 Ast_Var *Ast_FindVar(const char *name);
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line);
+void     Ast_DeclareParam(Ast_Var *var);
 Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line);
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line);
 Ast_Var *Ast_CurrentLocals(void);

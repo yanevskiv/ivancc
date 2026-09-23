@@ -58,7 +58,8 @@ enum Enc_x86_64_Grp {
     ENC_X86_64_GRP_XOR  = 6,
     ENC_X86_64_GRP_CMP  = 7,
     ENC_X86_64_GRP_IDIV = 7,
-    ENC_X86_64_GRP_SAR  = 7
+    ENC_X86_64_GRP_SAR  = 7,
+    ENC_X86_64_GRP_CALL = 2
 };
 
 // Primary opcode bytes, named <mnemonic>_<dst>_<src> as the Intel tables list them.
@@ -87,6 +88,7 @@ enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_GRP1_RM_IMM32 = 0x81, // add/sub/cmp, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_GRP2_RM_CL    = 0xD3, // shl/sar by %cl, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_GRP3_RM       = 0xF7, // neg/not/idiv, selected by Enc_x86_64_Grp
+    ENC_X86_64_OPCODE_GRP5_RM       = 0xFF, // inc/dec/call/jmp/push, selected the same way
     ENC_X86_64_OPCODE_ESCAPE        = 0x0F  // introduces a two-byte opcode
 };
 
