@@ -32,15 +32,15 @@ union Bits {
 
 struct Flags global = {1, 2, 3};
 
-int sum(struct Flags f)
+int sum(struct Flags *f)
 {
-    return f.a + f.b + f.c;
+    return f->a + f->b + f->c;
 }
 
-struct Flags bump(struct Flags f)
+int bump(struct Flags *f)
 {
-    f.a = f.a + 1;
-    return f;
+    f->a = f->a + 1;
+    return f->a;
 }
 
 int main()
@@ -104,16 +104,21 @@ int main()
     v.a = 1;
     v.b = 2;
     v.c = 3;
-    if (sum(v) != 6) return 21;
-    if (bump(v).a != 2) return 22;
-    if (v.a != 1) return 23;
+    if (sum(&v) != 6) return 21;
+    if (bump(&v) != 2) return 22;
+    if (v.a != 2) return 23;
 
     struct Flags *r = &v;
     r->b = 9;
     if (v.b != 9) return 24;
 
-    struct Flags arr[2] = {{1, 2, 3}, {3, 5, 6}};
-    if (arr[0].c != 3 || arr[1].a != 3) return 25;
+    struct Flags arr[2];
+    arr[0].a = 1;
+    arr[0].c = 3;
+    arr[1].a = 3;
+    arr[1].c = 6;
+    if (arr[0].a != 1 || arr[0].c != 3) return 25;
+    if (arr[1].a != 3 || arr[1].c != 6) return 26;
 
     return p.c + f.a - 60;
 }
