@@ -24,7 +24,9 @@ void              Gen_x86_64_EmitBitfieldStore(const Ast_Member *member);
 
 // Variadic arguments
 void Gen_x86_64_EmitVaSaveArea(void);
-void Gen_x86_64_EmitVaSlotAddr(int base);
+void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int *reg, int *stack);
+void Gen_x86_64_EmitVaStart(void);
+void Gen_x86_64_EmitVaArg(const Ast_Type *type);
 
 // The SysV call: returns, parameters and arguments
 void Gen_x86_64_EmitReturnValue(Ast_Node *node);

@@ -4,20 +4,33 @@
 
 int weigh(int n, ...)
 {
+    __builtin_va_list ap;
     int i;
     int total;
 
     total = 0;
+    __builtin_va_start(ap, n);
     for (i = 0; i < n; i = i + 1) {
-        total = total + __builtin_va_arg(i) * (i + 1);
+        total = total + __builtin_va_arg(ap, int) * (i + 1);
     }
+    __builtin_va_end(ap);
     return total;
 }
 
-// Two named parameters, so the anonymous ones start two slots further on.
+// Two named parameters, so the anonymous ones start two registers further on.
 int pick(int k, int n, ...)
 {
-    return __builtin_va_arg(k);
+    __builtin_va_list ap;
+    int v;
+    int i;
+
+    v = 0;
+    __builtin_va_start(ap, n);
+    for (i = 0; i <= k; i = i + 1) {
+        v = __builtin_va_arg(ap, int);
+    }
+    __builtin_va_end(ap);
+    return v;
 }
 
 int main()
