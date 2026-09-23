@@ -9,7 +9,7 @@
 #include "object/elf.h"
 #include "arch/x86_64/rel.h"
 
-// Bytes of stack reserved above the image; nothing here grows one on demand.
+// Bytes of stack reserved above the image.
 #define LOAD_STACK_SIZE 0x100000
 
 // Alignment the SysV ABI requires of %rsp at a call boundary.
@@ -254,7 +254,7 @@ void Elf_Section_Addr(Elf_Sec *sec, uint64_t addr)
     sec->sec_addr = addr;
 }
 
-// Append a symbol and return it.  sec == NULL records an undefined reference.
+// Append a symbol and return it; sec == NULL records an undefined reference.
 Elf_Sym *Elf_Symbol_Add(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value, uint8_t bind, uint8_t type)
 {
     Elf_Sym *sym = calloc(1, sizeof(*sym));
@@ -460,7 +460,7 @@ uint32_t Elf_Write_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32
     return 0;
 }
 
-// Build the .symtab and .strtab bodies, locals before globals, recording indices in slot[].
+// Build the .symtab and .strtab bodies, locals before globals.
 void Elf_Write_Symtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab, Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global)
 {
     Elf64_Sym null = {0};
@@ -704,7 +704,7 @@ uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr)
     return pos + (vaddr - pos) % ELF_PAGE;
 }
 
-// Serialize a static executable: one PT_LOAD per placed section, with the permissions it asks for.
+// Serialize a static executable, one PT_LOAD per placed section.
 int Elf_Write_Exec(const Elf *elf, FILE *out)
 {
     // Phase: select the loadable sections.
@@ -1013,7 +1013,7 @@ uint64_t Elf_Load_AlignUp(uint64_t addr, uint64_t align)
     return Elf_Load_AlignDown(addr + align - 1, align);
 }
 
-// Read an ET_EXEC file into a flat image: every PT_LOAD at its address, a stack above, zeros elsewhere.
+// Read an ET_EXEC file into a flat image, with a stack above it.
 int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
 {
     long len = 0;
@@ -1068,7 +1068,7 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
     // Phase: the bytes themselves, leaving p_memsz beyond p_filesz zeroed.
     for (int i = 0; i < eh->e_phnum; i++) {
         const Elf64_Phdr *ph = (const Elf64_Phdr *) (data + eh->e_phoff + (uint64_t) i * eh->e_phentsize);
-        // A segment with no file bytes, such as .bss, has nothing to copy and no file offset worth checking.
+        // A segment with no file bytes, such as .bss, has nothing to copy.
         if (ph->p_type != ELF_PT_LOAD || ph->p_filesz == 0) {
             continue;
         }
@@ -1083,7 +1083,7 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
     return 0;
 }
 
-// Return a pointer to size bytes of the image at vaddr, or NULL when that range is not mapped.
+// Return a pointer to size bytes of the image at vaddr, or NULL when unmapped.
 void *Elf_Load_At(const Elf_LoadImage *img, uint64_t vaddr, uint64_t size)
 {
     if (vaddr < img->li_base || size > img->li_size) {

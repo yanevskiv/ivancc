@@ -130,7 +130,7 @@ struct Elf64_Rela {
     int64_t  r_addend;
 };
 
-// A growable byte buffer -- the only storage primitive, with no ELF knowledge.
+// A growable byte buffer, the only storage primitive here.
 typedef struct Elf_Buffer Elf_Buffer;
 struct Elf_Buffer {
     uint8_t *eb_data;
@@ -210,7 +210,7 @@ struct Elf_LinkOptions {
     int             lo_nplaces;
 };
 
-// A loaded program: one flat buffer holding every PT_LOAD and a stack, and where execution starts.
+// A loaded program: one flat buffer holding every PT_LOAD and a stack.
 typedef struct Elf_LoadImage Elf_LoadImage;
 struct Elf_LoadImage {
     uint8_t  *li_mem;      // li_size bytes, zeroed and then filled

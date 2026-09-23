@@ -118,7 +118,7 @@ void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
             fprintf(out, "%s", op->ao_label);
         } break;
         case ASM_X86_64_OPERAND_NONE: {
-            // nothing to print
+            // empty
         } break;
     }
 }
@@ -141,7 +141,7 @@ void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
     }
     if (have_dst) {
         fputs(have_src ? ", " : " ", out);
-        // AT&T marks an indirect branch target with a `*`, which is what tells it apart from a label.
+        // AT&T marks an indirect branch target with a `*`.
         if (item->ai_op == ASM_X86_64_OP_CALL_REG) {
             fputc('*', out);
         }
@@ -264,7 +264,7 @@ int Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
     return 0;
 }
 
-// Emit a .byte/.word/.long/.quad list as little-endian values, or as an address where an item names a symbol.
+// Emit a .byte/.word/.long/.quad list, little-endian or as an address.
 void Txt_x86_64_Att_EmitInts(const char *args, int width)
 {
     Str_List parts = Str_Split(args, ",");
@@ -286,7 +286,7 @@ void Txt_x86_64_Att_EmitInts(const char *args, int width)
     Str_ListFree(&parts);
 }
 
-// Emit a `.quad` item that names a symbol as an address, returning false when it is an ordinary number instead.
+// Emit a `.quad` item that names a symbol, returning false for an ordinary number.
 int Txt_x86_64_Att_EmitAddress(const char *text, int width)
 {
     if (! Str_RegexMatch(text, "^[.A-Za-z_]")) {

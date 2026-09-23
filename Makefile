@@ -4,7 +4,6 @@ TARGET_ARCH := x86_64
 OUT     := out
 BUILD   := build
 
-# One runtime per platform, in the directory ivancc's -mtarget selects.
 LINUX_DIR := $(BUILD)/lib/linux
 EMU_DIR   := $(BUILD)/lib/ivanemu
 RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.o $(EMU_DIR)/crt0.o $(EMU_DIR)/libc.o
@@ -12,7 +11,6 @@ TARGET_SRC := libc/src/$(TARGET_ARCH)/target
 
 CC      := gcc
 CFLAGS  := -std=gnu99 -O2 -Iinclude -Iout -DTARGET_ARCH=$(TARGET_ARCH)
-# Emit a .d per object so editing a header rebuilds everything that includes it.
 DEPFLAGS := -MMD -MP
 WARN    := -Wall -Wextra
 LEX     := flex
@@ -25,7 +23,6 @@ LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
 GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/grammar.tab.o
 
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
-# One translation unit now, so every tool that touches ELF also links its relocation pass.
 ELF_OBJS := $(OUT)/object/elf.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
 
 AS_OBJS := $(OUT)/as.o $(ELF_OBJS) \
@@ -64,7 +61,7 @@ $(LD_BIN): $(LD_OBJS) | $(BUILD)/bin
 $(EMU_BIN): $(EMU_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
-# --- test recipes (one target per test, so `make test05_logical` works) ---
+# --- test recipes ---
 $(TEST_NAMES): %: tests/syntax/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
 	@$(TEST_TOOL) $<
 
@@ -81,12 +78,12 @@ $(OUT)/lex.yy.o: $(OUT)/lex.yy.c
 $(OUT)/grammar.tab.o: $(OUT)/grammar.tab.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
-# --- objects (mirrors the src/ tree under out/) ---
+# --- objects ---
 $(OUT)/%.o: src/%.c $(OUT)/grammar.tab.h | $(OUT)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(WARN) $(DEPFLAGS) -c $< -o $@
 
-# --- runtime (libc/) recipes, one directory per platform ---
+# --- runtime recipes ---
 $(LINUX_DIR)/crt0.o: $(TARGET_SRC)/linux/crt0.s $(AS_BIN) | $(LINUX_DIR)
 	$(AS_BIN) $< -o $@
 
@@ -96,7 +93,6 @@ $(LINUX_DIR)/libc.o: libc/src/libc.c $(CC_BIN) | $(LINUX_DIR)
 $(EMU_DIR)/crt0.o: $(TARGET_SRC)/ivanemu/crt0.s $(AS_BIN) | $(EMU_DIR)
 	$(AS_BIN) $< -o $@
 
-# The emulator's libc is the portable half bundled with its own I/O primitives.
 $(OUT)/libc/ivanemu/core.o: libc/src/libc.c $(CC_BIN)
 	@mkdir -p $(dir $@)
 	$(CC_BIN) -c $< -o $@

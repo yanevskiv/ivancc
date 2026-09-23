@@ -8,7 +8,7 @@
 #include "arch/x86_64/gen.h"
 #include "arch/x86_64/abi.h"
 
-// Number of integer arguments the ABI passes in registers; the rest go on the stack.
+// Number of integer arguments the ABI passes in registers.
 #define MAX_REG_ARGS 6
 
 // Size in bytes of a stack slot and a general-purpose register.
@@ -30,7 +30,7 @@
 #define GEN_X86_64_COPY_QUAD (ASM_X86_64_WIDTH_64 / ASM_X86_64_BITS_PER_BYTE)
 #define GEN_X86_64_COPY_LONG (ASM_X86_64_WIDTH_32 / ASM_X86_64_BITS_PER_BYTE)
 
-// Bytes a variadic function reserves at the top of its frame to spill the argument registers into.
+// Bytes a variadic function reserves to spill the argument registers into.
 #define VA_SAVE_SIZE (MAX_REG_ARGS * WORD_SIZE)
 
 // Number of values currently pushed with Gen_x86_64_EmitPush().
@@ -39,7 +39,7 @@ static int Gen_x86_64_Depth;
 // Source of unique label numbers.
 static int Gen_x86_64_LabelId;
 
-// Label numbers the innermost loop uses for break and continue, or -1 when there is no loop to leave.
+// Label numbers the innermost loop uses for break and continue, or -1 outside one.
 static int Gen_x86_64_BreakId = -1;
 static int Gen_x86_64_ContinueId = -1;
 
@@ -85,7 +85,7 @@ int Gen_x86_64_AlignTo(int n, int align)
     return (n + align - 1) / align * align;
 }
 
-// Return the frame bytes a local reserves, rounding an aggregate up to the whole eightbytes the ABI moves.
+// Return the frame bytes a local reserves.
 int Gen_x86_64_SlotSize(const Ast_Type *type)
 {
     if (! Sem_IsAggregate(type)) {
@@ -144,7 +144,7 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
     }
 }
 
-// Load the value at the address in %rax, leaving an array or aggregate as that address since no register holds one.
+// Load the value at the address in %rax, leaving an array or aggregate as that address.
 void Gen_x86_64_EmitLoad(const Ast_Type *type)
 {
     // An array or a function designates its own address, and an aggregate is worked on in place.
@@ -195,7 +195,7 @@ void Gen_x86_64_EmitZero(int size)
     }
 }
 
-// Copy size bytes from %rax to %rdi, leaving the destination in %rax so an assignment yields what it filled.
+// Copy size bytes from %rax to %rdi, leaving the destination in %rax.
 void Gen_x86_64_EmitCopy(int size)
 {
     int off = 0;
@@ -228,7 +228,7 @@ const Ast_Member *Gen_x86_64_Bitfield(const Ast_Node *node)
     return NULL;
 }
 
-// Load into %rax the bitfield at the address in %rdi, shifting it to the top of the register and back to sign-extend.
+// Load into %rax the bitfield at the address in %rdi, sign-extended.
 void Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member)
 {
     Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, 0, ASM_X86_64_REG_RAX, Gen_x86_64_TypeWidth(member->am_type));
@@ -238,7 +238,7 @@ void Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member)
     Asm_x86_64_EmitSar(ASM_X86_64_REG_RAX);
 }
 
-// Store the low bits of %rax into the bitfield at the address in %rdi, reading it back as the value it yields.
+// Store the low bits of %rax into the bitfield at the address in %rdi.
 void Gen_x86_64_EmitBitfieldStore(const Ast_Member *member)
 {
     long mask = ((1L << member->am_bits) - 1) << member->am_bitoff;
@@ -257,7 +257,7 @@ void Gen_x86_64_EmitBitfieldStore(const Ast_Member *member)
     Gen_x86_64_EmitBitfieldLoad(member);
 }
 
-// Spill every argument register into the save area, which is how a variadic function reaches its unnamed arguments.
+// Spill every argument register into the save area.
 void Gen_x86_64_EmitVaSaveArea(void)
 {
     for (int i = 0; i < MAX_REG_ARGS; i++) {
@@ -265,7 +265,7 @@ void Gen_x86_64_EmitVaSaveArea(void)
     }
 }
 
-// Count the argument registers and stack slots the named parameters used, which is where the anonymous ones begin.
+// Count the argument registers and stack slots the named parameters used.
 void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int *reg, int *stack)
 {
     *reg   = Abi_x86_64_SysV_ReturnsInMemory(func->af_ret) ? 1 : 0;
@@ -281,7 +281,7 @@ void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int *reg, int *stack)
     }
 }
 
-// Fill the va_list at the address in %rax, starting it past every argument a named parameter already took.
+// Fill the va_list at the address in %rax.
 void Gen_x86_64_EmitVaStart(void)
 {
     int reg = 0;
@@ -298,7 +298,7 @@ void Gen_x86_64_EmitVaStart(void)
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_SYSV_VA_REG_SAVE, ASM_X86_64_WIDTH_64);
 }
 
-// Read into %rax the next argument the va_list at %rax reaches, from the save area until that runs out.
+// Read into %rax the next argument the va_list at %rax reaches.
 void Gen_x86_64_EmitVaArg(const Ast_Type *type)
 {
     int count = Gen_x86_64_Count();
@@ -480,7 +480,7 @@ void Gen_x86_64_EmitCall(Ast_Node *node)
         Gen_x86_64_Depth++;
     }
 
-    // The callee is evaluated first and parked, because the argument setup below owns every argument register.
+    // The callee is parked first, because argument setup owns every argument register.
     if (node->an_lhs) {
         Gen_x86_64_EmitExpr(node->an_lhs);
         Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, node->an_calltmp, ASM_X86_64_WIDTH_64);
@@ -519,7 +519,7 @@ void Gen_x86_64_EmitCall(Ast_Node *node)
     }
 }
 
-// Apply a compound assignment's operation to %rax and %rcx into %rax; a shift finds its count in %cl already.
+// Apply a compound assignment's operation to %rax and %rcx into %rax.
 void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, int line)
 {
     switch (op) {
@@ -617,7 +617,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitExpr(node->an_rhs);
             Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
             if (bits) {
-                // Extracting the old value needs %rcx for its shift counts, so the right operand waits on the stack.
+                // Extracting the old value needs %rcx, so the right operand waits on the stack.
                 Gen_x86_64_EmitPush();
                 Gen_x86_64_EmitBitfieldLoad(bits);
                 Gen_x86_64_EmitPop(ASM_X86_64_REG_RCX);
@@ -928,7 +928,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Gen_x86_64_EmitZero((int) node->an_val);
         } break;
         case AST_NODE_KIND_NOP: {
-            // nothing to emit
+            // empty
         } break;
         default: {
             Log_ShowErrorAt(node->an_line, "codegen: unexpected statement kind %d", node->an_kind);
@@ -985,7 +985,7 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
     func->af_stack_size = Gen_x86_64_AlignTo(offset, STACK_ALIGN);
 }
 
-// Write one flattened initializer into a global's image, as bytes or as a slot the linker fills with an address.
+// Write one flattened initializer into a global's image.
 void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int *naddrs)
 {
     int size = item->an_type->at_size;
@@ -1041,7 +1041,7 @@ void Gen_x86_64_EmitImage(const unsigned char *bytes, int size, const Gen_x86_64
     }
 }
 
-// Emit one global: its bytes in .data when it has an initializer, or the space it asks for in .bss when it is zeroed.
+// Emit one global into .data, or into .bss when it is zeroed.
 void Gen_x86_64_EmitGlobal(Ast_Var *var)
 {
     int size = var->av_type->at_size;
