@@ -4,7 +4,7 @@
 #include "util/file.h"
 #include "util/str.h"
 
-// Read the whole file into a malloc'd, NUL-terminated buffer; len is optional.
+// Read the whole file at path.
 char *File_GetContents(const char *path, long *len)
 {
     FILE *file = fopen(path, "rb");
@@ -30,7 +30,7 @@ char *File_GetContents(const char *path, long *len)
     return buf;
 }
 
-// Write len bytes to path, replacing it; return 0 on success or -1 on error.
+// Write len bytes to path, replacing it.
 int File_PutContents(const char *path, const void *data, long len)
 {
     FILE *file = fopen(path, "wb");

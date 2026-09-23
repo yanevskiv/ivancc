@@ -1,4 +1,4 @@
-/* Grammar for the cc compiler: binary operators are flat, taking precedence from the %left and %right lists. */
+/* Grammar for the cc compiler. */
 
 %code requires {
     #include "syntax/par.h"
@@ -84,27 +84,28 @@ void yyerror(const char *s);
 
 %%
 
-/* ---- top level: function definitions and prototypes ---------------- */
+/* ---- top level ----------------------------------------------------- */
 
+/* A whole source file. */
 translation_unit
     : /* empty */
     | translation_unit external_decl
     ;
 
-/* A declaration and a definition share `storage decl_spec`, so the specifier is recorded first. */
+/* A file-scope declaration or function definition. */
 external_decl
     : storage decl_spec
         { Par_SetDeclSpec($1, $2); }
       external_tail
     ;
 
-/* A struct, union or enum declaration stands alone; anything else goes on to name something. */
+/* The rest of an external declaration after its specifier. */
 external_tail
     : SEMI
     | declarator { Par_BeginExternal($1, @1); } decl_tail
     ;
 
-/* Only a body settles that a function declarator was a definition, so the scope is opened before it. */
+/* The rest of an external declaration after its declarator. */
 decl_tail
     : knr_opt compound_stmt { Par_EndFunction($2); }
     | SEMI                 { Par_EndExternal(NULL, @1); }
@@ -112,32 +113,36 @@ decl_tail
     | COMMA                { Par_EndExternal(NULL, @1); } global_decl global_rest SEMI
     ;
 
+/* The declarators after the first in a file-scope declaration. */
 global_rest
     : /* empty */
     | global_rest COMMA global_decl
     ;
 
-/* The declaration list an old-style definition puts between its `)` and its `{`. */
+/* An old-style definition's parameter declarations. */
 knr_opt
     : /* empty */          { Par_CheckKnrParams(); }
     | knr_decls            { Par_CheckKnrParams(); }
     ;
 
+/* One or more old-style parameter declarations. */
 knr_decls
     : knr_decl
     | knr_decls knr_decl
     ;
 
+/* One old-style parameter declaration. */
 knr_decl
     : storage decl_spec { Par_SetDeclSpec($1, $2); } knr_declarators SEMI
     ;
 
+/* The parameter names one old-style declaration types. */
 knr_declarators
     : declarator                       { Par_SetKnrParam($1, @1); }
     | knr_declarators COMMA declarator { Par_SetKnrParam($3, @3); }
     ;
 
-/* Storage classes. register, auto and inline parse and do nothing. */
+/* A storage class; register, auto and inline are accepted and ignored. */
 storage
     : /* empty */          { $$ = AST_STORAGE_NONE; }
     | STATIC               { $$ = AST_STORAGE_STATIC; }
@@ -148,12 +153,13 @@ storage
     | INLINE               { $$ = AST_STORAGE_NONE; }
     ;
 
+/* One file-scope declarator, with an optional initializer. */
 global_decl
     : declarator                       { Par_AddDeclared($1, NULL, @1); }
     | declarator ASSIGN initializer    { Par_AddDeclared($1, $3, @1); }
     ;
 
-/* An empty list is `int f()`, which specifies nothing; `(void)` is how C spells a list of none. */
+/* A function declarator's parameter list. */
 params
     : /* empty */          { Par_ClearParams(&$$); }
     | param_list           { $$ = $1; }
@@ -162,7 +168,7 @@ params
     | ident_list           { $$ = $1; }
     ;
 
-/* An old-style definition names its parameters here and types them in the declaration list below. */
+/* An old-style definition's parameter names. */
 ident_list
     : IDENT
         { Par_ClearParams(&$$); Par_PushParam(&$$, Par_MakeKnrParam($1, @1)); }
@@ -170,12 +176,14 @@ ident_list
         { $$ = $1; Par_PushParam(&$$, Par_MakeKnrParam($3, @3)); }
     ;
 
+/* A prototype's parameters. */
 param_list
     : param                { Par_ClearParams(&$$); $$.pl_proto = 1; Par_PushParam(&$$, $1); }
     | param_list COMMA param
         { $$ = $1; Par_PushParam(&$$, $3); }
     ;
 
+/* One prototype parameter, named or not. */
 param
     : decl_spec declarator
         { $$ = Par_MakeParam($1, $2, @1); }
@@ -185,14 +193,14 @@ param
           $$ = Par_MakeAnonParam(Par_ArrayType(t, $3), @1); }
     ;
 
-/* ---- types -------------------------------------------------------- */
+/* ---- types --------------------------------------------------------- */
 
-/* The part of a declaration every declarator in it shares, with no pointers or dimensions of its own. */
+/* The type every declarator in a declaration shares. */
 decl_spec
     : quals base           { $$ = $2; }
     ;
 
-/* An abstract declarator, for a cast, a sizeof, a compound literal or an unnamed parameter. */
+/* A type written without a name, as a cast or a sizeof takes. */
 type_name
     : decl_spec stars array_dims
         { Ast_Type *t = $1;
@@ -200,17 +208,18 @@ type_name
           $$ = Par_ArrayType(t, $3); }
     ;
 
-/* A declarator reads outward from the name: the pointers outside it are recorded after its suffixes. */
+/* A name with the pointers, arrays and parameters around it. */
 declarator
     : stars direct_declarator
         { $$ = $2;
           for (int i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
     ;
 
+/* A declarator without its leading pointers. */
 direct_declarator
     : IDENT                                  { $$ = Par_NewDecl($1); $$->pc_line = @1; }
     | LPAREN declarator RPAREN               { $$ = $2; }
-    /* A declarator with no name to give, which only a parameter may be: `int (*)(int)`. */
+    /* An unnamed declarator, which only a parameter may be. */
     | LPAREN stars RPAREN
         { $$ = Par_NewDecl(NULL); $$->pc_line = @1;
           for (int i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
@@ -222,12 +231,13 @@ direct_declarator
         { Ast_PopScope(); $$ = $1; Par_AddDeriv($$, PAR_DERIV_FUNCTION, @2)->pd_params = $4; }
     ;
 
+/* Type qualifiers, which parse and do nothing. */
 quals
     : /* empty */
     | quals CONST
     ;
 
-/* `int a[static 4]` and `int a[const 4]`, which only a parameter's outermost array may carry. */
+/* The `static` and qualifiers a parameter's outermost array may carry. */
 array_decor
     : /* empty */          { $$ = 0; }
     | STATIC quals         { $$ = PAR_ARRAY_STATIC; }
@@ -235,11 +245,13 @@ array_decor
     | qual_list STATIC     { $$ = PAR_ARRAY_QUAL | PAR_ARRAY_STATIC; }
     ;
 
+/* One or more type qualifiers. */
 qual_list
     : CONST
     | qual_list CONST
     ;
 
+/* The base type a declaration names. */
 base
     : INT                  { $$ = &Ast_TypeInt; }
     | CHAR                 { $$ = &Ast_TypeChar; }
@@ -263,26 +275,30 @@ base
     | BUILTIN_VA_LIST      { $$ = Par_VaListType(); }
     ;
 
+/* The keyword that opens an aggregate. */
 struct_or_union
     : STRUCT               { $$ = AST_TYPE_KIND_STRUCT; }
     | UNION                { $$ = AST_TYPE_KIND_UNION; }
     ;
 
-/* A tag shares no namespace with ordinary identifiers, so a name a typedef bound is a tag here. */
+/* A struct, union or enum tag, which may reuse a typedef's name. */
 tag_name
     : IDENT                { $$ = $1; }
     | TYPEDEF_NAME         { $$ = $1; }
     ;
 
+/* The members of a struct or union. */
 members
     : /* empty */          { $$ = NULL; }
     | members member_decl  { $$ = Par_AppendMembers($1, $2); }
     ;
 
+/* One member declaration, which may name several members. */
 member_decl
     : decl_spec member_declarators SEMI  { $$ = Par_MakeMembers($1, $2); }
     ;
 
+/* The members one declaration names. */
 member_declarators
     : member_declarator                          { $$ = $1; }
     | member_declarators COMMA member_declarator
@@ -291,28 +307,32 @@ member_declarators
           last->pc_next = $3; $$ = $1; }
     ;
 
-/* A member is a declarator, optionally narrowed to a bit-field width. */
+/* A member, optionally narrowed to a bit-field width. */
 member_declarator
     : declarator           { $$ = $1; $$->pc_line = @1; }
     | declarator COLON expr { $$ = $1; $$->pc_line = @1; $$->pc_bits = $3; }
     | COLON expr           { $$ = Par_NewDecl(NULL); $$->pc_line = @1; $$->pc_bits = $2; }
     ;
 
+/* The constants an enum declares. */
 enumerators
     : enumerator
     | enumerators COMMA
     | enumerators COMMA enumerator
     ;
 
+/* One enum constant. */
 enumerator
     : IDENT enumerator_opt { Par_AddEnumConst($1, $2, @1); }
     ;
 
+/* The value an enum constant may fix. */
 enumerator_opt
     : /* empty */          { $$ = NULL; }
     | ASSIGN expr          { $$ = $2; }
     ;
 
+/* A run of pointer stars. */
 stars
     : /* empty */          { $$ = 0; }
     | stars MUL            { $$ = $1 + 1; }
@@ -320,17 +340,20 @@ stars
 
 /* ---- statements ---------------------------------------------------- */
 
+/* A braced block, which is a scope of its own. */
 compound_stmt
     : LBRACE { Ast_PushScope(); } stmt_list RBRACE
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @1); n->an_body = $3;
           Ast_PopScope(); $$ = n; }
     ;
 
+/* The statements in a block. */
 stmt_list
     : /* empty */          { $$ = NULL; }
     | stmt stmt_list       { $1->an_next = $2; $$ = $1; }
     ;
 
+/* One statement. */
 stmt
     : RETURN expr SEMI     { $$ = Ast_NewUnary(AST_NODE_KIND_RETURN, $2, @1); }
     | RETURN SEMI          { $$ = Ast_NewUnary(AST_NODE_KIND_RETURN, NULL, @1); }
@@ -371,22 +394,25 @@ stmt
     | SEMI                 { $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
     ;
 
-/* A for-loop's first clause, which may declare the variable it counts with. */
+/* A for-loop's first clause. */
 for_init
     : expr_opt SEMI        { $$ = $1 ? Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, $1, @1) : NULL; }
     | decl SEMI            { $$ = $1; }
     ;
 
+/* A block-scope declaration. */
 decl
     : storage decl_spec { Par_SetDeclSpec($1, $2); } decl_body
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @2); n->an_body = $4; $$ = n; }
     ;
 
+/* The declarators a block-scope declaration names. */
 decl_body
     : /* empty */          { $$ = NULL; }
     | local_list           { $$ = $1; }
     ;
 
+/* One or more local declarators. */
 local_list
     : local_decl                 { $$ = $1; }
     | local_list COMMA local_decl
@@ -395,6 +421,7 @@ local_list
           last->an_next = $3; $$ = $1; }
     ;
 
+/* One local declarator, with an optional initializer. */
 local_decl
     : declarator                       { $$ = Par_AddLocal($1, NULL, @1); }
     | declarator ASSIGN initializer    { $$ = Par_AddLocal($1, $3, @1); }
@@ -407,6 +434,7 @@ initializer
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_INITLIST, @1); n->an_body = $2; $$ = n; }
     ;
 
+/* The items in a braced initializer. */
 init_list
     : /* empty */                { $$ = NULL; }
     | init_item                  { $$ = $1; }
@@ -417,13 +445,14 @@ init_list
           last->an_next = $3; $$ = $1; }
     ;
 
-/* One item, which a designator list may aim at a subobject of its own. */
+/* One initializer item, with the designators that aim it. */
 init_item
     : initializer                { $$ = Ast_NewUnary(AST_NODE_KIND_INIT, $1, @1); }
     | designators ASSIGN initializer
         { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $3, @1); n->an_cond = $1; $$ = n; }
     ;
 
+/* The designators aiming one initializer item. */
 designators
     : designator                 { $$ = $1; }
     | designators designator
@@ -432,6 +461,7 @@ designators
           last->an_next = $2; $$ = $1; }
     ;
 
+/* One designator, an array index or a member name. */
 designator
     : LSQUARE array_len RSQUARE
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_val = $2; $$ = n; }
@@ -439,13 +469,14 @@ designator
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_memname = $2; $$ = n; }
     ;
 
+/* The dimensions an unnamed type carries. */
 array_dims
     : /* empty */          { $$ = NULL; }
     | LSQUARE array_len RSQUARE array_dims
         { Ast_Node *n = Ast_NewNum($2, @1); n->an_next = $4; $$ = n; }
     ;
 
-/* A length must fold to a constant here, since a variable one would be a VLA. */
+/* An array length, which must fold to a constant. */
 array_len
     : expr
         { long val;
@@ -455,12 +486,13 @@ array_len
           $$ = val; }
     ;
 
-/* A comma expression, which an argument list deliberately cannot contain. */
+/* A comma expression, which an argument list cannot contain. */
 expr_comma
     : expr                       { $$ = $1; }
     | expr_comma COMMA expr      { $$ = Ast_NewBinary(AST_NODE_KIND_COMMA, $1, $3, @2); }
     ;
 
+/* An expression a for-clause may leave out. */
 expr_opt
     : /* empty */          { $$ = NULL; }
     | expr_comma           { $$ = $1; }
@@ -468,6 +500,7 @@ expr_opt
 
 /* ---- expressions --------------------------------------------------- */
 
+/* An expression, with every binary operator on one rule. */
 expr
     : cast                 { $$ = $1; }
     | expr ADD expr        { $$ = Ast_NewBinary(AST_NODE_KIND_ADD, $1, $3, @2); }
@@ -504,12 +537,14 @@ expr
     | expr SHR_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_SHR, $1, $3, @2); }
     ;
 
+/* A cast, or the unary expression under it. */
 cast
     : unary                { $$ = $1; }
     | LPAREN type_name RPAREN cast
         { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_CAST, $4, @1); n->an_type = $2; $$ = n; }
     ;
 
+/* A prefix operator applied to an expression. */
 unary
     : postfix              { $$ = $1; }
     | SUB cast             { $$ = Ast_NewUnary(AST_NODE_KIND_NEG, $2, @1); }
@@ -525,6 +560,7 @@ unary
         { $$ = Ast_NewNum($3->at_size, @1); }
     ;
 
+/* A postfix operator applied to an expression. */
 postfix
     : postfix LPAREN args RPAREN
         { $$ = Par_MakeCall($1, $3, @2); }
@@ -541,6 +577,7 @@ postfix
         { $$ = Par_CompoundLiteral($2, $5, @1); }
     ;
 
+/* An operand that stands alone. */
 primary
     : NUM                  { $$ = Ast_NewNum($1, @1); }
     | STR                  { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_STR, @1);
@@ -559,11 +596,13 @@ primary
         { $$ = $3; }
     ;
 
+/* A call's argument list, which may be empty. */
 args
     : /* empty */          { $$ = NULL; }
     | arg_list             { $$ = $1; }
     ;
 
+/* A call's arguments. */
 arg_list
     : expr                 { $$ = $1; }
     | expr COMMA arg_list  { $1->an_next = $3; $$ = $1; }
