@@ -3,6 +3,10 @@
 
 #include "syntax/ast.h"
 
+// What an array declarator's brackets carry besides a length, which C allows only on a parameter.
+#define PAR_ARRAY_STATIC 1
+#define PAR_ARRAY_QUAL   2
+
 // One step of a declarator, collected walking outward from the name it declares.
 typedef enum Par_DerivKind Par_DerivKind;
 enum Par_DerivKind {
@@ -28,6 +32,7 @@ struct Par_Deriv {
     Par_DerivKind  pd_kind;
     long           pd_len;    // element count of an ARRAY
     int            pd_empty;  // the ARRAY was written `[]`, leaving its length unsaid
+    int            pd_decor;  // PAR_ARRAY_* the ARRAY's brackets carried
     Par_ParamList  pd_params; // parameter list of a FUNCTION
     int            pd_line;
 };
@@ -57,6 +62,7 @@ Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line);
 Ast_Type  *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv);
 Ast_Type  *Par_ApplyDecl(Ast_Type *base, Par_Decl *decl);
 Ast_Type  *Par_AdjustParam(Ast_Type *type);
+void       Par_TakeArrayDecor(Par_Decl *decl, int line);
 Ast_Var   *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line);
 Ast_Var   *Par_MakeAnonParam(Ast_Type *type, int line);
 
