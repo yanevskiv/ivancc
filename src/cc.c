@@ -76,14 +76,14 @@ static char *Cc_GetExeDir(void)
         return NULL;
     }
     *slash = '\0';
-    return Str_New(buf);
+    return Str_Duplicate(buf);
 }
 
 // Return the directory to read the target's runtime objects from, honouring -B.
 static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
 {
     if (prefix) {
-        return Str_New(prefix);
+        return Str_Duplicate(prefix);
     }
 
     char *exedir = Cc_GetExeDir();
@@ -217,7 +217,7 @@ int main(int argc, char **argv)
         } else if (emit_obj) {
             output = outbuf = Str_ChangeOrAppendExt(input, ".o");
         } else {
-            output = outbuf = Str_New(DEFAULT_OUTPUT);
+            output = outbuf = Str_Duplicate(DEFAULT_OUTPUT);
         }
     }
 

@@ -112,7 +112,7 @@ Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
     type->at_kind  = kind;
     type->at_align = 1;
-    type->at_tag   = Str_New(tag);
+    type->at_tag   = Str_Duplicate(tag);
     return type;
 }
 
@@ -120,7 +120,7 @@ Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line)
 {
     Ast_Member *member = calloc(1, sizeof(Ast_Member));
-    member->am_name = Str_New(name);
+    member->am_name = Str_Duplicate(name);
     member->am_type = type;
     member->am_line = line;
     return member;
@@ -294,7 +294,7 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
 Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_MEMBER, lhs, line);
-    node->an_memname = Str_New(name);
+    node->an_memname = Str_Duplicate(name);
     return node;
 }
 
@@ -302,7 +302,7 @@ Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line)
 {
     Ast_Var *var = Ast_DeclareGlobal(symbol, type, line);
-    var->av_name = Str_New(name);
+    var->av_name = Str_Duplicate(name);
 
     var->av_scope_next = Ast_CurScope->as_vars;
     Ast_CurScope->as_vars = var;
@@ -365,7 +365,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
     }
 
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
-    var->av_name   = Str_New(name);
+    var->av_name   = Str_Duplicate(name);
     var->av_symbol = var->av_name;
     var->av_type   = type;
     var->av_line   = line;
@@ -390,7 +390,7 @@ Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
     }
 
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
-    var->av_name   = Str_New(name);
+    var->av_name   = Str_Duplicate(name);
     var->av_symbol = var->av_name;
     var->av_type   = type;
     var->av_line   = line;
@@ -441,7 +441,7 @@ Ast_Type *Ast_FindTagHere(const char *name)
 void Ast_DeclareTag(const char *name, Ast_Type *type)
 {
     Ast_Tag *tag = calloc(1, sizeof(Ast_Tag));
-    tag->ag_name = Str_New(name);
+    tag->ag_name = Str_Duplicate(name);
     tag->ag_type = type;
     tag->ag_next = Ast_CurScope->as_tags;
     Ast_CurScope->as_tags = tag;
@@ -464,7 +464,7 @@ Ast_Type *Ast_FindTypedef(const char *name)
 void Ast_DeclareTypedef(const char *name, Ast_Type *type)
 {
     Ast_Typedef *def = calloc(1, sizeof(Ast_Typedef));
-    def->ad_name = Str_New(name);
+    def->ad_name = Str_Duplicate(name);
     def->ad_type = type;
     def->ad_next = Ast_CurScope->as_typedefs;
     Ast_CurScope->as_typedefs = def;
@@ -488,7 +488,7 @@ int Ast_FindEnumConst(const char *name, long *value)
 void Ast_DeclareEnumConst(const char *name, long value)
 {
     Ast_EnumConst *item = calloc(1, sizeof(Ast_EnumConst));
-    item->ae_name  = Str_New(name);
+    item->ae_name  = Str_Duplicate(name);
     item->ae_value = value;
     item->ae_next  = Ast_CurScope->as_enums;
     Ast_CurScope->as_enums = item;

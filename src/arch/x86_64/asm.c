@@ -157,7 +157,7 @@ void Asm_x86_64_EmitBytes(const void *data, int len)
 void Asm_x86_64_EmitAddress(const char *label)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_ADDR);
-    item->ai_label = Str_New(label);
+    item->ai_label = Str_Duplicate(label);
 }
 
 // Emit a raw assembler line from a printf-style format, written with indent.

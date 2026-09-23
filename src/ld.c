@@ -33,11 +33,11 @@ static char *Ld_PlaceName(const char *spec, int len)
     char *name = strndup(spec, len);
     if (strcmp(name, "text") == 0) {
         Str_Free(name);
-        return Str_New(".text");
+        return Str_Duplicate(".text");
     }
     if (strcmp(name, "data") == 0 || strcmp(name, "rodata") == 0) {
         Str_Free(name);
-        return Str_New(".rodata");
+        return Str_Duplicate(".rodata");
     }
     return name;
 }

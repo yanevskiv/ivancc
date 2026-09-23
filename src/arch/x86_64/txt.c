@@ -240,7 +240,7 @@ int Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
         return 1;
     }
     if (Str_RegexExtract(text, "^([.A-Za-z0-9_$]+)[(]%rip[)]$", g, 1)) {
-        *op = Asm_x86_64_Rip(Str_New(g[0]));
+        *op = Asm_x86_64_Rip(Str_Duplicate(g[0]));
         Str_Free(g[0]);
         return 1;
     }
@@ -258,7 +258,7 @@ int Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
         return 1;
     }
     if (Str_RegexMatch(text, "^[.A-Za-z0-9_$]+$")) {
-        *op = Asm_x86_64_Target(Str_New(text));
+        *op = Asm_x86_64_Target(Str_Duplicate(text));
         return 1;
     }
     return 0;

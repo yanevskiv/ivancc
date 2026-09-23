@@ -1017,7 +1017,7 @@ uint64_t Elf_Load_AlignUp(uint64_t addr, uint64_t align)
 int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
 {
     long len = 0;
-    char *file = File_GetContent(path, &len);
+    char *file = File_GetContents(path, &len);
     if (! file) {
         return -1;
     }
