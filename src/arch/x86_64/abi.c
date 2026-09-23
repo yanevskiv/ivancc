@@ -1,4 +1,4 @@
-#include "ast/sem.h"
+#include "syntax/sem.h"
 #include "arch/x86_64/abi.h"
 
 // Give a type the class the SysV ABI passes it by.

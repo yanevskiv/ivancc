@@ -1,7 +1,7 @@
 /* Grammar for the cc compiler: binary operators are flat, taking precedence from the %left and %right lists. */
 
 %code requires {
-    #include "ast/ast.h"
+    #include "syntax/ast.h"
 }
 
 %{
@@ -11,8 +11,8 @@
 
 #include "util/log.h"
 #include "util/str.h"
-#include "ast/ast.h"
-#include "ast/sem.h"
+#include "syntax/ast.h"
+#include "syntax/sem.h"
 
 /* Give a rule the line of its first token, or of the preceding one if empty. */
 #define YYLLOC_DEFAULT(cur, rhs, n)  ((cur) = (n) ? YYRHSLOC(rhs, 1) : YYRHSLOC(rhs, 0))

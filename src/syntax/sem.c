@@ -2,7 +2,7 @@
 
 #include "util/log.h"
 #include "util/str.h"
-#include "ast/sem.h"
+#include "syntax/sem.h"
 
 // The program being analysed, for resolving calls against its definitions.
 static Ast_Func *Sem_Prog;

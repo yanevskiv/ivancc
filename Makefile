@@ -32,9 +32,9 @@ AS_OBJS := $(OUT)/as.o $(ELF_OBJS) \
 EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/emu.o
 LD_OBJS := $(OUT)/ld.o $(ELF_OBJS)
 
-TEST_TOOL  := tools/run_test
-TEST_SRCS  := $(sort $(wildcard tests/test*.c))
-TEST_NAMES := $(patsubst tests/%.c,%,$(TEST_SRCS))
+TEST_TOOL  := tests/run_test
+TEST_SRCS  := $(sort $(wildcard tests/syntax/test*.c))
+TEST_NAMES := $(patsubst tests/syntax/%.c,%,$(TEST_SRCS))
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
@@ -63,14 +63,14 @@ $(EMU_BIN): $(EMU_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 # --- test recipes (one target per test, so `make test05_logical` works) ---
-$(TEST_NAMES): %: tests/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
+$(TEST_NAMES): %: tests/syntax/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
 	@$(TEST_TOOL) $<
 
 # --- front-end generators ---
-$(OUT)/parser.tab.c $(OUT)/parser.tab.h: src/ast/parser.y | $(OUT)
+$(OUT)/parser.tab.c $(OUT)/parser.tab.h: src/syntax/parser.y | $(OUT)
 	$(YACC) -d -o $(OUT)/parser.tab.c $<
 
-$(OUT)/lex.yy.c: src/ast/lexer.flex $(OUT)/parser.tab.h | $(OUT)
+$(OUT)/lex.yy.c: src/syntax/lexer.flex $(OUT)/parser.tab.h | $(OUT)
 	$(LEX) -o $@ $<
 
 $(OUT)/lex.yy.o: $(OUT)/lex.yy.c
