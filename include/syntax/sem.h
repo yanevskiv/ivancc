@@ -25,6 +25,7 @@ Ast_Type *Sem_FuncAddrType(Ast_Node *node);
 Ast_Type *Sem_CallType(Ast_Node *node);
 Ast_Type *Sem_CalleeType(Ast_Node *node);
 void      Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const char *what);
+void      Sem_PromoteArgs(Ast_Node *node, int nparams, int variadic, int proto);
 void      Sem_CheckCall(Ast_Node *node);
 
 // Annotation

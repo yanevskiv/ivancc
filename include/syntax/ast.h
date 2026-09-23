@@ -245,6 +245,7 @@ struct Ast_Func {
     Ast_Var  *af_params;     // parameters, in declaration order
     int       af_nparams;    // number of parameters
     int       af_variadic;   // true if the parameter list ended in `...`
+    int       af_proto;      // false for `int f()` and for an old-style definition, which promise nothing
     int       af_static;     // true when the function is local to this file
     Ast_Var  *af_locals;     // every local, including parameters
     int       af_stack_size; // frame size, filled in by the code generator
