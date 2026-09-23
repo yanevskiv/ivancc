@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "obj/elf.h"
+#include "object/elf.h"
 
 // Register widths a decoded operand can name, in bits.
 #define EMU_X86_64_WIDTH_8  8

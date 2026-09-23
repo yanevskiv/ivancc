@@ -24,7 +24,7 @@ GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/parser.tab.o
 
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
 # One translation unit now, so every tool that touches ELF also links its relocation pass.
-ELF_OBJS := $(OUT)/obj/elf.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
+ELF_OBJS := $(OUT)/object/elf.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
 
 AS_OBJS := $(OUT)/as.o $(ELF_OBJS) \
 	$(OUT)/arch/$(TARGET_ARCH)/txt.o $(OUT)/arch/$(TARGET_ARCH)/asm.o \

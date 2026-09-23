@@ -6,7 +6,7 @@
 #include "util/file.h"
 #include "util/log.h"
 #include "util/str.h"
-#include "obj/elf.h"
+#include "object/elf.h"
 #include "arch/x86_64/rel.h"
 
 // Bytes of stack reserved above the image; nothing here grows one on demand.
