@@ -20,7 +20,7 @@ MAIN_SRCS := src/cc.c src/ld.c src/as.c src/emu.c
 ALL_SRCS  := $(shell find src -name '*.c')
 LIB_SRCS  := $(filter-out $(MAIN_SRCS),$(ALL_SRCS))
 LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
-GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/grammar.tab.o
+GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/c.tab.o
 
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
 ELF_OBJS := $(OUT)/object/elf.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
@@ -66,20 +66,20 @@ $(TEST_NAMES): %: tests/syntax/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
 	@$(TEST_TOOL) $<
 
 # --- front-end generators ---
-$(OUT)/grammar.tab.c $(OUT)/grammar.tab.h: src/syntax/grammar.y | $(OUT)
-	$(YACC) -d -o $(OUT)/grammar.tab.c $<
+$(OUT)/c.tab.c $(OUT)/c.tab.h: src/spec/c.y | $(OUT)
+	$(YACC) -d -o $(OUT)/c.tab.c $<
 
-$(OUT)/lex.yy.c: src/syntax/lexer.flex $(OUT)/grammar.tab.h | $(OUT)
+$(OUT)/lex.yy.c: src/spec/c.flex $(OUT)/c.tab.h | $(OUT)
 	$(LEX) -o $@ $<
 
 $(OUT)/lex.yy.o: $(OUT)/lex.yy.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(OUT)/grammar.tab.o: $(OUT)/grammar.tab.c
+$(OUT)/c.tab.o: $(OUT)/c.tab.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 # --- objects ---
-$(OUT)/%.o: src/%.c $(OUT)/grammar.tab.h | $(OUT)
+$(OUT)/%.o: src/%.c $(OUT)/c.tab.h | $(OUT)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(WARN) $(DEPFLAGS) -c $< -o $@
 
