@@ -1,8 +1,8 @@
 #include <string.h>
 
 #include "util/log.h"
-#include "ast/ast.h"
-#include "ast/sem.h"
+#include "syntax/ast.h"
+#include "syntax/sem.h"
 #include "obj/elf.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/gen.h"

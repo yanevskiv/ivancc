@@ -8,8 +8,8 @@
 
 #include "util/log.h"
 #include "util/str.h"
-#include "ast/ast.h"
-#include "ast/sem.h"
+#include "syntax/ast.h"
+#include "syntax/sem.h"
 #include "obj/elf.h"
 #include "arch/x86_64/gen.h"
 #include "arch/x86_64/enc.h"

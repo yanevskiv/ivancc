@@ -7,7 +7,7 @@
 #include <string.h>
 #include "util/log.h"
 #include "util/str.h"
-#include "ast/ast.h"
+#include "syntax/ast.h"
 #include "parser.tab.h"
 
 /* Stamp every token with the line it starts on. */

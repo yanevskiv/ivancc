@@ -3,7 +3,7 @@
 
 #include "util/log.h"
 #include "util/str.h"
-#include "ast/ast.h"
+#include "syntax/ast.h"
 
 // The finished program, filled in by the parser.
 Ast_Func *Ast_Program;
