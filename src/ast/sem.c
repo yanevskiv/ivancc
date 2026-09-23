@@ -40,7 +40,7 @@ int Sem_IsPointer(const Ast_Type *type)
 int Sem_IsLvalue(const Ast_Node *node)
 {
     return node->an_kind == AST_NODE_KIND_VAR || node->an_kind == AST_NODE_KIND_DEREF
-        || node->an_kind == AST_NODE_KIND_MEMBER;
+        || node->an_kind == AST_NODE_KIND_MEMBER || node->an_kind == AST_NODE_KIND_COMPOUND;
 }
 
 // Return whether this is a struct or union, which is to say a type whose values
@@ -292,7 +292,8 @@ void Sem_Node(Ast_Node *node)
             node->an_type = &Ast_TypeInt;
         } break;
 
-        case AST_NODE_KIND_VAR: {
+        case AST_NODE_KIND_VAR:
+        case AST_NODE_KIND_COMPOUND: {
             node->an_type = node->an_var->av_type;
         } break;
 

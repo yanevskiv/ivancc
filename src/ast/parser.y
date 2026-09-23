@@ -37,6 +37,10 @@ static int       Par_CurNumParams;
 static int       Par_CurVariadic;
 static int       Par_CurStatic;
 static Ast_Type *Par_CurRetType;
+static int       Par_InFunction;
+
+/* Serial number the next compound literal names its object with. */
+static int Par_CompoundCount;
 
 /* The type and storage class the declarators being parsed all share. */
 static Ast_Type   *Par_DeclType;
@@ -58,6 +62,15 @@ static void Par_AddParam(Ast_Var *v)
         Par_CurParamsTail = v;
     }
     Par_CurNumParams++;
+}
+
+/* Count a parameter a prototype left unnamed, which a definition cannot have.
+   A lone `void` names no parameter at all, being how C spells an empty list. */
+static void Par_AddAnonParam(Ast_Type *type)
+{
+    if (type->at_kind != AST_TYPE_KIND_VOID) {
+        Par_CurNumParams++;
+    }
 }
 
 /* Wrap base in the array dimensions listed outermost first. */
@@ -223,15 +236,64 @@ static void Par_Step(Ast_Type **type, int *off, Ast_Node *desig, int index, Ast_
 
 static void Par_Flatten(Ast_Type *type, int base, Ast_Node *init, Ast_Node **tail, int line);
 static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line);
+static Ast_Func *Par_FindFunction(const char *name);
+
+/* The type an expression already has, for the forms the parser can answer
+   without the Sem_ pass. NULL means it cannot tell, which the one caller reads
+   as a scalar. */
+static Ast_Type *Par_ExprType(Ast_Node *node)
+{
+    Ast_Type *type = NULL;
+
+    switch (node->an_kind) {
+        case AST_NODE_KIND_VAR: {
+            type = node->an_var->av_type;
+        } break;
+        case AST_NODE_KIND_COMPOUND:
+        case AST_NODE_KIND_CAST: {
+            type = node->an_type;
+        } break;
+        case AST_NODE_KIND_ASSIGN: {
+            type = Par_ExprType(node->an_lhs);
+        } break;
+        case AST_NODE_KIND_COMMA: {
+            type = Par_ExprType(node->an_rhs);
+        } break;
+        case AST_NODE_KIND_DEREF: {
+            Ast_Type *outer = Par_ExprType(node->an_lhs);
+            type = outer ? outer->at_base : NULL;
+        } break;
+        case AST_NODE_KIND_MEMBER: {
+            Ast_Type *outer = Par_ExprType(node->an_lhs);
+            Ast_Member *member = outer ? Ast_FindMember(outer, node->an_memname) : NULL;
+            type = member ? member->am_type : NULL;
+        } break;
+        case AST_NODE_KIND_CALL: {
+            Ast_Func *func = Par_FindFunction(node->an_funcname);
+            type = func ? func->af_ret : NULL;
+        } break;
+        default: {
+            // empty
+        } break;
+    }
+    return type;
+}
 
 /* Fill one slot from the cursor, descending into it when it is an aggregate the
-   source did not brace -- which is the elision C allows. */
+   source did not brace -- which is the elision C allows. A value of the slot's
+   own type fills it whole, since `{p, q}` means two structs and not two ints. */
 static void Par_FlattenSlot(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int line)
 {
     Ast_Node *value = (*item)->an_lhs;
 
     if (value->an_kind == AST_NODE_KIND_INITLIST) {
         Par_Flatten(type, base, value, tail, line);
+        *item = (*item)->an_next;
+        return;
+    }
+    if (Sem_IsAggregate(type) && Par_ExprType(value) == type) {
+        (*tail)->an_next = Par_InitAt(base, type, value, line);
+        *tail = (*tail)->an_next;
         *item = (*item)->an_next;
         return;
     }
@@ -356,6 +418,29 @@ static Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
     return zero;
 }
 
+/* Build the unnamed object a compound literal names: a local of the literal's
+   type, zeroed and filled by its items as a declaration's initializer is. The
+   filling statements hang off the node, so each evaluation runs them again. */
+static Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
+{
+    if (! Par_InFunction) {
+        Log_ShowErrorAt(line, "a compound literal outside a function needs static storage, which is not supported");
+    }
+    if (! type->at_complete) {
+        Log_ShowErrorAt(line, "a compound literal of an incomplete type has no size");
+    }
+
+    Ast_Node *list = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
+    list->an_body = items;
+
+    Ast_Var *var = Ast_DeclareVar(Str_Format(".compound.%d", Par_CompoundCount++), type, line);
+    Ast_Node *node = Ast_NewNode(AST_NODE_KIND_COMPOUND, line);
+    node->an_var  = var;
+    node->an_type = type;
+    node->an_body = Par_InitLocal(var, list, line);
+    return node;
+}
+
 /* Reject an object declared with a type whose size is not known here. An
    extern is exempt: the definition that sizes it is in another file. */
 static void Par_CheckComplete(const char *name, Ast_Type *type, int line)
@@ -412,9 +497,11 @@ static void Par_AddFunction(Ast_Func *fn)
     Ast_Func *seen = Par_FindFunction(fn->af_name);
     if (seen) {
         if (fn->af_body) {
-            seen->af_body   = fn->af_body;
-            seen->af_locals = fn->af_locals;
-            seen->af_params = fn->af_params;
+            seen->af_body     = fn->af_body;
+            seen->af_locals   = fn->af_locals;
+            seen->af_params   = fn->af_params;
+            seen->af_nparams  = fn->af_nparams;
+            seen->af_variadic = fn->af_variadic;
         }
         return;
     }
@@ -537,6 +624,7 @@ decl_tail
             Par_CurParamsTail = NULL;
             Par_CurNumParams  = 0;
             Par_CurVariadic   = 0;
+            Par_InFunction    = 1;
             Ast_BeginScope();
         }
       params RPAREN func_tail
@@ -567,9 +655,9 @@ global_decl
 
 func_tail
     : compound_stmt
-        { Par_AddFunction(Par_MakeFunction($1)); Ast_EndScope(); }
+        { Par_AddFunction(Par_MakeFunction($1)); Ast_EndScope(); Par_InFunction = 0; }
     | SEMI  /* a prototype: kept, so a call can find the return type */
-        { Par_AddFunction(Par_MakeFunction(NULL)); Ast_EndScope(); }
+        { Par_AddFunction(Par_MakeFunction(NULL)); Ast_EndScope(); Par_InFunction = 0; }
     ;
 
 params
@@ -586,6 +674,7 @@ param
     : type_name IDENT param_dims
         { Par_AddParam(Ast_DeclareVar($2, Par_ParamType($1, $3), @2)); }
     | type_name         /* unnamed parameter, e.g. `void` */
+        { Par_AddAnonParam($1); }
     | ELLIPSIS          { Par_CurVariadic = 1; }
     ;
 
@@ -599,10 +688,10 @@ param_dims
 /* ---- types -------------------------------------------------------- */
 
 type_name
-    : quals base stars
+    : quals base stars array_dims
         { Ast_Type *t = $2;
           for (int i = 0; i < $3; i++) { t = Ast_NewPointer(t); }
-          $$ = t; }
+          $$ = Par_ArrayType(t, $4); }
     ;
 
 quals
@@ -924,6 +1013,8 @@ postfix
     | postfix DOT IDENT    { $$ = Ast_NewMemberNode($1, $3, @2); }
     | postfix ARROW IDENT
         { $$ = Ast_NewMemberNode(Ast_NewUnary(AST_NODE_KIND_DEREF, $1, @2), $3, @2); }
+    | LPAREN type_name RPAREN LBRACE init_list RBRACE
+        { $$ = Par_CompoundLiteral($2, $5, @1); }
     ;
 
 primary

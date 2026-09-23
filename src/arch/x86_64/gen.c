@@ -116,6 +116,12 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
             }
             Gen_x86_64_EmitCall(node);
         } break;
+        case AST_NODE_KIND_COMPOUND: {
+            for (Ast_Node *stmt = node->an_body; stmt; stmt = stmt->an_next) {
+                Gen_x86_64_EmitStmt(stmt);
+            }
+            Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_var->av_offset, ASM_X86_64_REG_RAX);
+        } break;
         default: {
             Log_ShowErrorAt(node->an_line, "codegen: not an lvalue");
         }
@@ -452,7 +458,8 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
         } break;
         case AST_NODE_KIND_VAR:
         case AST_NODE_KIND_DEREF:
-        case AST_NODE_KIND_MEMBER: {
+        case AST_NODE_KIND_MEMBER:
+        case AST_NODE_KIND_COMPOUND: {
             Gen_x86_64_EmitAddr(node);
             Gen_x86_64_EmitLoad(node->an_type);
         } break;
