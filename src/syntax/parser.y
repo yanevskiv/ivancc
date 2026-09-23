@@ -2,9 +2,49 @@
 
 %code requires {
     #include "syntax/ast.h"
+
+    /* One step of a declarator, collected walking outward from the name it declares. */
+    typedef enum Par_DerivKind Par_DerivKind;
+    enum Par_DerivKind {
+        PAR_DERIV_POINTER,
+        PAR_DERIV_ARRAY,
+        PAR_DERIV_FUNCTION
+    };
+
+    /* A parameter list as the grammar collects it, before it becomes a function type. */
+    typedef struct Par_ParamList Par_ParamList;
+    struct Par_ParamList {
+        Ast_Var *pl_head;
+        Ast_Var *pl_tail;
+        int      pl_count;
+        int      pl_variadic; /* the list ended in `...` */
+        int      pl_proto;    /* false for `()`, which promises nothing about the parameters */
+    };
+
+    /* One derivation, holding whichever of the three kinds' operands it needs. */
+    typedef struct Par_Deriv Par_Deriv;
+    struct Par_Deriv {
+        Par_Deriv     *pd_next;
+        Par_DerivKind  pd_kind;
+        long           pd_len;    /* element count of an ARRAY */
+        int            pd_empty;  /* the ARRAY was written `[]`, leaving its length unsaid */
+        Par_ParamList  pd_params; /* parameter list of a FUNCTION */
+        int            pd_line;
+    };
+
+    /* A declarator: the name it declares, and the derivations reading outward from that name. */
+    typedef struct Par_Decl Par_Decl;
+    struct Par_Decl {
+        char      *pc_name;
+        Par_Deriv *pc_head;
+        Par_Deriv *pc_tail;
+        Par_Decl  *pc_next;     /* next declarator of a comma-separated member declaration */
+        Ast_Node  *pc_bits;     /* width of a bit-field, or NULL when it is not one */
+        int        pc_line;
+    };
 }
 
-%{
+%code {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +75,9 @@ static Ast_Type   *Par_DeclType;
 static Ast_Storage Par_DeclStorage;
 static char       *Par_DeclName;
 
+/* The type the top-level declarator just read works out to, which its tail needs after the fact. */
+static Ast_Type   *Par_CurDeclType;
+
 /* The program assembled so far, as functions are reduced. */
 static Ast_Func *Par_ProgHead;
 static Ast_Func *Par_ProgTail;
@@ -51,26 +94,128 @@ void yyerror(const char *s);
 static void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line);
 static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line);
 static Ast_Func *Par_FindFunction(const char *name);
+static void Par_DeclarePrototype(const char *name, Ast_Type *type);
+static void Par_AddFunction(Ast_Func *fn);
+static Ast_Func *Par_MakeFunction(Ast_Node *body);
+static Ast_Node *Par_Designator(char *name, int line);
+static Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, int line);
 
-/* Append a parameter to the function currently being parsed. */
-static void Par_AddParam(Ast_Var *v)
+/* Empty a parameter list, which starts out promising nothing about the parameters. */
+static void Par_ClearParams(Par_ParamList *list)
 {
-    v->av_param_next = NULL;
-    if (! Par_CurParams) {
-        Par_CurParams = Par_CurParamsTail = v;
-    } else {
-        Par_CurParamsTail->av_param_next = v;
-        Par_CurParamsTail = v;
-    }
-    Par_CurNumParams++;
+    list->pl_head     = NULL;
+    list->pl_tail     = NULL;
+    list->pl_count    = 0;
+    list->pl_variadic = 0;
+    list->pl_proto    = 0;
 }
 
-/* Count a parameter a prototype left unnamed, which a lone `void` is not, being how C spells no list. */
-static void Par_AddAnonParam(Ast_Type *type)
+/* Append one parameter to a list, which a lone `void` leaves empty rather than one long. */
+static void Par_PushParam(Par_ParamList *list, Ast_Var *var)
 {
-    if (type->at_kind != AST_TYPE_KIND_VOID) {
-        Par_CurNumParams++;
+    if (! var) {
+        return;
     }
+    var->av_param_next = NULL;
+    if (list->pl_tail) {
+        list->pl_tail->av_param_next = var;
+    } else {
+        list->pl_head = var;
+    }
+    list->pl_tail = var;
+    list->pl_count++;
+}
+
+/* Start a declarator for name, which is NULL for the abstract declarator a cast or a parameter may use. */
+static Par_Decl *Par_NewDecl(char *name)
+{
+    Par_Decl *decl = calloc(1, sizeof(Par_Decl));
+    decl->pc_name = name;
+    return decl;
+}
+
+/* Append one derivation to a declarator, which records it further out from the name than the last. */
+static Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line)
+{
+    Par_Deriv *deriv = calloc(1, sizeof(Par_Deriv));
+    deriv->pd_kind = kind;
+    deriv->pd_line = line;
+    if (decl->pc_tail) {
+        decl->pc_tail->pd_next = deriv;
+    } else {
+        decl->pc_head = deriv;
+    }
+    decl->pc_tail = deriv;
+    return deriv;
+}
+
+/* Wrap base in one derivation list, outermost first, so the step nearest the name is applied last. */
+static Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
+{
+    if (! deriv) {
+        return base;
+    }
+    Ast_Type *inner = Par_ApplyDerivs(base, deriv->pd_next);
+    switch (deriv->pd_kind) {
+        case PAR_DERIV_POINTER: {
+            return Ast_NewPointer(inner);
+        }
+        case PAR_DERIV_ARRAY: {
+            if (inner->at_kind == AST_TYPE_KIND_FUNC) {
+                Log_ShowErrorAt(deriv->pd_line, "an array of functions is not a type");
+            }
+            return Ast_NewArray(inner, (int) deriv->pd_len);
+        }
+        case PAR_DERIV_FUNCTION: {
+            if (inner->at_kind == AST_TYPE_KIND_FUNC || inner->at_kind == AST_TYPE_KIND_ARRAY) {
+                Log_ShowErrorAt(deriv->pd_line, "a function cannot return a function or an array");
+            }
+            return Ast_NewFunction(inner, deriv->pd_params.pl_head, deriv->pd_params.pl_count, deriv->pd_params.pl_variadic, deriv->pd_params.pl_proto);
+        }
+    }
+    return inner;
+}
+
+/* Give a declarator the type that applying it to base yields. */
+static Ast_Type *Par_ApplyDecl(Ast_Type *base, Par_Decl *decl)
+{
+    return Par_ApplyDerivs(base, decl->pc_head);
+}
+
+/* Adjust a parameter's declared type the way C does: an array becomes a pointer, and so does a function. */
+static Ast_Type *Par_AdjustParam(Ast_Type *type)
+{
+    if (type->at_kind == AST_TYPE_KIND_ARRAY) {
+        return Ast_NewPointer(type->at_base);
+    }
+    if (type->at_kind == AST_TYPE_KIND_FUNC) {
+        return Ast_NewPointer(type);
+    }
+    return type;
+}
+
+/* Build one named parameter, which a function definition later redeclares in its body's scope. */
+static Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
+{
+    Ast_Type *type = Par_AdjustParam(Par_ApplyDecl(base, decl));
+    Ast_Var  *var  = calloc(1, sizeof(Ast_Var));
+
+    var->av_name = decl->pc_name;
+    var->av_type = type;
+    var->av_line = line;
+    return var;
+}
+
+/* Build one unnamed parameter, which a lone `void` declares none of. */
+static Ast_Var *Par_MakeAnonParam(Ast_Type *type, int line)
+{
+    if (type->at_kind == AST_TYPE_KIND_VOID) {
+        return NULL;
+    }
+    Ast_Var *var = calloc(1, sizeof(Ast_Var));
+    var->av_type = Par_AdjustParam(type);
+    var->av_line = line;
+    return var;
 }
 
 /* Wrap base in the array dimensions listed outermost first. */
@@ -159,20 +304,20 @@ static void Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line)
 }
 
 /* Turn one member declaration's declarators into members of the shared type. */
-static Ast_Member *Par_MakeMembers(Ast_Type *type, Ast_Node *decls)
+static Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
 {
     Ast_Member head = {0};
     Ast_Member *tail = &head;
 
-    for (Ast_Node *decl = decls; decl; decl = decl->an_next) {
-        tail->am_next = Ast_NewMember(decl->an_memname, Par_ArrayType(type, decl->an_lhs), decl->an_line);
+    for (Par_Decl *decl = decls; decl; decl = decl->pc_next) {
+        tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
-        if (decl->an_val) {
-            tail->am_type = Ast_NewArray(type, 0);
+        // `T d[]` last in a struct is a flexible array member, which takes no space of its own.
+        if (decl->pc_head && decl->pc_head->pd_kind == PAR_DERIV_ARRAY && decl->pc_head->pd_empty) {
             tail->am_flexible = 1;
         }
-        if (decl->an_rhs) {
-            Par_AddBitfield(tail, decl->an_rhs, decl->an_line);
+        if (decl->pc_bits) {
+            Par_AddBitfield(tail, decl->pc_bits, decl->pc_line);
         }
     }
     return head.am_next;
@@ -512,15 +657,20 @@ static void Par_CheckComplete(const char *name, Ast_Type *type, int line)
     }
 }
 
-/* Declare one file-scope variable of the declaration being parsed. */
-static void Par_AddGlobal(const char *name, Ast_Node *dims, Ast_Node *init, int line)
+/* Declare one file-scope name of the declaration being parsed, which a function type makes a prototype. */
+static void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, int line)
 {
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
-        Ast_DeclareTypedef(name, Par_ArrayType(Par_DeclType, dims));
+        Ast_DeclareTypedef(name, type);
         return;
     }
-    Par_CheckComplete(name, Par_ArrayType(Par_DeclType, dims), line);
-    Ast_Var *var = Ast_DeclareGlobal(name, Par_ArrayType(Par_DeclType, dims), line);
+    // A declarator that worked out to a function type declares a prototype, not an object.
+    if (type->at_kind == AST_TYPE_KIND_FUNC) {
+        Par_DeclarePrototype(name, type);
+        return;
+    }
+    Par_CheckComplete(name, type, line);
+    Ast_Var *var = Ast_DeclareGlobal(name, type, line);
     var->av_storage = Par_DeclStorage;
     var->av_init = init ? Par_FlattenInit(var->av_type, init, line) : NULL;
 }
@@ -578,6 +728,110 @@ static void Par_AddFunction(Ast_Func *fn)
     Ast_Program = Par_ProgHead;
 }
 
+/* Note the declarator a top-level declaration named, opening a body scope when it declares a function. */
+static void Par_BeginExternal(Par_Decl *decl, int line)
+{
+    Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
+
+    Par_DeclName    = decl->pc_name;
+    Par_CurDeclType = type;
+    if (type->at_kind != AST_TYPE_KIND_FUNC) {
+        Par_InFunction = 0;
+        return;
+    }
+
+    Par_CurStatic    = Par_DeclStorage == AST_STORAGE_STATIC;
+    Par_CurFuncName  = decl->pc_name;
+    Par_CurRetType   = type->at_ret;
+    Par_CurParams    = type->at_params;
+    Par_CurNumParams = type->at_nparams;
+    Par_CurVariadic  = type->at_variadic;
+    Par_InFunction   = 1;
+
+    // Declaring it before the body is what lets the body call it, which is how recursion resolves.
+    Par_DeclarePrototype(decl->pc_name, type);
+
+    // The parameters were built without a scope, so the body's scope is where they become visible.
+    Ast_BeginScope();
+    for (Ast_Var *param = type->at_params; param; param = param->av_param_next) {
+        if (param->av_name) {
+            Ast_DeclareParam(param);
+        }
+    }
+    (void) line;
+}
+
+/* Close a top-level declarator that turned out not to be a function definition. */
+static void Par_EndExternal(Ast_Node *init, int line)
+{
+    if (Par_InFunction) {
+        Par_AddFunction(Par_MakeFunction(NULL));
+        Ast_EndScope();
+        Par_InFunction = 0;
+        return;
+    }
+    Par_AddDeclaredType(Par_DeclName, Par_CurDeclType, init, line);
+}
+
+/* Close a function definition, which is the one case a body follows the declarator. */
+static void Par_EndFunction(Ast_Node *body)
+{
+    Par_AddFunction(Par_MakeFunction(body));
+    Ast_EndScope();
+    Par_InFunction = 0;
+}
+
+/* Declare one more top-level name after a comma, which shares the declaration's specifier. */
+static void Par_AddDeclared(Par_Decl *decl, Ast_Node *init, int line)
+{
+    Par_AddDeclaredType(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), init, line);
+}
+
+/* Resolve a name used as a value: a variable, or a function, which names its own address. */
+static Ast_Node *Par_Designator(char *name, int line)
+{
+    Ast_Var *var = Ast_FindVar(name);
+    if (var) {
+        return Ast_NewVarNode(var, line);
+    }
+
+    Ast_Func *fn = Par_FindFunction(name);
+    if (! fn) {
+        Log_ShowErrorAt(line, "use of undeclared identifier '%s'", name);
+    }
+    Ast_Node *node = Ast_NewNode(AST_NODE_KIND_FUNCADDR, line);
+    node->an_funcname = name;
+    return node;
+}
+
+/* Build a call, which a callee naming a function directly makes a direct one. */
+static Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, int line)
+{
+    Ast_Node *node = Ast_NewNode(AST_NODE_KIND_CALL, line);
+
+    node->an_args = args;
+    if (callee->an_kind == AST_NODE_KIND_FUNCADDR) {
+        node->an_funcname = callee->an_funcname;
+    } else {
+        node->an_lhs = callee;
+    }
+    return node;
+}
+
+/* Record a prototype a declarator spelled out, so a call can find its return type and check its arity. */
+static void Par_DeclarePrototype(const char *name, Ast_Type *type)
+{
+    Ast_Func *fn = calloc(1, sizeof(Ast_Func));
+
+    fn->af_name     = (char *) name;
+    fn->af_ret      = type->at_ret;
+    fn->af_params   = type->at_params;
+    fn->af_nparams  = type->at_nparams;
+    fn->af_variadic = type->at_variadic;
+    fn->af_static   = Par_DeclStorage == AST_STORAGE_STATIC;
+    Par_AddFunction(fn);
+}
+
 /* Build the function the parser has just read a parameter list for. */
 static Ast_Func *Par_MakeFunction(Ast_Node *body)
 {
@@ -593,7 +847,7 @@ static Ast_Func *Par_MakeFunction(Ast_Node *body)
     fn->af_locals   = body ? Ast_CurrentLocals() : NULL;
     return fn;
 }
-%}
+}
 
 %locations
 %define api.location.type {int}
@@ -605,6 +859,9 @@ static Ast_Func *Par_MakeFunction(Ast_Node *body)
     Ast_Node   *node;
     Ast_Type   *type;
     Ast_Member *member;
+    Par_Decl   *decl;
+    Par_ParamList params;
+    Ast_Var    *var;
 }
 
 %token <num>     NUM
@@ -626,10 +883,14 @@ static Ast_Func *Par_MakeFunction(Ast_Node *body)
 %type <node> stmt stmt_list compound_stmt decl decl_body local_list local_decl
 %type <node> for_init expr expr_comma expr_opt args arg_list
 %type <node> initializer init_list init_item designators designator
-%type <node> cast unary postfix primary array_dims param_dims
-%type <node> member_declarators member_declarator enumerator_opt
+%type <node> cast unary postfix primary array_dims
+%type <var>  param
+%type <decl> member_declarators member_declarator
+%type <node> enumerator_opt
 %type <member> members member_decl
-%type <type> type_name base
+%type <type> type_name base decl_spec
+%type <decl> declarator direct_declarator
+%type <params> params param_list
 %type <str>  tag_name
 %type <num>  stars storage struct_or_union array_len
 
@@ -661,9 +922,9 @@ translation_unit
     | translation_unit external_decl
     ;
 
-/* A declaration and a definition share `storage type_name IDENT`, so the name is recorded first. */
+/* A declaration and a definition share `storage decl_spec`, so the specifier is recorded first. */
 external_decl
-    : storage type_name
+    : storage decl_spec
         { Par_DeclStorage = $1; Par_DeclType = $2; }
       external_tail
     ;
@@ -671,25 +932,15 @@ external_decl
 /* A struct, union or enum declaration stands alone; anything else goes on to name something. */
 external_tail
     : SEMI
-    | IDENT { Par_DeclName = $1; } decl_tail
+    | declarator { Par_BeginExternal($1, @1); } decl_tail
     ;
 
+/* Only a body settles that a function declarator was a definition, so the scope is opened before it. */
 decl_tail
-    : LPAREN
-        {
-            Par_CurStatic     = Par_DeclStorage == AST_STORAGE_STATIC;
-            Par_CurFuncName   = Par_DeclName;
-            Par_CurRetType    = Par_DeclType;
-            Par_CurParams     = NULL;
-            Par_CurParamsTail = NULL;
-            Par_CurNumParams  = 0;
-            Par_CurVariadic   = 0;
-            Par_InFunction    = 1;
-            Ast_BeginScope();
-        }
-      params RPAREN func_tail
-    | array_dims               { Par_AddGlobal(Par_DeclName, $1, NULL, @1); } global_rest SEMI
-    | array_dims ASSIGN initializer { Par_AddGlobal(Par_DeclName, $1, $3, @1); } global_rest SEMI
+    : compound_stmt        { Par_EndFunction($1); }
+    | SEMI                 { Par_EndExternal(NULL, @1); }
+    | ASSIGN initializer   { Par_EndExternal($2, @2); } global_rest SEMI
+    | COMMA                { Par_EndExternal(NULL, @1); } global_decl global_rest SEMI
     ;
 
 global_rest
@@ -709,49 +960,64 @@ storage
     ;
 
 global_decl
-    : IDENT array_dims             { Par_AddGlobal($1, $2, NULL, @1); }
-    | IDENT array_dims ASSIGN initializer { Par_AddGlobal($1, $2, $4, @1); }
+    : declarator                       { Par_AddDeclared($1, NULL, @1); }
+    | declarator ASSIGN initializer    { Par_AddDeclared($1, $3, @1); }
     ;
 
-func_tail
-    : compound_stmt
-        { Par_AddFunction(Par_MakeFunction($1)); Ast_EndScope(); Par_InFunction = 0; }
-    | SEMI  /* a prototype: kept, so a call can find the return type */
-        { Par_AddFunction(Par_MakeFunction(NULL)); Ast_EndScope(); Par_InFunction = 0; }
-    ;
-
+/* An empty list is `int f()`, which specifies nothing; `(void)` is how C spells a list of none. */
 params
-    : /* empty */
-    | param_list
+    : /* empty */          { Par_ClearParams(&$$); }
+    | param_list           { $$ = $1; }
+    | param_list COMMA ELLIPSIS
+        { $$ = $1; $$.pl_variadic = 1; }
     ;
 
 param_list
-    : param
+    : param                { Par_ClearParams(&$$); $$.pl_proto = 1; Par_PushParam(&$$, $1); }
     | param_list COMMA param
+        { $$ = $1; Par_PushParam(&$$, $3); }
     ;
 
 param
-    : type_name IDENT param_dims
-        { Par_AddParam(Ast_DeclareVar($2, Par_ParamType($1, $3), @2)); }
-    | type_name         /* unnamed parameter, e.g. `void` */
-        { Par_AddAnonParam($1); }
-    | ELLIPSIS          { Par_CurVariadic = 1; }
-    ;
-
-/* A parameter may leave its first dimension empty, as `int a[]` does. */
-param_dims
-    : array_dims                  { $$ = $1; }
-    | LSQUARE RSQUARE array_dims
-        { Ast_Node *n = Ast_NewNum(0, @1); n->an_next = $3; $$ = n; }
+    : decl_spec declarator
+        { $$ = Par_MakeParam($1, $2, @1); }
+    | decl_spec stars array_dims
+        { Ast_Type *t = $1;
+          for (int i = 0; i < $2; i++) { t = Ast_NewPointer(t); }
+          $$ = Par_MakeAnonParam(Par_ArrayType(t, $3), @1); }
     ;
 
 /* ---- types -------------------------------------------------------- */
 
+/* The part of a declaration every declarator in it shares, with no pointers or dimensions of its own. */
+decl_spec
+    : quals base           { $$ = $2; }
+    ;
+
+/* An abstract declarator, for a cast, a sizeof, a compound literal or an unnamed parameter. */
 type_name
-    : quals base stars array_dims
-        { Ast_Type *t = $2;
-          for (int i = 0; i < $3; i++) { t = Ast_NewPointer(t); }
-          $$ = Par_ArrayType(t, $4); }
+    : decl_spec stars array_dims
+        { Ast_Type *t = $1;
+          for (int i = 0; i < $2; i++) { t = Ast_NewPointer(t); }
+          $$ = Par_ArrayType(t, $3); }
+    ;
+
+/* A declarator reads outward from the name: the pointers outside it are recorded after its suffixes. */
+declarator
+    : stars direct_declarator
+        { $$ = $2;
+          for (int i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
+    ;
+
+direct_declarator
+    : IDENT                                  { $$ = Par_NewDecl($1); }
+    | LPAREN declarator RPAREN               { $$ = $2; }
+    | direct_declarator LSQUARE array_len RSQUARE
+        { $$ = $1; Par_AddDeriv($$, PAR_DERIV_ARRAY, @2)->pd_len = $3; }
+    | direct_declarator LSQUARE RSQUARE
+        { $$ = $1; Par_AddDeriv($$, PAR_DERIV_ARRAY, @2)->pd_empty = 1; }
+    | direct_declarator LPAREN { Ast_PushScope(); } params RPAREN
+        { Ast_PopScope(); $$ = $1; Par_AddDeriv($$, PAR_DERIV_FUNCTION, @2)->pd_params = $4; }
     ;
 
 quals
@@ -799,31 +1065,22 @@ members
     ;
 
 member_decl
-    : type_name member_declarators SEMI  { $$ = Par_MakeMembers($1, $2); }
+    : decl_spec member_declarators SEMI  { $$ = Par_MakeMembers($1, $2); }
     ;
 
 member_declarators
     : member_declarator                          { $$ = $1; }
     | member_declarators COMMA member_declarator
-        { Ast_Node *last = $1;
-          while (last->an_next) { last = last->an_next; }
-          last->an_next = $3; $$ = $1; }
+        { Par_Decl *last = $1;
+          while (last->pc_next) { last = last->pc_next; }
+          last->pc_next = $3; $$ = $1; }
     ;
 
-/* A member carries its name, its dimensions, an_val for a flexible array and an_rhs for a bitfield width. */
+/* A member is a declarator, optionally narrowed to a bit-field width. */
 member_declarator
-    : IDENT array_dims
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
-          n->an_memname = $1; n->an_lhs = $2; $$ = n; }
-    | IDENT LSQUARE RSQUARE
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
-          n->an_memname = $1; n->an_val = 1; $$ = n; }
-    | IDENT COLON expr
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
-          n->an_memname = $1; n->an_rhs = $3; $$ = n; }
-    | COLON expr
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
-          n->an_rhs = $2; $$ = n; }
+    : declarator           { $$ = $1; $$->pc_line = @1; }
+    | declarator COLON expr { $$ = $1; $$->pc_line = @1; $$->pc_bits = $3; }
+    | COLON expr           { $$ = Par_NewDecl(NULL); $$->pc_line = @1; $$->pc_bits = $2; }
     ;
 
 enumerators
@@ -906,7 +1163,7 @@ for_init
     ;
 
 decl
-    : storage type_name { Par_DeclType = $2; Par_DeclStorage = $1; } decl_body
+    : storage decl_spec { Par_DeclType = $2; Par_DeclStorage = $1; } decl_body
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @2); n->an_body = $4; $$ = n; }
     ;
 
@@ -924,18 +1181,18 @@ local_list
     ;
 
 local_decl
-    : IDENT array_dims
-        { Par_DeclareLocal($1, Par_ArrayType(Par_DeclType, $2), @1);
+    : declarator
+        { Par_DeclareLocal($1->pc_name, Par_ApplyDecl(Par_DeclType, $1), @1);
           $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
-    | IDENT array_dims ASSIGN initializer
-        { Ast_Var *v = Par_DeclareLocal($1, Par_ArrayType(Par_DeclType, $2), @1);
+    | declarator ASSIGN initializer
+        { Ast_Var *v = Par_DeclareLocal($1->pc_name, Par_ApplyDecl(Par_DeclType, $1), @1);
           if (! v) {
               Log_ShowErrorAt(@1, "a typedef takes no initializer");
           } else if (v->av_global) {
-              v->av_init = Par_FlattenInit(v->av_type, $4, @1);
+              v->av_init = Par_FlattenInit(v->av_type, $3, @1);
               $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1);
           } else {
-              $$ = Par_InitLocal(v, $4, @1);
+              $$ = Par_InitLocal(v, $3, @1);
           }
         }
     ;
@@ -1066,7 +1323,9 @@ unary
     ;
 
 postfix
-    : primary              { $$ = $1; }
+    : postfix LPAREN args RPAREN
+        { $$ = Par_MakeCall($1, $3, @2); }
+    | primary              { $$ = $1; }
     | postfix INC          { $$ = Ast_NewPostInc($1, 1, @2); }
     | postfix DEC          { $$ = Ast_NewPostInc($1, -1, @2); }
     | postfix LSQUARE expr RSQUARE
@@ -1086,14 +1345,7 @@ primary
     | IDENT
         { long val;
           if (Ast_FindEnumConst($1, &val)) { $$ = Ast_NewNum(val, @1); }
-          else {
-              Ast_Var *v = Ast_FindVar($1);
-              if (! v) Log_ShowErrorAt(@1, "use of undeclared identifier '%s'", $1);
-              $$ = Ast_NewVarNode(v, @1);
-          } }
-    | IDENT LPAREN args RPAREN
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_CALL, @1);
-          n->an_funcname = $1; n->an_args = $3; $$ = n; }
+          else { $$ = Par_Designator($1, @1); } }
     | LPAREN expr_comma RPAREN { $$ = $2; }
     | BUILTIN_VA_START LPAREN expr COMMA expr RPAREN
         { $$ = Ast_NewUnary(AST_NODE_KIND_VA_START, $3, @1); }

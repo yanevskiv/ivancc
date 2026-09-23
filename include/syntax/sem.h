@@ -21,6 +21,10 @@ int       Sem_Fold(const Ast_Node *node, long *value);
 int       Sem_FoldAddr(const Ast_Node *node, const char **symbol);
 
 // Checks the parser cannot make
+Ast_Type *Sem_FuncAddrType(Ast_Node *node);
+Ast_Type *Sem_CallType(Ast_Node *node);
+Ast_Type *Sem_CalleeType(Ast_Node *node);
+void      Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const char *what);
 void      Sem_CheckCall(Ast_Node *node);
 
 // Annotation

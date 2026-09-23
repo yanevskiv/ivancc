@@ -114,6 +114,9 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
         case AST_NODE_KIND_DEREF: {
             Gen_x86_64_EmitExpr(node->an_lhs);
         } break;
+        case AST_NODE_KIND_FUNCADDR: {
+            Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_funcname);
+        } break;
         case AST_NODE_KIND_MEMBER: {
             Gen_x86_64_EmitAddr(node->an_lhs);
             if (node->an_member->am_offset) {
@@ -144,7 +147,8 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
 // Load the value at the address in %rax, leaving an array or aggregate as that address since no register holds one.
 void Gen_x86_64_EmitLoad(const Ast_Type *type)
 {
-    if (type->at_kind == AST_TYPE_KIND_ARRAY || Sem_IsAggregate(type)) {
+    // An array or a function designates its own address, and an aggregate is worked on in place.
+    if (type->at_kind == AST_TYPE_KIND_ARRAY || type->at_kind == AST_TYPE_KIND_FUNC || Sem_IsAggregate(type)) {
         return;
     }
     Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RAX, 0, ASM_X86_64_REG_RAX, Gen_x86_64_TypeWidth(type));
@@ -476,6 +480,12 @@ void Gen_x86_64_EmitCall(Ast_Node *node)
         Gen_x86_64_Depth++;
     }
 
+    // The callee is evaluated first and parked, because the argument setup below owns every argument register.
+    if (node->an_lhs) {
+        Gen_x86_64_EmitExpr(node->an_lhs);
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, node->an_calltmp, ASM_X86_64_WIDTH_64);
+    }
+
     Gen_x86_64_CallPushStack(node->an_args, node->an_args, 0, nHidden);
     Gen_x86_64_CallPushReg(node->an_args, node->an_args, 0, nHidden);
     Gen_x86_64_CallPopReg(node->an_args, nHidden);
@@ -486,7 +496,12 @@ void Gen_x86_64_EmitCall(Ast_Node *node)
     }
 
     Asm_x86_64_EmitMovImm8(0, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitCall(node->an_funcname);
+    if (node->an_lhs) {
+        Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, node->an_calltmp, ASM_X86_64_REG_R11, ASM_X86_64_WIDTH_64);
+        Asm_x86_64_EmitCallReg(ASM_X86_64_REG_R11);
+    } else {
+        Asm_x86_64_EmitCall(node->an_funcname);
+    }
 
     if (nStack + nAlignPad > 0) {
         Asm_x86_64_EmitAddImm(WORD_SIZE * (nStack + nAlignPad), ASM_X86_64_REG_RSP);
@@ -711,6 +726,9 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitExpr(node->an_lhs);
             Gen_x86_64_EmitVaArg(node->an_type);
         } break;
+        case AST_NODE_KIND_FUNCADDR: {
+            Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_funcname);
+        } break;
         case AST_NODE_KIND_CALL: {
             Gen_x86_64_EmitCall(node);
         } break;
@@ -927,6 +945,10 @@ void Gen_x86_64_AssignCallTemps(Ast_Node *node, int *offset)
     if (node->an_kind == AST_NODE_KIND_CALL && Sem_IsAggregate(node->an_type)) {
         *offset = Gen_x86_64_AlignTo(*offset + Gen_x86_64_SlotSize(node->an_type), node->an_type->at_align);
         node->an_tmp = -*offset;
+    }
+    if (node->an_kind == AST_NODE_KIND_CALL && node->an_lhs) {
+        *offset = Gen_x86_64_AlignTo(*offset + WORD_SIZE, WORD_SIZE);
+        node->an_calltmp = -*offset;
     }
 
     Gen_x86_64_AssignCallTemps(node->an_lhs, offset);
