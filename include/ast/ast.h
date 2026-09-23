@@ -111,6 +111,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_INITLIST,  // a braced initializer list, its items chained on an_body
     AST_NODE_KIND_DESIGNATOR,// `[an_val]` or `.an_memname` naming where an item lands
     AST_NODE_KIND_ZERO,      // zero an_val bytes of the object an_lhs addresses
+    AST_NODE_KIND_COMPOUND,  // (type){...}: the unnamed an_var object the an_body statements fill
     AST_NODE_KIND_CALL,      // function call
     AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs), the lhs-th anonymous argument
     AST_NODE_KIND_RETURN,    // return lhs;
@@ -215,7 +216,7 @@ struct Ast_Node {
     int          an_label;    // label number a case is emitted with
     long         an_val;      // integer value for AST_NODE_KIND_NUM
     int          an_str_idx;  // string table slot for AST_NODE_KIND_STR
-    Ast_Var     *an_var;      // referenced variable for AST_NODE_KIND_VAR
+    Ast_Var     *an_var;      // variable a VAR names, or the object a COMPOUND fills
     Ast_Member  *an_member;   // resolved member of AST_NODE_KIND_MEMBER
     char        *an_memname;  // member name a MEMBER node was written with
     int          an_tmp;      // frame slot a CALL returning an aggregate lands in
