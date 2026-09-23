@@ -209,6 +209,7 @@ void Par_CheckKnrParams(void)
 // Give an old-style parameter the type its declaration list names, in place, so the body sees it.
 void Par_SetKnrParam(Par_Decl *decl, int line)
 {
+    Par_NeedName(decl, line);
     Par_TakeArrayDecor(decl, line);
     for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
         if (param->av_name && strcmp(param->av_name, decl->pc_name) == 0) {
@@ -314,6 +315,9 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
     Ast_Member *tail = &head;
 
     for (Par_Decl *decl = decls; decl; decl = decl->pc_next) {
+        if (! decl->pc_name && ! decl->pc_bits) {
+            Log_ShowErrorAt(decl->pc_line, "this member needs a name");
+        }
         tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
         // `T d[]` last in a struct is a flexible array member, which takes no space of its own.
@@ -699,6 +703,7 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, int line)
 // Declare one local the declaration being parsed names, and build the statement its initializer becomes.
 Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, int line)
 {
+    Par_NeedName(decl, line);
     Ast_Var *var = Par_DeclareLocal(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), line);
 
     if (! init) {
@@ -784,9 +789,18 @@ Ast_Func *Par_MakeFunction(Ast_Node *body)
     return fn;
 }
 
+// Reject a declarator with no name where C needs one, which is everywhere but a parameter.
+void Par_NeedName(Par_Decl *decl, int line)
+{
+    if (! decl->pc_name) {
+        Log_ShowErrorAt(decl->pc_line ? decl->pc_line : line, "this declaration needs a name");
+    }
+}
+
 // Note the declarator a top-level declaration named, opening a body scope when it declares a function.
 void Par_BeginExternal(Par_Decl *decl, int line)
 {
+    Par_NeedName(decl, line);
     Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
 
     Par_DeclName    = decl->pc_name;
@@ -841,6 +855,7 @@ void Par_EndFunction(Ast_Node *body)
 // Declare one more top-level name after a comma, which shares the declaration's specifier.
 void Par_AddDeclared(Par_Decl *decl, Ast_Node *init, int line)
 {
+    Par_NeedName(decl, line);
     Par_AddDeclaredType(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), init, line);
 }
 

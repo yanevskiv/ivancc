@@ -20,6 +20,9 @@ int twice(int n)
     return n + n;
 }
 
+// A prototype has no names to give, so the pointer parameter is written without one.
+int apply(int (*)(int, int), int, int);
+
 // A function pointer is an ordinary parameter, so a function can take an operation.
 int apply(int (*op)(int, int), int a, int b)
 {
