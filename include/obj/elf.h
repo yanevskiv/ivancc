@@ -1,8 +1,11 @@
-#ifndef ELF_TYPES_H
-#define ELF_TYPES_H
+#ifndef ELF_H
+#define ELF_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+
+/* ----- Format ----- */
 
 // Object file types (e_type).
 #define ELF_ET_REL  1
@@ -60,6 +63,8 @@
 #define ELF_R_INFO(sym, type) (((uint64_t) (sym) << 32) | (uint32_t) (type))
 #define ELF_R_SYM(info)  ((uint32_t) ((info) >> 32))
 #define ELF_R_TYPE(info) ((uint32_t) ((info) & 0xFFFFFFFF))
+
+/* ----- Types ----- */
 
 // The fixed-size ELF file header, on disk.
 typedef struct Elf64_Ehdr Elf64_Ehdr;
@@ -218,4 +223,92 @@ struct Elf_LoadImage {
     uint16_t  li_machine;  // e_machine, for the caller to accept or reject
 };
 
-#endif // ELF_TYPES_H
+/* ----- Buffers ----- */
+
+void   Elf_Buffer_Init(Elf_Buffer *buf);
+void   Elf_Buffer_Free(Elf_Buffer *buf);
+void   Elf_Buffer_Reserve(Elf_Buffer *buf, size_t n);
+void  *Elf_Buffer_At(Elf_Buffer *buf, size_t off);
+size_t Elf_Buffer_Byte(Elf_Buffer *buf, uint8_t value);
+size_t Elf_Buffer_Data(Elf_Buffer *buf, const void *data, size_t n);
+size_t Elf_Buffer_U16(Elf_Buffer *buf, uint16_t value);
+size_t Elf_Buffer_U32(Elf_Buffer *buf, uint32_t value);
+size_t Elf_Buffer_U64(Elf_Buffer *buf, uint64_t value);
+size_t Elf_Buffer_Zero(Elf_Buffer *buf, size_t n);
+size_t Elf_Buffer_Align(Elf_Buffer *buf, size_t align);
+
+/* ----- Objects ----- */
+
+const char *Elf_Intern(Elf *elf, const char *name);
+Elf        *Elf_New(uint16_t type, uint16_t machine);
+void        Elf_Free(Elf *elf);
+void        Elf_SetEntry(Elf *elf, uint64_t vaddr);
+void        Elf_SetType(Elf *elf, uint16_t type);
+uint16_t    Elf_GetType(const Elf *elf);
+const char *Elf_Error(const Elf *elf);
+
+/* ----- Sections ----- */
+
+Elf_Sec    *Elf_Section_Add(Elf *elf, const char *name, uint32_t type, uint64_t flags);
+Elf_Sec    *Elf_Section_Find(Elf *elf, const char *name);
+Elf_Sec    *Elf_Section_Get(Elf *elf, const char *name, uint32_t type, uint64_t flags);
+size_t      Elf_Section_Count(const Elf *elf);
+Elf_Sec    *Elf_Section_At(const Elf *elf, size_t i);
+Elf_Buffer *Elf_Section_Data(Elf_Sec *sec);
+void        Elf_Section_Addr(Elf_Sec *sec, uint64_t addr);
+
+/* ----- Symbols ----- */
+
+Elf_Sym *Elf_Symbol_Add(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value, uint8_t bind, uint8_t type);
+Elf_Sym *Elf_Symbol_Find(Elf *elf, const char *name);
+size_t   Elf_Symbol_Count(const Elf *elf);
+Elf_Sym *Elf_Symbol_At(const Elf *elf, size_t i);
+
+/* ----- Relocations ----- */
+
+Elf_Rela *Elf_Rela_Add(Elf_Sec *target, uint64_t offset, Elf_Sym *sym, uint32_t type, int64_t addend);
+size_t    Elf_Rela_Count(const Elf_Sec *target);
+Elf_Rela *Elf_Rela_At(const Elf_Sec *target, size_t i);
+
+/* ----- Reading ----- */
+
+const Elf64_Ehdr *Elf_Read_Ehdr(const uint8_t *data, size_t n);
+Elf              *Elf_Read_Mem(const void *buf, size_t n);
+Elf              *Elf_Read_Path(const char *path);
+
+/* ----- Writing ----- */
+
+uint32_t Elf_Write_Str(Elf_Buffer *strtab, const char *name);
+uint32_t Elf_Write_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *secidx);
+void     Elf_Write_Symtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab, Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global);
+void     Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Elf_Buffer *out);
+int      Elf_Write_Rel(const Elf *elf, FILE *out);
+uint32_t Elf_Write_SegFlags(const Elf_Sec *sec);
+uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr);
+int      Elf_Write_Exec(const Elf *elf, FILE *out);
+int      Elf_Write_File(const Elf *elf, FILE *out);
+int      Elf_Write_Path(const Elf *elf, const char *path);
+
+/* ----- Linking ----- */
+
+long     Elf_Link_SectionIndex(const Elf *elf, const Elf_Sec *target);
+long     Elf_Link_SymbolIndex(const Elf *elf, const Elf_Sym *target);
+Elf_Sym *Elf_Link_FindGlobal(Elf *elf, const char *name);
+void     Elf_Link_Merge(Elf *out, Elf *in);
+void     Elf_Link_MergeFiles(Elf *out, const char *const *paths, int npaths);
+void     Elf_Link_AddPlace(Elf_LinkOptions *opts, const char *name, uint64_t addr);
+uint64_t Elf_Link_PlacedAddr(const Elf_LinkOptions *opts, const char *name, int *placed);
+void     Elf_Link_PlaceSections(Elf *elf, const Elf_LinkOptions *opts);
+void     Elf_Link_CheckDefined(Elf *elf);
+void     Elf_Link_Exec(Elf *elf, const Elf_LinkOptions *opts);
+Elf     *Elf_Link_Run(const char *const *paths, int npaths, const Elf_LinkOptions *opts);
+
+/* ----- Loading ----- */
+
+uint64_t Elf_Load_AlignDown(uint64_t addr, uint64_t align);
+uint64_t Elf_Load_AlignUp(uint64_t addr, uint64_t align);
+int      Elf_Load_ReadExec(const char *path, Elf_LoadImage *img);
+void    *Elf_Load_At(const Elf_LoadImage *img, uint64_t vaddr, uint64_t size);
+void     Elf_Load_Free(Elf_LoadImage *img);
+
+#endif // ELF_H

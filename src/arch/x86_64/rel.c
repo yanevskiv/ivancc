@@ -1,9 +1,6 @@
 #include <stdint.h>
 #include "util/log.h"
-#include "obj/Elf/buf.h"
-#include "obj/Elf/elf.h"
-#include "obj/Elf/sec.h"
-#include "obj/Elf/rela.h"
+#include "obj/elf.h"
 #include "arch/x86_64/rel.h"
 
 // Virtual address a symbol resolves to: its section's load address plus its offset.

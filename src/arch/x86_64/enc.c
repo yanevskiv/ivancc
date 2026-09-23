@@ -1,12 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "obj/Elf/buf.h"
-#include "obj/Elf/elf.h"
-#include "obj/Elf/sec.h"
-#include "obj/Elf/sym.h"
-#include "obj/Elf/rela.h"
-#include "obj/Elf/write.h"
+#include "obj/elf.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/rel.h"
