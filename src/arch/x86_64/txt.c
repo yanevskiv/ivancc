@@ -69,6 +69,7 @@ static const char *Txt_x86_64_OpName[] = {
     [ASM_X86_64_OP_OR]      = "or",
     [ASM_X86_64_OP_XOR]     = "xor",
     [ASM_X86_64_OP_NOT]     = "not",
+    [ASM_X86_64_OP_CALL_REG] = "call",
     [ASM_X86_64_OP_SHL]     = "shl",
     [ASM_X86_64_OP_SAR]     = "sar",
     [ASM_X86_64_OP_CQO]     = "cqo",
@@ -140,6 +141,10 @@ void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
     }
     if (have_dst) {
         fputs(have_src ? ", " : " ", out);
+        // AT&T marks an indirect branch target with a `*`, which is what tells it apart from a label.
+        if (item->ai_op == ASM_X86_64_OP_CALL_REG) {
+            fputc('*', out);
+        }
         Txt_x86_64_Att_WriteOperand(out, &item->ai_dst);
     }
     fputc('\n', out);

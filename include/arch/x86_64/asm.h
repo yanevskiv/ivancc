@@ -66,6 +66,7 @@ enum Asm_x86_64_Op {
     ASM_X86_64_OP_JE,
     ASM_X86_64_OP_JNE,
     ASM_X86_64_OP_CALL,
+    ASM_X86_64_OP_CALL_REG,
     ASM_X86_64_OP_RET,
     ASM_X86_64_OP_SYSCALL
 };
@@ -193,6 +194,7 @@ void Asm_x86_64_EmitJmp(const char *label, ...);
 void Asm_x86_64_EmitJe(const char *label, ...);
 void Asm_x86_64_EmitJne(const char *label, ...);
 void Asm_x86_64_EmitCall(const char *label, ...);
+void Asm_x86_64_EmitCallReg(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitRet(void);
 void Asm_x86_64_EmitSyscall(void);
 

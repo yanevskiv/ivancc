@@ -486,6 +486,14 @@ void Asm_x86_64_EmitCall(const char *label, ...)
     va_end(ap);
 }
 
+// Emit `call *%reg`, the indirect call a call through a function pointer becomes.
+void Asm_x86_64_EmitCallReg(Asm_x86_64_Reg reg)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_CALL_REG;
+    item->ai_dst = Asm_x86_64_Reg64(reg);
+}
+
 // Emit `ret`.
 void Asm_x86_64_EmitRet(void)
 {

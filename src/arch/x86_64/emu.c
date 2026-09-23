@@ -72,7 +72,8 @@ int Emu_x86_64_HasModRM(int op)
         case ENC_X86_64_OPCODE_LEA_R_M:
         case ENC_X86_64_OPCODE_MOV_RM_IMM32:
         case ENC_X86_64_OPCODE_GRP1_RM_IMM32:
-        case ENC_X86_64_OPCODE_GRP3_RM: {
+        case ENC_X86_64_OPCODE_GRP3_RM:
+        case ENC_X86_64_OPCODE_GRP5_RM: {
             return 1;
         } break;
         default: {
@@ -314,6 +315,12 @@ const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
                 default:                 { return "(bad)"; }
             }
         } break;
+        case ENC_X86_64_OPCODE_GRP5_RM: {
+            switch (insn->ei_reg & ENC_X86_64_REG_MASK) {
+                case ENC_X86_64_GRP_CALL: { return "call"; } break;
+                default:                  { return "(bad)"; }
+            }
+        } break;
         case ENC_X86_64_OPCODE_GRP3_RM: {
             switch (insn->ei_reg & ENC_X86_64_REG_MASK) {
                 case ENC_X86_64_GRP_NOT:  { return "not";  } break;
@@ -388,6 +395,11 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
         case ENC_X86_64_OPCODE_GRP3_RM: {
             Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
             snprintf(out, n, "%s %s", name, rm);
+        } break;
+        // An indirect branch prints its target with a `*`, the way AT&T tells one from a label.
+        case ENC_X86_64_OPCODE_GRP5_RM: {
+            Emu_x86_64_FormatRm(insn, EMU_X86_64_WIDTH_64, next, rm, sizeof(rm));
+            snprintf(out, n, "%s *%s", name, rm);
         } break;
         case ENC_X86_64_OPCODE_GRP2_RM_CL: {
             Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
@@ -818,6 +830,17 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, int trace)
                     Emu_x86_64_Fault(cpu, "unimplemented group 1 opcode", rip);
                 }
             }
+        } break;
+        case ENC_X86_64_OPCODE_GRP5_RM: {
+            if ((insn.ei_reg & ENC_X86_64_REG_MASK) != ENC_X86_64_GRP_CALL) {
+                Emu_x86_64_Fault(cpu, "unimplemented group 5 opcode", rip);
+                return;
+            }
+            // FF /2 is 64-bit in long mode whatever the operand size prefix says.
+            uint64_t target = Emu_x86_64_ReadRm(cpu, &insn, next, EMU_X86_64_WIDTH_64);
+            *rsp -= EMU_X86_64_STACK_SLOT;
+            Emu_x86_64_WriteMem(cpu, *rsp, next, EMU_X86_64_WIDTH_64);
+            cpu->ec_rip = target;
         } break;
         case ENC_X86_64_OPCODE_GRP3_RM: {
             switch (insn.ei_reg & ENC_X86_64_REG_MASK) {
