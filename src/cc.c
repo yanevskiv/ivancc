@@ -10,7 +10,7 @@
 #include "util/str.h"
 #include "syntax/ast.h"
 #include "syntax/sem.h"
-#include "obj/elf.h"
+#include "object/elf.h"
 #include "arch/x86_64/gen.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/txt.h"
