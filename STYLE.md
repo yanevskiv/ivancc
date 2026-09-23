@@ -87,7 +87,8 @@ What gets a comment:
 - Use a section divider to group related declarations in a header.
 - Use a section divider to group related phases inside a long function, as `// Phase: ...`.
 - Use a section divider only where the grouping itself is information.
-- Write a section divider as a one-word `// Name` comment, as `// Relocations` is.
+- Write a section divider as a short `// Name` comment, as `// Relocations` is.
+- Write what a divider groups directly beneath it, with no blank line in between.
 - Write a divider for each part of a merged header, and none in the `.c` that follows it.
 - Use a short inline comment at a line where the code does something surprising.
 - Use an inline comment for a non-obvious flag, a deliberate deviation or an external workaround.
