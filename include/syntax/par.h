@@ -44,17 +44,14 @@ struct Par_Decl {
 };
 
 // Shared declaration state
-
 void Par_SetDeclSpec(Ast_Storage storage, Ast_Type *type);
 void Par_ResetEnum(void);
 
 // Parameter lists
-
 void  Par_ClearParams(Par_ParamList *list);
 void  Par_PushParam(Par_ParamList *list, Ast_Var *var);
 
 // Declarators
-
 Par_Decl  *Par_NewDecl(char *name);
 Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line);
 Ast_Type  *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv);
@@ -64,13 +61,11 @@ Ast_Var   *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line);
 Ast_Var   *Par_MakeAnonParam(Ast_Type *type, int line);
 
 // Types
-
 Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims);
 Ast_Type *Par_VaListType(void);
 Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, int line);
 
 // Aggregates
-
 Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail);
 void        Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line);
 Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls);
@@ -79,7 +74,6 @@ Ast_Type   *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int line)
 void        Par_AddEnumConst(const char *name, Ast_Node *value, int line);
 
 // Initializers
-
 Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line);
 Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line);
 void      Par_Designate(Ast_Type *type, Ast_Node *desig, int *index, Ast_Member **member, int line);
@@ -94,14 +88,12 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line);
 Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line);
 
 // Declarations
-
 void      Par_CheckComplete(const char *name, Ast_Type *type, int line);
 void      Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, int line);
 Ast_Var  *Par_DeclareLocal(const char *name, Ast_Type *type, int line);
 Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, int line);
 
 // Functions
-
 Ast_Func *Par_FindFunction(const char *name);
 void      Par_AddFunction(Ast_Func *fn);
 void      Par_DeclarePrototype(const char *name, Ast_Type *type);
@@ -112,7 +104,6 @@ void      Par_EndFunction(Ast_Node *body);
 void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, int line);
 
 // Expressions
-
 Ast_Node *Par_Designator(char *name, int line);
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, int line);
 
