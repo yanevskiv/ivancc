@@ -119,7 +119,8 @@ enum Ast_NodeKind {
     AST_NODE_KIND_ZERO,      // zero an_val bytes of the object an_lhs addresses
     AST_NODE_KIND_COMPOUND,  // (type){...}: the unnamed an_var object the an_body statements fill
     AST_NODE_KIND_CALL,      // function call
-    AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs), the lhs-th anonymous argument
+    AST_NODE_KIND_VA_START,  // __builtin_va_start(lhs, last), which fills the lhs va_list
+    AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs, T), the next argument the lhs va_list reaches
     AST_NODE_KIND_RETURN,    // return lhs;
     AST_NODE_KIND_IF,        // if (cond) then; else els;
     AST_NODE_KIND_FOR,       // for (init; cond; inc) body;

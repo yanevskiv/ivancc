@@ -98,7 +98,7 @@ Checklist toward ISO C99.
 ## Functions
 
 - [x] definitions with a fixed parameter list
-- [x] variadic marker `...` (arguments reachable via `__builtin_va_arg`, no `va_list`)
+- [x] variadic marker `...` (arguments reachable through a real `va_list`)
 - [x] prototypes (parsed, no-op)
 - [ ] function-pointer parameters/variables actually callable
 - [ ] qualifiers and `static` in array parameters (`int a[static 4]`, `int a[const 4]`)

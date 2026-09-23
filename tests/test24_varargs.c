@@ -1,16 +1,19 @@
 // (Test) Return: 55
-// The anonymous arguments of a variadic function, reached by index through
-// the register save area. Every argument here still fits in a register.
+// The anonymous arguments of a variadic function, walked with a va_list that
+// starts in the register save area. Every argument here still fits in a register.
 
 int sum(int n, ...)
 {
+    __builtin_va_list ap;
     int i;
     int total;
 
     total = 0;
+    __builtin_va_start(ap, n);
     for (i = 0; i < n; i = i + 1) {
-        total = total + __builtin_va_arg(i);
+        total = total + __builtin_va_arg(ap, int);
     }
+    __builtin_va_end(ap);
     return total;
 }
 

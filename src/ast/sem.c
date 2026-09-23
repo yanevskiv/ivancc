@@ -352,11 +352,16 @@ void Sem_Node(Ast_Node *node)
             node->an_type = func && func->af_ret ? func->af_ret : &Ast_TypeInt;
         } break;
 
-        case AST_NODE_KIND_VA_ARG: {
+        // Only va_start needs a variadic function; a va_list can be handed on.
+        case AST_NODE_KIND_VA_START: {
             if (! Sem_CurFunc->af_variadic) {
-                Log_ShowErrorAt(node->an_line, "__builtin_va_arg outside a variadic function");
+                Log_ShowErrorAt(node->an_line, "__builtin_va_start outside a variadic function");
             }
             node->an_type = &Ast_TypeInt;
+        } break;
+
+        case AST_NODE_KIND_VA_ARG: {
+            // the parser already set an_type from the type it names
         } break;
 
         case AST_NODE_KIND_CASE: {

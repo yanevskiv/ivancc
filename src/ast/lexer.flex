@@ -99,7 +99,10 @@ ALNUM   [A-Za-z_0-9]
 "union"                 return UNION;
 "enum"                  return ENUM;
 "typedef"               return TYPEDEF;
+"__builtin_va_list"     return BUILTIN_VA_LIST;
+"__builtin_va_start"    return BUILTIN_VA_START;
 "__builtin_va_arg"      return BUILTIN_VA_ARG;
+"__builtin_va_end"      return BUILTIN_VA_END;
 
 {ALPHA}{ALNUM}*         { yylval.str = strdup(yytext);
                           return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }
