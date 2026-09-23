@@ -37,10 +37,15 @@ int Sem_IsPointer(const Ast_Type *type)
 }
 
 // Return whether a node names an object, so that it can be assigned or addressed.
+// A member is one only when what it is taken from is, since a member of a value
+// is itself a value.
 int Sem_IsLvalue(const Ast_Node *node)
 {
+    if (node->an_kind == AST_NODE_KIND_MEMBER) {
+        return Sem_IsLvalue(node->an_lhs);
+    }
     return node->an_kind == AST_NODE_KIND_VAR || node->an_kind == AST_NODE_KIND_DEREF
-        || node->an_kind == AST_NODE_KIND_MEMBER || node->an_kind == AST_NODE_KIND_COMPOUND;
+        || node->an_kind == AST_NODE_KIND_COMPOUND;
 }
 
 // Return whether this is a struct or union, which is to say a type whose values
