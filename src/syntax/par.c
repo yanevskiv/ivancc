@@ -118,6 +118,10 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
             if (inner->at_kind == AST_TYPE_KIND_FUNC) {
                 Log_ShowErrorAt(deriv->pd_line, "an array of functions is not a type");
             }
+            // Par_MakeParam clears these, so one surviving here was written where C does not allow it.
+            if (deriv->pd_decor) {
+                Log_ShowErrorAt(deriv->pd_line, "'static' and qualifiers in an array declarator are only allowed on a parameter");
+            }
             return Ast_NewArray(inner, (int) deriv->pd_len);
         }
         case PAR_DERIV_FUNCTION: {
@@ -148,9 +152,29 @@ Ast_Type *Par_AdjustParam(Ast_Type *type)
     return type;
 }
 
+// Accept `static` and qualifiers on a parameter's outermost array, which is the only place C allows them.
+void Par_TakeArrayDecor(Par_Decl *decl, int line)
+{
+    for (Par_Deriv *deriv = decl->pc_head; deriv; deriv = deriv->pd_next) {
+        if (! deriv->pd_decor) {
+            continue;
+        }
+        // The outermost derivation is the one nearest the name, which is where the array must sit.
+        if (deriv != decl->pc_head || deriv->pd_kind != PAR_DERIV_ARRAY) {
+            Log_ShowErrorAt(line, "'static' and qualifiers are only allowed on a parameter's outermost array");
+        }
+        if ((deriv->pd_decor & PAR_ARRAY_STATIC) && deriv->pd_empty) {
+            Log_ShowErrorAt(line, "'static' in an array declarator needs a length");
+        }
+        // Both decay away with the array itself, and we have no qualified types to carry them into yet.
+        deriv->pd_decor = 0;
+    }
+}
+
 // Build one named parameter, which a function definition later redeclares in its body's scope.
 Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
 {
+    Par_TakeArrayDecor(decl, line);
     Ast_Type *type = Par_AdjustParam(Par_ApplyDecl(base, decl));
     Ast_Var  *var  = calloc(1, sizeof(Ast_Var));
 

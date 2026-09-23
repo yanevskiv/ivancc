@@ -61,7 +61,7 @@ void yyerror(const char *s);
 %type <decl> declarator direct_declarator
 %type <params> params param_list
 %type <str>  tag_name
-%type <num>  stars storage struct_or_union array_len
+%type <num>  stars storage struct_or_union array_len array_decor
 
 /* Lowest precedence first. */
 %nonassoc LOWER_THAN_ELSE
@@ -181,10 +181,10 @@ declarator
 direct_declarator
     : IDENT                                  { $$ = Par_NewDecl($1); }
     | LPAREN declarator RPAREN               { $$ = $2; }
-    | direct_declarator LSQUARE array_len RSQUARE
-        { $$ = $1; Par_AddDeriv($$, PAR_DERIV_ARRAY, @2)->pd_len = $3; }
-    | direct_declarator LSQUARE RSQUARE
-        { $$ = $1; Par_AddDeriv($$, PAR_DERIV_ARRAY, @2)->pd_empty = 1; }
+    | direct_declarator LSQUARE array_decor array_len RSQUARE
+        { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_len = $4; d->pd_decor = $3; }
+    | direct_declarator LSQUARE array_decor RSQUARE
+        { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_empty = 1; d->pd_decor = $3; }
     | direct_declarator LPAREN { Ast_PushScope(); } params RPAREN
         { Ast_PopScope(); $$ = $1; Par_AddDeriv($$, PAR_DERIV_FUNCTION, @2)->pd_params = $4; }
     ;
@@ -192,6 +192,19 @@ direct_declarator
 quals
     : /* empty */
     | quals CONST
+    ;
+
+/* `int a[static 4]` and `int a[const 4]`, which only a parameter's outermost array may carry. */
+array_decor
+    : /* empty */          { $$ = 0; }
+    | STATIC quals         { $$ = PAR_ARRAY_STATIC; }
+    | qual_list            { $$ = PAR_ARRAY_QUAL; }
+    | qual_list STATIC     { $$ = PAR_ARRAY_QUAL | PAR_ARRAY_STATIC; }
+    ;
+
+qual_list
+    : CONST
+    | qual_list CONST
     ;
 
 base
