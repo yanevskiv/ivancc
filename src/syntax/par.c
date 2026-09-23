@@ -39,9 +39,6 @@ static long Par_EnumValue;
 // The record __builtin_va_list names.
 static Ast_Type *Par_VaList;
 
-int  yylex(void);
-void yyerror(const char *s);
-
 // Record the specifier one declaration's declarators share.
 void Par_SetDeclSpec(Ast_Storage storage, Ast_Type *type)
 {
