@@ -84,6 +84,15 @@ int Gen_x86_64_AlignTo(int n, int align)
     return (n + align - 1) / align * align;
 }
 
+// Return the frame bytes a local reserves, rounding an aggregate up to whole eightbytes because the ABI moves one at a time.
+int Gen_x86_64_SlotSize(const Ast_Type *type)
+{
+    if (! Sem_IsAggregate(type)) {
+        return type->at_size;
+    }
+    return Gen_x86_64_AlignTo(type->at_size, WORD_SIZE);
+}
+
 // Return the operand width in bits used to load or store a value of type.
 Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type)
 {
@@ -813,7 +822,7 @@ void Gen_x86_64_AssignCallTemps(Ast_Node *node, int *offset)
         return;
     }
     if (node->an_kind == AST_NODE_KIND_CALL && Sem_IsAggregate(node->an_type)) {
-        *offset = Gen_x86_64_AlignTo(*offset + node->an_type->at_size, node->an_type->at_align);
+        *offset = Gen_x86_64_AlignTo(*offset + Gen_x86_64_SlotSize(node->an_type), node->an_type->at_align);
         node->an_tmp = -*offset;
     }
 
@@ -843,7 +852,7 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
     }
 
     for (Ast_Var *var = func->af_locals; var; var = var->av_next) {
-        offset += var->av_type->at_size;
+        offset += Gen_x86_64_SlotSize(var->av_type);
         offset = Gen_x86_64_AlignTo(offset, var->av_type->at_align);
         var->av_offset = -offset;
     }
