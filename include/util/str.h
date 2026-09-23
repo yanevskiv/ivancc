@@ -11,13 +11,13 @@ struct Str_List {
 };
 
 // String utility functions
+char *Str_Duplicate(const char *str);
 char *Str_Format(const char *fmt, ...);
 char *Str_VFormat(const char *fmt, va_list ap);
 char *Str_ChangeOrAppendExt(const char *input, const char *suffix);
 int Str_Equals(const char *a, const char *b);
 int Str_StartsWith(const char *str, const char *prefix);
 char *Str_Trim(char *str);
-char *Str_New(const char *str);
 void Str_Free(char *str);
 
 // String splitting
