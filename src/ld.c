@@ -4,8 +4,8 @@
 #include <sys/stat.h>
 
 #include "util/log.h"
-#include "obj/elf.h"
 #include "util/str.h"
+#include "obj/elf.h"
 
 // Permission bits for the executable ld writes (rwxr-xr-x).
 #define LD_MODE 0755

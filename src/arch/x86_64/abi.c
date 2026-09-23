@@ -1,5 +1,5 @@
-#include "arch/x86_64/abi.h"
 #include "ast/sem.h"
+#include "arch/x86_64/abi.h"
 
 // Give a type the class the SysV ABI passes it by.
 Abi_x86_64_Class Abi_x86_64_Classify(const Ast_Type *type)

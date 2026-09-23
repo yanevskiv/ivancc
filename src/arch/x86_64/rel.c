@@ -1,4 +1,5 @@
 #include <stdint.h>
+
 #include "util/log.h"
 #include "obj/elf.h"
 #include "arch/x86_64/rel.h"
