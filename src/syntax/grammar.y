@@ -208,8 +208,12 @@ declarator
     ;
 
 direct_declarator
-    : IDENT                                  { $$ = Par_NewDecl($1); }
+    : IDENT                                  { $$ = Par_NewDecl($1); $$->pc_line = @1; }
     | LPAREN declarator RPAREN               { $$ = $2; }
+    /* A declarator with no name to give, which only a parameter may be: `int (*)(int)`. */
+    | LPAREN stars RPAREN
+        { $$ = Par_NewDecl(NULL); $$->pc_line = @1;
+          for (int i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
     | direct_declarator LSQUARE array_decor array_len RSQUARE
         { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_len = $4; d->pd_decor = $3; }
     | direct_declarator LSQUARE array_decor RSQUARE
