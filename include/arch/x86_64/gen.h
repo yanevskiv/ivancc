@@ -9,6 +9,7 @@ int              Gen_x86_64_Count(void);
 void             Gen_x86_64_EmitPush(void);
 void             Gen_x86_64_EmitPop(Asm_x86_64_Reg reg);
 int              Gen_x86_64_AlignTo(int n, int align);
+int              Gen_x86_64_SlotSize(const Ast_Type *type);
 Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type);
 void             Gen_x86_64_EmitAddr(Ast_Node *node);
 void             Gen_x86_64_EmitLoad(const Ast_Type *type);
