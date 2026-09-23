@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "obj/elf.h"
+#include "object/elf.h"
 #include "arch/x86_64/asm.h"
 
 // A rel32 fixup targets its exact site, so it carries an addend of -4.

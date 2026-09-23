@@ -4,7 +4,7 @@
 
 #include "util/log.h"
 #include "util/str.h"
-#include "obj/elf.h"
+#include "object/elf.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/txt.h"
 
