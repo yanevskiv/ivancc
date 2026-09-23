@@ -36,9 +36,7 @@ int Sem_IsPointer(const Ast_Type *type)
     return type->at_kind == AST_TYPE_KIND_PTR || type->at_kind == AST_TYPE_KIND_ARRAY;
 }
 
-// Return whether a node names an object, so that it can be assigned or addressed.
-// A member is one only when what it is taken from is, since a member of a value
-// is itself a value.
+// Return whether a node names an object, which a member does only when what holds it does.
 int Sem_IsLvalue(const Ast_Node *node)
 {
     if (node->an_kind == AST_NODE_KIND_MEMBER) {
@@ -254,6 +252,9 @@ void Sem_Node(Ast_Node *node)
         case AST_NODE_KIND_ADDR: {
             if (! Sem_IsLvalue(node->an_lhs)) {
                 Log_ShowErrorAt(node->an_line, "cannot take the address of this expression");
+            }
+            if (node->an_lhs->an_kind == AST_NODE_KIND_MEMBER && node->an_lhs->an_member->am_bits) {
+                Log_ShowErrorAt(node->an_line, "cannot take the address of a bit-field");
             }
             node->an_type = Ast_NewPointer(node->an_lhs->an_type);
         } break;
