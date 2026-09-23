@@ -59,7 +59,7 @@
 - Every file-scope variable must be `static` and kept out of the header.
 - Every `.c` file must define things in the same order its header declares them.
 - Every `.c` file must include system headers first, then a blank line, then project headers.
-- Every project include must carry its module path: `#include "ast/ast.h"`.
+- Every project include must carry its module path: `#include "syntax/ast.h"`.
 - Every `.c` file must follow one layout order.
   - Put includes, defines, enums and structs first.
   - Put global variables, then static global variables, then function definitions.
@@ -127,11 +127,11 @@ What does not get a comment:
   - Every piece of the work must be a `###` heading naming the code it covers.
   - Every heading must spell that name the way the source spells it, in backticks.
   - Write a function as `Par_AddFunction()`, keeping its parentheses.
-  - Write a type as `Abi_x86_64_Class` and one field of it as `Ast_Node.an_tmp`.
+  - Write a type as `Abi_x86_64_SysV_Class` and one field of it as `Ast_Node.an_tmp`.
   - Write a switch arm as `case AST_NODE_KIND_CALL`, keeping the `case` keyword.
   - Write a grammar rule as `decl_tail`, under the name the grammar gives it.
   - Every heading must open with the action the stage took on that code.
-  - Write `Add:` for code the stage introduces, as in ``### Add: `Abi_x86_64_Class` ``.
+  - Write `Add:` for code the stage introduces, as in ``### Add: `Abi_x86_64_SysV_Class` ``.
   - Write `Extend:` where a whole rule, case or block joins something that already existed.
   - Write `Modify:` where existing code changes in a way no addition describes.
   - Write `Delete:` for code the stage removes.
