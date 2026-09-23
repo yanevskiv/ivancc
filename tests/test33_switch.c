@@ -1,6 +1,7 @@
 // (Test) Return: 243
 // switch, including fallthrough between labels, a default, and the way break
-// leaves the switch while continue carries on with the enclosing loop.
+// leaves the switch while continue carries on with the enclosing loop. A label
+// is any constant expression, folded before the cases are collected.
 
 int classify(int n)
 {
@@ -55,6 +56,17 @@ int main()
         case 'a': return 8;
         case 'b': total += 1; break;
         default: return 9;
+    }
+
+    switch (-1) {
+        case -1: total += 1; break;
+        case 2 * 3: return 10;
+        default: return 11;
+    }
+    switch (6) {
+        case -1: return 12;
+        case 2 * 3: total -= 1; break;
+        default: return 13;
     }
 
     return total - 270;

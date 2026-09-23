@@ -143,24 +143,25 @@ static Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail)
 /* Narrow a member to the bits a `: width` gave it, rejecting a width C cannot grant. */
 static void Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line)
 {
+    long bits = 0;
     Ast_TypeKind kind = member->am_type->at_kind;
 
-    if (width->an_kind != AST_NODE_KIND_NUM) {
+    if (! Sem_Fold(width, &bits)) {
         Log_ShowErrorAt(line, "a bit-field width is not a constant");
     }
     if (kind != AST_TYPE_KIND_INT && kind != AST_TYPE_KIND_CHAR) {
         Log_ShowErrorAt(line, "a bit-field must have an integer type");
     }
-    if (width->an_val < 0) {
+    if (bits < 0) {
         Log_ShowErrorAt(line, "a bit-field width cannot be negative");
     }
-    if (width->an_val > member->am_type->at_size * AST_BITS_PER_BYTE) {
+    if (bits > member->am_type->at_size * AST_BITS_PER_BYTE) {
         Log_ShowErrorAt(line, "a bit-field is wider than the type that holds it");
     }
-    if (width->an_val == 0 && member->am_name) {
+    if (bits == 0 && member->am_name) {
         Log_ShowErrorAt(line, "a bit-field with a name cannot be zero bits wide");
     }
-    member->am_bits = (int) width->an_val;
+    member->am_bits = (int) bits;
 }
 
 /* Turn one member declaration's declarators into members of the shared type. */
@@ -223,11 +224,8 @@ static Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int 
 /* Declare one enumeration constant and step the value the next one takes. */
 static void Par_AddEnumConst(const char *name, Ast_Node *value, int line)
 {
-    if (value) {
-        if (value->an_kind != AST_NODE_KIND_NUM) {
-            Log_ShowErrorAt(line, "enumerator '%s' is not a constant", name);
-        }
-        Par_EnumValue = value->an_val;
+    if (value && ! Sem_Fold(value, &Par_EnumValue)) {
+        Log_ShowErrorAt(line, "enumerator '%s' is not a constant", name);
     }
     Ast_DeclareEnumConst(name, Par_EnumValue++);
 }
@@ -985,12 +983,12 @@ array_dims
 
 /* An array's length is a constant expression, of which we fold the two forms
    that reach a declarator: a literal, and an enumeration constant. */
+/* A length must fold to a constant here, since a variable one would be a VLA. */
 array_len
-    : NUM                  { $$ = $1; }
-    | IDENT
+    : expr
         { long val;
-          if (! Ast_FindEnumConst($1, &val)) {
-              Log_ShowErrorAt(@1, "'%s' is not a constant", $1);
+          if (! Sem_Fold($1, &val)) {
+              Log_ShowErrorAt(@1, "an array length is not a constant");
           }
           $$ = val; }
     ;

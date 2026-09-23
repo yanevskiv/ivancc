@@ -970,15 +970,15 @@ void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const A
 {
     int size = item->an_type->at_size;
     int offset = (int) item->an_val;
+    long val = 0;
 
-    if (item->an_lhs->an_kind != AST_NODE_KIND_NUM) {
+    if (! Sem_Fold(item->an_lhs, &val)) {
         Log_ShowErrorAt(var->av_line, "initializer for '%s' is not a constant", var->av_name);
     }
     if (offset + size > var->av_type->at_size) {
         Log_ShowErrorAt(var->av_line, "initializer for '%s' is larger than it is", var->av_name);
     }
 
-    long val = item->an_lhs->an_val;
     if (item->an_member) {
         long mask = ((1L << item->an_member->am_bits) - 1) << item->an_member->am_bitoff;
         val = (val << item->an_member->am_bitoff) & mask;
