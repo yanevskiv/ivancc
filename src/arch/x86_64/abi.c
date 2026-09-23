@@ -1,3 +1,5 @@
+// C source file for the x86-64 System V calling convention.
+
 #include "syntax/sem.h"
 #include "arch/x86_64/abi.h"
 

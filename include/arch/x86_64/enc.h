@@ -1,3 +1,5 @@
+// C header file for x86-64 machine code encoding.
+
 #ifndef ENC_X86_64_H
 #define ENC_X86_64_H
 

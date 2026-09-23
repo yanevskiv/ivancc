@@ -1,3 +1,5 @@
+// C header file for ELF objects and executables.
+
 #ifndef ELF_H
 #define ELF_H
 

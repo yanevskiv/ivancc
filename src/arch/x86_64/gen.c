@@ -1,3 +1,5 @@
+// C source file for x86-64 code generation.
+
 #include <string.h>
 
 #include "util/log.h"

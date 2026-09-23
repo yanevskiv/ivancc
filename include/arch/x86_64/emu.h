@@ -1,3 +1,5 @@
+// C header file for the x86-64 instruction-set emulator.
+
 #ifndef EMU_X86_64_H
 #define EMU_X86_64_H
 

@@ -1,3 +1,5 @@
+// C header file for the abstract syntax tree.
+
 #ifndef AST_H
 #define AST_H
 

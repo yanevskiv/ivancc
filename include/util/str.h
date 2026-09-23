@@ -1,3 +1,5 @@
+// C header file for string utilities.
+
 #ifndef STR_H
 #define STR_H
 

@@ -1,3 +1,5 @@
+// C source file for the x86-64 instruction list.
+
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>

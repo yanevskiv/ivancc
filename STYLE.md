@@ -80,6 +80,9 @@ What gets a comment:
   - Carry intent, a non-obvious invariant, or a reason a workaround exists.
   - Carry what a name abbreviates.
 - Every comment that annotates an entity must say what it is, not how it works.
+- Every file must open with a one-line banner naming what it is, then a blank line.
+  - Write a header's banner as `// C header file for string utilities.`
+  - Write a source file's banner as `// C source file for string utilities.`
 - Every function must have exactly one comment directly above it, saying what it does.
 - Every function comment must say why it exists or what it assumes, where the signature does not.
 - Every grammar rule must have one comment directly above it, as a function does.

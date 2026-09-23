@@ -1,3 +1,5 @@
+// C header file for the x86-64 instruction list.
+
 #ifndef ASM_X86_64_H
 #define ASM_X86_64_H
 

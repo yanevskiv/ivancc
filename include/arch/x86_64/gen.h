@@ -1,3 +1,5 @@
+// C header file for x86-64 code generation.
+
 #ifndef GEN_X86_64_H
 #define GEN_X86_64_H
 

@@ -1,3 +1,5 @@
+// C header file for the parser's declarator and parameter helpers.
+
 #ifndef PAR_H
 #define PAR_H
 

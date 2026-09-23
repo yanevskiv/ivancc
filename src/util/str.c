@@ -1,3 +1,5 @@
+// C source file for string utilities.
+
 #include <regex.h>
 #include <stdarg.h>
 #include <stdio.h>

@@ -1,3 +1,5 @@
+// C source file for whole-file reads and writes.
+
 #include <stdio.h>
 #include <stdlib.h>
 
