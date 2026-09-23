@@ -1,11 +1,15 @@
 // (Test) Return: 42
 // Passing and returning structs by value, which is the SysV classification
 // algorithm. A struct of 16 bytes or less travels in registers, and anything
-// wider travels on the stack with a hidden pointer carrying the return.
+// wider travels on the stack with a hidden pointer carrying the return. A
+// struct that does not fill its last eightbyte still travels in a whole one,
+// so the frame has to reserve the bytes the register spill writes.
 
 struct Point { int x; int y; };
 struct Quad  { int a; int b; int c; int d; };
 struct Big   { int a; int b; int c; int d; int e; int f; };
+struct Small { int n; };
+struct Odd   { char a; char b; char c; };
 
 struct Point add(struct Point a, struct Point b)
 {
@@ -25,6 +29,17 @@ struct Quad quad(int n)
     q.c = n + 2;
     q.d = n + 3;
     return q;
+}
+
+struct Small inc(struct Small s)
+{
+    s.n = s.n + 1;
+    return s;
+}
+
+int sumo(struct Odd o)
+{
+    return o.a + o.b + o.c;
 }
 
 int sumq(struct Quad q)
@@ -75,6 +90,8 @@ int main()
     struct Point q;
     struct Quad  w;
     struct Big   b;
+    struct Small m;
+    struct Odd   o;
 
     p.x = 1;  p.y = 2;
     q.x = 10; q.y = 20;
@@ -84,6 +101,8 @@ int main()
     if (sizeof(struct Point) != 8) return 1;
     if (sizeof(struct Quad) != 16) return 2;
     if (sizeof(struct Big) != 24) return 3;
+    if (sizeof(struct Small) != 4) return 16;
+    if (sizeof(struct Odd) != 3) return 17;
 
     struct Point s = add(p, q);
     if (s.x != 11 || s.y != 22) return 4;
@@ -105,6 +124,12 @@ int main()
 
     if (sumb(bump(b, 5)) != 26) return 14;
     if (b.a != 1) return 15;
+
+    m.n = 41;
+    o.a = 1; o.b = 2; o.c = 3;
+    if (inc(m).n != 42) return 18;
+    if (m.n != 41) return 19;
+    if (sumo(o) != 6) return 20;
 
     return s.x + t.d + g.a + 17;
 }
