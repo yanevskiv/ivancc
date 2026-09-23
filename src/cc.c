@@ -7,10 +7,10 @@
 #include <unistd.h>
 
 #include "util/log.h"
+#include "util/str.h"
 #include "ast/ast.h"
 #include "ast/sem.h"
 #include "obj/elf.h"
-#include "util/str.h"
 #include "arch/x86_64/gen.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/txt.h"
@@ -40,11 +40,11 @@
 // Input stream read by the generated lexer.
 extern FILE *yyin;
 
-// Entry point of the generated parser; fills in Ast_Program.
-int yyparse(void);
-
 // Runtime objects the default (linked) output is always merged with.
 static const char *const Cc_RuntimeNames[] = { "crt0.o", "libc.o" };
+
+// Entry point of the generated parser; fills in Ast_Program.
+int yyparse(void);
 
 // Show usage information and exit.
 static void Cc_ShowUsage(const char *prog)

@@ -4,6 +4,13 @@
 #include "ast/ast.h"
 #include "arch/x86_64/asm.h"
 
+// An address a global's image holds, which only the linker can fill in.
+typedef struct Gen_x86_64_Addr Gen_x86_64_Addr;
+struct Gen_x86_64_Addr {
+    int         ga_offset;  // bytes into the image the address occupies
+    const char *ga_symbol;  // symbol the address is taken from
+};
+
 // Code emission helpers
 int              Gen_x86_64_Count(void);
 void             Gen_x86_64_EmitPush(void);
@@ -38,13 +45,6 @@ void Gen_x86_64_CallPushStack(Ast_Node *args, Ast_Node *arg, int index, int nHid
 void Gen_x86_64_CallPushReg(Ast_Node *args, Ast_Node *arg, int index, int nHidden);
 void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden);
 void Gen_x86_64_EmitCall(Ast_Node *node);
-
-// An address a global's image holds, which only the linker can fill in.
-typedef struct Gen_x86_64_Addr Gen_x86_64_Addr;
-struct Gen_x86_64_Addr {
-    int         ga_offset;  // bytes into the image the address occupies
-    const char *ga_symbol;  // symbol the address is taken from
-};
 
 // Expressions, statements and data
 void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, int line);

@@ -2,6 +2,7 @@
 #define TXT_X86_64_H
 
 #include <stdio.h>
+
 #include "arch/x86_64/asm.h"
 
 // AT&T syntax writer

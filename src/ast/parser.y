@@ -8,13 +8,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "util/log.h"
 #include "util/str.h"
 #include "ast/ast.h"
 #include "ast/sem.h"
-
-int  yylex(void);
-void yyerror(const char *s);
 
 /* Give a rule the line of its first token, or of the preceding one if empty. */
 #define YYLLOC_DEFAULT(cur, rhs, n)  ((cur) = (n) ? YYRHSLOC(rhs, 1) : YYRHSLOC(rhs, 0))
@@ -40,6 +38,19 @@ static char       *Par_DeclName;
 /* The program assembled so far, as functions are reduced. */
 static Ast_Func *Par_ProgHead;
 static Ast_Func *Par_ProgTail;
+
+/* Value the next enumerator takes, which `= n` resets. */
+static long Par_EnumValue;
+
+/* The record __builtin_va_list names, built on first use and shared after. */
+static Ast_Type *Par_VaList;
+
+int  yylex(void);
+void yyerror(const char *s);
+
+static void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line);
+static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line);
+static Ast_Func *Par_FindFunction(const char *name);
 
 /* Append a parameter to the function currently being parsed. */
 static void Par_AddParam(Ast_Var *v)
@@ -79,12 +90,6 @@ static Ast_Type *Par_ParamType(Ast_Type *base, Ast_Node *dims)
     }
     return Ast_NewPointer(Par_ArrayType(base, dims->an_next));
 }
-
-/* Value the next enumerator takes, which `= n` resets. */
-static long Par_EnumValue;
-
-/* The record __builtin_va_list names, built on first use and shared after. */
-static Ast_Type *Par_VaList;
 
 /* The type __builtin_va_list names: the SysV record, as an array of one so passing it hands on its address. */
 static Ast_Type *Par_VaListType(void)
@@ -280,10 +285,6 @@ static void Par_Step(Ast_Type **type, int *off, Ast_Node *desig, int index, Ast_
     *off += index * (*type)->at_base->at_size;
     *type = (*type)->at_base;
 }
-
-static void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line);
-static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line);
-static Ast_Func *Par_FindFunction(const char *name);
 
 /* The type an expression already has, for the forms the parser can answer without the Sem_ pass, else NULL. */
 static Ast_Type *Par_ExprType(Ast_Node *node)
