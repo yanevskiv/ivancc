@@ -1,7 +1,7 @@
 #ifndef ABI_X86_64_H
 #define ABI_X86_64_H
 
-#include "ast/ast.h"
+#include "syntax/ast.h"
 
 // Bytes in one eightbyte, the unit the SysV ABI classifies an argument in.
 #define ABI_X86_64_EIGHTBYTE 8

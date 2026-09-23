@@ -1,7 +1,7 @@
 #ifndef SEM_H
 #define SEM_H
 
-#include "ast/ast.h"
+#include "syntax/ast.h"
 
 // Lookups over the program being analysed
 Ast_Func *Sem_FindFunc(const char *name);

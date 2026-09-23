@@ -1,7 +1,7 @@
 #ifndef GEN_X86_64_H
 #define GEN_X86_64_H
 
-#include "ast/ast.h"
+#include "syntax/ast.h"
 #include "arch/x86_64/asm.h"
 
 // An address a global's image holds, which only the linker can fill in.
