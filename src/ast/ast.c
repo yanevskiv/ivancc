@@ -39,6 +39,12 @@ int Ast_AlignTo(int n, int align)
     return (n + align - 1) / align * align;
 }
 
+// Round n down to the multiple of align at or below it.
+int Ast_AlignDown(int n, int align)
+{
+    return n / align * align;
+}
+
 // Build the pointer type that points at base.
 Ast_Type *Ast_NewPointer(Ast_Type *base)
 {
@@ -78,21 +84,52 @@ Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line)
 {
     Ast_Member *member = calloc(1, sizeof(Ast_Member));
-    member->am_name = strdup(name);
+    member->am_name = name ? strdup(name) : NULL;
     member->am_type = type;
     member->am_line = line;
     return member;
 }
 
-// Place members in an aggregate, giving each an offset and the whole its size
-// and alignment. A union stacks every member at zero; a struct lays them out in
-// order, padding each to its own alignment and the total to the widest.
+// Place one bitfield at the bit cursor, in a fresh unit if it would straddle one, and return where the next starts.
+int Ast_PlaceBitfield(Ast_Member *member, int bits)
+{
+    int unit = member->am_type->at_size * AST_BITS_PER_BYTE;
+
+    if (member->am_bits == 0) {
+        return Ast_AlignTo(bits, unit);
+    }
+    if (bits / unit != (bits + member->am_bits - 1) / unit) {
+        bits = Ast_AlignTo(bits, unit);
+    }
+    member->am_offset = Ast_AlignDown(bits / AST_BITS_PER_BYTE, member->am_type->at_size);
+    member->am_bitoff = bits % unit;
+    return bits + member->am_bits;
+}
+
+// Drop the members no name can reach, which is every bitfield declared to pad.
+Ast_Member *Ast_NamedMembers(Ast_Member *members)
+{
+    Ast_Member head = {0};
+    Ast_Member *last = &head;
+
+    for (Ast_Member *member = members; member; member = member->am_next) {
+        if (member->am_name) {
+            last->am_next = member;
+            last = member;
+        }
+    }
+    last->am_next = NULL;
+    return head.am_next;
+}
+
+// Place members in an aggregate, counting in bits so that bitfields share a unit, and size the whole to its widest member.
 void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
 {
-    int offset = 0;
+    int bits = 0;
     int align = 1;
 
     for (Ast_Member *member = members; member; member = member->am_next) {
+        member->am_owner = type;
         if (member->am_flexible) {
             if (type->at_kind == AST_TYPE_KIND_UNION) {
                 Log_ShowErrorAt(member->am_line, "a union cannot have a flexible array member");
@@ -103,7 +140,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
             if (member == members) {
                 Log_ShowErrorAt(member->am_line, "a struct needs a member before a flexible array member");
             }
-            member->am_offset = Ast_AlignTo(offset, member->am_type->at_align);
+            member->am_offset = Ast_AlignTo(bits, member->am_type->at_align * AST_BITS_PER_BYTE) / AST_BITS_PER_BYTE;
             if (member->am_type->at_align > align) {
                 align = member->am_type->at_align;
             }
@@ -113,7 +150,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
             Log_ShowErrorAt(member->am_line, "member '%s' has an incomplete type", member->am_name);
         }
         for (Ast_Member *seen = members; seen != member; seen = seen->am_next) {
-            if (strcmp(seen->am_name, member->am_name) == 0) {
+            if (seen->am_name && member->am_name && strcmp(seen->am_name, member->am_name) == 0) {
                 Log_ShowErrorAt(member->am_line, "duplicate member '%s'", member->am_name);
             }
         }
@@ -122,24 +159,30 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
         }
         if (type->at_kind == AST_TYPE_KIND_UNION) {
             member->am_offset = 0;
-            if (member->am_type->at_size > offset) {
-                offset = member->am_type->at_size;
+            if (member->am_type->at_size * AST_BITS_PER_BYTE > bits) {
+                bits = member->am_type->at_size * AST_BITS_PER_BYTE;
             }
             continue;
         }
-        offset = Ast_AlignTo(offset, member->am_type->at_align);
-        member->am_offset = offset;
-        offset += member->am_type->at_size;
+        // An unnamed member is a bitfield too: `int :0;` declares a width of none.
+        if (member->am_bits || ! member->am_name) {
+            bits = Ast_PlaceBitfield(member, bits);
+            continue;
+        }
+        bits = Ast_AlignTo(bits, member->am_type->at_align * AST_BITS_PER_BYTE);
+        member->am_offset = bits / AST_BITS_PER_BYTE;
+        bits += member->am_type->at_size * AST_BITS_PER_BYTE;
     }
 
-    if (! members) {
-        Log_ShowErrorAt(line, "an aggregate must declare at least one member");
+    Ast_Member *named = Ast_NamedMembers(members);
+    if (! named) {
+        Log_ShowErrorAt(line, "an aggregate must declare at least one named member");
     }
 
-    type->at_members  = members;
+    type->at_members  = named;
     type->at_complete = 1;
     type->at_align    = align;
-    type->at_size     = Ast_AlignTo(offset, align);
+    type->at_size     = Ast_AlignTo(bits, align * AST_BITS_PER_BYTE) / AST_BITS_PER_BYTE;
 }
 
 // Return the named member of an aggregate, or NULL when it has none.

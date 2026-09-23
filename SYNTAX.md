@@ -39,7 +39,7 @@ Checklist toward ISO C99.
 - [x] `union`
 - [x] `enum`
 - [x] `typedef`
-- [ ] bitfields
+- [x] bitfields
 - [x] flexible array members (`struct s { int n; char d[]; }`)
 - [x] compound literals (`(T){ ... }`)
 
