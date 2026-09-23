@@ -86,13 +86,45 @@ static Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims)
 static Ast_Type *Par_ParamType(Ast_Type *base, Ast_Node *dims)
 {
     if (! dims) {
-        return base;
+        return base->at_kind == AST_TYPE_KIND_ARRAY ? Ast_NewPointer(base->at_base) : base;
     }
     return Ast_NewPointer(Par_ArrayType(base, dims->an_next));
 }
 
 /* Value the next enumerator takes, which `= n` resets. */
 static long Par_EnumValue;
+
+/* The record __builtin_va_list names, built on first use and shared after. */
+static Ast_Type *Par_VaList;
+
+/* The type __builtin_va_list names: the SysV record, as an array of one so that passing a va_list hands on its address. */
+static Ast_Type *Par_VaListType(void)
+{
+    if (Par_VaList) {
+        return Par_VaList;
+    }
+
+    Ast_Member *gp = Ast_NewMember("gp_offset", &Ast_TypeInt, 0);
+    gp->am_next = Ast_NewMember("fp_offset", &Ast_TypeInt, 0);
+    gp->am_next->am_next = Ast_NewMember("overflow_arg_area", Ast_NewPointer(&Ast_TypeVoid), 0);
+    gp->am_next->am_next->am_next = Ast_NewMember("reg_save_area", Ast_NewPointer(&Ast_TypeVoid), 0);
+
+    Ast_Type *tag = Ast_NewAggregate(AST_TYPE_KIND_STRUCT, "__va_list_tag");
+    Ast_LayoutAggregate(tag, gp, 0);
+    Par_VaList = Ast_NewArray(tag, 1);
+    return Par_VaList;
+}
+
+/* Build the node reading the next anonymous argument, which only a type one eightbyte carries may name. */
+static Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, int line)
+{
+    if (Sem_IsAggregate(type) || type->at_kind == AST_TYPE_KIND_ARRAY) {
+        Log_ShowErrorAt(line, "__builtin_va_arg of a struct, union or array is not supported");
+    }
+    Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_VA_ARG, ap, line);
+    node->an_type = type;
+    return node;
+}
 
 /* Join two member lists, keeping declaration order. */
 static Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail)
@@ -578,7 +610,7 @@ static Ast_Func *Par_MakeFunction(Ast_Node *body)
 %token <str> TYPEDEF_NAME
 %token SWITCH CASE DEFAULT GOTO
 %token STATIC EXTERN REGISTER AUTO INLINE
-%token BUILTIN_VA_ARG
+%token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
@@ -744,6 +776,7 @@ base
         { $$ = &Ast_TypeInt; }
     | ENUM tag_name        { $$ = &Ast_TypeInt; }
     | TYPEDEF_NAME         { $$ = Ast_FindTypedef($1); }
+    | BUILTIN_VA_LIST      { $$ = Par_VaListType(); }
     ;
 
 struct_or_union
@@ -1062,8 +1095,13 @@ primary
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_CALL, @1);
           n->an_funcname = $1; n->an_args = $3; $$ = n; }
     | LPAREN expr_comma RPAREN { $$ = $2; }
-    | BUILTIN_VA_ARG LPAREN expr RPAREN
-        { $$ = Ast_NewUnary(AST_NODE_KIND_VA_ARG, $3, @1); }
+    | BUILTIN_VA_START LPAREN expr COMMA expr RPAREN
+        { $$ = Ast_NewUnary(AST_NODE_KIND_VA_START, $3, @1); }
+    | BUILTIN_VA_ARG LPAREN expr COMMA type_name RPAREN
+        { $$ = Par_VaArg($3, $5, @1); }
+    /* va_end has nothing to undo, so it becomes the evaluation of its operand. */
+    | BUILTIN_VA_END LPAREN expr RPAREN
+        { $$ = $3; }
     ;
 
 args

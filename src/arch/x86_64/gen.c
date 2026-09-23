@@ -262,15 +262,68 @@ void Gen_x86_64_EmitVaSaveArea(void)
     }
 }
 
-// Compute the address of the argument slot indexed by %rdi into %rax, counting
-// from base off %rbp.
-void Gen_x86_64_EmitVaSlotAddr(int base)
+// Count the argument registers and stack slots the named parameters used, which is where the anonymous ones begin.
+void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int *reg, int *stack)
 {
-    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitMovImm(WORD_SIZE, ASM_X86_64_REG_RDI);
-    Asm_x86_64_EmitImul(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, base, ASM_X86_64_REG_RDI);
-    Asm_x86_64_EmitAdd(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
+    *reg   = Abi_x86_64_ReturnsInMemory(func->af_ret) ? 1 : 0;
+    *stack = 0;
+
+    for (Ast_Var *param = func->af_params; param; param = param->av_param_next) {
+        int slots = Abi_x86_64_Eightbytes(param->av_type);
+        if (! Abi_x86_64_InMemory(param->av_type) && *reg + slots <= MAX_REG_ARGS) {
+            *reg += slots;
+        } else {
+            *stack += slots;
+        }
+    }
+}
+
+// Fill the va_list at the address in %rax, starting it past every argument a named parameter already took.
+void Gen_x86_64_EmitVaStart(void)
+{
+    int reg = 0;
+    int stack = 0;
+
+    Gen_x86_64_CountNamedArgs(Gen_x86_64_CurrFunc, &reg, &stack);
+    Asm_x86_64_EmitMovImm(reg * WORD_SIZE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_GP_OFFSET, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitMovImm(VA_SAVE_SIZE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_FP_OFFSET, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, 2 * WORD_SIZE + stack * WORD_SIZE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, -VA_SAVE_SIZE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_REG_SAVE, ASM_X86_64_WIDTH_64);
+}
+
+// Read into %rax the next argument the va_list at the address in %rax reaches, taking it from the save area until that runs out.
+void Gen_x86_64_EmitVaArg(const Ast_Type *type)
+{
+    int count = Gen_x86_64_Count();
+
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_VA_GP_OFFSET, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitCmpImm(VA_SAVE_SIZE, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitSetl(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovzb(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitJe(".L.va.stack.%d", count);
+
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_VA_REG_SAVE, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitAdd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitAddImm(WORD_SIZE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, ABI_X86_64_VA_GP_OFFSET, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitJmp(".L.va.end.%d", count);
+
+    // Past the save area the caller passed it above the return address instead.
+    Asm_x86_64_EmitLabel(".L.va.stack.%d", count);
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_VA_OVERFLOW, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitAddImm(WORD_SIZE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, ABI_X86_64_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
+
+    Asm_x86_64_EmitLabel(".L.va.end.%d", count);
+    Gen_x86_64_EmitLoad(type);
 }
 
 // Turn the value of a return expression into what the ABI returns.
@@ -652,29 +705,13 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Asm_x86_64_EmitMovImm(1, ASM_X86_64_REG_RAX);
             Asm_x86_64_EmitLabel(".L.end.%d", count);
         } break;
-        case AST_NODE_KIND_VA_ARG: {
-            int count = Gen_x86_64_Count();
+        case AST_NODE_KIND_VA_START: {
             Gen_x86_64_EmitExpr(node->an_lhs);
-            Asm_x86_64_EmitAddImm(Gen_x86_64_CurrFunc->af_nparams, ASM_X86_64_REG_RAX);
-            Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
-
-            Asm_x86_64_EmitCmpImm(MAX_REG_ARGS, ASM_X86_64_REG_RAX);
-            Asm_x86_64_EmitSetl(ASM_X86_64_REG_RAX);
-            Asm_x86_64_EmitMovzb(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX);
-            Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
-            Asm_x86_64_EmitJe(".L.va.stack.%d", count);
-
-            Gen_x86_64_EmitVaSlotAddr(-VA_SAVE_SIZE);
-            Asm_x86_64_EmitJmp(".L.va.end.%d", count);
-
-            // Past the sixth argument the caller passed it above the return
-            // address instead, so the index restarts there.
-            Asm_x86_64_EmitLabel(".L.va.stack.%d", count);
-            Asm_x86_64_EmitSubImm(MAX_REG_ARGS, ASM_X86_64_REG_RDI);
-            Gen_x86_64_EmitVaSlotAddr(2 * WORD_SIZE);
-
-            Asm_x86_64_EmitLabel(".L.va.end.%d", count);
-            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RAX, 0, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+            Gen_x86_64_EmitVaStart();
+        } break;
+        case AST_NODE_KIND_VA_ARG: {
+            Gen_x86_64_EmitExpr(node->an_lhs);
+            Gen_x86_64_EmitVaArg(node->an_type);
         } break;
         case AST_NODE_KIND_CALL: {
             Gen_x86_64_EmitCall(node);
