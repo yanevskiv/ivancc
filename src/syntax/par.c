@@ -1,3 +1,5 @@
+// C source file for the parser's declarator and parameter helpers.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

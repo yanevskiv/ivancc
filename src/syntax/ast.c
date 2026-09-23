@@ -1,3 +1,5 @@
+// C source file for the abstract syntax tree.
+
 #include <stdlib.h>
 #include <string.h>
 

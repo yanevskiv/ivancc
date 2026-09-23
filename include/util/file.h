@@ -1,3 +1,5 @@
+// C header file for whole-file reads and writes.
+
 #ifndef FILE_H
 #define FILE_H
 

@@ -1,3 +1,5 @@
+// C source file for x86-64 assembly text in AT&T syntax.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

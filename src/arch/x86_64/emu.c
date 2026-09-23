@@ -1,3 +1,5 @@
+// C source file for the x86-64 instruction-set emulator.
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
