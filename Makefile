@@ -12,6 +12,8 @@ TARGET_SRC := libc/src/$(TARGET_ARCH)/target
 
 CC      := gcc
 CFLAGS  := -std=gnu99 -O2 -Iinclude -Iout -DTARGET_ARCH=$(TARGET_ARCH)
+# Emit a .d per object so editing a header rebuilds everything that includes it.
+DEPFLAGS := -MMD -MP
 WARN    := -Wall -Wextra
 LEX     := flex
 YACC    := bison
@@ -74,15 +76,15 @@ $(OUT)/lex.yy.c: src/syntax/lexer.flex $(OUT)/parser.tab.h | $(OUT)
 	$(LEX) -o $@ $<
 
 $(OUT)/lex.yy.o: $(OUT)/lex.yy.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OUT)/parser.tab.o: $(OUT)/parser.tab.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 # --- objects (mirrors the src/ tree under out/) ---
 $(OUT)/%.o: src/%.c $(OUT)/parser.tab.h | $(OUT)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(WARN) -c $< -o $@
+	$(CC) $(CFLAGS) $(WARN) $(DEPFLAGS) -c $< -o $@
 
 # --- runtime (libc/) recipes, one directory per platform ---
 $(LINUX_DIR)/crt0.o: $(TARGET_SRC)/linux/crt0.s $(AS_BIN) | $(LINUX_DIR)
@@ -121,5 +123,7 @@ $(LINUX_DIR): | $(BUILD)
 
 $(EMU_DIR): | $(BUILD)
 	mkdir -p $(EMU_DIR)
+
+-include $(shell find $(OUT) -name '*.d' 2>/dev/null)
 
 .PHONY: all clean tests $(TEST_NAMES)
