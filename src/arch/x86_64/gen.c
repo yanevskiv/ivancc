@@ -163,6 +163,7 @@ void Gen_x86_64_EmitCast(const Ast_Type *type)
         case AST_TYPE_KIND_VOID:
         case AST_TYPE_KIND_PTR:
         case AST_TYPE_KIND_ARRAY:
+        case AST_TYPE_KIND_FUNC:
         case AST_TYPE_KIND_STRUCT:
         case AST_TYPE_KIND_UNION: {
             // already as wide as a register, or addressed rather than held in one
