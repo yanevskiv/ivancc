@@ -15,8 +15,6 @@
 // Alignment the SysV ABI requires of %rsp at a call boundary.
 #define LOAD_STACK_ALIGN 16
 
-/* ----- Buffers ----- */
-
 // Initialize an empty byte buffer.
 void Elf_Buffer_Init(Elf_Buffer *buf)
 {
@@ -121,8 +119,6 @@ size_t Elf_Buffer_Align(Elf_Buffer *buf, size_t align)
     return buf->eb_len;
 }
 
-/* ----- Objects ----- */
-
 // Intern a name into the object's string pool, returning an owned copy.
 const char *Elf_Intern(Elf *elf, const char *name)
 {
@@ -195,8 +191,6 @@ const char *Elf_Error(const Elf *elf)
     return elf->elf_err;
 }
 
-/* ----- Sections ----- */
-
 // Append a new section and return it.
 Elf_Sec *Elf_Section_Add(Elf *elf, const char *name, uint32_t type, uint64_t flags)
 {
@@ -260,8 +254,6 @@ void Elf_Section_Addr(Elf_Sec *sec, uint64_t addr)
     sec->sec_addr = addr;
 }
 
-/* ----- Symbols ----- */
-
 // Append a symbol and return it.  sec == NULL records an undefined reference.
 Elf_Sym *Elf_Symbol_Add(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value, uint8_t bind, uint8_t type)
 {
@@ -303,8 +295,6 @@ Elf_Sym *Elf_Symbol_At(const Elf *elf, size_t i)
     return elf->elf_syms[i];
 }
 
-/* ----- Relocations ----- */
-
 // Append a relocation to the section it patches and return it.
 Elf_Rela *Elf_Rela_Add(Elf_Sec *target, uint64_t offset, Elf_Sym *sym, uint32_t type, int64_t addend)
 {
@@ -331,8 +321,6 @@ Elf_Rela *Elf_Rela_At(const Elf_Sec *target, size_t i)
 {
     return (Elf_Rela *) &target->sec_relas[i];
 }
-
-/* ----- Reading ----- */
 
 // Validate the file header and return it, or NULL if it is not an ELF object.
 const Elf64_Ehdr *Elf_Read_Ehdr(const uint8_t *data, size_t n)
@@ -452,8 +440,6 @@ Elf *Elf_Read_Path(const char *path)
     free(buf);
     return elf;
 }
-
-/* ----- Writing ----- */
 
 // Append name and a NUL to a string table, returning name's start offset.
 uint32_t Elf_Write_Str(Elf_Buffer *strtab, const char *name)
@@ -806,8 +792,6 @@ int Elf_Write_Path(const Elf *elf, const char *path)
     return rc;
 }
 
-/* ----- Linking ----- */
-
 // Index of a section within an object, or -1 if it holds none.
 long Elf_Link_SectionIndex(const Elf *elf, const Elf_Sec *target)
 {
@@ -1016,8 +1000,6 @@ Elf *Elf_Link_Run(const char *const *paths, int npaths, const Elf_LinkOptions *o
     }
     return out;
 }
-
-/* ----- Loading ----- */
 
 // Round addr down to a multiple of align.
 uint64_t Elf_Load_AlignDown(uint64_t addr, uint64_t align)
