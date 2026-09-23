@@ -22,7 +22,7 @@ MAIN_SRCS := src/cc.c src/ld.c src/as.c src/emu.c
 ALL_SRCS  := $(shell find src -name '*.c')
 LIB_SRCS  := $(filter-out $(MAIN_SRCS),$(ALL_SRCS))
 LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
-GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/parser.tab.o
+GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/grammar.tab.o
 
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
 # One translation unit now, so every tool that touches ELF also links its relocation pass.
@@ -69,20 +69,20 @@ $(TEST_NAMES): %: tests/syntax/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
 	@$(TEST_TOOL) $<
 
 # --- front-end generators ---
-$(OUT)/parser.tab.c $(OUT)/parser.tab.h: src/syntax/parser.y | $(OUT)
-	$(YACC) -d -o $(OUT)/parser.tab.c $<
+$(OUT)/grammar.tab.c $(OUT)/grammar.tab.h: src/syntax/grammar.y | $(OUT)
+	$(YACC) -d -o $(OUT)/grammar.tab.c $<
 
-$(OUT)/lex.yy.c: src/syntax/lexer.flex $(OUT)/parser.tab.h | $(OUT)
+$(OUT)/lex.yy.c: src/syntax/lexer.flex $(OUT)/grammar.tab.h | $(OUT)
 	$(LEX) -o $@ $<
 
 $(OUT)/lex.yy.o: $(OUT)/lex.yy.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(OUT)/parser.tab.o: $(OUT)/parser.tab.c
+$(OUT)/grammar.tab.o: $(OUT)/grammar.tab.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 # --- objects (mirrors the src/ tree under out/) ---
-$(OUT)/%.o: src/%.c $(OUT)/parser.tab.h | $(OUT)
+$(OUT)/%.o: src/%.c $(OUT)/grammar.tab.h | $(OUT)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(WARN) $(DEPFLAGS) -c $< -o $@
 

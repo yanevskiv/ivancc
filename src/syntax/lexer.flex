@@ -1,4 +1,4 @@
-/* Token rules for the cc compiler; bison names the tokens and the semantic-value union in parser.tab.h. */
+/* Token rules for the cc compiler; bison names the tokens and the semantic-value union in grammar.tab.h. */
 %option noyywrap nounput noinput
 %option yylineno
 
@@ -8,7 +8,7 @@
 #include "util/log.h"
 #include "util/str.h"
 #include "syntax/ast.h"
-#include "parser.tab.h"
+#include "grammar.tab.h"
 
 /* Stamp every token with the line it starts on. */
 #define YY_USER_ACTION  yylloc = yylineno;
