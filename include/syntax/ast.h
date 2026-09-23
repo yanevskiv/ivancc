@@ -27,7 +27,7 @@ enum Ast_TypeSize {
     AST_TYPE_SIZE_CHAR = 1,
     AST_TYPE_SIZE_INT  = 4,
     AST_TYPE_SIZE_PTR  = 8,
-    AST_TYPE_SIZE_FUNC = 1   // C gives a function no size; gcc answers 1 and so do we
+    AST_TYPE_SIZE_FUNC = 1   // C gives a function no size; gcc answers 1
 };
 
 // The target ABI's alignments in bytes.
@@ -40,10 +40,10 @@ enum Ast_TypeAlign {
     AST_TYPE_ALIGN_FUNC = 1
 };
 
-// Forward declaration: a struct type lists the members it is built from.
+// Forward declaration: a struct type lists its members.
 typedef struct Ast_Member Ast_Member;
 
-// Forward declaration: a function type lists the parameters it takes.
+// Forward declaration: a function type lists its parameters.
 typedef struct Ast_Var Ast_Var;
 
 // A C type: a primitive, or a pointer, array or aggregate built over others.
@@ -64,7 +64,7 @@ struct Ast_Type {
     int          at_proto;   // false for `int f()`, whose parameter list is unspecified
 };
 
-// One member of a struct or union, at the offset the ABI's layout gave it.
+// One member of a struct or union, at the offset layout gave it.
 struct Ast_Member {
     Ast_Member *am_next;
     char       *am_name;     // NULL for a bitfield declared only to pad
@@ -144,7 +144,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_NOP        // empty statement / bare declaration
 };
 
-// What a declaration's storage class asks for; register, auto and inline are accepted and map to NONE.
+// What a declaration's storage class asks for; register, auto and inline map to NONE.
 typedef enum Ast_Storage Ast_Storage;
 enum Ast_Storage {
     AST_STORAGE_NONE,
@@ -171,7 +171,7 @@ struct Ast_Var {
     Ast_Node *av_init;      // initializer of a global, or NULL for zeroed
 };
 
-// A struct, union or enum tag, which lives in a namespace of its own so a tag and a variable may share a name.
+// A struct, union or enum tag, which lives in a namespace of its own.
 typedef struct Ast_Tag Ast_Tag;
 struct Ast_Tag {
     Ast_Tag  *ag_next;
@@ -245,7 +245,7 @@ struct Ast_Func {
     Ast_Var  *af_params;     // parameters, in declaration order
     int       af_nparams;    // number of parameters
     int       af_variadic;   // true if the parameter list ended in `...`
-    int       af_proto;      // false for `int f()` and for an old-style definition, which promise nothing
+    int       af_proto;      // false for `int f()` and an old-style definition, which promise nothing
     int       af_static;     // true when the function is local to this file
     Ast_Var  *af_locals;     // every local, including parameters
     int       af_stack_size; // frame size, filled in by the code generator
@@ -301,7 +301,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line);
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line);
 Ast_Var *Ast_CurrentLocals(void);
 
-// Tags and typedef names, each in a namespace of its own
+// Tags and typedef names
 Ast_Type *Ast_FindTag(const char *name);
 Ast_Type *Ast_FindTagHere(const char *name);
 void      Ast_DeclareTag(const char *name, Ast_Type *type);

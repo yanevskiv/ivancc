@@ -101,7 +101,7 @@ int Emu_x86_64_HasModRM2(int op2)
     }
 }
 
-// Decode the ModRM byte at p, and the SIB and displacement it may pull in, returning the bytes consumed.
+// Decode the ModRM byte at p and return the bytes consumed.
 int Emu_x86_64_DecodeModRM(const uint8_t *p, int avail, int rex, Emu_x86_64_Insn *insn)
 {
     if (avail < 1) {
@@ -159,7 +159,7 @@ int Emu_x86_64_DecodeModRM(const uint8_t *p, int avail, int rex, Emu_x86_64_Insn
     return n;
 }
 
-// Decode one instruction, returning its length or 0; avail bounds the read so a truncated tail cannot run off.
+// Decode one instruction, returning its length or 0; avail bounds the read.
 int Emu_x86_64_Decode(const uint8_t *code, int avail, Emu_x86_64_Insn *insn)
 {
     memset(insn, 0, sizeof(*insn));
@@ -260,7 +260,7 @@ int Emu_x86_64_Decode(const uint8_t *code, int avail, Emu_x86_64_Insn *insn)
     return 0;
 }
 
-// Name the operation a decoded instruction performs, spelled as our own assembler spells it.
+// Name the operation a decoded instruction performs.
 const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
 {
     if (insn->ei_op == ENC_X86_64_OPCODE_ESCAPE) {
@@ -396,7 +396,7 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
             Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
             snprintf(out, n, "%s %s", name, rm);
         } break;
-        // An indirect branch prints its target with a `*`, the way AT&T tells one from a label.
+        // An indirect branch prints its target with a `*`.
         case ENC_X86_64_OPCODE_GRP5_RM: {
             Emu_x86_64_FormatRm(insn, EMU_X86_64_WIDTH_64, next, rm, sizeof(rm));
             snprintf(out, n, "%s *%s", name, rm);
@@ -439,7 +439,7 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
     }
 }
 
-// Start a program: entry in %rip, the image's stack in %rsp, and everything else zero, as a fresh image assumes.
+// Start a program: entry in %rip, the image's stack in %rsp, everything else zero.
 void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img)
 {
     memset(cpu, 0, sizeof(*cpu));
@@ -468,7 +468,7 @@ uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, int reg, int width)
     }
 }
 
-// Write a register, zero-extending a 32-bit result and preserving the bits above a byte, as the hardware does.
+// Write a register the way the hardware does, zero-extending a 32-bit result.
 void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, int reg, uint64_t value, int width)
 {
     switch (width) {
@@ -490,7 +490,7 @@ int Emu_x86_64_IsDevice(uint64_t addr)
     return addr >= EMU_X86_64_DEV_BASE && addr < EMU_X86_64_DEV_BASE + EMU_X86_64_DEV_SIZE;
 }
 
-// Read a device register. The UART is write-only and its status is always ready.
+// Read a device register, the UART being write-only and always ready.
 uint64_t Emu_x86_64_ReadDev(Emu_x86_64_Cpu *cpu, uint64_t addr)
 {
     (void) cpu;
@@ -554,7 +554,7 @@ void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, int
     }
 }
 
-// Compute the address an instruction's memory operand names, with next holding what %rip holds by then.
+// Compute the address an instruction's memory operand names.
 uint64_t Emu_x86_64_RmAddr(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next)
 {
     if (insn->ei_rmkind == EMU_X86_64_RM_RIP) {
@@ -582,7 +582,7 @@ void Emu_x86_64_WriteRm(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
     Emu_x86_64_WriteMem(cpu, Emu_x86_64_RmAddr(cpu, insn, next), value, width);
 }
 
-// Set the flags a - b leaves behind, which is what every compare here needs.
+// Set the flags a - b leaves behind.
 void Emu_x86_64_FlagsSub(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, int width)
 {
     uint64_t mask = width == EMU_X86_64_WIDTH_64 ? EMU_X86_64_MASK_64 : EMU_X86_64_MASK_32;

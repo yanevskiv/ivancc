@@ -90,7 +90,7 @@ Ast_Type *Ast_NewArray(Ast_Type *base, int len)
     return type;
 }
 
-// Build a function type; proto is false for `int f()`, which promises nothing about its parameters.
+// Build a function type; proto is false for `int f()`.
 Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int nparams, int variadic, int proto)
 {
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
@@ -106,7 +106,7 @@ Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int nparams, int varia
     return type;
 }
 
-// Build an as-yet empty struct or union type, which its tag may already name.
+// Build an empty struct or union type.
 Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
 {
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
@@ -126,7 +126,7 @@ Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line)
     return member;
 }
 
-// Place one bitfield at the bit cursor, in a fresh unit if it would straddle one, and return where the next starts.
+// Place one bitfield at the bit cursor and return where the next one starts.
 int Ast_PlaceBitfield(Ast_Member *member, int bits)
 {
     int unit = member->am_type->at_size * AST_BITS_PER_BYTE;
@@ -142,7 +142,7 @@ int Ast_PlaceBitfield(Ast_Member *member, int bits)
     return bits + member->am_bits;
 }
 
-// Drop the members no name can reach, which is every bitfield declared to pad.
+// Drop the members no name can reach.
 Ast_Member *Ast_NamedMembers(Ast_Member *members)
 {
     Ast_Member head = {0};
@@ -158,7 +158,7 @@ Ast_Member *Ast_NamedMembers(Ast_Member *members)
     return head.am_next;
 }
 
-// Place members in an aggregate, counting in bits so bitfields share a unit, and size it to its widest member.
+// Lay out an aggregate's members and size it.
 void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
 {
     int bits = 0;
@@ -282,7 +282,7 @@ Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, int lin
     return node;
 }
 
-// Build a postfix ++ or --, which steps by step and yields the old value.
+// Build a postfix ++ or --, which yields the old value.
 Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_POSTINC, lhs, line);
@@ -290,7 +290,7 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
     return node;
 }
 
-// Build a member access, whose member the Sem_ pass resolves once it has a type.
+// Build a member access, which the Sem_ pass resolves.
 Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_MEMBER, lhs, line);
@@ -298,7 +298,7 @@ Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
     return node;
 }
 
-// Declare a static local: it answers to name in its scope but lives under symbol, which carries its function.
+// Declare a static local, which answers to name but lives under symbol.
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line)
 {
     Ast_Var *var = Ast_DeclareGlobal(symbol, type, line);
@@ -317,7 +317,7 @@ void Ast_BeginScope(void)
     Ast_PushScope();
 }
 
-// Leave a function, so that what follows it is read at file scope again.
+// Leave a function, so what follows is read at file scope.
 void Ast_EndScope(void)
 {
     Ast_CurScope = &Ast_FileScope;
@@ -331,7 +331,7 @@ void Ast_PushScope(void)
     Ast_CurScope = scope;
 }
 
-// Leave a scope, keeping the frame slots its variables were given and putting only their names out of reach.
+// Leave a scope, keeping the frame slots its variables were given.
 void Ast_PopScope(void)
 {
     Ast_CurScope = Ast_CurScope->as_parent;
@@ -380,18 +380,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
     return var;
 }
 
-// Declare a variable in the innermost scope, reusing a slot declared there and shadowing a name from above.
-// Bring a parameter a declarator already built into the scope its function's body will use.
-void Ast_DeclareParam(Ast_Var *var)
-{
-    var->av_symbol = var->av_name;
-    var->av_next   = Ast_Locals;
-    Ast_Locals     = var;
-
-    var->av_scope_next = Ast_CurScope->as_vars;
-    Ast_CurScope->as_vars = var;
-}
-
+// Declare a variable in the innermost scope, shadowing a name from above.
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
 {
     for (Ast_Var *var = Ast_CurScope->as_vars; var; var = var->av_scope_next) {
@@ -413,6 +402,17 @@ Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
     return var;
 }
 
+// Bring a parameter a declarator already built into the body's scope.
+void Ast_DeclareParam(Ast_Var *var)
+{
+    var->av_symbol = var->av_name;
+    var->av_next   = Ast_Locals;
+    Ast_Locals     = var;
+
+    var->av_scope_next = Ast_CurScope->as_vars;
+    Ast_CurScope->as_vars = var;
+}
+
 // Look up a tag by name, innermost scope outwards.
 Ast_Type *Ast_FindTag(const char *name)
 {
@@ -426,7 +426,7 @@ Ast_Type *Ast_FindTag(const char *name)
     return NULL;
 }
 
-// Look up a tag declared directly in the innermost scope, which decides whether a definition completes or shadows.
+// Look up a tag declared directly in the innermost scope.
 Ast_Type *Ast_FindTagHere(const char *name)
 {
     for (Ast_Tag *tag = Ast_CurScope->as_tags; tag; tag = tag->ag_next) {
@@ -470,7 +470,7 @@ void Ast_DeclareTypedef(const char *name, Ast_Type *type)
     Ast_CurScope->as_typedefs = def;
 }
 
-// Look up an enumeration constant, reporting whether the name names one.
+// Look up an enumeration constant.
 int Ast_FindEnumConst(const char *name, long *value)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {

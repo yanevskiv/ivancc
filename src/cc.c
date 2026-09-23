@@ -196,7 +196,7 @@ int main(int argc, char **argv)
             case 'I': case 'D': case 'U': case 'l':
             case 'L': case 'W': case 'f':
             case 'O': {
-                // Recognised compiler flag with no effect here; ignore it.
+                // Recognised compiler flag with no effect here.
             } break;
         }
     }

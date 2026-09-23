@@ -24,7 +24,7 @@ void             Gen_x86_64_EmitCast(const Ast_Type *type);
 void             Gen_x86_64_EmitCopy(int size);
 void             Gen_x86_64_EmitZero(int size);
 
-// Bitfields, which are reached through the storage unit that holds them
+// Bitfields
 const Ast_Member *Gen_x86_64_Bitfield(const Ast_Node *node);
 void              Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member);
 void              Gen_x86_64_EmitBitfieldStore(const Ast_Member *member);
@@ -35,7 +35,7 @@ void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int *reg, int *stack);
 void Gen_x86_64_EmitVaStart(void);
 void Gen_x86_64_EmitVaArg(const Ast_Type *type);
 
-// The SysV call: returns, parameters and arguments
+// The SysV call
 void Gen_x86_64_EmitReturnValue(Ast_Node *node);
 void Gen_x86_64_EmitParam(Ast_Var *param, int *reg, int *stack);
 int  Gen_x86_64_ArgRegBase(Ast_Node *args, int index, int nHidden);

@@ -153,7 +153,7 @@ void Asm_x86_64_EmitBytes(const void *data, int len)
     item->ai_nbytes = len;
 }
 
-// Emit the eight bytes of an address, copying the label since a caller may have parsed it into a buffer.
+// Emit the eight bytes of an address, copying the label.
 void Asm_x86_64_EmitAddress(const char *label)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_ADDR);
@@ -486,7 +486,7 @@ void Asm_x86_64_EmitCall(const char *label, ...)
     va_end(ap);
 }
 
-// Emit `call *%reg`, the indirect call a call through a function pointer becomes.
+// Emit `call *%reg`, the indirect call.
 void Asm_x86_64_EmitCallReg(Asm_x86_64_Reg reg)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);

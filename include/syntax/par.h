@@ -3,11 +3,11 @@
 
 #include "syntax/ast.h"
 
-// What an array declarator's brackets carry besides a length, which C allows only on a parameter.
+// What an array declarator's brackets carry besides a length.
 #define PAR_ARRAY_STATIC 1
 #define PAR_ARRAY_QUAL   2
 
-// One step of a declarator, collected walking outward from the name it declares.
+// One step of a declarator, collected walking outward from the name.
 typedef enum Par_DerivKind Par_DerivKind;
 enum Par_DerivKind {
     PAR_DERIV_POINTER,
@@ -22,10 +22,10 @@ struct Par_ParamList {
     Ast_Var *pl_tail;
     int      pl_count;
     int      pl_variadic; // the list ended in `...`
-    int      pl_proto;    // false for `()`, which promises nothing about the parameters
+    int      pl_proto;    // false for `()`, which promises nothing
 };
 
-// One derivation, holding whichever of the three kinds' operands it needs.
+// One derivation and the operands its kind needs.
 typedef struct Par_Deriv Par_Deriv;
 struct Par_Deriv {
     Par_Deriv     *pd_next;
@@ -37,7 +37,7 @@ struct Par_Deriv {
     int            pd_line;
 };
 
-// A declarator: the name it declares, and the derivations reading outward from that name.
+// A declarator: the name it declares and the derivations reading outward from it.
 typedef struct Par_Decl Par_Decl;
 struct Par_Decl {
     char      *pc_name;
