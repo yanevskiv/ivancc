@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "util/log.h"
+#include "util/str.h"
 #include "ast/ast.h"
 
 // The finished program, filled in by the parser.
@@ -76,7 +77,7 @@ Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
     type->at_kind  = kind;
     type->at_align = 1;
-    type->at_tag   = tag ? strdup(tag) : NULL;
+    type->at_tag   = Str_New(tag);
     return type;
 }
 
@@ -84,7 +85,7 @@ Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line)
 {
     Ast_Member *member = calloc(1, sizeof(Ast_Member));
-    member->am_name = name ? strdup(name) : NULL;
+    member->am_name = Str_New(name);
     member->am_type = type;
     member->am_line = line;
     return member;
@@ -122,7 +123,7 @@ Ast_Member *Ast_NamedMembers(Ast_Member *members)
     return head.am_next;
 }
 
-// Place members in an aggregate, counting in bits so that bitfields share a unit, and size the whole to its widest member.
+// Place members in an aggregate, counting in bits so bitfields share a unit, and size it to its widest member.
 void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
 {
     int bits = 0;
@@ -258,16 +259,15 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
 Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_MEMBER, lhs, line);
-    node->an_memname = strdup(name);
+    node->an_memname = Str_New(name);
     return node;
 }
 
-// Declare a static local: it answers to name inside its scope, but lives in
-// .data or .bss under symbol, which carries the function it was declared in.
+// Declare a static local: it answers to name in its scope but lives under symbol, which carries its function.
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line)
 {
     Ast_Var *var = Ast_DeclareGlobal(symbol, type, line);
-    var->av_name = strdup(name);
+    var->av_name = Str_New(name);
 
     var->av_scope_next = Ast_CurScope->as_vars;
     Ast_CurScope->as_vars = var;
@@ -296,8 +296,7 @@ void Ast_PushScope(void)
     Ast_CurScope = scope;
 }
 
-// Leave a scope. Its variables keep their frame slots, which the code
-// generator has already been told about; only the names go out of reach.
+// Leave a scope, keeping the frame slots its variables were given and putting only their names out of reach.
 void Ast_PopScope(void)
 {
     Ast_CurScope = Ast_CurScope->as_parent;
@@ -331,7 +330,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
     }
 
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
-    var->av_name   = strdup(name);
+    var->av_name   = Str_New(name);
     var->av_symbol = var->av_name;
     var->av_type   = type;
     var->av_line   = line;
@@ -346,8 +345,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
     return var;
 }
 
-// Declare a variable in the innermost scope. A name already declared in that
-// same scope keeps its slot; one from an enclosing scope is shadowed instead.
+// Declare a variable in the innermost scope, reusing a slot declared there and shadowing a name from above.
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
 {
     for (Ast_Var *var = Ast_CurScope->as_vars; var; var = var->av_scope_next) {
@@ -357,7 +355,7 @@ Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
     }
 
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
-    var->av_name   = strdup(name);
+    var->av_name   = Str_New(name);
     var->av_symbol = var->av_name;
     var->av_type   = type;
     var->av_line   = line;
@@ -382,8 +380,7 @@ Ast_Type *Ast_FindTag(const char *name)
     return NULL;
 }
 
-// Look up a tag declared directly in the innermost scope, which is what decides
-// whether `struct s { ... }` completes an outer type or shadows it with a new one.
+// Look up a tag declared directly in the innermost scope, which decides whether a definition completes or shadows.
 Ast_Type *Ast_FindTagHere(const char *name)
 {
     for (Ast_Tag *tag = Ast_CurScope->as_tags; tag; tag = tag->ag_next) {
@@ -398,7 +395,7 @@ Ast_Type *Ast_FindTagHere(const char *name)
 void Ast_DeclareTag(const char *name, Ast_Type *type)
 {
     Ast_Tag *tag = calloc(1, sizeof(Ast_Tag));
-    tag->ag_name = strdup(name);
+    tag->ag_name = Str_New(name);
     tag->ag_type = type;
     tag->ag_next = Ast_CurScope->as_tags;
     Ast_CurScope->as_tags = tag;
@@ -421,7 +418,7 @@ Ast_Type *Ast_FindTypedef(const char *name)
 void Ast_DeclareTypedef(const char *name, Ast_Type *type)
 {
     Ast_Typedef *def = calloc(1, sizeof(Ast_Typedef));
-    def->ad_name = strdup(name);
+    def->ad_name = Str_New(name);
     def->ad_type = type;
     def->ad_next = Ast_CurScope->as_typedefs;
     Ast_CurScope->as_typedefs = def;
@@ -445,7 +442,7 @@ int Ast_FindEnumConst(const char *name, long *value)
 void Ast_DeclareEnumConst(const char *name, long value)
 {
     Ast_EnumConst *item = calloc(1, sizeof(Ast_EnumConst));
-    item->ae_name  = strdup(name);
+    item->ae_name  = Str_New(name);
     item->ae_value = value;
     item->ae_next  = Ast_CurScope->as_enums;
     Ast_CurScope->as_enums = item;

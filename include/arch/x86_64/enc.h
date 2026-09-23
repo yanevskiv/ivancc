@@ -23,8 +23,7 @@ enum Enc_x86_64_Rex {
     ENC_X86_64_REX_B    = 0x01
 };
 
-// ModRM mod field, which says how the r/m operand is addressed. It occupies the
-// top two bits of the byte, above a 3-bit reg field and a 3-bit r/m field.
+// ModRM mod field, the top two bits of the byte, which says how the r/m operand is addressed.
 typedef enum Enc_x86_64_Mod Enc_x86_64_Mod;
 enum Enc_x86_64_Mod {
     ENC_X86_64_MOD_INDIRECT = 0, // (%rm)
@@ -113,13 +112,14 @@ struct Enc_x86_64_Label {
     uint64_t    al_off;
 };
 
-// A pending rel32 fixup: a site in a section and the symbol name it targets.
+// A pending fixup: a site in a section, the symbol it targets and the bytes past that symbol the site means.
 typedef struct Enc_x86_64_Fix Enc_x86_64_Fix;
 struct Enc_x86_64_Fix {
     Elf_Sec    *af_sec;
     uint64_t    af_off;
     const char *af_name;
     uint32_t    af_type;
+    int64_t     af_addend;
 };
 
 // Byte output
@@ -131,7 +131,7 @@ void Enc_x86_64_EmitRaw(const void *data, int len);
 // Recording labels and fixups
 void Enc_x86_64_RecordLabel(const char *name);
 void Enc_x86_64_RecordGlobl(const char *name);
-void Enc_x86_64_RecordFixup(const char *name, uint32_t type);
+void Enc_x86_64_RecordFixup(const char *name, uint32_t type, int64_t addend);
 
 // REX and ModRM encoding
 int  Enc_x86_64_RegHigh(Asm_x86_64_Reg reg);

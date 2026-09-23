@@ -100,8 +100,7 @@ int Emu_x86_64_HasModRM2(int op2)
     }
 }
 
-// Decode the ModRM byte at p, and the SIB and displacement it may pull in,
-// returning the bytes consumed.
+// Decode the ModRM byte at p, and the SIB and displacement it may pull in, returning the bytes consumed.
 int Emu_x86_64_DecodeModRM(const uint8_t *p, int avail, int rex, Emu_x86_64_Insn *insn)
 {
     if (avail < 1) {
@@ -159,8 +158,7 @@ int Emu_x86_64_DecodeModRM(const uint8_t *p, int avail, int rex, Emu_x86_64_Insn
     return n;
 }
 
-// Decode one instruction, returning its length or 0 if the bytes are not one we
-// emit. avail bounds the read so a truncated tail cannot run off the image.
+// Decode one instruction, returning its length or 0; avail bounds the read so a truncated tail cannot run off.
 int Emu_x86_64_Decode(const uint8_t *code, int avail, Emu_x86_64_Insn *insn)
 {
     memset(insn, 0, sizeof(*insn));
@@ -261,8 +259,7 @@ int Emu_x86_64_Decode(const uint8_t *code, int avail, Emu_x86_64_Insn *insn)
     return 0;
 }
 
-// Name the operation a decoded instruction performs, spelled as our own
-// assembler spells it.
+// Name the operation a decoded instruction performs, spelled as our own assembler spells it.
 const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
 {
     if (insn->ei_op == ENC_X86_64_OPCODE_ESCAPE) {
@@ -430,8 +427,7 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
     }
 }
 
-// Start a program: entry in %rip, the image's stack in %rsp, everything else
-// zero, which is what a freshly loaded image is entitled to assume.
+// Start a program: entry in %rip, the image's stack in %rsp, and everything else zero, as a fresh image assumes.
 void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img)
 {
     memset(cpu, 0, sizeof(*cpu));
@@ -460,8 +456,7 @@ uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, int reg, int width)
     }
 }
 
-// Write a register, zero-extending a 32-bit result and preserving the bits
-// above a byte, as the hardware does.
+// Write a register, zero-extending a 32-bit result and preserving the bits above a byte, as the hardware does.
 void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, int reg, uint64_t value, int width)
 {
     switch (width) {
@@ -547,8 +542,7 @@ void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, int
     }
 }
 
-// Compute the address an instruction's memory operand names; next is the
-// address of the instruction after it, which is what %rip holds by then.
+// Compute the address an instruction's memory operand names, with next holding what %rip holds by then.
 uint64_t Emu_x86_64_RmAddr(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next)
 {
     if (insn->ei_rmkind == EMU_X86_64_RM_RIP) {

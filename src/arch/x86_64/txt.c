@@ -170,6 +170,9 @@ void Txt_x86_64_Att_Write(FILE *out)
                     fprintf(out, "  .byte %d\n", item->ai_bytes[i]);
                 }
             } break;
+            case ASM_X86_64_ITEM_ADDR: {
+                fprintf(out, "  .quad %s\n", item->ai_label);
+            } break;
             case ASM_X86_64_ITEM_DIRECTIVE: {
                 fprintf(out, "  %s\n", item->ai_text);
             } break;
@@ -231,7 +234,7 @@ int Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
         return 1;
     }
     if (Str_RegexExtract(text, "^([.A-Za-z0-9_$]+)[(]%rip[)]$", g, 1)) {
-        *op = Asm_x86_64_Rip(strdup(g[0]));
+        *op = Asm_x86_64_Rip(Str_New(g[0]));
         Str_Free(g[0]);
         return 1;
     }
@@ -249,19 +252,22 @@ int Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
         return 1;
     }
     if (Str_RegexMatch(text, "^[.A-Za-z0-9_$]+$")) {
-        *op = Asm_x86_64_Target(strdup(text));
+        *op = Asm_x86_64_Target(Str_New(text));
         return 1;
     }
     return 0;
 }
 
-// Emit a .byte/.word/.long/.quad list as width-byte little-endian values.
+// Emit a .byte/.word/.long/.quad list as little-endian values, or as an address where an item names a symbol.
 void Txt_x86_64_Att_EmitInts(const char *args, int width)
 {
     Str_List parts = Str_Split(args, ",");
     for (int i = 0; i < parts.sl_count; i++) {
         char *text = Str_Trim(parts.sl_items[i]);
         if (! *text) {
+            continue;
+        }
+        if (Txt_x86_64_Att_EmitAddress(text, width)) {
             continue;
         }
         long val = strtol(text, NULL, 0);
@@ -272,6 +278,19 @@ void Txt_x86_64_Att_EmitInts(const char *args, int width)
         Asm_x86_64_EmitBytes(bytes, width);
     }
     Str_ListFree(&parts);
+}
+
+// Emit a `.quad` item that names a symbol as an address, returning false when it is an ordinary number instead.
+int Txt_x86_64_Att_EmitAddress(const char *text, int width)
+{
+    if (! Str_RegexMatch(text, "^[.A-Za-z_]")) {
+        return 0;
+    }
+    if (width != 8 || ! Str_RegexMatch(text, "^[.A-Za-z_][.A-Za-z0-9_$]*$")) {
+        Log_ShowError("as: '%s' is not an address a .quad can hold", text);
+    }
+    Asm_x86_64_EmitAddress(text);
+    return 1;
 }
 
 // Emit the bytes of a quoted string, adding a NUL when terminate is set.

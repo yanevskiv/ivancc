@@ -137,8 +137,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_NOP        // empty statement / bare declaration
 };
 
-// What a declaration's storage class asks for. register, auto and inline are
-// accepted by the grammar and mean nothing here, so they map to NONE.
+// What a declaration's storage class asks for; register, auto and inline are accepted and map to NONE.
 typedef enum Ast_Storage Ast_Storage;
 enum Ast_Storage {
     AST_STORAGE_NONE,
@@ -166,8 +165,7 @@ struct Ast_Var {
     Ast_Node *av_init;      // initializer of a global, or NULL for zeroed
 };
 
-// A struct, union or enum tag. Tags live in a namespace of their own, so a
-// `struct stat` and a `stat` variable can coexist as C requires.
+// A struct, union or enum tag, which lives in a namespace of its own so a tag and a variable may share a name.
 typedef struct Ast_Tag Ast_Tag;
 struct Ast_Tag {
     Ast_Tag  *ag_next;
@@ -224,6 +222,7 @@ struct Ast_Node {
     long         an_val;      // integer value for AST_NODE_KIND_NUM
     int          an_str_idx;  // string table slot for AST_NODE_KIND_STR
     Ast_Var     *an_var;      // variable a VAR names, or the object a COMPOUND fills
+    Ast_Node    *an_items;    // flattened initializer a COMPOUND fills that object with
     Ast_Member  *an_member;   // resolved member of AST_NODE_KIND_MEMBER
     char        *an_memname;  // member name a MEMBER node was written with
     int          an_tmp;      // frame slot a CALL returning an aggregate lands in
