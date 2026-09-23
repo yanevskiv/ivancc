@@ -76,14 +76,14 @@ static char *Cc_GetExeDir(void)
         return NULL;
     }
     *slash = '\0';
-    return strdup(buf);
+    return Str_New(buf);
 }
 
 // Return the directory to read the target's runtime objects from, honouring -B.
 static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
 {
     if (prefix) {
-        return strdup(prefix);
+        return Str_New(prefix);
     }
 
     char *exedir = Cc_GetExeDir();
@@ -217,7 +217,7 @@ int main(int argc, char **argv)
         } else if (emit_obj) {
             output = outbuf = Str_ChangeOrAppendExt(input, ".o");
         } else {
-            output = outbuf = strdup(DEFAULT_OUTPUT);
+            output = outbuf = Str_New(DEFAULT_OUTPUT);
         }
     }
 
@@ -250,8 +250,7 @@ int main(int argc, char **argv)
     }
     Cc_CloseOutput(out);
 
-    // Only the freestanding executable is made runnable; .s and .o are not,
-    // and standard output has no mode of its own to set.
+    // Only the freestanding executable is made runnable; .s and .o are not.
     if (! emit_text && ! emit_obj && ! Str_Equals(output, STDOUT_NAME)) {
         chmod(output, ELF_MODE);
     }

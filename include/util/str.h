@@ -17,6 +17,7 @@ char *Str_ChangeOrAppendExt(const char *input, const char *suffix);
 int Str_Equals(const char *a, const char *b);
 int Str_StartsWith(const char *str, const char *prefix);
 char *Str_Trim(char *str);
+char *Str_New(const char *str);
 void Str_Free(char *str);
 
 // Splitting a string into an owned list of pieces

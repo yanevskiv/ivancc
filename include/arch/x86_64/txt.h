@@ -16,6 +16,7 @@ int Txt_x86_64_OpByName(const char *name);
 // AT&T syntax parser
 int  Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op);
 void Txt_x86_64_Att_EmitInts(const char *args, int width);
+int  Txt_x86_64_Att_EmitAddress(const char *text, int width);
 void Txt_x86_64_Att_EmitString(const char *args, int terminate);
 void Txt_x86_64_Att_ParseInstr(const char *line);
 void Txt_x86_64_Att_ParseDirective(const char *line);

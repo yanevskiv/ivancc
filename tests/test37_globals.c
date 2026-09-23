@@ -1,7 +1,8 @@
 // (Test) Return: 44
 // File-scope variables: zeroed ones in .bss, initialized ones in .data, both
 // addressed off %rip rather than off the frame. An initializer here is folded
-// whole, so any constant expression serves and not only a literal.
+// whole, so any constant expression serves and not only a literal, and an
+// address among them becomes a relocation the linker fills in.
 
 int counter;
 int seed = 42;
@@ -12,6 +13,9 @@ int folded = 2 * 20 + 2;
 int chosen = 1 ? 7 : 9;
 int sized = sizeof(int) * 2;
 char narrowed = (char) 300;
+char *greeting = "hi";
+int *pointed = &seed;
+int *element = table;
 
 int bump()
 {
@@ -29,6 +33,9 @@ int main()
     if (chosen != 7) return 10;
     if (sized != 8) return 11;
     if (narrowed != 44) return 12;
+    if (greeting[0] != 'h' || greeting[1] != 'i' || greeting[2] != 0) return 13;
+    if (*pointed != 42) return 14;
+    if (element != table) return 15;
 
     bump();
     bump();

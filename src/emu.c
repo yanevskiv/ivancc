@@ -35,8 +35,7 @@ static void Emu_ShowImage(const Elf_LoadImage *img)
     printf("stack  0x%llx\n", (unsigned long long) img->li_stack);
 }
 
-// Disassemble forward from the image's base until the bytes stop decoding,
-// which is where the code ends and the data after it begins.
+// Disassemble forward from the image's base until the bytes stop decoding, which is where the code ends.
 static void Emu_Disassemble(const Elf_LoadImage *img)
 {
     uint64_t rip = img->li_base;

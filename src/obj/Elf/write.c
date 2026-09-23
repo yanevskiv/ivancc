@@ -267,8 +267,7 @@ uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr)
     return pos + (vaddr - pos) % ELF_PAGE;
 }
 
-// Serialize a static executable (ET_EXEC): one PT_LOAD per placed section, each
-// with the permissions its section asks for and no file bytes for a .bss.
+// Serialize a static executable: one PT_LOAD per placed section, with the permissions it asks for.
 int Elf_Write_Exec(const Elf *elf, FILE *out)
 {
     // Phase: select the loadable sections.

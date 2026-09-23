@@ -1,8 +1,4 @@
-/* lexer.flex - token rules for the cc compiler.
- *
- * Generates build/lex.yy.c (via `flex -o build/lex.yy.c`).  Tokens and the
- * semantic-value union are defined by bison in build/parser.tab.h.
- */
+/* Token rules for the cc compiler; bison names the tokens and the semantic-value union in parser.tab.h. */
 %option noyywrap nounput noinput
 %option yylineno
 
@@ -104,7 +100,7 @@ ALNUM   [A-Za-z_0-9]
 "__builtin_va_arg"      return BUILTIN_VA_ARG;
 "__builtin_va_end"      return BUILTIN_VA_END;
 
-{ALPHA}{ALNUM}*         { yylval.str = strdup(yytext);
+{ALPHA}{ALNUM}*         { yylval.str = Str_New(yytext);
                           return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }
 
 0[xX][0-9A-Fa-f]+       { yylval.num = strtol(yytext, NULL, 16); return NUM; }

@@ -207,8 +207,7 @@ struct Elf_LinkOptions {
     int             lo_nplaces;
 };
 
-// A loaded program: one flat buffer holding every PT_LOAD plus a stack above
-// them, and the two addresses execution starts from.
+// A loaded program: one flat buffer holding every PT_LOAD and a stack, and where execution starts.
 typedef struct Elf_LoadImage Elf_LoadImage;
 struct Elf_LoadImage {
     uint8_t  *li_mem;      // li_size bytes, zeroed and then filled

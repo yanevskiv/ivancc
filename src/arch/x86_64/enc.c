@@ -81,7 +81,7 @@ void Enc_x86_64_RecordGlobl(const char *name)
 }
 
 // Record a rel32 fixup at the current site; the caller writes the placeholder bytes.
-void Enc_x86_64_RecordFixup(const char *name, uint32_t type)
+void Enc_x86_64_RecordFixup(const char *name, uint32_t type, int64_t addend)
 {
     if (Enc_x86_64_NumFixes == Enc_x86_64_CapFixes) {
         Enc_x86_64_CapFixes = Enc_x86_64_CapFixes ? Enc_x86_64_CapFixes * 2 : 64;
@@ -91,7 +91,8 @@ void Enc_x86_64_RecordFixup(const char *name, uint32_t type)
         .af_sec  = Enc_x86_64_Cur,
         .af_off  = Elf_Section_Data(Enc_x86_64_Cur)->eb_len,
         .af_name = name,
-        .af_type = type
+        .af_type = type,
+        .af_addend = addend
     };
 }
 
@@ -230,7 +231,7 @@ void Enc_x86_64_EmitLeaRip(Asm_x86_64_Reg dst, const char *label)
     Enc_x86_64_EmitRexW(Enc_x86_64_RegHigh(dst), 0);
     Enc_x86_64_Emit8(ENC_X86_64_OPCODE_LEA_R_M);
     Enc_x86_64_Emit8((ENC_X86_64_MOD_INDIRECT << ENC_X86_64_MOD_SHIFT) | ((dst & ENC_X86_64_REG_MASK) << ENC_X86_64_REG_SHIFT) | ENC_X86_64_RM_RIP);
-    Enc_x86_64_RecordFixup(label, R_X86_64_PC32);
+    Enc_x86_64_RecordFixup(label, R_X86_64_PC32, ENC_X86_64_REL32_ADDEND);
     Enc_x86_64_Emit32(0);
 }
 
@@ -242,7 +243,6 @@ void Enc_x86_64_EmitGrpUnary(int grp, Asm_x86_64_Reg reg)
     Enc_x86_64_EmitModRR(grp, reg);
 }
 
-// Emit a `setcc %reg` byte-setting instruction.
 // Emit a shift of dst by %cl, with grp selecting the direction.
 void Enc_x86_64_EmitShift(int grp, Asm_x86_64_Reg dst)
 {
@@ -289,7 +289,7 @@ void Enc_x86_64_EmitBranch(const Asm_x86_64_Item *item)
     // A call may bind through the PLT; jmp/jcc are plain PC-relative.
     uint32_t type = item->ai_op == ASM_X86_64_OP_CALL ? R_X86_64_PLT32
                                                       : R_X86_64_PC32;
-    Enc_x86_64_RecordFixup(item->ai_dst.ao_label, type);
+    Enc_x86_64_RecordFixup(item->ai_dst.ao_label, type, ENC_X86_64_REL32_ADDEND);
     Enc_x86_64_Emit32(0);
 }
 
@@ -492,7 +492,7 @@ void Enc_x86_64_BuildRelocs(void)
     for (size_t i = 0; i < Enc_x86_64_NumFixes; i++) {
         Enc_x86_64_Fix *f   = &Enc_x86_64_Fixes[i];
         Elf_Sym        *sym = Elf_Symbol_Find(Enc_x86_64_Out, f->af_name);
-        Elf_Rela_Add(f->af_sec, f->af_off, sym, f->af_type, ENC_X86_64_REL32_ADDEND);
+        Elf_Rela_Add(f->af_sec, f->af_off, sym, f->af_type, f->af_addend);
     }
 }
 
@@ -528,6 +528,10 @@ void Enc_x86_64_BuildObject(void)
             } break;
             case ASM_X86_64_ITEM_BYTES: {
                 Enc_x86_64_EmitRaw(item->ai_bytes, item->ai_nbytes);
+            } break;
+            case ASM_X86_64_ITEM_ADDR: {
+                Enc_x86_64_RecordFixup(item->ai_label, R_X86_64_64, 0);
+                Enc_x86_64_Emit64(0);
             } break;
             case ASM_X86_64_ITEM_GLOBL: {
                 Enc_x86_64_RecordGlobl(item->ai_label);

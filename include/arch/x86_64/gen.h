@@ -39,6 +39,13 @@ void Gen_x86_64_CallPushReg(Ast_Node *args, Ast_Node *arg, int index, int nHidde
 void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden);
 void Gen_x86_64_EmitCall(Ast_Node *node);
 
+// An address a global's image holds, which only the linker can fill in.
+typedef struct Gen_x86_64_Addr Gen_x86_64_Addr;
+struct Gen_x86_64_Addr {
+    int         ga_offset;  // bytes into the image the address occupies
+    const char *ga_symbol;  // symbol the address is taken from
+};
+
 // Expressions, statements and data
 void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, int line);
 void Gen_x86_64_EmitExpr(Ast_Node *node);
@@ -46,7 +53,8 @@ void Gen_x86_64_EmitStmt(Ast_Node *node);
 void Gen_x86_64_AssignCallTemps(Ast_Node *node, int *offset);
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func);
 void Gen_x86_64_EmitDataSection(void);
-void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const Ast_Var *var);
+void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int *naddrs);
+void Gen_x86_64_EmitImage(const unsigned char *bytes, int size, const Gen_x86_64_Addr *addrs, int naddrs);
 void Gen_x86_64_EmitGlobal(Ast_Var *var);
 void Gen_x86_64_EmitGlobals(void);
 

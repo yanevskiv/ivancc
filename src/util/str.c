@@ -71,6 +71,12 @@ char *Str_Trim(char *str)
     return str;
 }
 
+// Return an owned copy of str, passing NULL through so a caller need not check.
+char *Str_New(const char *str)
+{
+    return str ? strdup(str) : NULL;
+}
+
 // Release a dynamically allocated string, ignoring a NULL one.
 void Str_Free(char *str)
 {
@@ -171,8 +177,7 @@ int Str_RegexMatch(const char *str, const char *pattern)
     return ok;
 }
 
-// Match pattern against str, filling groups[0..ngroups-1] with owned capture
-// text (NULL where a group did not participate); return nonzero on a match.
+// Match pattern against str, filling groups with owned capture text; return nonzero on a match.
 int Str_RegexExtract(const char *str, const char *pattern, char **groups, int ngroups)
 {
     for (int i = 0; i < ngroups; i++) {

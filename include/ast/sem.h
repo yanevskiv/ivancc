@@ -18,6 +18,7 @@ Ast_Type *Sem_Decay(Ast_Type *type);
 long      Sem_Truncate(const Ast_Type *type, long value);
 int       Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value);
 int       Sem_Fold(const Ast_Node *node, long *value);
+int       Sem_FoldAddr(const Ast_Node *node, const char **symbol);
 
 // Checks the parser cannot make
 void      Sem_CheckCall(Ast_Node *node);

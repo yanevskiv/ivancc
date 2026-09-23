@@ -75,7 +75,7 @@ What gets a comment:
   - Carry what a name abbreviates.
 - Every function must have exactly one comment directly above it, saying what it does.
 - Every function comment must say why it exists or what it assumes, where the signature does not.
-- Every function comment must fit one line, and wrap to a second only when genuinely necessary.
+- Every comment must fit one line of at most 120 characters.
 - Every function comment must be imperative.
   - Write `// Emit a REX prefix`, never `// Emits a REX prefix`.
 - Every verb in a comment must be imperative, not only the first.
@@ -102,6 +102,10 @@ What does not get a comment:
 - Do not comment a block just because it looks like it needs one.
 - Do not comment build configuration, glue code or boilerplate by default.
 - Do not keep a comment you cannot point to a purpose for beyond the code itself.
+- Do not write a comment across two lines, in any form a file allows.
+  - Shorten it, or drop the part that explains the implementation.
+  - Write a file's banner as one line too, since what generates it belongs in the build.
+- Do not let a comment run past 120 characters, counting its indentation.
 
 ## Documentation
 
