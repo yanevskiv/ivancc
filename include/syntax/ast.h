@@ -2,7 +2,7 @@
 #define AST_H
 
 // Maximum number of distinct string literals in one translation unit.
-#define MAX_STRINGS 1024
+#define AST_MAX_STRINGS 1024
 
 // Bits in a byte, for placing a bitfield inside the unit that holds it.
 #define AST_BITS_PER_BYTE 8

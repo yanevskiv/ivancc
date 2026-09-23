@@ -14,7 +14,7 @@ Ast_Type Ast_TypeChar = { AST_TYPE_KIND_CHAR, AST_TYPE_SIZE_CHAR, AST_TYPE_ALIGN
 Ast_Type Ast_TypeInt  = { AST_TYPE_KIND_INT,  AST_TYPE_SIZE_INT,  AST_TYPE_ALIGN_INT,  NULL, 0, NULL, NULL, 1 };
 
 // Table of interned string literals, indexed by AST_NODE_KIND_STR slot.
-static Ast_Str Ast_Strings[MAX_STRINGS];
+static Ast_Str Ast_Strings[AST_MAX_STRINGS];
 
 // Number of entries currently used in Ast_Strings.
 static int Ast_NumStrings;
@@ -457,8 +457,8 @@ Ast_Var *Ast_CurrentLocals(void)
 // Intern a decoded string literal of len bytes and return its table slot.
 int Ast_AddString(char *str, int len)
 {
-    if (Ast_NumStrings >= MAX_STRINGS) {
-        Log_ShowError("too many string literals (max %d)", MAX_STRINGS);
+    if (Ast_NumStrings >= AST_MAX_STRINGS) {
+        Log_ShowError("too many string literals (max %d)", AST_MAX_STRINGS);
     }
     Ast_Strings[Ast_NumStrings].as_data = str;
     Ast_Strings[Ast_NumStrings].as_len  = len;
