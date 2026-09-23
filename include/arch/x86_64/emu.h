@@ -31,7 +31,7 @@
 #define EMU_X86_64_REG_COUNT      16
 #define EMU_X86_64_REG_INDEX_MASK 15
 
-// A REX prefix is any byte with this nibble; REX.R or REX.B adds this much to a ModRM register number.
+// A REX prefix is any byte with this nibble, and REX.R or REX.B extends a register number.
 #define EMU_X86_64_REX_PREFIX_MASK 0xF0
 #define EMU_X86_64_REG_HIGH_BIT    8
 
@@ -49,7 +49,7 @@
 #define EMU_X86_64_REG_RSI 6
 #define EMU_X86_64_REG_RDI 7
 
-// Memory-mapped device registers, far above anything the linker places, which are a freestanding program's world.
+// Memory-mapped device registers, far above anything the linker places.
 #define EMU_X86_64_DEV_BASE       0x10000000
 #define EMU_X86_64_DEV_DATA_OFF   0  // store: a byte to the terminal
 #define EMU_X86_64_DEV_STATUS_OFF 4  // load: nonzero, always ready
@@ -82,7 +82,7 @@ enum Emu_x86_64_RmKind {
     EMU_X86_64_RM_RIP   // disp(%rip)
 };
 
-// One decoded instruction, as the fields an interpreter needs rather than as the bytes it came from.
+// One decoded instruction, as the fields an interpreter needs.
 typedef struct Emu_x86_64_Insn Emu_x86_64_Insn;
 struct Emu_x86_64_Insn {
     int     ei_len;     // bytes the instruction occupies
@@ -96,7 +96,7 @@ struct Emu_x86_64_Insn {
     int64_t ei_imm;     // immediate or branch displacement, sign-extended
 };
 
-// A running program: the register file, the flags a compare leaves behind, and the image the two address.
+// A running program: the register file, the flags and the image they address.
 typedef struct Emu_x86_64_Cpu Emu_x86_64_Cpu;
 struct Emu_x86_64_Cpu {
     uint64_t ec_reg[EMU_X86_64_REG_COUNT];

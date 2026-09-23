@@ -18,44 +18,44 @@ static int       Par_CurStatic;
 static Ast_Type *Par_CurRetType;
 static int       Par_InFunction;
 
-// Serial number the next compound literal names its object with.
+// Serial number of the next compound literal's object.
 static int Par_CompoundCount;
 
-// The type and storage class the declarators being parsed all share.
+// The type and storage class one declaration's declarators share.
 static Ast_Type   *Par_DeclType;
 static Ast_Storage Par_DeclStorage;
 static char       *Par_DeclName;
 
-// The type the top-level declarator just read works out to, which its tail needs after the fact.
+// The type the top-level declarator just read works out to.
 static Ast_Type   *Par_CurDeclType;
 
-// The program assembled so far, as functions are reduced.
+// The program assembled so far.
 static Ast_Func *Par_ProgHead;
 static Ast_Func *Par_ProgTail;
 
-// Value the next enumerator takes, which `= n` resets.
+// Value the next enumerator takes.
 static long Par_EnumValue;
 
-// The record __builtin_va_list names, built on first use and shared after.
+// The record __builtin_va_list names.
 static Ast_Type *Par_VaList;
 
 int  yylex(void);
 void yyerror(const char *s);
 
-// Record the specifier every declarator of one declaration shares, before the declarators are read.
+// Record the specifier one declaration's declarators share.
 void Par_SetDeclSpec(Ast_Storage storage, Ast_Type *type)
 {
     Par_DeclStorage = storage;
     Par_DeclType    = type;
 }
 
-// Start an enumerator list over, whose first constant is 0 unless one says otherwise.
+// Start an enumerator list over.
 void Par_ResetEnum(void)
 {
     Par_EnumValue = 0;
 }
 
-// Empty a parameter list, which starts out promising nothing about the parameters.
+// Empty a parameter list.
 void Par_ClearParams(Par_ParamList *list)
 {
     list->pl_head     = NULL;
@@ -65,7 +65,7 @@ void Par_ClearParams(Par_ParamList *list)
     list->pl_proto    = 0;
 }
 
-// Append one parameter to a list, which a lone `void` leaves empty rather than one long.
+// Append one parameter to a list.
 void Par_PushParam(Par_ParamList *list, Ast_Var *var)
 {
     if (! var) {
@@ -81,7 +81,7 @@ void Par_PushParam(Par_ParamList *list, Ast_Var *var)
     list->pl_count++;
 }
 
-// Start a declarator for name, which is NULL for the abstract declarator a cast or a parameter may use.
+// Start a declarator for name.
 Par_Decl *Par_NewDecl(char *name)
 {
     Par_Decl *decl = calloc(1, sizeof(Par_Decl));
@@ -89,7 +89,7 @@ Par_Decl *Par_NewDecl(char *name)
     return decl;
 }
 
-// Append one derivation to a declarator, which records it further out from the name than the last.
+// Append one derivation to a declarator.
 Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line)
 {
     Par_Deriv *deriv = calloc(1, sizeof(Par_Deriv));
@@ -104,7 +104,7 @@ Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line)
     return deriv;
 }
 
-// Wrap base in one derivation list, outermost first, so the step nearest the name is applied last.
+// Wrap base in one derivation list, outermost first.
 Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
 {
     if (! deriv) {
@@ -119,7 +119,6 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
             if (inner->at_kind == AST_TYPE_KIND_FUNC) {
                 Log_ShowErrorAt(deriv->pd_line, "an array of functions is not a type");
             }
-            // Par_MakeParam clears these, so one surviving here was written where C does not allow it.
             if (deriv->pd_decor) {
                 Log_ShowErrorAt(deriv->pd_line, "'static' and qualifiers in an array declarator are only allowed on a parameter");
             }
@@ -135,13 +134,13 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
     return inner;
 }
 
-// Give a declarator the type that applying it to base yields.
+// Give a declarator the type applying it to base yields.
 Ast_Type *Par_ApplyDecl(Ast_Type *base, Par_Decl *decl)
 {
     return Par_ApplyDerivs(base, decl->pc_head);
 }
 
-// Adjust a parameter's declared type the way C does: an array becomes a pointer, and so does a function.
+// Decay a parameter's array or function type to a pointer.
 Ast_Type *Par_AdjustParam(Ast_Type *type)
 {
     if (type->at_kind == AST_TYPE_KIND_ARRAY) {
@@ -153,26 +152,26 @@ Ast_Type *Par_AdjustParam(Ast_Type *type)
     return type;
 }
 
-// Accept `static` and qualifiers on a parameter's outermost array, which is the only place C allows them.
+// Accept `static` and qualifiers on a parameter's outermost array.
 void Par_TakeArrayDecor(Par_Decl *decl, int line)
 {
     for (Par_Deriv *deriv = decl->pc_head; deriv; deriv = deriv->pd_next) {
         if (! deriv->pd_decor) {
             continue;
         }
-        // The outermost derivation is the one nearest the name, which is where the array must sit.
+        // The outermost derivation is the one nearest the name.
         if (deriv != decl->pc_head || deriv->pd_kind != PAR_DERIV_ARRAY) {
             Log_ShowErrorAt(line, "'static' and qualifiers are only allowed on a parameter's outermost array");
         }
         if ((deriv->pd_decor & PAR_ARRAY_STATIC) && deriv->pd_empty) {
             Log_ShowErrorAt(line, "'static' in an array declarator needs a length");
         }
-        // Both decay away with the array itself, and we have no qualified types to carry them into yet.
+        // Both decay away with the array, and we have no qualified types to carry them into.
         deriv->pd_decor = 0;
     }
 }
 
-// Build one named parameter, which a function definition later redeclares in its body's scope.
+// Build one named parameter.
 Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
 {
     Par_TakeArrayDecor(decl, line);
@@ -185,18 +184,18 @@ Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
     return var;
 }
 
-// Build one old-style parameter, which arrives as a bare name and is an int until a declaration says otherwise.
+// Build one old-style parameter, which arrives as a bare name.
 Ast_Var *Par_MakeKnrParam(char *name, int line)
 {
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
 
     var->av_name = name;
     var->av_line = line;
-    // The type stays NULL until the declaration list supplies one, which is how an omission is caught.
+    // The type stays NULL until the declaration list supplies one.
     return var;
 }
 
-// Reject an old-style parameter the declaration list never typed, which C99 no longer defaults to int.
+// Reject an old-style parameter the declaration list never typed.
 void Par_CheckKnrParams(void)
 {
     for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
@@ -206,7 +205,7 @@ void Par_CheckKnrParams(void)
     }
 }
 
-// Give an old-style parameter the type its declaration list names, in place, so the body sees it.
+// Give an old-style parameter the type its declaration list names.
 void Par_SetKnrParam(Par_Decl *decl, int line)
 {
     Par_NeedName(decl, line);
@@ -220,7 +219,7 @@ void Par_SetKnrParam(Par_Decl *decl, int line)
     Log_ShowErrorAt(line, "'%s' is not a parameter of this function", decl->pc_name);
 }
 
-// Build one unnamed parameter, which a lone `void` declares none of.
+// Build one unnamed parameter.
 Ast_Var *Par_MakeAnonParam(Ast_Type *type, int line)
 {
     if (type->at_kind == AST_TYPE_KIND_VOID) {
@@ -241,7 +240,7 @@ Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims)
     return Ast_NewArray(Par_ArrayType(base, dims->an_next), (int) dims->an_val);
 }
 
-// The type __builtin_va_list names: the SysV record, as an array of one so passing it hands on its address.
+// The type __builtin_va_list names, an array of one so passing it hands on its address.
 Ast_Type *Par_VaListType(void)
 {
     if (Par_VaList) {
@@ -259,7 +258,7 @@ Ast_Type *Par_VaListType(void)
     return Par_VaList;
 }
 
-// Build the node reading the next anonymous argument, which only a type one eightbyte carries may name.
+// Build the node reading the next anonymous argument.
 Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, int line)
 {
     if (Sem_IsAggregate(type) || type->at_kind == AST_TYPE_KIND_ARRAY) {
@@ -284,7 +283,7 @@ Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail)
     return head;
 }
 
-// Narrow a member to the bits a `: width` gave it, rejecting a width C cannot grant.
+// Narrow a member to the bits a `: width` gave it.
 void Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line)
 {
     long bits = 0;
@@ -320,7 +319,7 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
         }
         tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
-        // `T d[]` last in a struct is a flexible array member, which takes no space of its own.
+        // `T d[]` last in a struct is a flexible array member, which takes no space.
         if (decl->pc_head && decl->pc_head->pd_kind == PAR_DERIV_ARRAY && decl->pc_head->pd_empty) {
             tail->am_flexible = 1;
         }
@@ -331,7 +330,7 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
     return head.am_next;
 }
 
-// Open a struct or union definition, binding its tag first so a member may point back at the type.
+// Open a struct or union definition, binding its tag first.
 Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, int line)
 {
     Ast_Type *type = tag ? Ast_FindTagHere(tag) : NULL;
@@ -351,7 +350,7 @@ Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, int line)
     return type;
 }
 
-// Name a struct or union not yet defined, which makes `struct node *next;` legal inside `struct node`.
+// Name a struct or union not yet defined.
 Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int line)
 {
     Ast_Type *type = Ast_FindTag(tag);
@@ -366,7 +365,7 @@ Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int line)
     return type;
 }
 
-// Declare one enumeration constant and step the value the next one takes.
+// Declare one enumeration constant and step the next one's value.
 void Par_AddEnumConst(const char *name, Ast_Node *value, int line)
 {
     if (value && ! Sem_Fold(value, &Par_EnumValue)) {
@@ -375,7 +374,7 @@ void Par_AddEnumConst(const char *name, Ast_Node *value, int line)
     Ast_DeclareEnumConst(name, Par_EnumValue++);
 }
 
-// Build the statement writing one flattened initializer into its object, or into a member of it for a bitfield.
+// Build the statement writing one flattened initializer into its object.
 Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line)
 {
     int at_off = bits ? off - bits->am_offset : off;
@@ -394,7 +393,7 @@ Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member *bits,
     return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, Ast_NewBinary(AST_NODE_KIND_ASSIGN, slot, value, line), line);
 }
 
-// Record one flattened initializer: its value, the slot's type and bitfield, and the slot's byte offset.
+// Record one flattened initializer at a byte offset.
 Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_INIT, value, line);
@@ -439,7 +438,7 @@ void Par_Step(Ast_Type **type, int *off, Ast_Node *desig, int index, Ast_Member 
     *type = (*type)->at_base;
 }
 
-// The type an expression already has, for the forms the parser can answer without the Sem_ pass, else NULL.
+// The type an expression already has, or NULL where only the Sem_ pass can say.
 Ast_Type *Par_ExprType(Ast_Node *node)
 {
     Ast_Type *type = NULL;
@@ -478,7 +477,7 @@ Ast_Type *Par_ExprType(Ast_Node *node)
     return type;
 }
 
-// Fill one slot from the cursor, descending into an aggregate left unbraced unless the value fits it whole.
+// Fill one slot from the cursor.
 void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, int line)
 {
     Ast_Node *value = (*item)->an_lhs;
@@ -503,7 +502,7 @@ void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item
     *item = (*item)->an_next;
 }
 
-// Walk an aggregate's slots from the cursor: a braced list ends with its items, an elided one when full.
+// Walk an aggregate's slots from the cursor.
 void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line)
 {
     int index = 0;
@@ -566,7 +565,7 @@ void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail,
 // Flatten one initializer, braced or not, into the object at base.
 void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line)
 {
-    // A literal of the slot's own type fills it with the items it holds, which is the copy C asks for.
+    // A literal of the slot's own type fills it with the items it holds.
     if (init->an_kind == AST_NODE_KIND_COMPOUND && init->an_type == type) {
         for (Ast_Node *item = init->an_items; item; item = item->an_next) {
             (*tail)->an_next = Par_InitAt(base + (int) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
@@ -595,7 +594,7 @@ void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast
     Par_FlattenList(type, base, &item, tail, 1, line);
 }
 
-// Flatten an initializer to the list of scalar writes that fill the object.
+// Flatten an initializer to the scalar writes that fill the object.
 Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, int line)
 {
     Ast_Node head = {0};
@@ -605,7 +604,7 @@ Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, int line)
     return head.an_next;
 }
 
-// Lower an already flattened initializer to the statements filling a local, zeroing the whole object first.
+// Lower a flattened initializer to the statements filling a local.
 Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, int line)
 {
     Ast_Node *zero = Ast_NewUnary(AST_NODE_KIND_ZERO, Ast_NewVarNode(var, line), line);
@@ -629,7 +628,7 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
     return Par_InitFlat(var, Par_FlattenInit(var->av_type, init, line), line);
 }
 
-// Build the unnamed object a compound literal names, hanging the statements that fill it off the node.
+// Build the unnamed object a compound literal names.
 Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
 {
     if (! type->at_complete) {
@@ -644,7 +643,7 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
     node->an_type  = type;
     node->an_items = Par_FlattenInit(type, list, line);
 
-    // Outside a function the object has static storage, so the linker lays it down and nothing has to run to fill it.
+    // Outside a function the object is static, so the linker lays it down.
     if (! Par_InFunction) {
         node->an_var = Ast_DeclareGlobal(name, type, line);
         node->an_var->av_storage = AST_STORAGE_STATIC;
@@ -657,7 +656,7 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
     return node;
 }
 
-// Reject an object whose type has no size here; an extern is exempt, being sized in another file.
+// Reject an object whose type has no size.
 void Par_CheckComplete(const char *name, Ast_Type *type, int line)
 {
     if (! type->at_complete && Par_DeclStorage != AST_STORAGE_EXTERN) {
@@ -665,14 +664,14 @@ void Par_CheckComplete(const char *name, Ast_Type *type, int line)
     }
 }
 
-// Declare one file-scope name of the declaration being parsed, which a function type makes a prototype.
+// Declare one file-scope name of the declaration being parsed.
 void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, int line)
 {
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
         Ast_DeclareTypedef(name, type);
         return;
     }
-    // A declarator that worked out to a function type declares a prototype, not an object.
+    // A function type here declares a prototype, not an object.
     if (type->at_kind == AST_TYPE_KIND_FUNC) {
         Par_DeclarePrototype(name, type);
         return;
@@ -683,7 +682,7 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, int l
     var->av_init = init ? Par_FlattenInit(var->av_type, init, line) : NULL;
 }
 
-// Declare a variable inside a function, which `static` moves to file scope.
+// Declare a variable inside a function.
 Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, int line)
 {
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
@@ -700,7 +699,7 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, int line)
     return var;
 }
 
-// Declare one local the declaration being parsed names, and build the statement its initializer becomes.
+// Declare one local and build the statement its initializer becomes.
 Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, int line)
 {
     Par_NeedName(decl, line);
@@ -757,7 +756,7 @@ void Par_AddFunction(Ast_Func *fn)
     Ast_Program = Par_ProgHead;
 }
 
-// Record a prototype a declarator spelled out, so a call can find its return type and check its arity.
+// Record a prototype a declarator spelled out.
 void Par_DeclarePrototype(const char *name, Ast_Type *type)
 {
     Ast_Func *fn = calloc(1, sizeof(Ast_Func));
@@ -772,7 +771,7 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type)
     Par_AddFunction(fn);
 }
 
-// Build the function the parser has just read a parameter list for.
+// Build the function the parser has just read.
 Ast_Func *Par_MakeFunction(Ast_Node *body)
 {
     Ast_Func *fn = calloc(1, sizeof(Ast_Func));
@@ -789,7 +788,7 @@ Ast_Func *Par_MakeFunction(Ast_Node *body)
     return fn;
 }
 
-// Reject a declarator with no name where C needs one, which is everywhere but a parameter.
+// Reject a declarator with no name.
 void Par_NeedName(Par_Decl *decl, int line)
 {
     if (! decl->pc_name) {
@@ -797,7 +796,7 @@ void Par_NeedName(Par_Decl *decl, int line)
     }
 }
 
-// Note the declarator a top-level declaration named, opening a body scope when it declares a function.
+// Note the declarator a top-level declaration named.
 void Par_BeginExternal(Par_Decl *decl, int line)
 {
     Par_NeedName(decl, line);
@@ -819,10 +818,10 @@ void Par_BeginExternal(Par_Decl *decl, int line)
     Par_CurProto     = type->at_proto;
     Par_InFunction   = 1;
 
-    // Declaring it before the body is what lets the body call it, which is how recursion resolves.
+    // Declaring it before the body is what lets the body call itself.
     Par_DeclarePrototype(decl->pc_name, type);
 
-    // The parameters were built without a scope, so the body's scope is where they become visible.
+    // The parameters were built without a scope, so the body's scope makes them visible.
     Ast_BeginScope();
     for (Ast_Var *param = type->at_params; param; param = param->av_param_next) {
         if (param->av_name) {
@@ -844,7 +843,7 @@ void Par_EndExternal(Ast_Node *init, int line)
     Par_AddDeclaredType(Par_DeclName, Par_CurDeclType, init, line);
 }
 
-// Close a function definition, which is the one case a body follows the declarator.
+// Close a function definition.
 void Par_EndFunction(Ast_Node *body)
 {
     Par_AddFunction(Par_MakeFunction(body));
@@ -852,14 +851,14 @@ void Par_EndFunction(Ast_Node *body)
     Par_InFunction = 0;
 }
 
-// Declare one more top-level name after a comma, which shares the declaration's specifier.
+// Declare one more top-level name after a comma.
 void Par_AddDeclared(Par_Decl *decl, Ast_Node *init, int line)
 {
     Par_NeedName(decl, line);
     Par_AddDeclaredType(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), init, line);
 }
 
-// Resolve a name used as a value: a variable, or a function, which names its own address.
+// Resolve a name used as a value.
 Ast_Node *Par_Designator(char *name, int line)
 {
     Ast_Var *var = Ast_FindVar(name);
@@ -876,7 +875,7 @@ Ast_Node *Par_Designator(char *name, int line)
     return node;
 }
 
-// Build a call, which a callee naming a function directly makes a direct one.
+// Build a call, direct or through a pointer.
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, int line)
 {
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_CALL, line);

@@ -20,14 +20,14 @@ char *Str_Trim(char *str);
 char *Str_New(const char *str);
 void Str_Free(char *str);
 
-// Splitting a string into an owned list of pieces
+// String splitting
 Str_List Str_Split(const char *str, const char *sep);
 void Str_ListFree(Str_List *list);
 
 // C literal escape decoding
 char *Str_Unescape(const char *p, int len, int *out_len);
 
-// POSIX extended-regex matching over a whole string
+// Regex matching
 int Str_RegexMatch(const char *str, const char *pattern);
 int Str_RegexExtract(const char *str, const char *pattern, char **groups, int ngroups);
 

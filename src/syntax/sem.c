@@ -4,7 +4,7 @@
 #include "util/str.h"
 #include "syntax/sem.h"
 
-// The program being analysed, for resolving calls against its definitions.
+// The program being analysed.
 static Ast_Func *Sem_Prog;
 
 // The function whose body is being analysed.
@@ -31,13 +31,13 @@ int Sem_CountNodes(Ast_Node *list)
     return count;
 }
 
-// Return whether values of this type address memory: a pointer, or an array.
+// Return whether values of this type address memory.
 int Sem_IsPointer(const Ast_Type *type)
 {
     return type->at_kind == AST_TYPE_KIND_PTR || type->at_kind == AST_TYPE_KIND_ARRAY;
 }
 
-// Return whether a node names an object, which a member does only when what holds it does.
+// Return whether a node names an object.
 int Sem_IsLvalue(const Ast_Node *node)
 {
     if (node->an_kind == AST_NODE_KIND_MEMBER) {
@@ -47,13 +47,13 @@ int Sem_IsLvalue(const Ast_Node *node)
         || node->an_kind == AST_NODE_KIND_COMPOUND;
 }
 
-// Return whether this is a struct or union, a type whose values move whole rather than in a register.
+// Return whether this is a struct or union.
 int Sem_IsAggregate(const Ast_Type *type)
 {
     return type->at_kind == AST_TYPE_KIND_STRUCT || type->at_kind == AST_TYPE_KIND_UNION;
 }
 
-// Return the tag a struct or union was declared with, for a diagnostic to name.
+// Return the tag a struct or union was declared with.
 const char *Sem_TypeName(const Ast_Type *type)
 {
     return type->at_tag ? type->at_tag : "<anonymous>";
@@ -68,7 +68,7 @@ Ast_Type *Sem_Decay(Ast_Type *type)
     return type;
 }
 
-// Narrow a folded value to the type a cast names, as the generated code would.
+// Narrow a folded value to the type a cast names.
 long Sem_Truncate(const Ast_Type *type, long value)
 {
     switch (type->at_kind) {
@@ -90,7 +90,7 @@ long Sem_Truncate(const Ast_Type *type, long value)
     return value;
 }
 
-// Apply one operator to folded operands, rejecting the division by zero C leaves undefined.
+// Apply one operator to folded operands.
 int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value)
 {
     switch (kind) {
@@ -215,7 +215,7 @@ int Sem_Fold(const Ast_Node *node, long *value)
     return 1;
 }
 
-// Fold an address constant to the symbol it names, or return false when the expression is not one.
+// Fold an address constant to the symbol it names, or return false.
 int Sem_FoldAddr(const Ast_Node *node, const char **symbol)
 {
     if (! node) {
@@ -246,8 +246,7 @@ int Sem_FoldAddr(const Ast_Node *node, const char **symbol)
     return 1;
 }
 
-// Check a call against the callee's definition, if this program has one.
-// Give a function named as a value the pointer type it decays to, which is the only way C can use one.
+// Give a function named as a value the pointer type it decays to.
 Ast_Type *Sem_FuncAddrType(Ast_Node *node)
 {
     Ast_Func *func = Sem_FindFunc(node->an_funcname);
@@ -257,7 +256,7 @@ Ast_Type *Sem_FuncAddrType(Ast_Node *node)
     return Ast_NewPointer(Ast_NewFunction(func->af_ret, func->af_params, func->af_nparams, func->af_variadic, func->af_proto));
 }
 
-// Give a call the type its callee returns, which an indirect call reads off the pointed-to function type.
+// Give a call the type its callee returns.
 Ast_Type *Sem_CallType(Ast_Node *node)
 {
     if (! node->an_lhs) {
@@ -268,7 +267,7 @@ Ast_Type *Sem_CallType(Ast_Node *node)
     return type ? type->at_ret : &Ast_TypeInt;
 }
 
-// Unwrap the function type an indirect call's callee names, rejecting a callee that is not one.
+// Unwrap the function type an indirect call's callee names.
 Ast_Type *Sem_CalleeType(Ast_Node *node)
 {
     Ast_Type *type = node->an_lhs->an_type;
@@ -282,7 +281,7 @@ Ast_Type *Sem_CalleeType(Ast_Node *node)
     return type;
 }
 
-// Check a call's argument count, which an unprototyped callee leaves unchecked because it promised nothing.
+// Check a call's argument count.
 void Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const char *what)
 {
     int given = Sem_CountNodes(node->an_args);
@@ -301,7 +300,7 @@ void Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const cha
     }
 }
 
-// Promote the arguments no parameter type governs, which is what makes an unprototyped or variadic call safe.
+// Promote the arguments no parameter type governs.
 void Sem_PromoteArgs(Ast_Node *node, int nparams, int variadic, int proto)
 {
     Ast_Node  head = {0};
@@ -310,7 +309,7 @@ void Sem_PromoteArgs(Ast_Node *node, int nparams, int variadic, int proto)
     int from = 0;
     int i = 0;
 
-    // A prototype names a type for every argument it covers, so those convert to it instead.
+    // A prototype types every argument it covers, so those convert instead.
     if (proto && ! variadic) {
         return;
     }
@@ -351,7 +350,7 @@ void Sem_CheckCall(Ast_Node *node)
     Sem_PromoteArgs(node, func->af_nparams, func->af_variadic, func->af_proto);
 }
 
-// Attach every case and default of a switch to it in source order, stopping at a nested switch.
+// Attach every case and default of a switch to it in source order.
 void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
 {
     if (! node || node->an_kind == AST_NODE_KIND_SWITCH) {
@@ -528,7 +527,7 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_DEREF: {
-            // Dereferencing a function designator decays it to a pointer and arrives back at the function.
+            // Dereferencing a function designator decays it and arrives back at the function.
             if (node->an_lhs->an_type && node->an_lhs->an_type->at_kind == AST_TYPE_KIND_FUNC) {
                 node->an_type = node->an_lhs->an_type;
                 break;

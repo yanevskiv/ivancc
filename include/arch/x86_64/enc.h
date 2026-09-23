@@ -24,7 +24,7 @@ enum Enc_x86_64_Rex {
     ENC_X86_64_REX_B    = 0x01
 };
 
-// ModRM mod field, the top two bits of the byte, which says how the r/m operand is addressed.
+// ModRM mod field, which says how the r/m operand is addressed.
 typedef enum Enc_x86_64_Mod Enc_x86_64_Mod;
 enum Enc_x86_64_Mod {
     ENC_X86_64_MOD_INDIRECT = 0, // (%rm)
@@ -115,7 +115,7 @@ struct Enc_x86_64_Label {
     uint64_t    al_off;
 };
 
-// A pending fixup: a site in a section, the symbol it targets and the bytes past that symbol the site means.
+// A pending fixup: a site in a section, the symbol it targets and its addend.
 typedef struct Enc_x86_64_Fix Enc_x86_64_Fix;
 struct Enc_x86_64_Fix {
     Elf_Sec    *af_sec;
@@ -164,7 +164,7 @@ void Enc_x86_64_SelectSection(const char *name, uint32_t type, uint64_t flags);
 void Enc_x86_64_BuildSymbols(void);
 void Enc_x86_64_BuildRelocs(void);
 
-// Encoding the instruction list to a relocatable ELF object
+// Encoding to a relocatable ELF object
 void Enc_x86_64_Reset(void);
 void Enc_x86_64_BuildObject(void);
 Elf *Enc_x86_64_GetObject(void);
