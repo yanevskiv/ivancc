@@ -29,18 +29,17 @@ static void Ld_Usage(const char *prog)
     exit(1);
 }
 
-// Map a -place section name to its ELF section: text -> .text, data/rodata ->
-// .rodata, anything else is taken as a literal section name.
+// Map a -place name to its ELF section: text -> .text, data/rodata -> .rodata, else the name itself.
 static char *Ld_PlaceName(const char *spec, int len)
 {
     char *name = strndup(spec, len);
     if (strcmp(name, "text") == 0) {
         Str_Free(name);
-        return strdup(".text");
+        return Str_New(".text");
     }
     if (strcmp(name, "data") == 0 || strcmp(name, "rodata") == 0) {
         Str_Free(name);
-        return strdup(".rodata");
+        return Str_New(".rodata");
     }
     return name;
 }
@@ -61,8 +60,7 @@ int main(int argc, char **argv)
     const char  *output = LD_DEFAULT_OUTPUT;
     Elf_LinkOptions opts    = {0};
 
-    // ld's flags (-r, -place=) use the single-dash forms its roadmap spells
-    // out, so the arguments are walked by hand rather than through getopt.
+    // ld's flags use the single-dash forms its roadmap spells out, so arguments are walked by hand.
     int nobjs = 0;
     const char **objs = calloc(argc, sizeof(*objs));
 
@@ -87,8 +85,7 @@ int main(int argc, char **argv)
         Ld_Usage(argv[0]);
     }
 
-    // Link the inputs into one Elf, write it, then mark executables runnable
-    // (-r leaves a relocatable object, which stays non-executable).
+    // Link the inputs into one Elf, write it, then mark executables runnable (-r leaves an object).
     Elf *e = Elf_Link_Run((const char *const *) objs, nobjs, &opts);
     if (Elf_Write_Path(e, output) != 0) {
         perror(output);

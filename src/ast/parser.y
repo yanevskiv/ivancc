@@ -1,14 +1,4 @@
-/* parser.y - grammar for the cc compiler (a small subset of C).
- *
- * Generates build/parser.tab.c and build/parser.tab.h
- * (via `bison -d -o build/parser.tab.c`).
- *
- * Binary operators are deliberately flat: their precedence comes from the
- * %left / %right declarations below rather than from a tower of non-terminals.
- * The prefix and postfix operators do need levels of their own, because
- * `sizeof` takes a unary-expression: that is what stops `sizeof (int) * n`
- * from parsing as `sizeof ((int) * n)`.
- */
+/* Grammar for the cc compiler: binary operators are flat, taking precedence from the %left and %right lists. */
 
 %code requires {
     #include "ast/ast.h"
@@ -64,8 +54,7 @@ static void Par_AddParam(Ast_Var *v)
     Par_CurNumParams++;
 }
 
-/* Count a parameter a prototype left unnamed, which a definition cannot have.
-   A lone `void` names no parameter at all, being how C spells an empty list. */
+/* Count a parameter a prototype left unnamed, which a lone `void` is not, being how C spells no list. */
 static void Par_AddAnonParam(Ast_Type *type)
 {
     if (type->at_kind != AST_TYPE_KIND_VOID) {
@@ -97,7 +86,7 @@ static long Par_EnumValue;
 /* The record __builtin_va_list names, built on first use and shared after. */
 static Ast_Type *Par_VaList;
 
-/* The type __builtin_va_list names: the SysV record, as an array of one so that passing a va_list hands on its address. */
+/* The type __builtin_va_list names: the SysV record, as an array of one so passing it hands on its address. */
 static Ast_Type *Par_VaListType(void)
 {
     if (Par_VaList) {
@@ -184,8 +173,7 @@ static Ast_Member *Par_MakeMembers(Ast_Type *type, Ast_Node *decls)
     return head.am_next;
 }
 
-/* Open a struct or union definition, binding its tag before the members are
-   read so that a member may point back at the type being defined. */
+/* Open a struct or union definition, binding its tag first so a member may point back at the type. */
 static Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, int line)
 {
     Ast_Type *type = tag ? Ast_FindTagHere(tag) : NULL;
@@ -205,8 +193,7 @@ static Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, int line
     return type;
 }
 
-/* Name a struct or union that may not have been defined yet, which is what
-   makes `struct node *next;` legal inside `struct node`. */
+/* Name a struct or union not yet defined, which makes `struct node *next;` legal inside `struct node`. */
 static Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int line)
 {
     Ast_Type *type = Ast_FindTag(tag);
@@ -230,7 +217,7 @@ static void Par_AddEnumConst(const char *name, Ast_Node *value, int line)
     Ast_DeclareEnumConst(name, Par_EnumValue++);
 }
 
-/* Build the statement writing one flattened initializer into its object, as `*(T *)((char *) &var + off) = value` or, for a bitfield, as a member of it. */
+/* Build the statement writing one flattened initializer into its object, or into a member of it for a bitfield. */
 static Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line)
 {
     int at_off = bits ? off - bits->am_offset : off;
@@ -249,7 +236,7 @@ static Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member
     return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, Ast_NewBinary(AST_NODE_KIND_ASSIGN, slot, value, line), line);
 }
 
-/* Record one flattened initializer: a value, the slot's type and bitfield if it has one, and the byte offset of that slot within the object. */
+/* Record one flattened initializer: its value, the slot's type and bitfield, and the slot's byte offset. */
 static Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_INIT, value, line);
@@ -298,7 +285,7 @@ static void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *in
 static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line);
 static Ast_Func *Par_FindFunction(const char *name);
 
-/* The type an expression already has, for the forms the parser can answer without the Sem_ pass, or NULL where it cannot tell. */
+/* The type an expression already has, for the forms the parser can answer without the Sem_ pass, else NULL. */
 static Ast_Type *Par_ExprType(Ast_Node *node)
 {
     Ast_Type *type = NULL;
@@ -337,7 +324,7 @@ static Ast_Type *Par_ExprType(Ast_Node *node)
     return type;
 }
 
-/* Fill one slot from the cursor, descending into an aggregate the source left unbraced unless the value already has the slot's own type. */
+/* Fill one slot from the cursor, descending into an aggregate left unbraced unless the value fits it whole. */
 static void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, int line)
 {
     Ast_Node *value = (*item)->an_lhs;
@@ -362,8 +349,7 @@ static void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node
     *item = (*item)->an_next;
 }
 
-/* Walk the slots of an array, struct or union, taking items from the cursor. A
-   braced list ends with its items; an elided one ends when the object is full. */
+/* Walk an aggregate's slots from the cursor: a braced list ends with its items, an elided one when full. */
 static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line)
 {
     int index = 0;
@@ -426,6 +412,15 @@ static void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node 
 /* Flatten one initializer, braced or not, into the object at base. */
 static void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line)
 {
+    // A literal of the slot's own type fills it with the items it holds, which is the copy C asks for.
+    if (init->an_kind == AST_NODE_KIND_COMPOUND && init->an_type == type) {
+        for (Ast_Node *item = init->an_items; item; item = item->an_next) {
+            (*tail)->an_next = Par_InitAt(base + (int) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
+            *tail = (*tail)->an_next;
+        }
+        return;
+    }
+
     if (init->an_kind != AST_NODE_KIND_INITLIST) {
         if (type->at_kind == AST_TYPE_KIND_ARRAY) {
             Log_ShowErrorAt(line, "an array needs a braced initializer");
@@ -456,31 +451,33 @@ static Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, int line)
     return head.an_next;
 }
 
-/* Lower a local's initializer to the statements that fill it, zeroing the whole object first so what the list leaves out is zero. */
-static Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
+/* Lower an already flattened initializer to the statements filling a local, zeroing the whole object first. */
+static Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, int line)
 {
-    if (init->an_kind != AST_NODE_KIND_INITLIST && var->av_type->at_kind != AST_TYPE_KIND_ARRAY) {
-        Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(var, line), init, line);
-        return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
-    }
-
     Ast_Node *zero = Ast_NewUnary(AST_NODE_KIND_ZERO, Ast_NewVarNode(var, line), line);
     zero->an_val = var->av_type->at_size;
 
     Ast_Node *tail = zero;
-    for (Ast_Node *item = Par_FlattenInit(var->av_type, init, line); item; item = item->an_next) {
+    for (Ast_Node *item = flat; item; item = item->an_next) {
         tail->an_next = Par_InitStore(var, (int) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
         tail = tail->an_next;
     }
     return zero;
 }
 
-/* Build the unnamed object a compound literal names, hanging the statements that fill it off the node so each evaluation runs them again. */
+/* Lower a local's initializer to the statements that fill it. */
+static Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
+{
+    if (init->an_kind != AST_NODE_KIND_INITLIST && var->av_type->at_kind != AST_TYPE_KIND_ARRAY) {
+        Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(var, line), init, line);
+        return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
+    }
+    return Par_InitFlat(var, Par_FlattenInit(var->av_type, init, line), line);
+}
+
+/* Build the unnamed object a compound literal names, hanging the statements that fill it off the node. */
 static Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
 {
-    if (! Par_InFunction) {
-        Log_ShowErrorAt(line, "a compound literal outside a function needs static storage, which is not supported");
-    }
     if (! type->at_complete) {
         Log_ShowErrorAt(line, "a compound literal of an incomplete type has no size");
     }
@@ -488,16 +485,25 @@ static Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
     Ast_Node *list = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
     list->an_body = items;
 
-    Ast_Var *var = Ast_DeclareVar(Str_Format(".compound.%d", Par_CompoundCount++), type, line);
+    char *name = Str_Format(".compound.%d", Par_CompoundCount++);
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_COMPOUND, line);
-    node->an_var  = var;
-    node->an_type = type;
-    node->an_body = Par_InitLocal(var, list, line);
+    node->an_type  = type;
+    node->an_items = Par_FlattenInit(type, list, line);
+
+    // Outside a function the object has static storage, so the linker lays it down and nothing has to run to fill it.
+    if (! Par_InFunction) {
+        node->an_var = Ast_DeclareGlobal(name, type, line);
+        node->an_var->av_storage = AST_STORAGE_STATIC;
+        node->an_var->av_init    = node->an_items;
+        return node;
+    }
+
+    node->an_var = Ast_DeclareVar(name, type, line);
+    node->an_body = Par_InitFlat(node->an_var, node->an_items, line);
     return node;
 }
 
-/* Reject an object declared with a type whose size is not known here. An
-   extern is exempt: the definition that sizes it is in another file. */
+/* Reject an object whose type has no size here; an extern is exempt, being sized in another file. */
 static void Par_CheckComplete(const char *name, Ast_Type *type, int line)
 {
     if (! type->at_complete && Par_DeclStorage != AST_STORAGE_EXTERN) {
@@ -654,16 +660,14 @@ translation_unit
     | translation_unit external_decl
     ;
 
-/* A declaration and a definition share `storage type_name IDENT`, so the name
-   is recorded before the parser decides which of the two it is reading. */
+/* A declaration and a definition share `storage type_name IDENT`, so the name is recorded first. */
 external_decl
     : storage type_name
         { Par_DeclStorage = $1; Par_DeclType = $2; }
       external_tail
     ;
 
-/* A struct, union or enum declaration stands alone; anything else goes on to
-   name something, and a definition and a declaration share the name itself. */
+/* A struct, union or enum declaration stands alone; anything else goes on to name something. */
 external_tail
     : SEMI
     | IDENT { Par_DeclName = $1; } decl_tail
@@ -782,8 +786,7 @@ struct_or_union
     | UNION                { $$ = AST_TYPE_KIND_UNION; }
     ;
 
-/* A tag shares no namespace with ordinary identifiers, so a name already bound
-   by a typedef -- as `typedef struct node node;` binds one -- is a tag here. */
+/* A tag shares no namespace with ordinary identifiers, so a name a typedef bound is a tag here. */
 tag_name
     : IDENT                { $$ = $1; }
     | TYPEDEF_NAME         { $$ = $1; }
@@ -806,7 +809,7 @@ member_declarators
           last->an_next = $3; $$ = $1; }
     ;
 
-/* A member carries its name, its dimensions, an_val for a flexible array and an_rhs for a bitfield width; the declaration supplies the type. */
+/* A member carries its name, its dimensions, an_val for a flexible array and an_rhs for a bitfield width. */
 member_declarator
     : IDENT array_dims
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_NOP, @1);
@@ -981,8 +984,6 @@ array_dims
         { Ast_Node *n = Ast_NewNum($2, @1); n->an_next = $4; $$ = n; }
     ;
 
-/* An array's length is a constant expression, of which we fold the two forms
-   that reach a declarator: a literal, and an enumeration constant. */
 /* A length must fold to a constant here, since a variable one would be a VLA. */
 array_len
     : expr

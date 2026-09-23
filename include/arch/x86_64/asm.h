@@ -100,6 +100,7 @@ enum Asm_x86_64_ItemKind {
     ASM_X86_64_ITEM_GLOBL,     // ai_label marked global
     ASM_X86_64_ITEM_SECTION,   // switch to ai_secname
     ASM_X86_64_ITEM_BYTES,     // ai_bytes / ai_nbytes raw data
+    ASM_X86_64_ITEM_ADDR,      // eight bytes holding the address of ai_label
     ASM_X86_64_ITEM_DIRECTIVE  // ai_text raw assembler line
 };
 
@@ -139,6 +140,7 @@ void Asm_x86_64_EmitLabel(const char *name, ...);
 void Asm_x86_64_EmitSection(const char *name, uint32_t type, uint64_t flags);
 void Asm_x86_64_EmitGlobl(const char *name, ...);
 void Asm_x86_64_EmitBytes(const void *data, int len);
+void Asm_x86_64_EmitAddress(const char *label);
 void Asm_x86_64_EmitDirective(const char *text, ...);
 
 // Register-to-register

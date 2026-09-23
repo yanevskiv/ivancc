@@ -20,6 +20,9 @@
 // Largest global a single scalar initializer may fill.
 #define GEN_X86_64_MAX_INIT 8
 
+// Most addresses one global's image may hold.
+#define GEN_X86_64_MAX_ADDRS 256
+
 // The bits of a byte, for splitting an initializer into them.
 #define GEN_X86_64_BYTE_MASK 0xFF
 
@@ -27,8 +30,7 @@
 #define GEN_X86_64_COPY_QUAD (ASM_X86_64_WIDTH_64 / ASM_X86_64_BITS_PER_BYTE)
 #define GEN_X86_64_COPY_LONG (ASM_X86_64_WIDTH_32 / ASM_X86_64_BITS_PER_BYTE)
 
-// Bytes a variadic function reserves at the top of its frame to spill the
-// argument registers into.
+// Bytes a variadic function reserves at the top of its frame to spill the argument registers into.
 #define VA_SAVE_SIZE (MAX_REG_ARGS * WORD_SIZE)
 
 // Number of values currently pushed with Gen_x86_64_EmitPush().
@@ -37,8 +39,7 @@ static int Gen_x86_64_Depth;
 // Source of unique label numbers.
 static int Gen_x86_64_LabelId;
 
-// Label numbers the innermost loop uses for break and continue, or -1 when
-// there is no loop to leave.
+// Label numbers the innermost loop uses for break and continue, or -1 when there is no loop to leave.
 static int Gen_x86_64_BreakId = -1;
 static int Gen_x86_64_ContinueId = -1;
 
@@ -84,7 +85,7 @@ int Gen_x86_64_AlignTo(int n, int align)
     return (n + align - 1) / align * align;
 }
 
-// Return the frame bytes a local reserves, rounding an aggregate up to whole eightbytes because the ABI moves one at a time.
+// Return the frame bytes a local reserves, rounding an aggregate up to the whole eightbytes the ABI moves.
 int Gen_x86_64_SlotSize(const Ast_Type *type)
 {
     if (! Sem_IsAggregate(type)) {
@@ -140,8 +141,7 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
     }
 }
 
-// Load the value at the address in %rax. An array or aggregate is left as that
-// address, because no register holds one and every use of it wants the address.
+// Load the value at the address in %rax, leaving an array or aggregate as that address since no register holds one.
 void Gen_x86_64_EmitLoad(const Ast_Type *type)
 {
     if (type->at_kind == AST_TYPE_KIND_ARRAY || Sem_IsAggregate(type)) {
@@ -190,8 +190,7 @@ void Gen_x86_64_EmitZero(int size)
     }
 }
 
-// Copy size bytes from the address in %rax to the address in %rdi, leaving the
-// destination in %rax so that an assignment yields the object it assigned to.
+// Copy size bytes from %rax to %rdi, leaving the destination in %rax so an assignment yields what it filled.
 void Gen_x86_64_EmitCopy(int size)
 {
     int off = 0;
@@ -224,7 +223,7 @@ const Ast_Member *Gen_x86_64_Bitfield(const Ast_Node *node)
     return NULL;
 }
 
-// Load into %rax the bitfield at the address in %rdi, shifting it to the top of the register and back to sign-extend it.
+// Load into %rax the bitfield at the address in %rdi, shifting it to the top of the register and back to sign-extend.
 void Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member)
 {
     Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, 0, ASM_X86_64_REG_RAX, Gen_x86_64_TypeWidth(member->am_type));
@@ -234,7 +233,7 @@ void Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member)
     Asm_x86_64_EmitSar(ASM_X86_64_REG_RAX);
 }
 
-// Store the low bits of %rax into the bitfield at the address in %rdi, reading the unit back so that the assignment yields what it now holds.
+// Store the low bits of %rax into the bitfield at the address in %rdi, reading it back as the value it yields.
 void Gen_x86_64_EmitBitfieldStore(const Ast_Member *member)
 {
     long mask = ((1L << member->am_bits) - 1) << member->am_bitoff;
@@ -253,8 +252,7 @@ void Gen_x86_64_EmitBitfieldStore(const Ast_Member *member)
     Gen_x86_64_EmitBitfieldLoad(member);
 }
 
-// Spill every argument register into the register save area, so that a variadic
-// function can reach the arguments it has no parameter for.
+// Spill every argument register into the save area, which is how a variadic function reaches its unnamed arguments.
 void Gen_x86_64_EmitVaSaveArea(void)
 {
     for (int i = 0; i < MAX_REG_ARGS; i++) {
@@ -295,7 +293,7 @@ void Gen_x86_64_EmitVaStart(void)
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, ABI_X86_64_VA_REG_SAVE, ASM_X86_64_WIDTH_64);
 }
 
-// Read into %rax the next argument the va_list at the address in %rax reaches, taking it from the save area until that runs out.
+// Read into %rax the next argument the va_list at %rax reaches, from the save area until that runs out.
 void Gen_x86_64_EmitVaArg(const Ast_Type *type)
 {
     int count = Gen_x86_64_Count();
@@ -505,8 +503,7 @@ void Gen_x86_64_EmitCall(Ast_Node *node)
     }
 }
 
-// Apply a compound assignment's operation to the value in %rax and the one in
-// %rcx, leaving the result in %rax. A shift finds its count in %cl already.
+// Apply a compound assignment's operation to %rax and %rcx into %rax; a shift finds its count in %cl already.
 void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, int line)
 {
     switch (op) {
@@ -965,18 +962,29 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
     func->af_stack_size = Gen_x86_64_AlignTo(offset, STACK_ALIGN);
 }
 
-// Write one flattened initializer's bytes into a global's image, a bitfield merging into the unit its neighbours share.
-void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const Ast_Var *var)
+// Write one flattened initializer into a global's image, as bytes or as a slot the linker fills with an address.
+void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int *naddrs)
 {
     int size = item->an_type->at_size;
     int offset = (int) item->an_val;
     long val = 0;
+    const char *symbol = NULL;
 
-    if (! Sem_Fold(item->an_lhs, &val)) {
-        Log_ShowErrorAt(var->av_line, "initializer for '%s' is not a constant", var->av_name);
-    }
     if (offset + size > var->av_type->at_size) {
         Log_ShowErrorAt(var->av_line, "initializer for '%s' is larger than it is", var->av_name);
+    }
+    if (Sem_FoldAddr(item->an_lhs, &symbol)) {
+        if (size != WORD_SIZE) {
+            Log_ShowErrorAt(var->av_line, "initializer for '%s' needs a pointer to hold an address", var->av_name);
+        }
+        if (*naddrs == GEN_X86_64_MAX_ADDRS) {
+            Log_ShowErrorAt(var->av_line, "initializer for '%s' holds more addresses than %d", var->av_name, GEN_X86_64_MAX_ADDRS);
+        }
+        addrs[(*naddrs)++] = (Gen_x86_64_Addr) { offset, symbol };
+        return;
+    }
+    if (! Sem_Fold(item->an_lhs, &val)) {
+        Log_ShowErrorAt(var->av_line, "initializer for '%s' is not a constant", var->av_name);
     }
 
     if (item->an_member) {
@@ -993,11 +1001,29 @@ void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const A
     }
 }
 
-// Emit one global: its bytes in .data when it has an initializer, or the space
-// it asks for in .bss when it is zeroed.
+// Emit an image as runs of bytes broken by the addresses the linker fills in.
+void Gen_x86_64_EmitImage(const unsigned char *bytes, int size, const Gen_x86_64_Addr *addrs, int naddrs)
+{
+    int at = 0;
+
+    for (int i = 0; i < naddrs; i++) {
+        if (addrs[i].ga_offset > at) {
+            Asm_x86_64_EmitBytes(bytes + at, addrs[i].ga_offset - at);
+        }
+        Asm_x86_64_EmitAddress(addrs[i].ga_symbol);
+        at = addrs[i].ga_offset + WORD_SIZE;
+    }
+    if (size > at) {
+        Asm_x86_64_EmitBytes(bytes + at, size - at);
+    }
+}
+
+// Emit one global: its bytes in .data when it has an initializer, or the space it asks for in .bss when it is zeroed.
 void Gen_x86_64_EmitGlobal(Ast_Var *var)
 {
     int size = var->av_type->at_size;
+    int naddrs = 0;
+    Gen_x86_64_Addr addrs[GEN_X86_64_MAX_ADDRS];
 
     // An extern declaration defines nothing; the symbol comes from elsewhere.
     if (var->av_storage == AST_STORAGE_EXTERN) {
@@ -1006,7 +1032,7 @@ void Gen_x86_64_EmitGlobal(Ast_Var *var)
 
     unsigned char *bytes = calloc(size ? size : 1, 1);
     for (Ast_Node *item = var->av_init; item; item = item->an_next) {
-        Gen_x86_64_EmitConstant(bytes, item, var);
+        Gen_x86_64_EmitConstant(bytes, item, var, addrs, &naddrs);
     }
 
     if (var->av_init) {
@@ -1018,7 +1044,7 @@ void Gen_x86_64_EmitGlobal(Ast_Var *var)
         Asm_x86_64_EmitGlobl("%s", var->av_symbol);
     }
     Asm_x86_64_EmitLabel("%s", var->av_symbol);
-    Asm_x86_64_EmitBytes(bytes, size);
+    Gen_x86_64_EmitImage(bytes, size, addrs, naddrs);
     free(bytes);
 }
 

@@ -1,10 +1,16 @@
 // (Test) Return: 42
 // Compound literals: `(T){...}` names an unnamed object of type T, filled the
-// way a declaration's initializer fills a variable. The object is an lvalue
-// with automatic storage, so it can be addressed, assigned to and passed on.
+// way a declaration's initializer fills a variable. Inside a function the
+// object has automatic storage and is refilled on each evaluation; outside one
+// it has static storage, so the linker lays it down and its address is a
+// constant.
 
 struct Point { int x; int y; };
 union Word   { int n; char b[4]; };
+
+struct Point origin = (struct Point){3, 4};
+int         *triple = (int[3]){7, 8, 9};
+struct Point *anchor = &(struct Point){11, 12};
 
 int sum(struct Point p)
 {
@@ -65,6 +71,14 @@ int main()
         total = total + s->x;
     }
     if (total != 3) return 12;
+
+    // With static storage nothing runs to fill the object.
+    if (origin.x != 3 || origin.y != 4) return 13;
+    if (triple[0] != 7 || triple[2] != 9) return 14;
+    if (anchor->x != 11 || anchor->y != 12) return 15;
+
+    static struct Point kept = (struct Point){5, 6};
+    if (kept.x != 5 || kept.y != 6) return 16;
 
     return sum((struct Point){20, 22});
 }

@@ -26,8 +26,7 @@ uint64_t Elf_Load_AlignUp(uint64_t addr, uint64_t align)
     return Elf_Load_AlignDown(addr + align - 1, align);
 }
 
-// Read an ET_EXEC file into a flat image: every PT_LOAD at its virtual address,
-// a stack above them, and zeros everywhere the file has no bytes.
+// Read an ET_EXEC file into a flat image: every PT_LOAD at its address, a stack above, zeros elsewhere.
 int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
 {
     long len = 0;
@@ -82,8 +81,7 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
     // Phase: the bytes themselves, leaving p_memsz beyond p_filesz zeroed.
     for (int i = 0; i < eh->e_phnum; i++) {
         const Elf64_Phdr *ph = (const Elf64_Phdr *) (data + eh->e_phoff + (uint64_t) i * eh->e_phentsize);
-        // A segment with no file bytes, such as .bss, has nothing to copy and
-        // no file offset worth checking.
+        // A segment with no file bytes, such as .bss, has nothing to copy and no file offset worth checking.
         if (ph->p_type != ELF_PT_LOAD || ph->p_filesz == 0) {
             continue;
         }
@@ -98,8 +96,7 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
     return 0;
 }
 
-// Return a pointer to size bytes of the image at vaddr, or NULL if that range
-// is not mapped; the caller reports the fault, since only it knows the %rip.
+// Return a pointer to size bytes of the image at vaddr, or NULL when that range is not mapped.
 void *Elf_Load_At(const Elf_LoadImage *img, uint64_t vaddr, uint64_t size)
 {
     if (vaddr < img->li_base || size > img->li_size) {

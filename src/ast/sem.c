@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "util/log.h"
+#include "util/str.h"
 #include "ast/sem.h"
 
 // The program being analysed, for resolving calls against its definitions.
@@ -46,8 +47,7 @@ int Sem_IsLvalue(const Ast_Node *node)
         || node->an_kind == AST_NODE_KIND_COMPOUND;
 }
 
-// Return whether this is a struct or union, which is to say a type whose values
-// are moved whole rather than held in a register.
+// Return whether this is a struct or union, a type whose values move whole rather than in a register.
 int Sem_IsAggregate(const Ast_Type *type)
 {
     return type->at_kind == AST_TYPE_KIND_STRUCT || type->at_kind == AST_TYPE_KIND_UNION;
@@ -214,6 +214,37 @@ int Sem_Fold(const Ast_Node *node, long *value)
     return 1;
 }
 
+// Fold an address constant to the symbol it names, or return false when the expression is not one.
+int Sem_FoldAddr(const Ast_Node *node, const char **symbol)
+{
+    if (! node) {
+        return 0;
+    }
+
+    switch (node->an_kind) {
+        case AST_NODE_KIND_STR: {
+            *symbol = Str_Format(".Lstr%d", node->an_str_idx);
+        } break;
+        case AST_NODE_KIND_VAR:
+        case AST_NODE_KIND_COMPOUND: {
+            if (! node->an_var->av_global) {
+                return 0;  // a local has no address until its frame exists
+            }
+            *symbol = node->an_var->av_symbol;
+        } break;
+        case AST_NODE_KIND_ADDR:
+        case AST_NODE_KIND_CAST: {
+            if (! Sem_FoldAddr(node->an_lhs, symbol)) {
+                return 0;
+            }
+        } break;
+        default: {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 // Check a call against the callee's definition, if this program has one.
 void Sem_CheckCall(Ast_Node *node)
 {
@@ -233,8 +264,7 @@ void Sem_CheckCall(Ast_Node *node)
     }
 }
 
-// Attach every case and default of a switch to it, in source order. A nested
-// switch owns its own cases, so the walk stops there.
+// Attach every case and default of a switch to it in source order, stopping at a nested switch.
 void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
 {
     if (! node || node->an_kind == AST_NODE_KIND_SWITCH) {
