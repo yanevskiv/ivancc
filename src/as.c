@@ -38,7 +38,7 @@ static void As_Assemble(const char *input, const char *output)
         File_ShowError(output);
         exit(1);
     }
-    if (Enc_x86_64_Write(out) != 0) {
+    if (! Enc_x86_64_Write(out)) {
         File_ShowError(output);
         exit(1);
     }
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     const char *output = NULL;
     const char *input = NULL;
 
-    for (int i = 1; i < argc; i++) {
+    for (int32_t i = 1; i < argc; i++) {
         const char *arg = argv[i];
         if (strcmp(arg, "-o") == 0 && i + 1 < argc) {
             output = argv[++i];

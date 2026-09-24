@@ -3,13 +3,18 @@
 #ifndef AST_H
 #define AST_H
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 // Maximum number of distinct string literals in one translation unit.
 #define AST_MAX_STRINGS 1024
 
 // Bits in a byte, for placing a bitfield inside the unit that holds it.
 #define AST_BITS_PER_BYTE 8
+
+// A source line number.
+typedef uint32_t Ast_Line;
 
 // Forward declaration: a struct type lists its members.
 typedef struct Ast_Member Ast_Member;
@@ -66,6 +71,20 @@ enum Ast_TypeAlign {
     AST_TYPE_ALIGN_LLONG = 8,
     AST_TYPE_ALIGN_PTR   = 8,
     AST_TYPE_ALIGN_FUNC  = 1
+};
+
+// Whether a function's parameter list ended in `...`.
+typedef enum Ast_TypeVariadic Ast_TypeVariadic;
+enum Ast_TypeVariadic {
+    AST_TYPE_FIXED,
+    AST_TYPE_VARIADIC
+};
+
+// Whether a function was declared with a prototype.
+typedef enum Ast_TypeProto Ast_TypeProto;
+enum Ast_TypeProto {
+    AST_TYPE_NOPROTO, // written `int f()`
+    AST_TYPE_PROTO
 };
 
 // Whether an integer type holds negative values.
@@ -165,20 +184,20 @@ enum Ast_Storage {
 typedef struct Ast_Type Ast_Type;
 struct Ast_Type {
     Ast_TypeKind     at_kind;     // which kind of type this is
-    int              at_size;     // bytes an object of this type occupies
-    int              at_align;    // address multiple an object must sit on
+    int32_t          at_size;     // bytes an object of this type occupies
+    int32_t          at_align;    // address multiple an object must sit on
     Ast_TypeSign     at_sign;     // signedness of an integer kind
     Ast_Qual         at_qual;     // the qualifiers written on the declaration
     Ast_Type        *at_base;     // pointee for PTR, element type for ARRAY
-    int              at_len;      // element count for ARRAY
+    int32_t          at_len;      // element count for ARRAY
     char            *at_tag;      // tag a STRUCT or UNION was declared with, or NULL
     Ast_Member      *at_members;  // members of a STRUCT or UNION
     Ast_TypeComplete at_complete; // incomplete until the member list has been seen
     Ast_Type        *at_ret;      // return type of a FUNC
     Ast_Var         *at_params;   // parameters of a FUNC
-    int              at_nparams;  // number of parameters a FUNC declares
-    int              at_variadic; // true when a FUNC's parameter list ended in `...`
-    int              at_proto;    // false for `int f()`
+    int32_t          at_nparams;  // number of parameters a FUNC declares
+    Ast_TypeVariadic at_variadic; // whether a FUNC's parameter list ended in `...`
+    Ast_TypeProto    at_proto;    // whether a FUNC was declared with a prototype
 };
 
 // One member of a struct or union, at the offset layout gave it.
@@ -187,11 +206,11 @@ struct Ast_Member {
     char       *am_name;     // NULL for a bitfield declared only to pad
     Ast_Type   *am_type;
     Ast_Type   *am_owner;    // aggregate the member was declared in
-    int         am_offset;   // bytes from the start of the enclosing aggregate
-    int         am_line;     // source line the member was declared on
-    int         am_flexible; // true for a trailing `d[]`
-    int         am_bits;     // width of a bitfield, or 0
-    int         am_bitoff;   // bits into am_offset where a bitfield starts
+    int32_t     am_offset;   // bytes from the start of the enclosing aggregate
+    Ast_Line    am_line;     // source line the member was declared on
+    bool        am_flexible; // true for a trailing `d[]`
+    int32_t     am_bits;     // width of a bitfield, or 0
+    int32_t     am_bitoff;   // bits into am_offset where a bitfield starts
 };
 
 // An interned string literal.
@@ -204,17 +223,17 @@ struct Ast_Str {
 
 // A local variable or function parameter.
 struct Ast_Var {
-    Ast_Var *av_next;       // chains every local in a function
-    Ast_Var *av_param_next; // chains parameters in declaration order
-    Ast_Var *av_scope_next; // chains the variables of one lexical scope
-    char     *av_name;      // identifier as written in the source
-    Ast_Type *av_type;      // declared type
-    int      av_line;       // source line the declaration appeared on
-    int      av_offset;     // offset from %rbp
-    char     *av_symbol;    // name the symbol takes
-    int       av_global;    // true when the variable lives in .data or .bss
-    Ast_Storage av_storage; // storage class the declaration asked for
-    Ast_Node *av_init;      // initializer of a global, or NULL
+    Ast_Var     *av_next;       // chains every local in a function
+    Ast_Var     *av_param_next; // chains parameters in declaration order
+    Ast_Var     *av_scope_next; // chains the variables of one lexical scope
+    char        *av_name;       // identifier as written in the source
+    Ast_Type    *av_type;       // declared type
+    Ast_Line     av_line;       // source line the declaration appeared on
+    int32_t      av_offset;     // offset from %rbp
+    char        *av_symbol;     // name the symbol takes
+    bool         av_global;     // true when the variable lives in .data or .bss
+    Ast_Storage  av_storage;    // storage class the declaration asked for
+    Ast_Node    *av_init;       // initializer of a global, or NULL
 };
 
 // A struct, union or enum tag.
@@ -230,7 +249,7 @@ typedef struct Ast_EnumConst Ast_EnumConst;
 struct Ast_EnumConst {
     Ast_EnumConst *ae_next;
     char          *ae_name;
-    long           ae_value;
+    int64_t        ae_value;
 };
 
 // A name a typedef declaration bound to a type.
@@ -256,7 +275,7 @@ struct Ast_Node {
     Ast_NodeKind an_kind;     // which kind of node this is
     Ast_NodeKind an_op;       // operation of AST_NODE_KIND_OPASSIGN
     Ast_Type    *an_type;     // type of the value
-    int          an_line;     // source line the construct started on
+    Ast_Line     an_line;     // source line the construct started on
     Ast_Node    *an_next;     // next node in a statement / argument list
     Ast_Node    *an_lhs;      // generic left operand
     Ast_Node    *an_rhs;      // generic right operand
@@ -270,31 +289,31 @@ struct Ast_Node {
     Ast_Node    *an_args;     // argument list for AST_NODE_KIND_CALL
     Ast_Node    *an_cases;    // cases of AST_NODE_KIND_SWITCH, in source order
     Ast_Node    *an_case_next; // next case of the switch this one belongs to
-    int          an_label;    // label number a case is emitted with
-    long         an_val;      // integer value for AST_NODE_KIND_NUM
-    int          an_str_idx;  // string table slot for AST_NODE_KIND_STR
+    int32_t      an_label;    // label number a case is emitted with
+    int64_t      an_val;      // integer value for AST_NODE_KIND_NUM
+    size_t       an_str_idx;  // string table slot for AST_NODE_KIND_STR
     Ast_Var     *an_var;      // variable a VAR names, or the object a COMPOUND fills
     Ast_Node    *an_items;    // flattened initializer a COMPOUND fills
     Ast_Member  *an_member;   // resolved member of AST_NODE_KIND_MEMBER
     char        *an_memname;  // member name a MEMBER node was written with
-    int          an_tmp;      // frame slot an aggregate return lands in
-    int          an_calltmp;  // frame slot an indirect CALL parks its callee in
+    int32_t      an_tmp;      // frame slot an aggregate return lands in
+    int32_t      an_calltmp;  // frame slot an indirect CALL parks its callee in
 };
 
 // A function definition.
 typedef struct Ast_Func Ast_Func;
 struct Ast_Func {
-    Ast_Func *af_next;       // next function in the program
-    char     *af_name;       // function name
-    Ast_Node *af_body;       // function body (AST_NODE_KIND_BLOCK)
-    Ast_Type *af_ret;        // type the function returns
-    Ast_Var  *af_params;     // parameters
-    int       af_nparams;    // number of parameters
-    int       af_variadic;   // true if the parameter list ended in `...`
-    int       af_proto;      // false for `int f()` and an old-style definition
-    int       af_static;     // true when the function is local to this file
-    Ast_Var  *af_locals;     // every local, including parameters
-    int       af_stack_size; // frame size
+    Ast_Func        *af_next;       // next function in the program
+    char            *af_name;       // function name
+    Ast_Node        *af_body;       // function body (AST_NODE_KIND_BLOCK)
+    Ast_Type        *af_ret;        // type the function returns
+    Ast_Var         *af_params;     // parameters
+    int32_t          af_nparams;    // number of parameters
+    Ast_TypeVariadic af_variadic;   // whether the parameter list ended in `...`
+    Ast_TypeProto    af_proto;      // whether a prototype declared the parameters
+    bool             af_static;     // true when the function is local to this file
+    Ast_Var         *af_locals;     // every local, including parameters
+    int32_t          af_stack_size; // frame size
 };
 
 // The finished program, produced by the parser.
@@ -318,30 +337,30 @@ extern Ast_Type Ast_TypeLLong;
 extern Ast_Type Ast_TypeULLong;
 
 // Type construction
-int       Ast_AlignTo(int n, int align);
-int       Ast_AlignDown(int n, int align);
+int32_t   Ast_AlignTo(int32_t n, int32_t align);
+int32_t   Ast_AlignDown(int32_t n, int32_t align);
 Ast_Type *Ast_IntegerType(Ast_TypeKind kind, Ast_TypeSign sign);
 Ast_Type *Ast_Qualify(Ast_Type *type, Ast_Qual qual);
-int       Ast_IsInteger(const Ast_Type *type);
+bool      Ast_IsInteger(const Ast_Type *type);
 Ast_Type *Ast_NewPointer(Ast_Type *base);
-Ast_Type *Ast_NewArray(Ast_Type *base, int len);
-Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int nparams, int variadic, int proto);
+Ast_Type *Ast_NewArray(Ast_Type *base, int32_t len);
+Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto);
 Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
-Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line);
-int       Ast_PlaceBitfield(Ast_Member *member, int bits);
+Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, Ast_Line line);
+int32_t   Ast_PlaceBitfield(Ast_Member *member, int32_t bits);
 Ast_Member *Ast_NamedMembers(Ast_Member *members);
-void      Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line);
+void      Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line);
 Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name);
 
 // Node construction
-Ast_Node *Ast_NewNode(Ast_NodeKind kind, int line);
-Ast_Node *Ast_NewBinary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Node *rhs, int line);
-Ast_Node *Ast_NewUnary(Ast_NodeKind kind, Ast_Node *lhs, int line);
-Ast_Node *Ast_NewNum(long val, int line);
-Ast_Node *Ast_NewVarNode(Ast_Var *var, int line);
-Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, int line);
-Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line);
-Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line);
+Ast_Node *Ast_NewNode(Ast_NodeKind kind, Ast_Line line);
+Ast_Node *Ast_NewBinary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Node *rhs, Ast_Line line);
+Ast_Node *Ast_NewUnary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Line line);
+Ast_Node *Ast_NewNum(int64_t val, Ast_Line line);
+Ast_Node *Ast_NewVarNode(Ast_Var *var, Ast_Line line);
+Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, Ast_Line line);
+Ast_Node *Ast_NewPostInc(Ast_Node *lhs, int64_t step, Ast_Line line);
+Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, Ast_Line line);
 
 // Variable scopes
 void     Ast_BeginScope(void);
@@ -349,10 +368,10 @@ void     Ast_EndScope(void);
 void     Ast_PushScope(void);
 void     Ast_PopScope(void);
 Ast_Var *Ast_FindVar(const char *name);
-Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line);
+Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line);
 void     Ast_DeclareParam(Ast_Var *var);
-Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line);
-Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line);
+Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, Ast_Line line);
+Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_CurrentLocals(void);
 
 // Tags and typedef names
@@ -361,12 +380,12 @@ Ast_Type *Ast_FindTagHere(const char *name);
 void      Ast_DeclareTag(const char *name, Ast_Type *type);
 Ast_Type *Ast_FindTypedef(const char *name);
 void      Ast_DeclareTypedef(const char *name, Ast_Type *type);
-int       Ast_FindEnumConst(const char *name, long *value);
-void      Ast_DeclareEnumConst(const char *name, long value);
+bool      Ast_FindEnumConst(const char *name, int64_t *value);
+void      Ast_DeclareEnumConst(const char *name, int64_t value);
 
 // String literal interning
-int      Ast_AddString(char *s, size_t len, size_t width);
-int      Ast_StringCount(void);
-Ast_Str *Ast_StringAt(int idx);
+size_t   Ast_AddString(char *s, size_t len, size_t width);
+size_t   Ast_StringCount(void);
+Ast_Str *Ast_StringAt(size_t idx);
 
 #endif // AST_H

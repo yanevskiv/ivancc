@@ -3,6 +3,7 @@
 #ifndef ELF_H
 #define ELF_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "util/file.h"
@@ -207,7 +208,7 @@ struct Elf_LinkPlace {
 typedef struct Elf_LinkOptions Elf_LinkOptions;
 struct Elf_LinkOptions {
     const char     *lo_entry;        // entry symbol (NULL selects _start)
-    int             lo_relocatable;  // -r: merge into an ET_REL object, keep relocs
+    bool            lo_relocatable;  // -r: merge into an ET_REL object, keep relocs
     Elf_LinkPlace  *lo_places;       // -place requests, in the order given
     size_t          lo_nplaces;      // requests lo_places holds
 };
@@ -275,21 +276,21 @@ uint32_t Elf_Write_Str(Elf_Buffer *strtab, const char *name);
 uint32_t Elf_Write_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *secidx);
 void     Elf_Write_Symtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab, Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global);
 void     Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Elf_Buffer *out);
-int      Elf_Write_Rel(const Elf *elf, File_Stream *out);
+bool     Elf_Write_Rel(const Elf *elf, File_Stream *out);
 uint32_t Elf_Write_SegFlags(const Elf_Sec *sec);
 uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr);
-int      Elf_Write_Exec(const Elf *elf, File_Stream *out);
-int      Elf_Write_File(const Elf *elf, File_Stream *out);
-int      Elf_Write_Path(const Elf *elf, const char *path);
+bool     Elf_Write_Exec(const Elf *elf, File_Stream *out);
+bool     Elf_Write_File(const Elf *elf, File_Stream *out);
+bool     Elf_Write_Path(const Elf *elf, const char *path);
 
 // Linking
-long     Elf_Link_SectionIndex(const Elf *elf, const Elf_Sec *target);
-long     Elf_Link_SymbolIndex(const Elf *elf, const Elf_Sym *target);
+int64_t  Elf_Link_SectionIndex(const Elf *elf, const Elf_Sec *target);
+int64_t  Elf_Link_SymbolIndex(const Elf *elf, const Elf_Sym *target);
 Elf_Sym *Elf_Link_FindGlobal(Elf *elf, const char *name);
 void     Elf_Link_Merge(Elf *out, Elf *in);
 void     Elf_Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths);
 void     Elf_Link_AddPlace(Elf_LinkOptions *opts, const char *name, uint64_t addr);
-uint64_t Elf_Link_PlacedAddr(const Elf_LinkOptions *opts, const char *name, int *placed);
+uint64_t Elf_Link_PlacedAddr(const Elf_LinkOptions *opts, const char *name, bool *placed);
 void     Elf_Link_PlaceSections(Elf *elf, const Elf_LinkOptions *opts);
 void     Elf_Link_CheckDefined(Elf *elf);
 void     Elf_Link_Exec(Elf *elf, const Elf_LinkOptions *opts);
@@ -298,7 +299,7 @@ Elf     *Elf_Link_Run(const char *const *paths, size_t npaths, const Elf_LinkOpt
 // Loading
 uint64_t Elf_Load_AlignDown(uint64_t addr, uint64_t align);
 uint64_t Elf_Load_AlignUp(uint64_t addr, uint64_t align);
-int      Elf_Load_ReadExec(const char *path, Elf_LoadImage *img);
+bool     Elf_Load_ReadExec(const char *path, Elf_LoadImage *img);
 void    *Elf_Load_At(const Elf_LoadImage *img, uint64_t vaddr, uint64_t size);
 void     Elf_Load_Free(Elf_LoadImage *img);
 

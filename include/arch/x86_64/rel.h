@@ -16,7 +16,7 @@
 
 // Addresses and byte patching
 uint64_t Rel_x86_64_SymbolAddr(const Elf_Sym *sym);
-void     Rel_x86_64_PatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, int width);
+void     Rel_x86_64_PatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width);
 
 // Applying relocations
 void Rel_x86_64_One(Elf_Sec *sec, const Elf_Rela *rel);

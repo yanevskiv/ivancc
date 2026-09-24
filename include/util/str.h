@@ -4,13 +4,15 @@
 #define STR_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 // Bits in a byte, for packing one element of a decoded literal.
 #define STR_BITS_PER_BYTE 8
 
-// Bits in the unsigned long an escape sequence is read into.
-#define STR_LONG_BITS 64
+// Bits in the value an escape sequence is read into.
+#define STR_VALUE_BITS 64
 
 // All bits of one byte set.
 #define STR_BYTE_MASK 0xFF
@@ -20,11 +22,6 @@
 
 // Element size of the widest literal.
 #define STR_MAX_ELEMENT_SIZE 4
-
-// The bases an escape sequence is written in.
-#define STR_BASE_OCTAL   8
-#define STR_BASE_DECIMAL 10
-#define STR_BASE_HEX     16
 
 // Digits an escape sequence may carry.
 #define STR_MAX_OCTAL_DIGITS 3
@@ -47,6 +44,14 @@
 #define STR_UTF8_MASK  0x3F
 #define STR_UTF8_SHIFT 6
 
+// The bases an escape sequence is written in.
+typedef enum Str_Base Str_Base;
+enum Str_Base {
+    STR_BASE_OCTAL   = 8,
+    STR_BASE_DECIMAL = 10,
+    STR_BASE_HEX     = 16
+};
+
 // A list of owned strings, as produced by Str_Split.
 typedef struct Str_List Str_List;
 struct Str_List {
@@ -60,8 +65,8 @@ char *Str_Slice(const char *str, size_t start, size_t end);
 char *Str_Format(const char *fmt, ...);
 char *Str_FormatVa(const char *fmt, va_list ap);
 char *Str_ChangeOrAppendExt(const char *input, const char *suffix);
-int Str_Equals(const char *a, const char *b);
-int Str_StartsWith(const char *str, const char *prefix);
+bool Str_Equals(const char *a, const char *b);
+bool Str_StartsWith(const char *str, const char *prefix);
 char *Str_Trim(char *str);
 void Str_Free(char *str);
 
@@ -70,12 +75,12 @@ Str_List Str_Split(const char *str, const char *sep);
 void Str_ListFree(Str_List *list);
 
 // C literal escape decoding
-int Str_DigitValue(char c);
-unsigned long Str_ScanDigits(const char *p, size_t len, size_t *pos, int base, size_t count);
-unsigned long Str_GetValue(const char *p, size_t width);
-void Str_PutValue(char *buf, size_t *len, size_t width, unsigned long value);
-void Str_PutEscape(char *buf, size_t *len, size_t width, unsigned long value);
-void Str_PutUtf8(char *buf, size_t *len, unsigned long value);
+int32_t Str_DigitValue(char c);
+uint64_t Str_ScanDigits(const char *p, size_t len, size_t *pos, Str_Base base, size_t count);
+uint64_t Str_GetValue(const char *p, size_t width);
+void Str_PutValue(char *buf, size_t *len, size_t width, uint64_t value);
+void Str_PutEscape(char *buf, size_t *len, size_t width, uint64_t value);
+void Str_PutUtf8(char *buf, size_t *len, uint64_t value);
 char *Str_Unescape(const char *p, size_t len, size_t width, size_t *out_len);
 
 #endif // STR_H

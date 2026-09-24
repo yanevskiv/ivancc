@@ -31,9 +31,9 @@ static size_t Enc_x86_64_NumFixes;
 static size_t Enc_x86_64_CapFixes;
 
 // Append one byte to the current section.
-void Enc_x86_64_Emit8(int byte)
+void Enc_x86_64_Emit8(uint8_t byte)
 {
-    Elf_Buffer_Byte(Elf_Section_Data(Enc_x86_64_Cur), (uint8_t) byte);
+    Elf_Buffer_Byte(Elf_Section_Data(Enc_x86_64_Cur), byte);
 }
 
 // Append a little-endian 32-bit value to the current section.
@@ -49,9 +49,9 @@ void Enc_x86_64_Emit64(uint64_t val)
 }
 
 // Append a run of raw bytes to the current section.
-void Enc_x86_64_EmitRaw(const void *data, int len)
+void Enc_x86_64_EmitRaw(const void *data, size_t len)
 {
-    Elf_Buffer_Data(Elf_Section_Data(Enc_x86_64_Cur), data, (size_t) len);
+    Elf_Buffer_Data(Elf_Section_Data(Enc_x86_64_Cur), data, len);
 }
 
 // Record a label at the current position in the current section.
@@ -95,25 +95,25 @@ void Enc_x86_64_RecordFixup(const char *name, uint32_t type, int64_t addend)
 }
 
 // Return the high bit of a register number, extending ModRM.reg or .rm.
-int Enc_x86_64_RegHigh(Asm_x86_64_Reg reg)
+Enc_x86_64_RegExt Enc_x86_64_RegHigh(Asm_x86_64_Reg reg)
 {
-    return reg >> ENC_X86_64_REG_SHIFT;
+    return reg >> ENC_X86_64_REG_SHIFT ? ENC_X86_64_REG_HIGH : ENC_X86_64_REG_LOW;
 }
 
 // Emit a REX.W prefix with the given reg- and rm-field extension bits.
-void Enc_x86_64_EmitRexW(int regHigh, int rmHigh)
+void Enc_x86_64_EmitRexW(Enc_x86_64_RegExt regHigh, Enc_x86_64_RegExt rmHigh)
 {
-    Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | ENC_X86_64_REX_W | (regHigh ? ENC_X86_64_REX_R : 0) | (rmHigh ? ENC_X86_64_REX_B : 0));
+    Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | ENC_X86_64_REX_W | (regHigh == ENC_X86_64_REG_HIGH ? ENC_X86_64_REX_R : 0) | (rmHigh == ENC_X86_64_REG_HIGH ? ENC_X86_64_REX_B : 0));
 }
 
 // Emit a REX prefix when the operand width or the registers chosen require one.
 void Enc_x86_64_EmitRex(Asm_x86_64_Width width, Asm_x86_64_Reg reg, Asm_x86_64_Reg rm)
 {
-    int bits = (width == ASM_X86_64_WIDTH_64 ? ENC_X86_64_REX_W : 0)
-             | (Enc_x86_64_RegHigh(reg) ? ENC_X86_64_REX_R : 0)
-             | (Enc_x86_64_RegHigh(rm) ? ENC_X86_64_REX_B : 0);
+    uint8_t bits = (width == ASM_X86_64_WIDTH_64 ? ENC_X86_64_REX_W : 0)
+                 | (Enc_x86_64_RegHigh(reg) == ENC_X86_64_REG_HIGH ? ENC_X86_64_REX_R : 0)
+                 | (Enc_x86_64_RegHigh(rm) == ENC_X86_64_REG_HIGH ? ENC_X86_64_REX_B : 0);
 
-    int lowbyte = width == ASM_X86_64_WIDTH_8 && reg >= ASM_X86_64_REG_RSP && reg < ASM_X86_64_REG_R8;
+    bool lowbyte = width == ASM_X86_64_WIDTH_8 && reg >= ASM_X86_64_REG_RSP && reg < ASM_X86_64_REG_R8;
 
     if (bits || lowbyte) {
         Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | bits);
@@ -121,16 +121,16 @@ void Enc_x86_64_EmitRex(Asm_x86_64_Width width, Asm_x86_64_Reg reg, Asm_x86_64_R
 }
 
 // Emit a register-direct ModRM byte pairing reg with rm.
-void Enc_x86_64_EmitModRR(int reg, Asm_x86_64_Reg rm)
+void Enc_x86_64_EmitModRR(uint8_t reg, Asm_x86_64_Reg rm)
 {
     Enc_x86_64_Emit8((ENC_X86_64_MOD_DIRECT << ENC_X86_64_MOD_SHIFT) | ((reg & ENC_X86_64_REG_MASK) << ENC_X86_64_REG_SHIFT) | (rm & ENC_X86_64_REG_MASK));
 }
 
 // Emit the ModRM, optional SIB and displacement for disp(%base).
-void Enc_x86_64_EmitMem(int reg, Asm_x86_64_Reg base, int disp)
+void Enc_x86_64_EmitMem(uint8_t reg, Asm_x86_64_Reg base, int32_t disp)
 {
-    int rm = base & ENC_X86_64_REG_MASK;
-    int mod;
+    uint8_t rm = base & ENC_X86_64_REG_MASK;
+    Enc_x86_64_Mod mod;
     if (disp == 0 && rm != (ASM_X86_64_REG_RBP & ENC_X86_64_REG_MASK)) {
         mod = ENC_X86_64_MOD_INDIRECT;
     } else if (disp >= INT8_MIN && disp <= INT8_MAX) {
@@ -144,14 +144,14 @@ void Enc_x86_64_EmitMem(int reg, Asm_x86_64_Reg base, int disp)
         Enc_x86_64_Emit8(ENC_X86_64_SIB_BASE_RSP);
     }
     if (mod == ENC_X86_64_MOD_DISP8) {
-        Enc_x86_64_Emit8(disp & 0xFF);
+        Enc_x86_64_Emit8((uint8_t) disp);
     } else if (mod == ENC_X86_64_MOD_DISP32) {
-        Enc_x86_64_Emit32((unsigned int) disp);
+        Enc_x86_64_Emit32((uint32_t) disp);
     }
 }
 
 // Emit `<opcode> %src, %dst` for a register-to-register operation.
-void Enc_x86_64_EmitRR(int opcode, Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
+void Enc_x86_64_EmitRR(Enc_x86_64_Opcode opcode, Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
 {
     Enc_x86_64_EmitRexW(Enc_x86_64_RegHigh(src), Enc_x86_64_RegHigh(dst));
     Enc_x86_64_Emit8(opcode);
@@ -159,31 +159,31 @@ void Enc_x86_64_EmitRR(int opcode, Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
 }
 
 // Emit a group-1 `<grp> $imm, %dst` with a 32-bit immediate.
-void Enc_x86_64_EmitGrpImm(int grp, long imm, Asm_x86_64_Reg dst)
+void Enc_x86_64_EmitGrpImm(Enc_x86_64_Grp grp, int64_t imm, Asm_x86_64_Reg dst)
 {
-    Enc_x86_64_EmitRexW(0, Enc_x86_64_RegHigh(dst));
+    Enc_x86_64_EmitRexW(ENC_X86_64_REG_LOW, Enc_x86_64_RegHigh(dst));
     Enc_x86_64_Emit8(ENC_X86_64_OPCODE_GRP1_RM_IMM32);
     Enc_x86_64_EmitModRR(grp, dst);
-    Enc_x86_64_Emit32((unsigned int) imm);
+    Enc_x86_64_Emit32((uint32_t) imm);
 }
 
 // Emit `mov $imm, %dst` into a 64-bit register.
-void Enc_x86_64_EmitMovImm(long imm, Asm_x86_64_Reg dst)
+void Enc_x86_64_EmitMovImm(int64_t imm, Asm_x86_64_Reg dst)
 {
     if (imm >= INT32_MIN && imm <= INT32_MAX) {
-        Enc_x86_64_EmitRexW(0, Enc_x86_64_RegHigh(dst));
+        Enc_x86_64_EmitRexW(ENC_X86_64_REG_LOW, Enc_x86_64_RegHigh(dst));
         Enc_x86_64_Emit8(ENC_X86_64_OPCODE_MOV_RM_IMM32);
         Enc_x86_64_EmitModRR(0, dst);
-        Enc_x86_64_Emit32((unsigned int) imm);
+        Enc_x86_64_Emit32((uint32_t) imm);
     } else {
-        Enc_x86_64_EmitRexW(0, Enc_x86_64_RegHigh(dst));
+        Enc_x86_64_EmitRexW(ENC_X86_64_REG_LOW, Enc_x86_64_RegHigh(dst));
         Enc_x86_64_Emit8(ENC_X86_64_OPCODE_MOV_R_IMM64 + (dst & ENC_X86_64_REG_MASK));
-        Enc_x86_64_Emit64((unsigned long long) imm);
+        Enc_x86_64_Emit64((uint64_t) imm);
     }
 }
 
 // Emit `mov $imm, %dst` into an 8-bit register.
-void Enc_x86_64_EmitMovImm8(long imm, Asm_x86_64_Reg dst)
+void Enc_x86_64_EmitMovImm8(int64_t imm, Asm_x86_64_Reg dst)
 {
     if (dst >= ASM_X86_64_REG_R8) {
         Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | ENC_X86_64_REX_B);
@@ -191,11 +191,11 @@ void Enc_x86_64_EmitMovImm8(long imm, Asm_x86_64_Reg dst)
         Enc_x86_64_Emit8(ENC_X86_64_REX_BASE);
     }
     Enc_x86_64_Emit8(ENC_X86_64_OPCODE_MOV_R8_IMM8 + (dst & ENC_X86_64_REG_MASK));
-    Enc_x86_64_Emit8(imm & 0xFF);
+    Enc_x86_64_Emit8((uint8_t) imm);
 }
 
 // Emit `<opcode> disp(%base), %reg` (or the reverse for a store) at width bits.
-void Enc_x86_64_EmitMemForm(int opcode, Asm_x86_64_Reg reg, Asm_x86_64_Reg base, int disp, Asm_x86_64_Width width)
+void Enc_x86_64_EmitMemForm(Enc_x86_64_Opcode opcode, Asm_x86_64_Reg reg, Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Width width)
 {
     if (width == ASM_X86_64_WIDTH_16) {
         Enc_x86_64_Emit8(ENC_X86_64_OPCODE_OPSIZE);
@@ -252,23 +252,23 @@ void Enc_x86_64_EmitLeaRip(Asm_x86_64_Reg dst, const char *label)
 }
 
 // Emit a group-3 unary instruction `<grp> %reg`.
-void Enc_x86_64_EmitGrpUnary(int grp, Asm_x86_64_Reg reg)
+void Enc_x86_64_EmitGrpUnary(Enc_x86_64_Grp grp, Asm_x86_64_Reg reg)
 {
-    Enc_x86_64_EmitRexW(0, Enc_x86_64_RegHigh(reg));
+    Enc_x86_64_EmitRexW(ENC_X86_64_REG_LOW, Enc_x86_64_RegHigh(reg));
     Enc_x86_64_Emit8(ENC_X86_64_OPCODE_GRP3_RM);
     Enc_x86_64_EmitModRR(grp, reg);
 }
 
 // Emit a shift of dst by %cl, with grp selecting the direction.
-void Enc_x86_64_EmitShift(int grp, Asm_x86_64_Reg dst)
+void Enc_x86_64_EmitShift(Enc_x86_64_Grp grp, Asm_x86_64_Reg dst)
 {
-    Enc_x86_64_EmitRexW(0, Enc_x86_64_RegHigh(dst));
+    Enc_x86_64_EmitRexW(ENC_X86_64_REG_LOW, Enc_x86_64_RegHigh(dst));
     Enc_x86_64_Emit8(ENC_X86_64_OPCODE_GRP2_RM_CL);
     Enc_x86_64_EmitModRR(grp, dst);
 }
 
 // Emit `setcc %reg`, storing a condition into the low byte of a register.
-void Enc_x86_64_EmitSetcc(int opcode, Asm_x86_64_Reg reg)
+void Enc_x86_64_EmitSetcc(Enc_x86_64_Opcode2 opcode, Asm_x86_64_Reg reg)
 {
     if (reg >= ASM_X86_64_REG_R8) {
         Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | ENC_X86_64_REX_B);
@@ -329,7 +329,7 @@ void Enc_x86_64_EmitMov(const Asm_x86_64_Item *item)
         case ASM_X86_64_OPERAND_REG: {
             Asm_x86_64_Width width = item->ai_src.ao_width;
             if (item->ai_dst.ao_kind == ASM_X86_64_OPERAND_MEM) {
-                int opcode = width == ASM_X86_64_WIDTH_8 ? ENC_X86_64_OPCODE_MOV_RM8_R8 : ENC_X86_64_OPCODE_MOV_RM_R;
+                Enc_x86_64_Opcode opcode = width == ASM_X86_64_WIDTH_8 ? ENC_X86_64_OPCODE_MOV_RM8_R8 : ENC_X86_64_OPCODE_MOV_RM_R;
                 Enc_x86_64_EmitMemForm(opcode, src, item->ai_dst.ao_reg, item->ai_dst.ao_disp, width);
             } else {
                 Enc_x86_64_EmitRex(width, src, dst);
@@ -348,7 +348,7 @@ void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item)
 {
     Asm_x86_64_Reg dst = item->ai_dst.ao_reg;
     Asm_x86_64_Reg src = item->ai_src.ao_reg;
-    int imm = item->ai_src.ao_kind == ASM_X86_64_OPERAND_IMM;
+    bool imm = item->ai_src.ao_kind == ASM_X86_64_OPERAND_IMM;
 
     switch (item->ai_op) {
         case ASM_X86_64_OP_MOVSX: {
@@ -485,14 +485,14 @@ void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item)
 }
 
 // True if name was declared via .globl.
-int Enc_x86_64_IsGlobl(const char *name)
+bool Enc_x86_64_IsGlobl(const char *name)
 {
     for (size_t i = 0; i < Enc_x86_64_NumGlobls; i++) {
         if (strcmp(Enc_x86_64_Globls[i], name) == 0) {
-            return 1;
+            return true;
         }
     }
-    return 0;
+    return false;
 }
 
 // Switch the current section to the named one, creating it on first use.
@@ -506,7 +506,7 @@ void Enc_x86_64_BuildSymbols(void)
 {
     for (size_t i = 0; i < Enc_x86_64_NumLabels; i++) {
         Enc_x86_64_Label *l = &Enc_x86_64_Labels[i];
-        int global = Enc_x86_64_IsGlobl(l->al_name);
+        bool global = Enc_x86_64_IsGlobl(l->al_name);
         uint8_t bind = global ? ELF_BIND_GLOBAL : ELF_BIND_LOCAL;
         uint8_t type = ELF_TYPE_NOTYPE;
         if (global) {
@@ -590,8 +590,8 @@ Elf *Enc_x86_64_GetObject(void)
     return Enc_x86_64_Out;
 }
 
-// Write the encoded object to out, returning nonzero on failure.
-int Enc_x86_64_Write(File_Stream *out)
+// Write the encoded object to out.
+bool Enc_x86_64_Write(File_Stream *out)
 {
     return Elf_Write_File(Enc_x86_64_Out, out);
 }

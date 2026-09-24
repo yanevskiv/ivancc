@@ -10,17 +10,17 @@
 #include "syntax/par.h"
 
 // State for the function definition currently being parsed.
-static char     *Par_CurFuncName;
-static Ast_Var  *Par_CurParams;
-static int       Par_CurNumParams;
-static int       Par_CurVariadic;
-static int       Par_CurProto;
-static int       Par_CurStatic;
-static Ast_Type *Par_CurRetType;
-static int       Par_InFunction;
+static char            *Par_CurFuncName;
+static Ast_Var         *Par_CurParams;
+static int32_t          Par_CurNumParams;
+static Ast_TypeVariadic Par_CurVariadic;
+static Ast_TypeProto    Par_CurProto;
+static bool             Par_CurStatic;
+static Ast_Type        *Par_CurRetType;
+static bool             Par_InFunction;
 
 // Serial number of the next compound literal's object.
-static int Par_CompoundCount;
+static int32_t Par_CompoundCount;
 
 // The type and storage class one declaration's declarators share.
 static Ast_Type   *Par_DeclType;
@@ -35,7 +35,7 @@ static Ast_Func *Par_ProgHead;
 static Ast_Func *Par_ProgTail;
 
 // Value the next enumerator takes.
-static long Par_EnumValue;
+static int64_t Par_EnumValue;
 
 // The record __builtin_va_list names.
 static Ast_Type *Par_VaList;
@@ -59,8 +59,8 @@ void Par_ClearParams(Par_ParamList *list)
     list->pl_head     = NULL;
     list->pl_tail     = NULL;
     list->pl_count    = 0;
-    list->pl_variadic = 0;
-    list->pl_proto    = 0;
+    list->pl_variadic = AST_TYPE_FIXED;
+    list->pl_proto    = AST_TYPE_NOPROTO;
 }
 
 // Append one parameter to a list.
@@ -88,7 +88,7 @@ Par_Decl *Par_NewDecl(char *name)
 }
 
 // Reject a declarator with no name.
-void Par_NeedName(Par_Decl *decl, int line)
+void Par_NeedName(Par_Decl *decl, Ast_Line line)
 {
     if (! decl->pc_name) {
         Log_ShowErrorAt(decl->pc_line ? decl->pc_line : line, "this declaration needs a name");
@@ -96,7 +96,7 @@ void Par_NeedName(Par_Decl *decl, int line)
 }
 
 // Append one derivation to a declarator.
-Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line)
+Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, Ast_Line line)
 {
     Par_Deriv *deriv = calloc(1, sizeof(Par_Deriv));
     deriv->pd_kind = kind;
@@ -128,7 +128,7 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
             if (deriv->pd_decor) {
                 Log_ShowErrorAt(deriv->pd_line, "'static' and qualifiers in an array declarator are only allowed on a parameter");
             }
-            return Ast_NewArray(inner, (int) deriv->pd_len);
+            return Ast_NewArray(inner, (int32_t) deriv->pd_len);
         }
         case PAR_DERIV_FUNCTION: {
             if (inner->at_kind == AST_TYPE_KIND_FUNC || inner->at_kind == AST_TYPE_KIND_ARRAY) {
@@ -162,7 +162,7 @@ Ast_Type *Par_AdjustParam(Ast_Type *type)
 }
 
 // Accept `static` and qualifiers on a parameter's outermost array.
-void Par_TakeArrayDecor(Par_Decl *decl, int line)
+void Par_TakeArrayDecor(Par_Decl *decl, Ast_Line line)
 {
     for (Par_Deriv *deriv = decl->pc_head; deriv; deriv = deriv->pd_next) {
         if (! deriv->pd_decor) {
@@ -179,7 +179,7 @@ void Par_TakeArrayDecor(Par_Decl *decl, int line)
 }
 
 // Build one named parameter.
-Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
+Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, Ast_Line line)
 {
     Par_TakeArrayDecor(decl, line);
     Ast_Type *type = Par_AdjustParam(Par_ApplyDecl(base, decl));
@@ -192,7 +192,7 @@ Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
 }
 
 // Build one old-style parameter.
-Ast_Var *Par_MakeKnrParam(char *name, int line)
+Ast_Var *Par_MakeKnrParam(char *name, Ast_Line line)
 {
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
 
@@ -202,7 +202,7 @@ Ast_Var *Par_MakeKnrParam(char *name, int line)
 }
 
 // Give an old-style parameter the type its declaration list names.
-void Par_SetKnrParam(Par_Decl *decl, int line)
+void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
 {
     Par_NeedName(decl, line);
     Par_TakeArrayDecor(decl, line);
@@ -226,7 +226,7 @@ void Par_CheckKnrParams(void)
 }
 
 // Build one unnamed parameter.
-Ast_Var *Par_MakeAnonParam(Ast_Type *type, int line)
+Ast_Var *Par_MakeAnonParam(Ast_Type *type, Ast_Line line)
 {
     if (type->at_kind == AST_TYPE_KIND_VOID) {
         return NULL;
@@ -244,8 +244,8 @@ Par_Num Par_NumLiteral(const char *text)
     Ast_TypeSign sign = AST_TYPE_SIGNED;
     Ast_TypeKind least = AST_TYPE_KIND_INT;
 
-    int decimal = text[0] != '0';
-    unsigned long val = strtoul(text, (char **) &suffix, 0);
+    bool decimal = text[0] != '0';
+    uint64_t val = strtoull(text, (char **) &suffix, 0);
 
     for (const char *p = suffix; *p; p++) {
         if (*p == 'u' || *p == 'U') {
@@ -259,32 +259,32 @@ Par_Num Par_NumLiteral(const char *text)
 
     for (Ast_TypeKind kind = least; kind <= AST_TYPE_KIND_LAST_INT; kind++) {
         Ast_Type *type = Ast_IntegerType(kind, sign);
-        int bits = type->at_size * AST_BITS_PER_BYTE;
-        unsigned long room;
+        int32_t bits = type->at_size * AST_BITS_PER_BYTE;
+        uint64_t room;
 
         if (type->at_sign == AST_TYPE_UNSIGNED) {
-            room = ~0UL >> (PAR_LONG_BITS - bits);
+            room = ~(uint64_t) 0 >> (PAR_VALUE_BITS - bits);
         } else {
-            room = ~0UL >> (PAR_LONG_BITS - bits + 1);
+            room = ~(uint64_t) 0 >> (PAR_VALUE_BITS - bits + 1);
         }
         if (val <= room) {
             return (Par_Num) {
-                .pn_val  = (long) val,
+                .pn_val  = (int64_t) val,
                 .pn_type = type
             };
         }
         if (! decimal && type->at_sign != AST_TYPE_UNSIGNED) {
             Ast_Type *alt = Ast_IntegerType(kind, AST_TYPE_UNSIGNED);
-            if (val <= ~0UL >> (PAR_LONG_BITS - alt->at_size * AST_BITS_PER_BYTE)) {
+            if (val <= ~(uint64_t) 0 >> (PAR_VALUE_BITS - alt->at_size * AST_BITS_PER_BYTE)) {
                 return (Par_Num) {
-                    .pn_val  = (long) val,
+                    .pn_val  = (int64_t) val,
                     .pn_type = alt
                 };
             }
         }
     }
     return (Par_Num) {
-        .pn_val  = (long) val,
+        .pn_val  = (int64_t) val,
         .pn_type = Ast_IntegerType(AST_TYPE_KIND_LLONG, AST_TYPE_UNSIGNED)
     };
 }
@@ -292,17 +292,17 @@ Par_Num Par_NumLiteral(const char *text)
 // Decode a character literal body into its value and type.
 Par_Num Par_CharLiteral(const char *body, size_t len, size_t width)
 {
-    long value = 0;
+    int64_t value = 0;
     size_t bytes = 0;
     char *data = Str_Unescape(body, len, width, &bytes);
 
     if (width > STR_NARROW_WIDTH) {
-        value = (int) Str_GetValue(data + bytes - width, width);
+        value = (int32_t) Str_GetValue(data + bytes - width, width);
     } else if (bytes == 1) {
-        value = (signed char) data[0];
+        value = (int8_t) data[0];
     } else {
         for (size_t i = 0; i < bytes; i++) {
-            value = (int) ((value << STR_BITS_PER_BYTE) | (unsigned char) data[i]);
+            value = (int32_t) ((value << STR_BITS_PER_BYTE) | (uint8_t) data[i]);
         }
     }
     Str_Free(data);
@@ -356,7 +356,7 @@ void Par_ClearSpecs(Par_Specs *specs)
 }
 
 // Add one type specifier keyword to a declaration's set.
-Par_Spec Par_AddSpec(Par_Spec specs, Par_Spec spec, int line)
+Par_Spec Par_AddSpec(Par_Spec specs, Par_Spec spec, Ast_Line line)
 {
     if (spec == PAR_SPEC_LONG && (specs & PAR_SPEC_LONG)) {
         spec = PAR_SPEC_LLONG;
@@ -368,7 +368,7 @@ Par_Spec Par_AddSpec(Par_Spec specs, Par_Spec spec, int line)
 }
 
 // Merge one specifier or qualifier into a declaration's set.
-void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, int line)
+void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line)
 {
     if (one->ps_type && (into->ps_type || into->ps_specs)) {
         Log_ShowErrorAt(line, "two or more data types in one declaration");
@@ -386,7 +386,7 @@ void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, int line)
 }
 
 // Return the type a declaration's specifier keywords name.
-Ast_Type *Par_SpecType(Par_Spec specs, int line)
+Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line)
 {
     Par_Spec explicit = specs & (PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED);
     Ast_TypeSign sign = specs & PAR_SPEC_UNSIGNED ? AST_TYPE_UNSIGNED : AST_TYPE_SIGNED;
@@ -436,7 +436,7 @@ Ast_Type *Par_SpecType(Par_Spec specs, int line)
 }
 
 // Return the type one declaration's specifiers name.
-Ast_Type *Par_SpecsType(const Par_Specs *specs, int line)
+Ast_Type *Par_SpecsType(const Par_Specs *specs, Ast_Line line)
 {
     Ast_Type *type = specs->ps_type ? specs->ps_type : Par_SpecType(specs->ps_specs, line);
     return Ast_Qualify(type, specs->ps_qual);
@@ -448,7 +448,7 @@ Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims)
     if (! dims) {
         return base;
     }
-    return Ast_NewArray(Par_ArrayType(base, dims->an_next), (int) dims->an_val);
+    return Ast_NewArray(Par_ArrayType(base, dims->an_next), (int32_t) dims->an_val);
 }
 
 // The type __builtin_va_list names.
@@ -470,7 +470,7 @@ Ast_Type *Par_VaListType(void)
 }
 
 // Build the node reading the next anonymous argument.
-Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, int line)
+Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line)
 {
     if (Sem_IsAggregate(type) || type->at_kind == AST_TYPE_KIND_ARRAY) {
         Log_ShowErrorAt(line, "__builtin_va_arg of a struct, union or array is not supported");
@@ -495,9 +495,9 @@ Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail)
 }
 
 // Narrow a member to the bits a `: width` gave it.
-void Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line)
+void Par_AddBitfield(Ast_Member *member, Ast_Node *width, Ast_Line line)
 {
-    long bits = 0;
+    int64_t bits = 0;
 
     if (! Sem_Fold(width, &bits)) {
         Log_ShowErrorAt(line, "a bit-field width is not a constant");
@@ -514,7 +514,7 @@ void Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line)
     if (bits == 0 && member->am_name) {
         Log_ShowErrorAt(line, "a bit-field with a name cannot be zero bits wide");
     }
-    member->am_bits = (int) bits;
+    member->am_bits = (int32_t) bits;
 }
 
 // Turn one member declaration's declarators into members of the shared type.
@@ -530,7 +530,7 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
         tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
         if (decl->pc_head && decl->pc_head->pd_kind == PAR_DERIV_ARRAY && decl->pc_head->pd_empty) {
-            tail->am_flexible = 1;
+            tail->am_flexible = true;
         }
         if (decl->pc_bits) {
             Par_AddBitfield(tail, decl->pc_bits, decl->pc_line);
@@ -540,7 +540,7 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
 }
 
 // Open a struct or union definition, binding its tag first.
-Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, int line)
+Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line)
 {
     Ast_Type *type = tag ? Ast_FindTagHere(tag) : NULL;
 
@@ -560,7 +560,7 @@ Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, int line)
 }
 
 // Name a struct or union not yet defined.
-Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int line)
+Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line)
 {
     Ast_Type *type = Ast_FindTag(tag);
 
@@ -575,7 +575,7 @@ Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int line)
 }
 
 // Declare one enumeration constant and step the next one's value.
-void Par_AddEnumConst(const char *name, Ast_Node *value, int line)
+void Par_AddEnumConst(const char *name, Ast_Node *value, Ast_Line line)
 {
     if (value && ! Sem_Fold(value, &Par_EnumValue)) {
         Log_ShowErrorAt(line, "enumerator '%s' is not a constant", name);
@@ -584,9 +584,9 @@ void Par_AddEnumConst(const char *name, Ast_Node *value, int line)
 }
 
 // Build the statement writing one flattened initializer into its object.
-Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line)
+Ast_Node *Par_InitStore(Ast_Var *var, int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line)
 {
-    int at_off = bits ? off - bits->am_offset : off;
+    int32_t at_off = bits ? off - bits->am_offset : off;
     Ast_Type *outer = bits ? bits->am_owner : type;
 
     Ast_Node *addr = Ast_NewUnary(AST_NODE_KIND_CAST, Ast_NewUnary(AST_NODE_KIND_ADDR, Ast_NewVarNode(var, line), line), line);
@@ -603,7 +603,7 @@ Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member *bits,
 }
 
 // Record one flattened initializer at a byte offset.
-Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line)
+Ast_Node *Par_InitAt(int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_INIT, value, line);
     node->an_val    = off;
@@ -613,7 +613,7 @@ Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value,
 }
 
 // Move a cursor to the subobject a designator names.
-void Par_Designate(Ast_Type *type, Ast_Node *desig, int *index, Ast_Member **member, int line)
+void Par_Designate(Ast_Type *type, Ast_Node *desig, int32_t *index, Ast_Member **member, Ast_Line line)
 {
     if (desig->an_memname) {
         if (! Sem_IsAggregate(type)) {
@@ -630,13 +630,13 @@ void Par_Designate(Ast_Type *type, Ast_Node *desig, int *index, Ast_Member **mem
         Log_ShowErrorAt(line, "an index designator needs an array");
     }
     if (desig->an_val < 0 || desig->an_val >= type->at_len) {
-        Log_ShowErrorAt(line, "initializer index %ld is outside the array", desig->an_val);
+        Log_ShowErrorAt(line, "initializer index %ld is outside the array", (long) desig->an_val);
     }
-    *index = (int) desig->an_val;
+    *index = (int32_t) desig->an_val;
 }
 
 // Step a type and offset into the subobject one designator selected.
-void Par_Step(Ast_Type **type, int *off, Ast_Node *desig, int index, Ast_Member *member)
+void Par_Step(Ast_Type **type, int32_t *off, Ast_Node *desig, int32_t index, Ast_Member *member)
 {
     if (desig->an_memname) {
         *off += member->am_offset;
@@ -687,7 +687,7 @@ Ast_Type *Par_ExprType(Ast_Node *node)
 }
 
 // Fill one slot from the cursor.
-void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, int line)
+void Par_FlattenSlot(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, Ast_Line line)
 {
     Ast_Node *iter = *item;
     Ast_Node *value = iter->an_lhs;
@@ -704,7 +704,7 @@ void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item
         return;
     }
     if (type->at_kind == AST_TYPE_KIND_ARRAY || Sem_IsAggregate(type)) {
-        Par_FlattenList(type, base, item, tail, 0, line);
+        Par_FlattenList(type, base, item, tail, PAR_LIST_UNBRACED, line);
         return;
     }
     (*tail)->an_next = Par_InitAt(base, type, bits, value, line);
@@ -713,19 +713,19 @@ void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item
 }
 
 // Walk an aggregate's slots from the cursor.
-void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line)
+void Par_FlattenList(Ast_Type *type, int32_t base, Ast_Node **item, Ast_Node **tail, Par_List braced, Ast_Line line)
 {
-    int index = 0;
+    int32_t index = 0;
     Ast_Member *member = type->at_members;
 
     while (*item) {
         Ast_Node *iter = *item;
 
         if (iter->an_cond) {
-            if (! braced) {
+            if (braced == PAR_LIST_UNBRACED) {
                 return;
             }
-            int off = base;
+            int32_t off = base;
             Ast_Node *desig = iter->an_cond;
             Ast_Type *slot = type;
 
@@ -733,7 +733,7 @@ void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail,
             Par_Step(&slot, &off, desig, index, member);
             Ast_Member *bits = desig->an_memname && member->am_bits ? member : NULL;
             for (Ast_Node *next = desig->an_next; next; next = next->an_next) {
-                int at = 0;
+                int32_t at = 0;
                 Ast_Member *inner = NULL;
                 Par_Designate(slot, next, &at, &inner, line);
                 Par_Step(&slot, &off, next, at, inner);
@@ -753,7 +753,7 @@ void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail,
 
         if (type->at_kind == AST_TYPE_KIND_ARRAY) {
             if (index >= type->at_len) {
-                if (! braced) {
+                if (braced == PAR_LIST_UNBRACED) {
                     return;
                 }
                 Log_ShowErrorAt(line, "too many initializers for an array of %d", type->at_len);
@@ -764,7 +764,7 @@ void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail,
         }
 
         if (! member) {
-            if (! braced) {
+            if (braced == PAR_LIST_UNBRACED) {
                 return;
             }
             Log_ShowErrorAt(line, "too many initializers for '%s'", Sem_TypeName(type));
@@ -775,11 +775,11 @@ void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail,
 }
 
 // Flatten one initializer, braced or not, into the object at base.
-void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line)
+void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, Ast_Line line)
 {
     if (init->an_kind == AST_NODE_KIND_COMPOUND && init->an_type == type) {
         for (Ast_Node *item = init->an_items; item; item = item->an_next) {
-            (*tail)->an_next = Par_InitAt(base + (int) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
+            (*tail)->an_next = Par_InitAt(base + (int32_t) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
             *tail = (*tail)->an_next;
         }
         return;
@@ -802,11 +802,11 @@ void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast
         Par_Flatten(type, base, bits, item->an_lhs, tail, line);
         return;
     }
-    Par_FlattenList(type, base, &item, tail, 1, line);
+    Par_FlattenList(type, base, &item, tail, PAR_LIST_BRACED, line);
 }
 
 // Flatten an initializer to the scalar writes that fill the object.
-Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, int line)
+Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, Ast_Line line)
 {
     Ast_Node head = {0};
     Ast_Node *tail = &head;
@@ -816,21 +816,21 @@ Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, int line)
 }
 
 // Lower a flattened initializer to the statements filling a local.
-Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, int line)
+Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, Ast_Line line)
 {
     Ast_Node *zero = Ast_NewUnary(AST_NODE_KIND_ZERO, Ast_NewVarNode(var, line), line);
     zero->an_val = var->av_type->at_size;
 
     Ast_Node *tail = zero;
     for (Ast_Node *item = flat; item; item = item->an_next) {
-        tail->an_next = Par_InitStore(var, (int) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
+        tail->an_next = Par_InitStore(var, (int32_t) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
         tail = tail->an_next;
     }
     return zero;
 }
 
 // Lower a local's initializer to the statements that fill it.
-Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
+Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line)
 {
     if (init->an_kind != AST_NODE_KIND_INITLIST && var->av_type->at_kind != AST_TYPE_KIND_ARRAY) {
         Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(var, line), init, line);
@@ -840,7 +840,7 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line)
 }
 
 // Build the unnamed object a compound literal names.
-Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
+Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line)
 {
     if (! type->at_complete) {
         Log_ShowErrorAt(line, "a compound literal of an incomplete type has no size");
@@ -867,7 +867,7 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
 }
 
 // Reject an object whose type has no size.
-void Par_CheckComplete(const char *name, Ast_Type *type, int line)
+void Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line)
 {
     if (! type->at_complete && Par_DeclStorage != AST_STORAGE_EXTERN) {
         Log_ShowErrorAt(line, "'%s' has an incomplete type", name);
@@ -875,7 +875,7 @@ void Par_CheckComplete(const char *name, Ast_Type *type, int line)
 }
 
 // Declare one file-scope name of the declaration being parsed.
-void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, int line)
+void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_Line line)
 {
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
         Ast_DeclareTypedef(name, type);
@@ -892,7 +892,7 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, int l
 }
 
 // Declare a variable inside a function.
-Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, int line)
+Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
 {
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
         Ast_DeclareTypedef(name, type);
@@ -909,7 +909,7 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, int line)
 }
 
 // Declare one local and build the statement its initializer becomes.
-Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, int line)
+Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
 {
     Par_NeedName(decl, line);
     Ast_Var *var = Par_DeclareLocal(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), line);
@@ -949,7 +949,9 @@ void Par_AddFunction(Ast_Func *fn)
             seen->af_params   = fn->af_params;
             seen->af_nparams  = fn->af_nparams;
             seen->af_variadic = fn->af_variadic;
-            seen->af_proto    = seen->af_proto || fn->af_proto;
+            if (fn->af_proto == AST_TYPE_PROTO) {
+                seen->af_proto = AST_TYPE_PROTO;
+            }
         }
         return;
     }
@@ -997,7 +999,7 @@ Ast_Func *Par_MakeFunction(Ast_Node *body)
 }
 
 // Note the declarator a top-level declaration named.
-void Par_BeginExternal(Par_Decl *decl, int line)
+void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
 {
     Par_NeedName(decl, line);
     Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
@@ -1005,7 +1007,7 @@ void Par_BeginExternal(Par_Decl *decl, int line)
     Par_DeclName    = decl->pc_name;
     Par_CurDeclType = type;
     if (type->at_kind != AST_TYPE_KIND_FUNC) {
-        Par_InFunction = 0;
+        Par_InFunction = false;
         return;
     }
 
@@ -1016,7 +1018,7 @@ void Par_BeginExternal(Par_Decl *decl, int line)
     Par_CurNumParams = type->at_nparams;
     Par_CurVariadic  = type->at_variadic;
     Par_CurProto     = type->at_proto;
-    Par_InFunction   = 1;
+    Par_InFunction   = true;
 
     Par_DeclarePrototype(decl->pc_name, type);
 
@@ -1030,12 +1032,12 @@ void Par_BeginExternal(Par_Decl *decl, int line)
 }
 
 // Close a top-level declarator that turned out not to be a function definition.
-void Par_EndExternal(Ast_Node *init, int line)
+void Par_EndExternal(Ast_Node *init, Ast_Line line)
 {
     if (Par_InFunction) {
         Par_AddFunction(Par_MakeFunction(NULL));
         Ast_EndScope();
-        Par_InFunction = 0;
+        Par_InFunction = false;
         return;
     }
     Par_AddDeclaredType(Par_DeclName, Par_CurDeclType, init, line);
@@ -1046,18 +1048,18 @@ void Par_EndFunction(Ast_Node *body)
 {
     Par_AddFunction(Par_MakeFunction(body));
     Ast_EndScope();
-    Par_InFunction = 0;
+    Par_InFunction = false;
 }
 
 // Declare one more top-level name after a comma.
-void Par_AddDeclared(Par_Decl *decl, Ast_Node *init, int line)
+void Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line)
 {
     Par_NeedName(decl, line);
     Par_AddDeclaredType(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), init, line);
 }
 
 // Resolve a name used as a value.
-Ast_Node *Par_Designator(char *name, int line)
+Ast_Node *Par_Designator(char *name, Ast_Line line)
 {
     Ast_Var *var = Ast_FindVar(name);
     if (var) {
@@ -1074,7 +1076,7 @@ Ast_Node *Par_Designator(char *name, int line)
 }
 
 // Build a call, direct or through a pointer.
-Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, int line)
+Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line)
 {
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_CALL, line);
 

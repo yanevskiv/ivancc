@@ -134,7 +134,7 @@ static Ast_Type *Ast_IntTypes[AST_TYPE_KIND_COUNT][2] = {
 static Ast_Str Ast_Strings[AST_MAX_STRINGS];
 
 // Number of entries currently used in Ast_Strings.
-static int Ast_NumStrings;
+static size_t Ast_NumStrings;
 
 // The last global declared.
 static Ast_Var *Ast_GlobalsTail;
@@ -149,13 +149,13 @@ static Ast_Scope *Ast_CurScope = &Ast_FileScope;
 static Ast_Var *Ast_Locals;
 
 // Round n up to the nearest multiple of align.
-int Ast_AlignTo(int n, int align)
+int32_t Ast_AlignTo(int32_t n, int32_t align)
 {
     return (n + align - 1) / align * align;
 }
 
 // Round n down to the multiple of align at or below it.
-int Ast_AlignDown(int n, int align)
+int32_t Ast_AlignDown(int32_t n, int32_t align)
 {
     return n / align * align;
 }
@@ -180,7 +180,7 @@ Ast_Type *Ast_Qualify(Ast_Type *type, Ast_Qual qual)
 }
 
 // Return whether this type is an integer type.
-int Ast_IsInteger(const Ast_Type *type)
+bool Ast_IsInteger(const Ast_Type *type)
 {
     return type->at_kind >= AST_TYPE_KIND_FIRST_INT && type->at_kind <= AST_TYPE_KIND_LAST_INT;
 }
@@ -198,7 +198,7 @@ Ast_Type *Ast_NewPointer(Ast_Type *base)
 }
 
 // Build the type of an array of len elements of base.
-Ast_Type *Ast_NewArray(Ast_Type *base, int len)
+Ast_Type *Ast_NewArray(Ast_Type *base, int32_t len)
 {
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
     type->at_kind     = AST_TYPE_KIND_ARRAY;
@@ -211,7 +211,7 @@ Ast_Type *Ast_NewArray(Ast_Type *base, int len)
 }
 
 // Build a function type.
-Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int nparams, int variadic, int proto)
+Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto)
 {
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
     type->at_kind     = AST_TYPE_KIND_FUNC;
@@ -237,7 +237,7 @@ Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
 }
 
 // Build one member of a struct or union.
-Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line)
+Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, Ast_Line line)
 {
     Ast_Member *member = calloc(1, sizeof(Ast_Member));
     member->am_name = Str_Clone(name);
@@ -247,9 +247,9 @@ Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line)
 }
 
 // Place one bitfield at the bit cursor and return where the next one starts.
-int Ast_PlaceBitfield(Ast_Member *member, int bits)
+int32_t Ast_PlaceBitfield(Ast_Member *member, int32_t bits)
 {
-    int unit = member->am_type->at_size * AST_BITS_PER_BYTE;
+    int32_t unit = member->am_type->at_size * AST_BITS_PER_BYTE;
 
     if (member->am_bits == 0) {
         return Ast_AlignTo(bits, unit);
@@ -279,10 +279,10 @@ Ast_Member *Ast_NamedMembers(Ast_Member *members)
 }
 
 // Lay out an aggregate's members and size it.
-void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
+void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
 {
-    int bits = 0;
-    int align = 1;
+    int32_t bits = 0;
+    int32_t align = 1;
 
     for (Ast_Member *member = members; member; member = member->am_next) {
         member->am_owner = type;
@@ -352,7 +352,7 @@ Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name)
 }
 
 // Allocate a zeroed node of the given kind.
-Ast_Node *Ast_NewNode(Ast_NodeKind kind, int line)
+Ast_Node *Ast_NewNode(Ast_NodeKind kind, Ast_Line line)
 {
     Ast_Node *node = calloc(1, sizeof(Ast_Node));
     node->an_kind = kind;
@@ -361,7 +361,7 @@ Ast_Node *Ast_NewNode(Ast_NodeKind kind, int line)
 }
 
 // Build a binary-operator node with the given operands.
-Ast_Node *Ast_NewBinary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Node *rhs, int line)
+Ast_Node *Ast_NewBinary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Node *rhs, Ast_Line line)
 {
     Ast_Node *node = Ast_NewNode(kind, line);
     node->an_lhs = lhs;
@@ -370,7 +370,7 @@ Ast_Node *Ast_NewBinary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Node *rhs, int lin
 }
 
 // Build a unary-operator node with the given operand.
-Ast_Node *Ast_NewUnary(Ast_NodeKind kind, Ast_Node *lhs, int line)
+Ast_Node *Ast_NewUnary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Line line)
 {
     Ast_Node *node = Ast_NewNode(kind, line);
     node->an_lhs = lhs;
@@ -378,7 +378,7 @@ Ast_Node *Ast_NewUnary(Ast_NodeKind kind, Ast_Node *lhs, int line)
 }
 
 // Build an integer-literal node.
-Ast_Node *Ast_NewNum(long val, int line)
+Ast_Node *Ast_NewNum(int64_t val, Ast_Line line)
 {
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_NUM, line);
     node->an_val = val;
@@ -386,7 +386,7 @@ Ast_Node *Ast_NewNum(long val, int line)
 }
 
 // Build a node that references a local variable.
-Ast_Node *Ast_NewVarNode(Ast_Var *var, int line)
+Ast_Node *Ast_NewVarNode(Ast_Var *var, Ast_Line line)
 {
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_VAR, line);
     node->an_var = var;
@@ -394,7 +394,7 @@ Ast_Node *Ast_NewVarNode(Ast_Var *var, int line)
 }
 
 // Build a compound assignment.
-Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, int line)
+Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, Ast_Line line)
 {
     Ast_Node *node = Ast_NewBinary(AST_NODE_KIND_OPASSIGN, lhs, rhs, line);
     node->an_op = op;
@@ -402,7 +402,7 @@ Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, int lin
 }
 
 // Build a postfix ++ or --.
-Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
+Ast_Node *Ast_NewPostInc(Ast_Node *lhs, int64_t step, Ast_Line line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_POSTINC, lhs, line);
     node->an_val = step;
@@ -410,7 +410,7 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
 }
 
 // Build a member access.
-Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
+Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, Ast_Line line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_MEMBER, lhs, line);
     node->an_memname = Str_Clone(name);
@@ -464,7 +464,7 @@ Ast_Var *Ast_FindVar(const char *name)
 }
 
 // Declare a variable in the innermost scope, shadowing a name from above.
-Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
+Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line)
 {
     for (Ast_Var *var = Ast_CurScope->as_vars; var; var = var->av_scope_next) {
         if (strcmp(var->av_name, name) == 0) {
@@ -497,7 +497,7 @@ void Ast_DeclareParam(Ast_Var *var)
 }
 
 // Declare a variable at file scope, reusing the slot if it is already there.
-Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
+Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, Ast_Line line)
 {
     for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
         if (strcmp(var->av_name, name) == 0) {
@@ -510,7 +510,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
     var->av_symbol = var->av_name;
     var->av_type   = type;
     var->av_line   = line;
-    var->av_global = 1;
+    var->av_global = true;
 
     if (Ast_GlobalsTail) {
         Ast_GlobalsTail->av_next = var;
@@ -522,7 +522,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
 }
 
 // Declare a static local.
-Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line)
+Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, Ast_Line line)
 {
     Ast_Var *var = Ast_DeclareGlobal(symbol, type, line);
     var->av_name = Str_Clone(name);
@@ -596,21 +596,21 @@ void Ast_DeclareTypedef(const char *name, Ast_Type *type)
 }
 
 // Look up an enumeration constant.
-int Ast_FindEnumConst(const char *name, long *value)
+bool Ast_FindEnumConst(const char *name, int64_t *value)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
         for (Ast_EnumConst *item = scope->as_enums; item; item = item->ae_next) {
             if (strcmp(item->ae_name, name) == 0) {
                 *value = item->ae_value;
-                return 1;
+                return true;
             }
         }
     }
-    return 0;
+    return false;
 }
 
 // Bind an enumeration constant in the innermost scope.
-void Ast_DeclareEnumConst(const char *name, long value)
+void Ast_DeclareEnumConst(const char *name, int64_t value)
 {
     Ast_EnumConst *item = calloc(1, sizeof(Ast_EnumConst));
     item->ae_name  = Str_Clone(name);
@@ -620,7 +620,7 @@ void Ast_DeclareEnumConst(const char *name, long value)
 }
 
 // Intern a decoded string literal of len bytes and return its table slot.
-int Ast_AddString(char *str, size_t len, size_t width)
+size_t Ast_AddString(char *str, size_t len, size_t width)
 {
     if (Ast_NumStrings >= AST_MAX_STRINGS) {
         Log_ShowError("too many string literals (max %d)", AST_MAX_STRINGS);
@@ -632,13 +632,13 @@ int Ast_AddString(char *str, size_t len, size_t width)
 }
 
 // Return the number of interned string literals.
-int Ast_StringCount(void)
+size_t Ast_StringCount(void)
 {
     return Ast_NumStrings;
 }
 
 // Return the interned string literal in the given slot.
-Ast_Str *Ast_StringAt(int idx)
+Ast_Str *Ast_StringAt(size_t idx)
 {
     return &Ast_Strings[idx];
 }
