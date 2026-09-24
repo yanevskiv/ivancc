@@ -12,7 +12,7 @@ static Ast_Func *Sem_Prog;
 // The function whose body is being analysed.
 static Ast_Func *Sem_CurFunc;
 
-// Return the function of that name defined in this program, or NULL.
+// Return the function of that name defined in this program.
 Ast_Func *Sem_FindFunc(const char *name)
 {
     for (Ast_Func *func = Sem_Prog; func; func = func->af_next) {
@@ -61,7 +61,7 @@ const char *Sem_TypeName(const Ast_Type *type)
     return type->at_tag ? type->at_tag : "<anonymous>";
 }
 
-// Return the type an expression of this type yields; an array yields a pointer.
+// Return the type an expression of this type yields.
 Ast_Type *Sem_Decay(Ast_Type *type)
 {
     if (type->at_kind == AST_TYPE_KIND_ARRAY) {
@@ -70,31 +70,132 @@ Ast_Type *Sem_Decay(Ast_Type *type)
     return type;
 }
 
+// Return whether two types agree but for their qualifiers.
+int Sem_SameType(const Ast_Type *a, const Ast_Type *b)
+{
+    if (a == b) {
+        return 1;
+    }
+    return a->at_kind == b->at_kind && a->at_unsigned == b->at_unsigned && a->at_base == b->at_base
+        && a->at_members == b->at_members;
+}
+
+// Return the type integer promotion gives an operand.
+Ast_Type *Sem_Promote(Ast_Type *type)
+{
+    if (Ast_IsInteger(type) && type->at_kind < AST_TYPE_KIND_INT) {
+        return &Ast_TypeInt;
+    }
+    return type;
+}
+
+// Return the type two arithmetic operands meet in.
+Ast_Type *Sem_CommonType(Ast_Type *lhs, Ast_Type *rhs)
+{
+    lhs = Sem_Promote(lhs);
+    rhs = Sem_Promote(rhs);
+
+    if (! Ast_IsInteger(lhs) || ! Ast_IsInteger(rhs)) {
+        return Ast_IsInteger(lhs) ? rhs : lhs;
+    }
+    if (lhs->at_unsigned == rhs->at_unsigned) {
+        return lhs->at_kind >= rhs->at_kind ? lhs : rhs;
+    }
+
+    Ast_Type *sign = lhs->at_unsigned ? rhs : lhs;
+    Ast_Type *unsig = lhs->at_unsigned ? lhs : rhs;
+
+    if (unsig->at_kind >= sign->at_kind) {
+        return unsig;
+    }
+    if (sign->at_size > unsig->at_size) {
+        return sign;
+    }
+    return Ast_IntegerType(sign->at_kind, AST_TYPE_UNSIGNED);
+}
+
+// Wrap a node in the cast that converts it to type.
+Ast_Node *Sem_Convert(Ast_Node *node, Ast_Type *type)
+{
+    if (! node || ! node->an_type || Sem_SameType(node->an_type, type)) {
+        return node;
+    }
+    if (! Ast_IsInteger(node->an_type) || ! Ast_IsInteger(type)) {
+        return node;
+    }
+
+    Ast_Node *cast = Ast_NewUnary(AST_NODE_KIND_CAST, node, node->an_line);
+    cast->an_type = type;
+    return cast;
+}
+
+// Convert both operands of an operator to their common type.
+void Sem_UsualArith(Ast_Node *node)
+{
+    Ast_Type *type = Sem_CommonType(node->an_lhs->an_type, node->an_rhs->an_type);
+
+    node->an_lhs = Sem_Convert(node->an_lhs, type);
+    node->an_rhs = Sem_Convert(node->an_rhs, type);
+    node->an_type = type;
+}
+
+// Promote each operand of a shift on its own.
+void Sem_PromoteShift(Ast_Node *node)
+{
+    node->an_lhs = Sem_Convert(node->an_lhs, Sem_Promote(node->an_lhs->an_type));
+    node->an_rhs = Sem_Convert(node->an_rhs, Sem_Promote(node->an_rhs->an_type));
+    node->an_type = node->an_lhs->an_type;
+}
+
 // Narrow a folded value to the type a cast names.
 long Sem_Truncate(const Ast_Type *type, long value)
 {
     switch (type->at_kind) {
+        case AST_TYPE_KIND_BOOL: {
+            value = value != 0;
+        } break;
         case AST_TYPE_KIND_CHAR: {
-            value = (signed char) value;
+            value = type->at_unsigned ? (long) (unsigned char) value : (long) (signed char) value;
+        } break;
+        case AST_TYPE_KIND_SHORT: {
+            value = type->at_unsigned ? (long) (unsigned short) value : (long) (short) value;
         } break;
         case AST_TYPE_KIND_INT: {
-            value = (int) value;
+            value = type->at_unsigned ? (long) (unsigned int) value : (long) (int) value;
         } break;
+        case AST_TYPE_KIND_LONG:
+        case AST_TYPE_KIND_LLONG:
         case AST_TYPE_KIND_VOID:
         case AST_TYPE_KIND_PTR:
         case AST_TYPE_KIND_ARRAY:
         case AST_TYPE_KIND_FUNC:
         case AST_TYPE_KIND_STRUCT:
-        case AST_TYPE_KIND_UNION: {
+        case AST_TYPE_KIND_UNION:
+        case AST_TYPE_KIND_COUNT: {
             // already as wide as the value is held
         } break;
     }
     return value;
 }
 
-// Apply one operator to folded operands.
-int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value)
+// Return whether an operator's operands are unsigned.
+int Sem_FoldUnsigned(const Ast_Node *node)
 {
+    const Ast_Type *lhs = node->an_lhs ? node->an_lhs->an_type : NULL;
+    const Ast_Type *rhs = node->an_rhs ? node->an_rhs->an_type : NULL;
+
+    if (lhs && Ast_IsInteger(lhs) && lhs->at_unsigned && lhs->at_kind >= AST_TYPE_KIND_INT) {
+        return 1;
+    }
+    return rhs && Ast_IsInteger(rhs) && rhs->at_unsigned && rhs->at_kind >= AST_TYPE_KIND_INT;
+}
+
+// Apply one operator to folded operands.
+int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int is_unsigned, int line, long *value)
+{
+    unsigned long ulhs = (unsigned long) lhs;
+    unsigned long urhs = (unsigned long) rhs;
+
     switch (kind) {
         case AST_NODE_KIND_ADD: {
             *value = lhs + rhs;
@@ -110,7 +211,11 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value)
             if (rhs == 0) {
                 Log_ShowErrorAt(line, "division by zero in a constant expression");
             }
-            *value = kind == AST_NODE_KIND_DIV ? lhs / rhs : lhs % rhs;
+            if (is_unsigned) {
+                *value = (long) (kind == AST_NODE_KIND_DIV ? ulhs / urhs : ulhs % urhs);
+            } else {
+                *value = kind == AST_NODE_KIND_DIV ? lhs / rhs : lhs % rhs;
+            }
         } break;
         case AST_NODE_KIND_BITAND: {
             *value = lhs & rhs;
@@ -125,7 +230,7 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value)
             *value = lhs << rhs;
         } break;
         case AST_NODE_KIND_SHR: {
-            *value = lhs >> rhs;
+            *value = is_unsigned ? (long) (ulhs >> rhs) : lhs >> rhs;
         } break;
         case AST_NODE_KIND_EQ: {
             *value = lhs == rhs;
@@ -134,10 +239,10 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value)
             *value = lhs != rhs;
         } break;
         case AST_NODE_KIND_LT: {
-            *value = lhs < rhs;
+            *value = is_unsigned ? ulhs < urhs : lhs < rhs;
         } break;
         case AST_NODE_KIND_LE: {
-            *value = lhs <= rhs;
+            *value = is_unsigned ? ulhs <= urhs : lhs <= rhs;
         } break;
         case AST_NODE_KIND_AND: {
             *value = lhs && rhs;
@@ -161,7 +266,7 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value)
     return 1;
 }
 
-// Fold an integer constant expression to its value, or return false when it is not one.
+// Fold an integer constant expression to its value.
 int Sem_Fold(const Ast_Node *node, long *value)
 {
     long lhs = 0;
@@ -201,7 +306,7 @@ int Sem_Fold(const Ast_Node *node, long *value)
             if (! Sem_Fold(node->an_lhs, &lhs)) {
                 return 0;
             }
-            if (! Sem_FoldOp(node->an_kind, lhs, 0, node->an_line, value)) {
+            if (! Sem_FoldOp(node->an_kind, lhs, 0, Sem_FoldUnsigned(node), node->an_line, value)) {
                 return 0;
             }
         } break;
@@ -209,7 +314,7 @@ int Sem_Fold(const Ast_Node *node, long *value)
             if (! Sem_Fold(node->an_lhs, &lhs) || ! Sem_Fold(node->an_rhs, &rhs)) {
                 return 0;
             }
-            if (! Sem_FoldOp(node->an_kind, lhs, rhs, node->an_line, value)) {
+            if (! Sem_FoldOp(node->an_kind, lhs, rhs, Sem_FoldUnsigned(node), node->an_line, value)) {
                 return 0;
             }
         } break;
@@ -217,7 +322,7 @@ int Sem_Fold(const Ast_Node *node, long *value)
     return 1;
 }
 
-// Fold an address constant to the symbol it names, or return false.
+// Fold an address constant to the symbol it names.
 int Sem_FoldAddr(const Ast_Node *node, const char **symbol)
 {
     if (! node) {
@@ -302,33 +407,28 @@ void Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const cha
     }
 }
 
-// Promote the arguments no parameter type governs.
-void Sem_PromoteArgs(Ast_Node *node, int nparams, int variadic, int proto)
+// Convert a call's arguments to the types its parameters name.
+void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int nparams, int variadic, int proto)
 {
     Ast_Node  head = {0};
     Ast_Node *tail = &head;
     Ast_Node *arg  = node->an_args;
-    int from = 0;
+    Ast_Var  *param = proto ? params : NULL;
+    int from = proto && variadic ? nparams : 0;
     int i = 0;
 
-    // A prototype types every argument it covers, so those convert instead.
-    if (proto && ! variadic) {
-        return;
-    }
-    if (proto) {
-        from = nparams;
-    }
     while (arg) {
         Ast_Node *next = arg->an_next;
         arg->an_next = NULL;
-        if (i >= from && arg->an_type && arg->an_type->at_kind == AST_TYPE_KIND_CHAR) {
-            Ast_Node *cast = Ast_NewUnary(AST_NODE_KIND_CAST, arg, arg->an_line);
-            cast->an_type = &Ast_TypeInt;
-            arg = cast;
+        if (param && param->av_type) {
+            arg = Sem_Convert(arg, param->av_type);
+        } else if (i >= from && arg->an_type) {
+            arg = Sem_Convert(arg, Sem_Promote(arg->an_type));
         }
         tail->an_next = arg;
         tail = arg;
         arg = next;
+        param = param ? param->av_param_next : NULL;
         i++;
     }
     node->an_args = head.an_next;
@@ -339,7 +439,7 @@ void Sem_CheckCall(Ast_Node *node)
     if (node->an_lhs) {
         Ast_Type *type = Sem_CalleeType(node);
         Sem_CheckArity(node, type->at_nparams, type->at_variadic, type->at_proto, "a call through a function pointer");
-        Sem_PromoteArgs(node, type->at_nparams, type->at_variadic, type->at_proto);
+        Sem_ConvertArgs(node, type->at_params, type->at_nparams, type->at_variadic, type->at_proto);
         return;
     }
     Ast_Func *func = Sem_FindFunc(node->an_funcname);
@@ -349,10 +449,10 @@ void Sem_CheckCall(Ast_Node *node)
     char *what = Str_Format("'%s'", node->an_funcname);
     Sem_CheckArity(node, func->af_nparams, func->af_variadic, func->af_proto, what);
     Str_Free(what);
-    Sem_PromoteArgs(node, func->af_nparams, func->af_variadic, func->af_proto);
+    Sem_ConvertArgs(node, func->af_params, func->af_nparams, func->af_variadic, func->af_proto);
 }
 
-// Attach every case and default of a switch to it in source order.
+// Attach every case and default of a switch to it.
 void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
 {
     if (! node || node->an_kind == AST_NODE_KIND_SWITCH) {
@@ -411,7 +511,7 @@ void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
     Sem_CheckGotos(node->an_next, body);
 }
 
-// Wrap node in a multiplication by size, so it steps whole elements.
+// Wrap node in a multiplication by size.
 Ast_Node *Sem_ScaleBy(Ast_Node *node, int size)
 {
     Ast_Node *num = Ast_NewNum(size, node->an_line);
@@ -422,14 +522,14 @@ Ast_Node *Sem_ScaleBy(Ast_Node *node, int size)
     return mul;
 }
 
-// Type + and -, scaling an integer operand against a pointer and reducing p - q.
+// Type + and -.
 void Sem_Arith(Ast_Node *node)
 {
     Ast_Type *lhs = node->an_lhs->an_type;
     Ast_Type *rhs = node->an_rhs->an_type;
 
     if (! Sem_IsPointer(lhs) && ! Sem_IsPointer(rhs)) {
-        node->an_type = &Ast_TypeInt;
+        Sem_UsualArith(node);
         return;
     }
 
@@ -438,7 +538,6 @@ void Sem_Arith(Ast_Node *node)
             Log_ShowErrorAt(node->an_line, "cannot add two pointers");
         }
 
-        // A pointer difference counts elements, not the bytes between them.
         Ast_Node *diff = Ast_NewBinary(AST_NODE_KIND_SUB, node->an_lhs, node->an_rhs, node->an_line);
         diff->an_type = &Ast_TypeInt;
 
@@ -463,7 +562,7 @@ void Sem_Arith(Ast_Node *node)
     node->an_type = Sem_Decay(lhs);
 }
 
-// Annotate a node and everything below it, depth first.
+// Annotate a node and everything below it.
 void Sem_Node(Ast_Node *node)
 {
     if (! node) {
@@ -482,24 +581,48 @@ void Sem_Node(Ast_Node *node)
     Sem_Node(node->an_next);
 
     switch (node->an_kind) {
-        case AST_NODE_KIND_NUM:
+        case AST_NODE_KIND_NUM: {
+            if (! node->an_type) {
+                node->an_type = &Ast_TypeInt;
+            }
+        } break;
+
+        case AST_NODE_KIND_AND:
+        case AST_NODE_KIND_OR: {
+            node->an_type = &Ast_TypeInt;
+        } break;
+
         case AST_NODE_KIND_MUL:
         case AST_NODE_KIND_DIV:
         case AST_NODE_KIND_MOD:
-        case AST_NODE_KIND_NEG:
-        case AST_NODE_KIND_NOT:
-        case AST_NODE_KIND_BITNOT:
         case AST_NODE_KIND_BITAND:
         case AST_NODE_KIND_BITOR:
-        case AST_NODE_KIND_BITXOR:
-        case AST_NODE_KIND_SHL:
-        case AST_NODE_KIND_SHR:
+        case AST_NODE_KIND_BITXOR: {
+            Sem_UsualArith(node);
+        } break;
+
         case AST_NODE_KIND_EQ:
         case AST_NODE_KIND_NE:
         case AST_NODE_KIND_LT:
-        case AST_NODE_KIND_LE:
-        case AST_NODE_KIND_AND:
-        case AST_NODE_KIND_OR: {
+        case AST_NODE_KIND_LE: {
+            if (! Sem_IsPointer(node->an_lhs->an_type) && ! Sem_IsPointer(node->an_rhs->an_type)) {
+                Sem_UsualArith(node);
+            }
+            node->an_type = &Ast_TypeInt;
+        } break;
+
+        case AST_NODE_KIND_SHL:
+        case AST_NODE_KIND_SHR: {
+            Sem_PromoteShift(node);
+        } break;
+
+        case AST_NODE_KIND_NEG:
+        case AST_NODE_KIND_BITNOT: {
+            node->an_lhs = Sem_Convert(node->an_lhs, Sem_Promote(node->an_lhs->an_type));
+            node->an_type = node->an_lhs->an_type;
+        } break;
+
+        case AST_NODE_KIND_NOT: {
             node->an_type = &Ast_TypeInt;
         } break;
 
@@ -514,7 +637,6 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_ADDR: {
-            // A function is already its own address, so `&f` and `f` are the same pointer.
             if (node->an_lhs->an_kind == AST_NODE_KIND_FUNCADDR) {
                 node->an_type = node->an_lhs->an_type;
                 break;
@@ -529,7 +651,6 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_DEREF: {
-            // Dereferencing a function designator decays it and arrives back at the function.
             if (node->an_lhs->an_type && node->an_lhs->an_type->at_kind == AST_TYPE_KIND_FUNC) {
                 node->an_type = node->an_lhs->an_type;
                 break;
@@ -584,10 +705,11 @@ void Sem_Node(Ast_Node *node)
             if (node->an_lhs->an_type->at_kind == AST_TYPE_KIND_ARRAY) {
                 Log_ShowErrorAt(node->an_line, "cannot assign to an array");
             }
-            if (Sem_IsAggregate(node->an_lhs->an_type) && node->an_lhs->an_type != node->an_rhs->an_type) {
+            if (Sem_IsAggregate(node->an_lhs->an_type) && ! Sem_SameType(node->an_lhs->an_type, node->an_rhs->an_type)) {
                 Log_ShowErrorAt(node->an_line, "cannot assign a value of a different struct or union type");
             }
             node->an_type = node->an_lhs->an_type;
+            node->an_rhs  = Sem_Convert(node->an_rhs, node->an_type);
         } break;
 
         case AST_NODE_KIND_OPASSIGN: {
@@ -628,7 +750,6 @@ void Sem_Node(Ast_Node *node)
             node->an_type = Sem_FuncAddrType(node);
         } break;
 
-        // Only va_start needs a variadic function; a va_list can be handed on.
         case AST_NODE_KIND_VA_START: {
             if (! Sem_CurFunc->af_variadic) {
                 Log_ShowErrorAt(node->an_line, "__builtin_va_start outside a variadic function");
@@ -651,7 +772,12 @@ void Sem_Node(Ast_Node *node)
             Sem_CollectCases(node->an_body, node, &tail);
         } break;
 
-        case AST_NODE_KIND_RETURN:
+        case AST_NODE_KIND_RETURN: {
+            if (node->an_lhs && Sem_CurFunc->af_ret) {
+                node->an_lhs = Sem_Convert(node->an_lhs, Sem_CurFunc->af_ret);
+            }
+        } break;
+
         case AST_NODE_KIND_GOTO:
         case AST_NODE_KIND_LABEL:
         case AST_NODE_KIND_DEFAULT:

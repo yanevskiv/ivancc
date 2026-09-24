@@ -56,6 +56,12 @@ static const char *Txt_x86_64_Reg32Name[16] = {
     "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d"
 };
 
+// 16-bit register names.
+static const char *Txt_x86_64_Reg16Name[16] = {
+    "ax",  "cx",  "dx",   "bx",   "sp",   "bp",   "si",   "di",
+    "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w"
+};
+
 // Mnemonics, indexed by Asm_x86_64_Op.
 static const char *Txt_x86_64_OpName[] = {
     [ASM_X86_64_OP_MOV]     = "mov",
@@ -67,6 +73,7 @@ static const char *Txt_x86_64_OpName[] = {
     [ASM_X86_64_OP_SUB]     = "sub",
     [ASM_X86_64_OP_IMUL]    = "imul",
     [ASM_X86_64_OP_IDIV]    = "idiv",
+    [ASM_X86_64_OP_DIV]     = "div",
     [ASM_X86_64_OP_AND]     = "and",
     [ASM_X86_64_OP_OR]      = "or",
     [ASM_X86_64_OP_XOR]     = "xor",
@@ -74,6 +81,7 @@ static const char *Txt_x86_64_OpName[] = {
     [ASM_X86_64_OP_CALL_REG] = "call",
     [ASM_X86_64_OP_SHL]     = "shl",
     [ASM_X86_64_OP_SAR]     = "sar",
+    [ASM_X86_64_OP_SHR]     = "shr",
     [ASM_X86_64_OP_CQO]     = "cqo",
     [ASM_X86_64_OP_NEG]     = "neg",
     [ASM_X86_64_OP_CMP]     = "cmp",
@@ -81,7 +89,9 @@ static const char *Txt_x86_64_OpName[] = {
     [ASM_X86_64_OP_SETNE]   = "setne",
     [ASM_X86_64_OP_SETL]    = "setl",
     [ASM_X86_64_OP_SETLE]   = "setle",
-    [ASM_X86_64_OP_MOVZB]   = "movzb",
+    [ASM_X86_64_OP_SETB]    = "setb",
+    [ASM_X86_64_OP_SETBE]   = "setbe",
+    [ASM_X86_64_OP_MOVZX]   = "movz",
     [ASM_X86_64_OP_JMP]     = "jmp",
     [ASM_X86_64_OP_JE]      = "je",
     [ASM_X86_64_OP_JNE]     = "jne",
@@ -89,6 +99,25 @@ static const char *Txt_x86_64_OpName[] = {
     [ASM_X86_64_OP_RET]     = "ret",
     [ASM_X86_64_OP_SYSCALL] = "syscall"
 };
+
+// Return the AT&T letter naming an operand width.
+char Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width)
+{
+    switch (width) {
+        case ASM_X86_64_WIDTH_8: {
+            return 'b';
+        } break;
+        case ASM_X86_64_WIDTH_16: {
+            return 'w';
+        } break;
+        case ASM_X86_64_WIDTH_64: {
+            return 'q';
+        } break;
+        default: {
+            return 'l';
+        }
+    }
+}
 
 // Write one operand in AT&T syntax.
 void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
@@ -98,6 +127,8 @@ void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
             const char *name = Txt_x86_64_Reg64Name[op->ao_reg];
             if (op->ao_width == ASM_X86_64_WIDTH_8) {
                 name = Txt_x86_64_Reg8Name[op->ao_reg];
+            } else if (op->ao_width == ASM_X86_64_WIDTH_16) {
+                name = Txt_x86_64_Reg16Name[op->ao_reg];
             } else if (op->ao_width == ASM_X86_64_WIDTH_32) {
                 name = Txt_x86_64_Reg32Name[op->ao_reg];
             }
@@ -128,8 +159,9 @@ void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
 // Write one instruction: mnemonic plus operands in AT&T order.
 void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
 {
-    if (item->ai_op == ASM_X86_64_OP_MOVSX) {
-        fprintf(out, "  movs%cq", item->ai_src.ao_width == ASM_X86_64_WIDTH_8 ? 'b' : 'l');
+    if (item->ai_op == ASM_X86_64_OP_MOVSX || item->ai_op == ASM_X86_64_OP_MOVZX) {
+        const char *stem = item->ai_op == ASM_X86_64_OP_MOVSX ? "movs" : "movz";
+        fprintf(out, "  %s%cq", stem, Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
     } else {
         fprintf(out, "  %s", Txt_x86_64_OpName[item->ai_op]);
     }
@@ -143,7 +175,6 @@ void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
     }
     if (have_dst) {
         fputs(have_src ? ", " : " ", out);
-        // AT&T marks an indirect branch target with a `*`.
         if (item->ai_op == ASM_X86_64_OP_CALL_REG) {
             fputc('*', out);
         }
@@ -198,6 +229,10 @@ int Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
         }
         if (strcmp(name, Txt_x86_64_Reg32Name[i]) == 0) {
             *width = ASM_X86_64_WIDTH_32;
+            return i;
+        }
+        if (strcmp(name, Txt_x86_64_Reg16Name[i]) == 0) {
+            *width = ASM_X86_64_WIDTH_16;
             return i;
         }
         if (strcmp(name, Txt_x86_64_Reg8Name[i]) == 0) {
@@ -317,6 +352,36 @@ void Txt_x86_64_Att_EmitString(const char *args, int terminate)
     Str_Free(buf);
 }
 
+// Return the opcode an extending mnemonic names.
+int Txt_x86_64_Att_ExtendOp(const char *mnem, Asm_x86_64_Width *width)
+{
+    const char *rest = NULL;
+
+    if (strncmp(mnem, "movs", 4) == 0) {
+        rest = mnem + 4;
+    } else if (strncmp(mnem, "movz", 4) == 0) {
+        rest = mnem + 4;
+    }
+    if (! rest || strlen(rest) != 2 || rest[1] != 'q') {
+        return -1;
+    }
+    switch (rest[0]) {
+        case 'b': {
+            *width = ASM_X86_64_WIDTH_8;
+        } break;
+        case 'w': {
+            *width = ASM_X86_64_WIDTH_16;
+        } break;
+        case 'l': {
+            *width = ASM_X86_64_WIDTH_32;
+        } break;
+        default: {
+            return -1;
+        }
+    }
+    return mnem[3] == 's' ? ASM_X86_64_OP_MOVSX : ASM_X86_64_OP_MOVZX;
+}
+
 // Parse one instruction line ("mnemonic [op[, op]]") into an instruction item.
 void Txt_x86_64_Att_ParseInstr(const char *line)
 {
@@ -328,16 +393,10 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
     memcpy(mnem, line, mlen);
     mnem[mlen] = '\0';
 
-    // movsbq / movslq name their source width, so they resolve before the rest.
-    Asm_x86_64_Width movsx_width = ASM_X86_64_WIDTH_NONE;
-    if (Str_Equals(mnem, "movsbq")) {
-        movsx_width = ASM_X86_64_WIDTH_8;
-    } else if (Str_Equals(mnem, "movslq")) {
-        movsx_width = ASM_X86_64_WIDTH_32;
-    }
+    Asm_x86_64_Width ext_width = ASM_X86_64_WIDTH_NONE;
+    int ext_op = Txt_x86_64_Att_ExtendOp(mnem, &ext_width);
 
-    // Accept an AT&T size suffix (movq, pushq, movzbl) by retrying without it.
-    int op = movsx_width ? ASM_X86_64_OP_MOVSX : Txt_x86_64_OpByName(mnem);
+    int op = ext_width ? ext_op : Txt_x86_64_OpByName(mnem);
     if (op < 0 && mlen >= 2 && strchr("bwlq", mnem[mlen - 1])) {
         mnem[mlen - 1] = '\0';
         op = Txt_x86_64_OpByName(mnem);
@@ -375,8 +434,8 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
     if (nops == 2) {
         item->ai_src = ops[0];
         item->ai_dst = ops[1];
-        if (movsx_width) {
-            item->ai_src.ao_width = movsx_width;
+        if (ext_width) {
+            item->ai_src.ao_width = ext_width;
         }
     } else if (nops == 1) {
         item->ai_dst = ops[0];

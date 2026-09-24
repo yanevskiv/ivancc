@@ -9,8 +9,8 @@ Checklist toward ISO C99.
 - [x] identifiers
 - [x] decimal integer literals
 - [x] hex integer literals (`0x...`)
-- [ ] octal integer literals (`0...`)
-- [ ] integer suffixes (`u U l L ll LL` and combinations)
+- [x] octal integer literals (`0...`)
+- [x] integer suffixes (`u U l L ll LL` and combinations)
 - [ ] floating-point literals (`1.0`, `1e10`, `0x1p0`)
 - [x] character literals
 - [ ] full escape set (`\a \b \f \v \xHH`, octal `\nnn`, `\uXXXX`/`\UXXXXXXXX`)
@@ -22,15 +22,15 @@ Checklist toward ISO C99.
 ## Types
 
 - [x] `int`, `char`, `void`
-- [ ] `short`
-- [ ] `long`, `long long`
+- [x] `short`
+- [x] `long`, `long long`
 - [ ] `float`, `double`
 - [ ] `long double` (80-bit x87, or aliased to `double` — both conform)
-- [ ] `_Bool`
-- [ ] `signed` / `unsigned`
+- [x] `_Bool`
+- [x] `signed` / `unsigned`
 - [x] `const` qualifier
-- [ ] `volatile` qualifier
-- [ ] `restrict` qualifier
+- [x] `volatile` qualifier
+- [x] `restrict` qualifier
 - [x] pointer declarators (`int *p`, any number of stars)
 - [x] array declarators, incl. multi-dimensional (`[N][M]`)
 - [ ] variable-length arrays (`int a[n]`, `sizeof` of one evaluated at run time)

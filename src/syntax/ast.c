@@ -10,43 +10,131 @@
 // The finished program, filled in by the parser.
 Ast_Func *Ast_Program;
 
+// Every variable declared at file scope.
+Ast_Var *Ast_Globals;
+
 // The incomplete type, which only a pointer or a return type may name.
 Ast_Type Ast_TypeVoid = {
     .at_kind     = AST_TYPE_KIND_VOID,
     .at_size     = AST_TYPE_SIZE_VOID,
     .at_align    = AST_TYPE_ALIGN_VOID,
-    .at_complete = 1
+    .at_complete = AST_TYPE_COMPLETE
 };
 
-// The byte, which is what a string literal is an array of.
+// The type every conversion narrows to 0 or 1.
+Ast_Type Ast_TypeBool = {
+    .at_kind     = AST_TYPE_KIND_BOOL,
+    .at_size     = AST_TYPE_SIZE_BOOL,
+    .at_align    = AST_TYPE_ALIGN_BOOL,
+    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The byte.
 Ast_Type Ast_TypeChar = {
     .at_kind     = AST_TYPE_KIND_CHAR,
     .at_size     = AST_TYPE_SIZE_CHAR,
     .at_align    = AST_TYPE_ALIGN_CHAR,
-    .at_complete = 1
+    .at_complete = AST_TYPE_COMPLETE
 };
 
-// The default arithmetic type, which every integer literal and every promotion lands on.
+// The unsigned byte.
+Ast_Type Ast_TypeUChar = {
+    .at_kind     = AST_TYPE_KIND_CHAR,
+    .at_size     = AST_TYPE_SIZE_CHAR,
+    .at_align    = AST_TYPE_ALIGN_CHAR,
+    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The two-byte integer.
+Ast_Type Ast_TypeShort = {
+    .at_kind     = AST_TYPE_KIND_SHORT,
+    .at_size     = AST_TYPE_SIZE_SHORT,
+    .at_align    = AST_TYPE_ALIGN_SHORT,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The unsigned two-byte integer.
+Ast_Type Ast_TypeUShort = {
+    .at_kind     = AST_TYPE_KIND_SHORT,
+    .at_size     = AST_TYPE_SIZE_SHORT,
+    .at_align    = AST_TYPE_ALIGN_SHORT,
+    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The default arithmetic type.
 Ast_Type Ast_TypeInt = {
     .at_kind     = AST_TYPE_KIND_INT,
     .at_size     = AST_TYPE_SIZE_INT,
     .at_align    = AST_TYPE_ALIGN_INT,
-    .at_complete = 1
+    .at_complete = AST_TYPE_COMPLETE
 };
 
-// Table of interned string literals, indexed by AST_NODE_KIND_STR slot.
+// The unsigned default arithmetic type.
+Ast_Type Ast_TypeUInt = {
+    .at_kind     = AST_TYPE_KIND_INT,
+    .at_size     = AST_TYPE_SIZE_INT,
+    .at_align    = AST_TYPE_ALIGN_INT,
+    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The integer as wide as a pointer.
+Ast_Type Ast_TypeLong = {
+    .at_kind     = AST_TYPE_KIND_LONG,
+    .at_size     = AST_TYPE_SIZE_LONG,
+    .at_align    = AST_TYPE_ALIGN_LONG,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The unsigned integer as wide as a pointer.
+Ast_Type Ast_TypeULong = {
+    .at_kind     = AST_TYPE_KIND_LONG,
+    .at_size     = AST_TYPE_SIZE_LONG,
+    .at_align    = AST_TYPE_ALIGN_LONG,
+    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The widest signed integer.
+Ast_Type Ast_TypeLLong = {
+    .at_kind     = AST_TYPE_KIND_LLONG,
+    .at_size     = AST_TYPE_SIZE_LLONG,
+    .at_align    = AST_TYPE_ALIGN_LLONG,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The widest integer.
+Ast_Type Ast_TypeULLong = {
+    .at_kind     = AST_TYPE_KIND_LLONG,
+    .at_size     = AST_TYPE_SIZE_LLONG,
+    .at_align    = AST_TYPE_ALIGN_LLONG,
+    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// Every integer type.
+static Ast_Type *Ast_IntTypes[AST_TYPE_KIND_COUNT][2] = {
+    [AST_TYPE_KIND_BOOL]  = {&Ast_TypeBool,  &Ast_TypeBool},
+    [AST_TYPE_KIND_CHAR]  = {&Ast_TypeChar,  &Ast_TypeUChar},
+    [AST_TYPE_KIND_SHORT] = {&Ast_TypeShort, &Ast_TypeUShort},
+    [AST_TYPE_KIND_INT]   = {&Ast_TypeInt,   &Ast_TypeUInt},
+    [AST_TYPE_KIND_LONG]  = {&Ast_TypeLong,  &Ast_TypeULong},
+    [AST_TYPE_KIND_LLONG] = {&Ast_TypeLLong, &Ast_TypeULLong}
+};
+
+// Table of interned string literals.
 static Ast_Str Ast_Strings[AST_MAX_STRINGS];
 
 // Number of entries currently used in Ast_Strings.
 static int Ast_NumStrings;
 
-// Every variable declared at file scope, in declaration order.
-Ast_Var *Ast_Globals;
-
-// The last global declared, so the list keeps source order.
+// The last global declared.
 static Ast_Var *Ast_GlobalsTail;
 
-// The outermost scope, which holds file-scope tags and typedef names.
+// The outermost scope.
 static Ast_Scope Ast_FileScope;
 
 // The innermost scope currently open.
@@ -67,6 +155,31 @@ int Ast_AlignDown(int n, int align)
     return n / align * align;
 }
 
+// Return the shared type of that kind and signedness.
+Ast_Type *Ast_IntegerType(Ast_TypeKind kind, int is_unsigned)
+{
+    return Ast_IntTypes[kind][is_unsigned ? 1 : 0];
+}
+
+// Return the type carrying those qualifiers.
+Ast_Type *Ast_Qualify(Ast_Type *type, int qual)
+{
+    if (! qual || type->at_qual == qual) {
+        return type;
+    }
+
+    Ast_Type *copy = calloc(1, sizeof(Ast_Type));
+    *copy = *type;
+    copy->at_qual = qual;
+    return copy;
+}
+
+// Return whether this type is an integer type.
+int Ast_IsInteger(const Ast_Type *type)
+{
+    return type->at_kind >= AST_TYPE_KIND_BOOL && type->at_kind <= AST_TYPE_KIND_LLONG;
+}
+
 // Build the pointer type that points at base.
 Ast_Type *Ast_NewPointer(Ast_Type *base)
 {
@@ -75,7 +188,7 @@ Ast_Type *Ast_NewPointer(Ast_Type *base)
     type->at_size     = AST_TYPE_SIZE_PTR;
     type->at_align    = AST_TYPE_ALIGN_PTR;
     type->at_base     = base;
-    type->at_complete = 1;
+    type->at_complete = AST_TYPE_COMPLETE;
     return type;
 }
 
@@ -104,7 +217,7 @@ Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int nparams, int varia
     type->at_nparams  = nparams;
     type->at_variadic = variadic;
     type->at_proto    = proto;
-    type->at_complete = 1;
+    type->at_complete = AST_TYPE_COMPLETE;
     return type;
 }
 
@@ -202,7 +315,6 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
             }
             continue;
         }
-        // An unnamed member is a bitfield too: `int :0;` declares a width of none.
         if (member->am_bits || ! member->am_name) {
             bits = Ast_PlaceBitfield(member, bits);
             continue;
@@ -218,7 +330,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, int line)
     }
 
     type->at_members  = named;
-    type->at_complete = 1;
+    type->at_complete = AST_TYPE_COMPLETE;
     type->at_align    = align;
     type->at_size     = Ast_AlignTo(bits, align * AST_BITS_PER_BYTE) / AST_BITS_PER_BYTE;
 }
@@ -276,7 +388,7 @@ Ast_Node *Ast_NewVarNode(Ast_Var *var, int line)
     return node;
 }
 
-// Build a compound assignment, with op naming the operation it applies.
+// Build a compound assignment.
 Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, int line)
 {
     Ast_Node *node = Ast_NewBinary(AST_NODE_KIND_OPASSIGN, lhs, rhs, line);
@@ -292,7 +404,7 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
     return node;
 }
 
-// Build a member access, which the Sem_ pass resolves.
+// Build a member access.
 Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_MEMBER, lhs, line);
@@ -311,7 +423,7 @@ Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *
     return var;
 }
 
-// Start a fresh function: no locals, and one scope for its parameters.
+// Start a fresh function.
 void Ast_BeginScope(void)
 {
     Ast_Locals   = NULL;
@@ -319,13 +431,13 @@ void Ast_BeginScope(void)
     Ast_PushScope();
 }
 
-// Leave a function, so what follows is read at file scope.
+// Leave a function.
 void Ast_EndScope(void)
 {
     Ast_CurScope = &Ast_FileScope;
 }
 
-// Enter a nested scope, which shadows the ones around it.
+// Enter a nested scope.
 void Ast_PushScope(void)
 {
     Ast_Scope *scope = calloc(1, sizeof(Ast_Scope));
@@ -415,7 +527,7 @@ void Ast_DeclareParam(Ast_Var *var)
     Ast_CurScope->as_vars = var;
 }
 
-// Look up a tag by name, innermost scope outwards.
+// Look up a tag by name.
 Ast_Type *Ast_FindTag(const char *name)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
@@ -449,7 +561,7 @@ void Ast_DeclareTag(const char *name, Ast_Type *type)
     Ast_CurScope->as_tags = tag;
 }
 
-// Look up a typedef name, innermost scope outwards.
+// Look up a typedef name.
 Ast_Type *Ast_FindTypedef(const char *name)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {

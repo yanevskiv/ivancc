@@ -9,6 +9,39 @@
 #define PAR_ARRAY_STATIC 1
 #define PAR_ARRAY_QUAL   2
 
+// Bits in the unsigned long a literal's value is read into.
+#define PAR_LONG_BITS 64
+
+// An integer literal.
+typedef struct Par_Num Par_Num;
+struct Par_Num {
+    long      pn_val;
+    Ast_Type *pn_type;
+};
+
+// One type specifier keyword.
+typedef enum Par_Spec Par_Spec;
+enum Par_Spec {
+    PAR_SPEC_NONE     = 0,
+    PAR_SPEC_VOID     = 1 << 0,
+    PAR_SPEC_BOOL     = 1 << 1,
+    PAR_SPEC_CHAR     = 1 << 2,
+    PAR_SPEC_SHORT    = 1 << 3,
+    PAR_SPEC_INT      = 1 << 4,
+    PAR_SPEC_LONG     = 1 << 5,
+    PAR_SPEC_LLONG    = 1 << 6,  // set when a second `long` arrives
+    PAR_SPEC_SIGNED   = 1 << 7,
+    PAR_SPEC_UNSIGNED = 1 << 8
+};
+
+// The type specifiers and qualifiers one declaration wrote.
+typedef struct Par_Specs Par_Specs;
+struct Par_Specs {
+    int       ps_specs; // the PAR_SPEC_ keywords seen
+    int       ps_qual;  // the AST_QUAL_ keywords seen
+    Ast_Type *ps_type;  // the type a struct, union, enum or typedef name named
+};
+
 // One step of a declarator, collected walking outward from the name.
 typedef enum Par_DerivKind Par_DerivKind;
 enum Par_DerivKind {
@@ -73,6 +106,12 @@ void       Par_CheckKnrParams(void);
 Ast_Var   *Par_MakeAnonParam(Ast_Type *type, int line);
 
 // Types
+Par_Num   Par_NumLiteral(const char *text);
+void      Par_ClearSpecs(Par_Specs *specs);
+int       Par_AddSpec(int specs, Par_Spec spec, int line);
+void      Par_TakeSpec(Par_Specs *into, const Par_Specs *one, int line);
+Ast_Type *Par_SpecType(int specs, int line);
+Ast_Type *Par_SpecsType(const Par_Specs *specs, int line);
 Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims);
 Ast_Type *Par_VaListType(void);
 Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, int line);
