@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Bitfields, which pack several members into one storage unit of their declared
 // type. The unit is what a load and a store reach, so reading a field shifts it
 // out and sign-extends it, and writing one has to leave its neighbours alone.
@@ -120,5 +120,6 @@ int main()
     if (arr[0].a != 1 || arr[0].c != 3) return 25;
     if (arr[1].a != 3 || arr[1].c != 6) return 26;
 
-    return p.c + f.a - 60;
+    if (p.c + f.a - 60 != 42) return 27;
+    return 200;
 }

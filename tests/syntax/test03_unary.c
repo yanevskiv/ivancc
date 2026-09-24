@@ -1,4 +1,4 @@
-// (Test) Return: 15
+// (Test) Return: 200
 // Unary minus and logical negation.
 
 int main()
@@ -8,5 +8,6 @@ int main()
     int c = !0;
     int d = !7;
 
-    return -b + c * 10 + d;
+    if (-b + c * 10 + d != 15) return 1;
+    return 200;
 }

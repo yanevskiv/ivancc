@@ -1,4 +1,4 @@
-// (Test) Return: 93
+// (Test) Return: 200
 // char is one byte and signed, and packs beside an int without disturbing it.
 
 int main()
@@ -14,5 +14,6 @@ int main()
     if (b >= 0) return 1;
     if (n != 1000) return 2;
 
-    return a + 49;
+    if (a + 49 != 93) return 3;
+    return 200;
 }

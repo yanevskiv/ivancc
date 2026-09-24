@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // An array parameter is really a pointer, and C lets its brackets carry `static`
 // and qualifiers to say so more loudly: `int a[static 4]` promises the caller
 // passes at least four elements. Both decay along with the array, so neither
@@ -69,5 +69,6 @@ int main()
     // sizeof sees the pointer the array decayed to, not the length in the brackets.
     if (sizeof(v) != 16) return 7;
 
-    return sum(v, 4) * 4 + head(v) + tail(v) - 1;
+    if (sum(v, 4) * 4 + head(v) + tail(v) - 1 != 42) return 8;
+    return 200;
 }

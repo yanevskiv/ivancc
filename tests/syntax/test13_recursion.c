@@ -1,4 +1,4 @@
-// (Test) Return: 175
+// (Test) Return: 200
 // Linear and tree recursion.
 
 int fact(int n)
@@ -17,5 +17,6 @@ int fib(int n)
 
 int main()
 {
-    return fact(5) + fib(10);
+    if (fact(5) + fib(10) != 175) return 2;
+    return 200;
 }

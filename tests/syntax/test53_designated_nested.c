@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Designated initializers walking into subobjects, and the braces C lets a
 // nested initializer leave out. What no item reaches stays zero, and a
 // compound literal is filled by the same rules a declaration is.
@@ -42,5 +42,6 @@ int main()
     if (span((struct Line){1, 2, 4, 6}) != 7) return 12;
     if ((struct Line){.b.y = 6}.b.y != 6) return 13;
 
-    return sparse[4] + r.n - 1;
+    if (sparse[4] + r.n - 1 != 42) return 14;
+    return 200;
 }

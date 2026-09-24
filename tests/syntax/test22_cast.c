@@ -1,4 +1,4 @@
-// (Test) Return: 44
+// (Test) Return: 200
 // A cast converts its operand to the named type, narrowing where that is smaller.
 
 int main()
@@ -21,5 +21,6 @@ int main()
     p = (int *) &n;
     if (*p != 1000) return 5;
 
-    return (char) 300;
+    if ((char) 300 != 44) return 6;
+    return 200;
 }

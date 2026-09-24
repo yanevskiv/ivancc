@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // break and continue, including that each binds to the innermost loop.
 
 int main()
@@ -42,5 +42,6 @@ int main()
     } while (1);
     if (i != 3) return 4;
 
-    return total + 9;
+    if (total + 9 != 42) return 5;
+    return 200;
 }

@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Passing and returning structs by value, which is the SysV classification
 // algorithm. A struct of 16 bytes or less travels in registers, and anything
 // wider travels on the stack with a hidden pointer carrying the return. A
@@ -131,5 +131,6 @@ int main()
     if (m.n != 41) return 19;
     if (sumo(o) != 6) return 20;
 
-    return s.x + t.d + g.a + 17;
+    if (s.x + t.d + g.a + 17 != 42) return 21;
+    return 200;
 }

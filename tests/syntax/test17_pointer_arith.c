@@ -1,4 +1,4 @@
-// (Test) Return: 17
+// (Test) Return: 200
 // Pointer arithmetic steps whole elements, and a difference counts them.
 
 int main()
@@ -22,5 +22,6 @@ int main()
     p = p - 1;
     if (*p != 20) return 5;
 
-    return *p - 3;
+    if (*p - 3 != 17) return 6;
+    return 200;
 }

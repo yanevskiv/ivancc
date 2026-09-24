@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // A real va_list: the four-field record the SysV ABI defines, holding how far
 // into the register save area a walk has come and where the overflow area
 // carries on. The walk lives in that object, so it can be handed to a callee.
@@ -89,5 +89,6 @@ int main()
 
     if (after(1, 2, 3, 4, 5, 10, 20, 30, 40) != 115) return 6;
 
-    return forward(4, 10, 11, 12, 9);
+    if (forward(4, 10, 11, 12, 9) != 42) return 7;
+    return 200;
 }

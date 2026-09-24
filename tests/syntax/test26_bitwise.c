@@ -1,4 +1,4 @@
-// (Test) Return: 22
+// (Test) Return: 200
 // Bitwise and, or, xor and complement, including their precedence against
 // each other: & binds tighter than ^, which binds tighter than |.
 
@@ -18,5 +18,6 @@ int main()
     if ((3 & 1 | 4 ^ 2) != 7) return 6;
     if (+a != 240) return 7;
 
-    return (a & 0x0F) + (b & 0x0F) + 10;
+    if ((a & 0x0F) + (b & 0x0F) + 10 != 22) return 8;
+    return 200;
 }

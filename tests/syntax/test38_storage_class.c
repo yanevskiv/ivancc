@@ -1,4 +1,4 @@
-// (Test) Return: 17
+// (Test) Return: 200
 // static keeps a name inside this file, and a static local keeps its value
 // between calls. register, auto and inline parse and mean nothing.
 
@@ -29,5 +29,6 @@ int main()
     if (ticker() != 102) return 5;
     if (ticker() != 103) return 6;
 
-    return hidden + ticker() - 94;
+    if (hidden + ticker() - 94 != 17) return 7;
+    return 200;
 }

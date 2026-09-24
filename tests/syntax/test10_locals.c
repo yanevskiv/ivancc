@@ -1,4 +1,4 @@
-// (Test) Return: 29
+// (Test) Return: 200
 // Several locals coexisting, reassignment, and a chained assignment.
 
 int main()
@@ -13,5 +13,6 @@ int main()
     e = d;
     a = b = 7;
 
-    return a + b + c + d + e;
+    if (a + b + c + d + e != 29) return 1;
+    return 200;
 }

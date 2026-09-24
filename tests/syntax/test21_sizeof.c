@@ -1,4 +1,4 @@
-// (Test) Return: 60
+// (Test) Return: 200
 // sizeof reports the size of a named type, or of what an expression yields.
 // A string literal is an array of char, so its size counts the NUL. An array
 // built on a folded dimension measures the length that expression came to.
@@ -32,5 +32,6 @@ int main()
     if (sizeof(b) != 40) return 14;
     if (sizeof(b) / sizeof(b[0]) != 10) return 15;
 
-    return sizeof(a) + sizeof(int) * 5;
+    if (sizeof(a) + sizeof(int) * 5 != 60) return 16;
+    return 200;
 }

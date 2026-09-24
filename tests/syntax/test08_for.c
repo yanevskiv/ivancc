@@ -1,4 +1,4 @@
-// (Test) Return: 67
+// (Test) Return: 200
 // A for loop and a nested one.
 
 int main()
@@ -14,5 +14,6 @@ int main()
         for (j = 0; j < 4; j = j + 1)
             n = n + 1;
 
-    return s + n;
+    if (s + n != 67) return 1;
+    return 200;
 }

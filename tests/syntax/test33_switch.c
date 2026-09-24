@@ -1,4 +1,4 @@
-// (Test) Return: 243
+// (Test) Return: 200
 // switch, including fallthrough between labels, a default, and the way break
 // leaves the switch while continue carries on with the enclosing loop. A label
 // is any constant expression, folded before the cases are collected.
@@ -69,5 +69,6 @@ int main()
         default: return 13;
     }
 
-    return total - 270;
+    if (total - 270 != 243) return 14;
+    return 200;
 }

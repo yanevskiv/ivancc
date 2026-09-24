@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Pointers to structs and the -> operator, including a struct that points at
 // its own type. A linked list walked to its end is the shortest proof that
 // both work together.
@@ -36,5 +36,6 @@ int main()
     p->val = 12;
     (*p).next->val = 20;
 
-    return sum(&a);
+    if (sum(&a) != 42) return 4;
+    return 200;
 }

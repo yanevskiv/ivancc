@@ -1,4 +1,4 @@
-// (Test) Return: 39
+// (Test) Return: 200
 // Several declarators in one declaration, at file scope and inside a function,
 // with and without initializers.
 
@@ -24,5 +24,6 @@ int main()
     }
     if (z != 9) return 6;
 
-    return z + b + m - 37;
+    if (z + b + m - 37 != 39) return 7;
+    return 200;
 }

@@ -1,4 +1,4 @@
-// (Test) Return: 121
+// (Test) Return: 200
 // if, if/else, and a braced branch.
 
 int main()
@@ -14,5 +14,6 @@ int main()
         r = r + 100;
     }
 
-    return r;
+    if (r != 121) return 1;
+    return 200;
 }
