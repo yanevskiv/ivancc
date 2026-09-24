@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "util/file.h"
 #include "util/log.h"
 #include "util/str.h"
 #include "syntax/ast.h"
@@ -39,6 +40,7 @@
 // Where the runtime objects sit relative to the directory holding this binary.
 #define RUNTIME_DIR "/../lib/"
 
+
 // Input stream read by the generated lexer.
 extern FILE *yyin;
 
@@ -51,7 +53,7 @@ int yyparse(void);
 // Show usage information and exit.
 static void Cc_ShowUsage(const char *prog)
 {
-    fprintf(stderr,
+    File_Print(File_Err(),
         "Usage: %s [options] INPUT.c\n"
         "  -o OUTPUT   write output to OUTPUT (default: " DEFAULT_OUTPUT ", " STDOUT_NAME " is stdout)\n"
         "  -S          write assembly text instead of an executable\n"
@@ -78,14 +80,14 @@ static char *Cc_GetExeDir(void)
         return NULL;
     }
     *slash = '\0';
-    return Str_Duplicate(buf);
+    return Str_Clone(buf);
 }
 
 // Return the directory to read the target's runtime objects from, honouring -B.
 static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
 {
     if (prefix) {
-        return Str_Duplicate(prefix);
+        return Str_Clone(prefix);
     }
 
     char *exedir = Cc_GetExeDir();
@@ -98,33 +100,29 @@ static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
 }
 
 // Open the output stream.
-static FILE *Cc_OpenOutput(const char *output, const char *mode)
+static File_Stream *Cc_OpenOutput(const char *output, const char *mode)
 {
     if (Str_Equals(output, STDOUT_NAME)) {
-        return stdout;
+        return File_Out();
     }
-    return fopen(output, mode);
+    return File_Open(output, mode);
 }
 
 // Close the output stream.
-static void Cc_CloseOutput(FILE *out)
+static void Cc_CloseOutput(File_Stream *out)
 {
-    if (out == stdout) {
-        fflush(out);
-        return;
-    }
-    fclose(out);
+    File_Close(out);
 }
 
 // Write the program as AT&T assembly text.
-static void Cc_x86_64_WriteText(FILE *out, Ast_Func *prog)
+static void Cc_x86_64_WriteText(File_Stream *out, Ast_Func *prog)
 {
     Gen_x86_64_BuildProgram(prog);
     Txt_x86_64_Att_Write(out);
 }
 
 // Write the program as a relocatable object, references left undefined.
-static void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
+static void Cc_x86_64_WriteObject(File_Stream *out, Ast_Func *prog)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();
@@ -132,26 +130,28 @@ static void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
 }
 
 // Write the program linked against the runtime as a static executable.
-static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *target)
+static void Cc_x86_64_WriteExec(File_Stream *out, Ast_Func *prog, const char *prefix, const char *target)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();
 
-    int nruntime = (int) (sizeof(Cc_RuntimeNames) / sizeof(Cc_RuntimeNames[0]));
+    size_t nruntime = sizeof(Cc_RuntimeNames) / sizeof(Cc_RuntimeNames[0]);
     char *libdir = Cc_GetRuntimeDir(prefix, target);
     char *runtime[sizeof(Cc_RuntimeNames) / sizeof(Cc_RuntimeNames[0])];
-    for (int i = 0; i < nruntime; i++) {
+    for (size_t i = 0; i < nruntime; i++) {
         runtime[i] = Str_Format("%s/%s", libdir, Cc_RuntimeNames[i]);
     }
 
     Elf *obj = Enc_x86_64_GetObject();
-    Elf_LinkOptions opts = { .lo_entry = "_start" };
+    Elf_LinkOptions opts = {
+        .lo_entry = "_start"
+    };
     Elf_Link_MergeFiles(obj, (const char *const *) runtime, nruntime);
     Elf_Link_Exec(obj, &opts);
 
     Enc_x86_64_Write(out);
 
-    for (int i = 0; i < nruntime; i++) {
+    for (size_t i = 0; i < nruntime; i++) {
         Str_Free(runtime[i]);
     }
     Str_Free(libdir);
@@ -224,7 +224,7 @@ int main(int argc, char **argv)
         } else if (emit_obj) {
             output = outbuf = Str_ChangeOrAppendExt(input, ".o");
         } else {
-            output = outbuf = Str_Duplicate(DEFAULT_OUTPUT);
+            output = outbuf = Str_Clone(DEFAULT_OUTPUT);
         }
     }
 
@@ -233,7 +233,7 @@ int main(int argc, char **argv)
     // Front end: build the AST
     yyin = fopen(input, "r");
     if (! yyin) {
-        perror(input);
+        File_ShowError(input);
         result = 1;
         goto cleanup;
     }
@@ -242,9 +242,9 @@ int main(int argc, char **argv)
     fclose(yyin);
 
     // Back end: emit assembly text or a freestanding executable
-    FILE *out = Cc_OpenOutput(output, emit_text ? "w" : "wb");
+    File_Stream *out = Cc_OpenOutput(output, emit_text ? "w" : "wb");
     if (! out) {
-        perror(output);
+        File_ShowError(output);
         result = 1;
         goto cleanup;
     }
