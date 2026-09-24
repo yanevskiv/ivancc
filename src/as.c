@@ -1,6 +1,5 @@
 // C source file for the ivanas assembler.
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,7 +12,7 @@
 // Show usage information and exit.
 static void As_Usage(const char *prog)
 {
-    fprintf(stderr,
+    File_Print(File_Err(),
         "Usage: %s [options] INPUT.s\n"
         "  -o OUTPUT   write the object to OUTPUT (default: INPUT.o)\n",
         prog);
@@ -25,7 +24,7 @@ static void As_Assemble(const char *input, const char *output)
 {
     char *text = File_GetContents(input, NULL);
     if (! text) {
-        perror(input);
+        File_ShowError(input);
         exit(1);
     }
     Txt_x86_64_Att_Parse(text);
@@ -33,16 +32,17 @@ static void As_Assemble(const char *input, const char *output)
 
     Enc_x86_64_BuildObject();
 
-    FILE *out = fopen(output, "wb");
+    File_Stream *out = File_Open(output, "wb");
+
     if (! out) {
-        perror(output);
+        File_ShowError(output);
         exit(1);
     }
     if (Enc_x86_64_Write(out) != 0) {
-        perror(output);
+        File_ShowError(output);
         exit(1);
     }
-    fclose(out);
+    File_Close(out);
 }
 
 // Main function

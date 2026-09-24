@@ -5,7 +5,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
+#include "util/file.h"
 
 // Format
 // Object file types (e_type).
@@ -64,6 +64,9 @@
 #define ELF_R_INFO(sym, type) (((uint64_t) (sym) << 32) | (uint32_t) (type))
 #define ELF_R_SYM(info)  ((uint32_t) ((info) >> 32))
 #define ELF_R_TYPE(info) ((uint32_t) ((info) & 0xFFFFFFFF))
+
+// Forward declaration: a symbol names its defining section.
+typedef struct Elf_Sec Elf_Sec;
 
 // Types
 // The fixed-size ELF file header, on disk.
@@ -140,16 +143,13 @@ struct Elf_Buffer {
     size_t   eb_cap;
 };
 
-// Forward declaration: a symbol names its defining section.
-typedef struct Elf_Sec Elf_Sec;
-
 // One symbol.
 typedef struct Elf_Sym Elf_Sym;
 struct Elf_Sym {
     const char *sym_name;    // owned by the Elf string pool
     Elf_Sec    *sym_sec;     // defining section, or NULL
     uint64_t    sym_value;   // offset within sym_sec
-    uint64_t    sym_size;
+    uint64_t    sym_size;    // bytes the object occupies, 0 where unknown
     uint8_t     sym_bind;    // ELF_BIND_*
     uint8_t     sym_type;    // ELF_TYPE_*
     uint8_t     sym_other;   // visibility
@@ -161,39 +161,39 @@ struct Elf_Rela {
     uint64_t  rel_offset;    // within the patched section
     Elf_Sym  *rel_sym;       // referenced symbol
     uint32_t  rel_type;      // R_<machine>_* (opaque here)
-    int64_t   rel_addend;
+    int64_t   rel_addend;    // constant added to the symbol's address
 };
 
 // One section.
 struct Elf_Sec {
-    const char *sec_name;    // owned by the string pool
-    uint32_t    sec_type;    // ELF_SHT_*
-    uint64_t    sec_flags;   // ELF_SHF_*
-    uint64_t    sec_addr;    // load address, 0 = unplaced
-    uint64_t    sec_addralign;
-    uint64_t    sec_entsize;
-    Elf_Buffer  sec_data;    // raw contents (PROGBITS)
-    Elf_Rela   *sec_relas;   // relocations patching THIS section
-    size_t      sec_nrelas;
-    size_t      sec_caprelas;
+    const char *sec_name;      // owned by the string pool
+    uint32_t    sec_type;      // ELF_SHT_*
+    uint64_t    sec_flags;     // ELF_SHF_*
+    uint64_t    sec_addr;      // load address, 0 = unplaced
+    uint64_t    sec_addralign; // address multiple the section must sit on
+    uint64_t    sec_entsize;   // bytes one entry takes in a table section
+    Elf_Buffer  sec_data;      // raw contents (PROGBITS)
+    Elf_Rela   *sec_relas;     // relocations patching THIS section
+    size_t      sec_nrelas;    // relocations sec_relas holds
+    size_t      sec_caprelas;  // relocations sec_relas has room for
 };
 
 // An ELF object: header fields, sections, symbols and a name string pool.
 typedef struct Elf Elf;
 struct Elf {
-    uint16_t    elf_type;
-    uint16_t    elf_machine;
-    uint64_t    elf_entry;
-    Elf_Sec   **elf_secs;
-    size_t      elf_nsecs;
-    size_t      elf_capsecs;
-    Elf_Sym   **elf_syms;
-    size_t      elf_nsyms;
-    size_t      elf_capsyms;
-    char      **elf_pool;
-    size_t      elf_npool;
-    size_t      elf_cappool;
-    const char *elf_err;
+    uint16_t    elf_type;    // ELF_ET_*
+    uint16_t    elf_machine; // ELF_EM_*
+    uint64_t    elf_entry;   // entry point of an executable
+    Elf_Sec   **elf_secs;    // sections, in the order they were added
+    size_t      elf_nsecs;   // sections elf_secs holds
+    size_t      elf_capsecs; // sections elf_secs has room for
+    Elf_Sym   **elf_syms;    // symbols, in the order they were added
+    size_t      elf_nsyms;   // symbols elf_syms holds
+    size_t      elf_capsyms; // symbols elf_syms has room for
+    char      **elf_pool;    // every name a section or symbol points into
+    size_t      elf_npool;   // names elf_pool holds
+    size_t      elf_cappool; // names elf_pool has room for
+    const char *elf_err;     // why the last read failed, or NULL
 };
 
 // One -place request: load the named section at a fixed address.
@@ -209,7 +209,7 @@ struct Elf_LinkOptions {
     const char     *lo_entry;        // entry symbol (NULL selects _start)
     int             lo_relocatable;  // -r: merge into an ET_REL object, keep relocs
     Elf_LinkPlace  *lo_places;       // -place requests, in the order given
-    int             lo_nplaces;
+    size_t          lo_nplaces;      // requests lo_places holds
 };
 
 // A loaded program: one flat buffer holding every PT_LOAD and a stack.
@@ -217,7 +217,7 @@ typedef struct Elf_LoadImage Elf_LoadImage;
 struct Elf_LoadImage {
     uint8_t  *li_mem;      // li_size bytes, zeroed and then filled
     uint64_t  li_base;     // virtual address li_mem[0] stands for
-    uint64_t  li_size;
+    uint64_t  li_size;     // bytes li_mem holds
     uint64_t  li_entry;    // e_entry
     uint64_t  li_stack;    // initial %rsp, 16-byte aligned
     uint16_t  li_machine;  // e_machine, for the caller to accept or reject
@@ -275,11 +275,11 @@ uint32_t Elf_Write_Str(Elf_Buffer *strtab, const char *name);
 uint32_t Elf_Write_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *secidx);
 void     Elf_Write_Symtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab, Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global);
 void     Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Elf_Buffer *out);
-int      Elf_Write_Rel(const Elf *elf, FILE *out);
+int      Elf_Write_Rel(const Elf *elf, File_Stream *out);
 uint32_t Elf_Write_SegFlags(const Elf_Sec *sec);
 uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr);
-int      Elf_Write_Exec(const Elf *elf, FILE *out);
-int      Elf_Write_File(const Elf *elf, FILE *out);
+int      Elf_Write_Exec(const Elf *elf, File_Stream *out);
+int      Elf_Write_File(const Elf *elf, File_Stream *out);
 int      Elf_Write_Path(const Elf *elf, const char *path);
 
 // Linking
@@ -287,13 +287,13 @@ long     Elf_Link_SectionIndex(const Elf *elf, const Elf_Sec *target);
 long     Elf_Link_SymbolIndex(const Elf *elf, const Elf_Sym *target);
 Elf_Sym *Elf_Link_FindGlobal(Elf *elf, const char *name);
 void     Elf_Link_Merge(Elf *out, Elf *in);
-void     Elf_Link_MergeFiles(Elf *out, const char *const *paths, int npaths);
+void     Elf_Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths);
 void     Elf_Link_AddPlace(Elf_LinkOptions *opts, const char *name, uint64_t addr);
 uint64_t Elf_Link_PlacedAddr(const Elf_LinkOptions *opts, const char *name, int *placed);
 void     Elf_Link_PlaceSections(Elf *elf, const Elf_LinkOptions *opts);
 void     Elf_Link_CheckDefined(Elf *elf);
 void     Elf_Link_Exec(Elf *elf, const Elf_LinkOptions *opts);
-Elf     *Elf_Link_Run(const char *const *paths, int npaths, const Elf_LinkOptions *opts);
+Elf     *Elf_Link_Run(const char *const *paths, size_t npaths, const Elf_LinkOptions *opts);
 
 // Loading
 uint64_t Elf_Load_AlignDown(uint64_t addr, uint64_t align);

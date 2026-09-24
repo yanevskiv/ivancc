@@ -1,9 +1,9 @@
 // C source file for the ivanemu emulator.
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "util/file.h"
 #include "util/log.h"
 #include "util/str.h"
 #include "object/elf.h"
@@ -18,7 +18,7 @@
 // Show usage information and exit.
 static void Emu_Usage(const char *prog)
 {
-    fprintf(stderr,
+    File_Print(File_Err(),
         "Usage: %s [options] PROGRAM\n"
         "  -d          disassemble instead of running\n"
         "  -i          print what the loader made of the file and stop\n"
@@ -31,10 +31,10 @@ static void Emu_Usage(const char *prog)
 // Print what the loader made of an executable.
 static void Emu_ShowImage(const Elf_LoadImage *img)
 {
-    printf("entry  0x%llx\n", (unsigned long long) img->li_entry);
-    printf("base   0x%llx\n", (unsigned long long) img->li_base);
-    printf("size   0x%llx\n", (unsigned long long) img->li_size);
-    printf("stack  0x%llx\n", (unsigned long long) img->li_stack);
+    File_Print(File_Out(), "entry  0x%llx\n", (unsigned long long) img->li_entry);
+    File_Print(File_Out(), "base   0x%llx\n", (unsigned long long) img->li_base);
+    File_Print(File_Out(), "size   0x%llx\n", (unsigned long long) img->li_size);
+    File_Print(File_Out(), "stack  0x%llx\n", (unsigned long long) img->li_stack);
 }
 
 // Disassemble forward from the image's base until the bytes stop decoding.
@@ -48,11 +48,11 @@ static void Emu_Disassemble(const Elf_LoadImage *img)
         char text[128];
 
         if (! code || ! Emu_x86_64_Decode(code, avail, &insn)) {
-            printf("%016llx: (bad)\n", (unsigned long long) rip);
+            File_Print(File_Out(), "%016llx: (bad)\n", (unsigned long long) rip);
             return;
         }
         Emu_x86_64_Format(&insn, rip, text, sizeof(text));
-        printf("%016llx: %s\n", (unsigned long long) rip, text);
+        File_Print(File_Out(), "%016llx: %s\n", (unsigned long long) rip, text);
         rip += insn.ei_len;
     }
 }
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 
     Elf_LoadImage img = {0};
     if (Elf_Load_ReadExec(program, &img) != 0) {
-        perror(program);
+        File_ShowError(program);
         return 1;
     }
     if (img.li_machine != ELF_EM_X86_64) {

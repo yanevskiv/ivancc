@@ -478,6 +478,9 @@ void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item)
             Enc_x86_64_Emit8(ENC_X86_64_OPCODE_ESCAPE);
             Enc_x86_64_Emit8(ENC_X86_64_OPCODE2_SYSCALL);
         } break;
+        case ASM_X86_64_OP_COUNT: {
+            // empty
+        } break;
     }
 }
 
@@ -570,8 +573,9 @@ void Enc_x86_64_BuildObject(void)
             case ASM_X86_64_ITEM_GLOBL: {
                 Enc_x86_64_RecordGlobl(item->ai_label);
             } break;
-            case ASM_X86_64_ITEM_DIRECTIVE: {
-                // raw assembler text, not represented in the encoded image
+            case ASM_X86_64_ITEM_DIRECTIVE:
+            case ASM_X86_64_ITEM_COUNT: {
+                // empty
             } break;
         }
     }
@@ -587,7 +591,7 @@ Elf *Enc_x86_64_GetObject(void)
 }
 
 // Write the encoded object to out, returning nonzero on failure.
-int Enc_x86_64_Write(FILE *out)
+int Enc_x86_64_Write(File_Stream *out)
 {
     return Elf_Write_File(Enc_x86_64_Out, out);
 }
