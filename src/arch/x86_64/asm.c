@@ -123,7 +123,7 @@ void Asm_x86_64_EmitLabel(const char *name, ...)
     va_list ap;
     va_start(ap, name);
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_LABEL);
-    item->ai_label = Str_VFormat(name, ap);
+    item->ai_label = Str_FormatVa(name, ap);
     va_end(ap);
 }
 
@@ -142,7 +142,7 @@ void Asm_x86_64_EmitGlobl(const char *name, ...)
     va_list ap;
     va_start(ap, name);
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_GLOBL);
-    item->ai_label = Str_VFormat(name, ap);
+    item->ai_label = Str_FormatVa(name, ap);
     va_end(ap);
 }
 
@@ -159,7 +159,7 @@ void Asm_x86_64_EmitBytes(const void *data, int len)
 void Asm_x86_64_EmitAddress(const char *label)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_ADDR);
-    item->ai_label = Str_Duplicate(label);
+    item->ai_label = Str_Clone(label);
 }
 
 // Emit a raw assembler line from a printf-style format, written with indent.
@@ -168,7 +168,7 @@ void Asm_x86_64_EmitDirective(const char *text, ...)
     va_list ap;
     va_start(ap, text);
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_DIRECTIVE);
-    item->ai_text = Str_VFormat(text, ap);
+    item->ai_text = Str_FormatVa(text, ap);
     va_end(ap);
 }
 
@@ -477,7 +477,7 @@ void Asm_x86_64_EmitLeaRip(Asm_x86_64_Reg dst, const char *label, ...)
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_LEA;
     item->ai_dst = Asm_x86_64_Reg64(dst);
-    item->ai_src = Asm_x86_64_Rip(Str_VFormat(label, ap));
+    item->ai_src = Asm_x86_64_Rip(Str_FormatVa(label, ap));
     va_end(ap);
 }
 
@@ -504,7 +504,7 @@ void Asm_x86_64_EmitJmp(const char *label, ...)
     va_start(ap, label);
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_JMP;
-    item->ai_dst = Asm_x86_64_Target(Str_VFormat(label, ap));
+    item->ai_dst = Asm_x86_64_Target(Str_FormatVa(label, ap));
     va_end(ap);
 }
 
@@ -515,7 +515,7 @@ void Asm_x86_64_EmitJe(const char *label, ...)
     va_start(ap, label);
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_JE;
-    item->ai_dst = Asm_x86_64_Target(Str_VFormat(label, ap));
+    item->ai_dst = Asm_x86_64_Target(Str_FormatVa(label, ap));
     va_end(ap);
 }
 
@@ -526,7 +526,7 @@ void Asm_x86_64_EmitJne(const char *label, ...)
     va_start(ap, label);
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_JNE;
-    item->ai_dst = Asm_x86_64_Target(Str_VFormat(label, ap));
+    item->ai_dst = Asm_x86_64_Target(Str_FormatVa(label, ap));
     va_end(ap);
 }
 
@@ -537,7 +537,7 @@ void Asm_x86_64_EmitCall(const char *label, ...)
     va_start(ap, label);
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_CALL;
-    item->ai_dst = Asm_x86_64_Target(Str_VFormat(label, ap));
+    item->ai_dst = Asm_x86_64_Target(Str_FormatVa(label, ap));
     va_end(ap);
 }
 
