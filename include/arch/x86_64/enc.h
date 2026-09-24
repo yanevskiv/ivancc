@@ -3,6 +3,7 @@
 #ifndef ENC_X86_64_H
 #define ENC_X86_64_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "util/file.h"
 
@@ -24,6 +25,13 @@ enum Enc_x86_64_Rex {
     ENC_X86_64_REX_W    = 0x08,
     ENC_X86_64_REX_R    = 0x04,
     ENC_X86_64_REX_B    = 0x01
+};
+
+// Whether a register number needs the REX extension bit.
+typedef enum Enc_x86_64_RegExt Enc_x86_64_RegExt;
+enum Enc_x86_64_RegExt {
+    ENC_X86_64_REG_LOW,  // %rax through %rdi
+    ENC_X86_64_REG_HIGH  // %r8 through %r15
 };
 
 // ModRM mod field.
@@ -135,10 +143,10 @@ struct Enc_x86_64_Fix {
 };
 
 // Byte output
-void Enc_x86_64_Emit8(int byte);
+void Enc_x86_64_Emit8(uint8_t byte);
 void Enc_x86_64_Emit32(uint32_t val);
 void Enc_x86_64_Emit64(uint64_t val);
-void Enc_x86_64_EmitRaw(const void *data, int len);
+void Enc_x86_64_EmitRaw(const void *data, size_t len);
 
 // Recording labels and fixups
 void Enc_x86_64_RecordLabel(const char *name);
@@ -146,30 +154,30 @@ void Enc_x86_64_RecordGlobl(const char *name);
 void Enc_x86_64_RecordFixup(const char *name, uint32_t type, int64_t addend);
 
 // REX and ModRM encoding
-int  Enc_x86_64_RegHigh(Asm_x86_64_Reg reg);
-void Enc_x86_64_EmitRexW(int regHigh, int rmHigh);
+Enc_x86_64_RegExt Enc_x86_64_RegHigh(Asm_x86_64_Reg reg);
+void Enc_x86_64_EmitRexW(Enc_x86_64_RegExt regHigh, Enc_x86_64_RegExt rmHigh);
 void Enc_x86_64_EmitRex(Asm_x86_64_Width width, Asm_x86_64_Reg reg, Asm_x86_64_Reg rm);
-void Enc_x86_64_EmitModRR(int reg, Asm_x86_64_Reg rm);
-void Enc_x86_64_EmitMem(int reg, Asm_x86_64_Reg base, int disp);
+void Enc_x86_64_EmitModRR(uint8_t reg, Asm_x86_64_Reg rm);
+void Enc_x86_64_EmitMem(uint8_t reg, Asm_x86_64_Reg base, int32_t disp);
 
 // Instruction encoding
-void Enc_x86_64_EmitRR(int opcode, Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
-void Enc_x86_64_EmitGrpImm(int grp, long imm, Asm_x86_64_Reg dst);
-void Enc_x86_64_EmitMovImm(long imm, Asm_x86_64_Reg dst);
-void Enc_x86_64_EmitMovImm8(long imm, Asm_x86_64_Reg dst);
-void Enc_x86_64_EmitMemForm(int opcode, Asm_x86_64_Reg reg, Asm_x86_64_Reg base, int disp, Asm_x86_64_Width width);
+void Enc_x86_64_EmitRR(Enc_x86_64_Opcode opcode, Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
+void Enc_x86_64_EmitGrpImm(Enc_x86_64_Grp grp, int64_t imm, Asm_x86_64_Reg dst);
+void Enc_x86_64_EmitMovImm(int64_t imm, Asm_x86_64_Reg dst);
+void Enc_x86_64_EmitMovImm8(int64_t imm, Asm_x86_64_Reg dst);
+void Enc_x86_64_EmitMemForm(Enc_x86_64_Opcode opcode, Asm_x86_64_Reg reg, Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Width width);
 void Enc_x86_64_EmitMovsx(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitMovzx(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitLeaRip(Asm_x86_64_Reg dst, const char *label);
-void Enc_x86_64_EmitGrpUnary(int grp, Asm_x86_64_Reg reg);
-void Enc_x86_64_EmitShift(int grp, Asm_x86_64_Reg dst);
-void Enc_x86_64_EmitSetcc(int opcode, Asm_x86_64_Reg reg);
+void Enc_x86_64_EmitGrpUnary(Enc_x86_64_Grp grp, Asm_x86_64_Reg reg);
+void Enc_x86_64_EmitShift(Enc_x86_64_Grp grp, Asm_x86_64_Reg dst);
+void Enc_x86_64_EmitSetcc(Enc_x86_64_Opcode2 opcode, Asm_x86_64_Reg reg);
 void Enc_x86_64_EmitBranch(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitMov(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item);
 
 // Symbols, sections and relocations
-int  Enc_x86_64_IsGlobl(const char *name);
+bool Enc_x86_64_IsGlobl(const char *name);
 void Enc_x86_64_SelectSection(const char *name, uint32_t type, uint64_t flags);
 void Enc_x86_64_BuildSymbols(void);
 void Enc_x86_64_BuildRelocs(void);
@@ -178,6 +186,6 @@ void Enc_x86_64_BuildRelocs(void);
 void Enc_x86_64_Reset(void);
 void Enc_x86_64_BuildObject(void);
 Elf *Enc_x86_64_GetObject(void);
-int  Enc_x86_64_Write(File_Stream *out);
+bool Enc_x86_64_Write(File_Stream *out);
 
 #endif // ENC_X86_64_H

@@ -28,6 +28,22 @@
 - Do not name a function `Prefix_NounVerb`.
 - Do not leave a number bare unless it means only itself, as a loop index does.
 
+## Types
+
+- Every integer must name its width, as `int32_t`, `uint8_t` and `int64_t` do.
+- Every count of bytes or of items in memory must be a `size_t`.
+- Every source line number must be an `Ast_Line`.
+- Every truth value must be a `bool` from `<stdbool.h>`.
+- Every question a function answers must come back as a `bool`, as `Ast_IsInteger` does.
+- Every parameter that chooses between two behaviours must be an enum naming both.
+- Every such enum must read like `PAR_LIST_BRACED` and `PAR_LIST_UNBRACED`.
+- Every quantity no fixed-width type describes must get a `typedef`, as `Emu_TypeULLong` has.
+- Keep the type an external interface fixes, as `int main`, `int yylex` and `long ftell` do.
+- Cast to the type a `printf` conversion names, since `%ld` takes a `long`.
+- Do not write `int`, `long`, `short`, `signed` or `unsigned` where a fixed-width type says it.
+- Do not use an integer as a truth value, in a field, a local or a return.
+- Do not give a function a `bool` parameter, however clearly the call site reads.
+
 ## Layout
 
 - Every controlled block must be braced, even a single statement.

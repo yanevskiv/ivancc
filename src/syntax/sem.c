@@ -24,9 +24,9 @@ Ast_Func *Sem_FindFunc(const char *name)
 }
 
 // Return the length of a node list.
-int Sem_CountNodes(Ast_Node *list)
+int32_t Sem_CountNodes(Ast_Node *list)
 {
-    int count = 0;
+    int32_t count = 0;
     for (Ast_Node *node = list; node; node = node->an_next) {
         count++;
     }
@@ -34,13 +34,13 @@ int Sem_CountNodes(Ast_Node *list)
 }
 
 // Return whether values of this type address memory.
-int Sem_IsPointer(const Ast_Type *type)
+bool Sem_IsPointer(const Ast_Type *type)
 {
     return type->at_kind == AST_TYPE_KIND_PTR || type->at_kind == AST_TYPE_KIND_ARRAY;
 }
 
 // Return whether a node names an object.
-int Sem_IsLvalue(const Ast_Node *node)
+bool Sem_IsLvalue(const Ast_Node *node)
 {
     if (node->an_kind == AST_NODE_KIND_MEMBER) {
         return Sem_IsLvalue(node->an_lhs);
@@ -50,7 +50,7 @@ int Sem_IsLvalue(const Ast_Node *node)
 }
 
 // Return whether this is a struct or union.
-int Sem_IsAggregate(const Ast_Type *type)
+bool Sem_IsAggregate(const Ast_Type *type)
 {
     return type->at_kind == AST_TYPE_KIND_STRUCT || type->at_kind == AST_TYPE_KIND_UNION;
 }
@@ -71,10 +71,10 @@ Ast_Type *Sem_Decay(Ast_Type *type)
 }
 
 // Return whether two types agree but for their qualifiers.
-int Sem_SameType(const Ast_Type *a, const Ast_Type *b)
+bool Sem_SameType(const Ast_Type *a, const Ast_Type *b)
 {
     if (a == b) {
-        return 1;
+        return true;
     }
     return a->at_kind == b->at_kind && a->at_sign == b->at_sign && a->at_base == b->at_base
         && a->at_members == b->at_members;
@@ -148,20 +148,20 @@ void Sem_PromoteShift(Ast_Node *node)
 }
 
 // Narrow a folded value to the type a cast names.
-long Sem_Truncate(const Ast_Type *type, long value)
+int64_t Sem_Truncate(const Ast_Type *type, int64_t value)
 {
     switch (type->at_kind) {
         case AST_TYPE_KIND_BOOL: {
             value = value != 0;
         } break;
         case AST_TYPE_KIND_CHAR: {
-            value = type->at_sign == AST_TYPE_UNSIGNED ? (long) (unsigned char) value : (long) (signed char) value;
+            value = type->at_sign == AST_TYPE_UNSIGNED ? (int64_t) (uint8_t) value : (int64_t) (int8_t) value;
         } break;
         case AST_TYPE_KIND_SHORT: {
-            value = type->at_sign == AST_TYPE_UNSIGNED ? (long) (unsigned short) value : (long) (short) value;
+            value = type->at_sign == AST_TYPE_UNSIGNED ? (int64_t) (uint16_t) value : (int64_t) (int16_t) value;
         } break;
         case AST_TYPE_KIND_INT: {
-            value = type->at_sign == AST_TYPE_UNSIGNED ? (long) (unsigned int) value : (long) (int) value;
+            value = type->at_sign == AST_TYPE_UNSIGNED ? (int64_t) (uint32_t) value : (int64_t) (int32_t) value;
         } break;
         case AST_TYPE_KIND_LONG:
         case AST_TYPE_KIND_LLONG:
@@ -194,10 +194,10 @@ Ast_TypeSign Sem_FoldSign(const Ast_Node *node)
 }
 
 // Apply one operator to folded operands.
-int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, Ast_TypeSign sign, int line, long *value)
+bool Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, Ast_Line line, int64_t *value)
 {
-    unsigned long ulhs = (unsigned long) lhs;
-    unsigned long urhs = (unsigned long) rhs;
+    uint64_t ulhs = (uint64_t) lhs;
+    uint64_t urhs = (uint64_t) rhs;
 
     switch (kind) {
         case AST_NODE_KIND_ADD: {
@@ -215,7 +215,7 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, Ast_TypeSign sign, int lin
                 Log_ShowErrorAt(line, "division by zero in a constant expression");
             }
             if (sign == AST_TYPE_UNSIGNED) {
-                *value = (long) (kind == AST_NODE_KIND_DIV ? ulhs / urhs : ulhs % urhs);
+                *value = (int64_t) (kind == AST_NODE_KIND_DIV ? ulhs / urhs : ulhs % urhs);
             } else {
                 *value = kind == AST_NODE_KIND_DIV ? lhs / rhs : lhs % rhs;
             }
@@ -233,7 +233,7 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, Ast_TypeSign sign, int lin
             *value = lhs << rhs;
         } break;
         case AST_NODE_KIND_SHR: {
-            *value = sign == AST_TYPE_UNSIGNED ? (long) (ulhs >> rhs) : lhs >> rhs;
+            *value = sign == AST_TYPE_UNSIGNED ? (int64_t) (ulhs >> rhs) : lhs >> rhs;
         } break;
         case AST_NODE_KIND_EQ: {
             *value = lhs == rhs;
@@ -263,20 +263,20 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, Ast_TypeSign sign, int lin
             *value = ~lhs;
         } break;
         default: {
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
 
 // Fold an integer constant expression to its value.
-int Sem_Fold(const Ast_Node *node, long *value)
+bool Sem_Fold(const Ast_Node *node, int64_t *value)
 {
-    long lhs = 0;
-    long rhs = 0;
+    int64_t lhs = 0;
+    int64_t rhs = 0;
 
     if (! node) {
-        return 0;
+        return false;
     }
 
     switch (node->an_kind) {
@@ -285,75 +285,75 @@ int Sem_Fold(const Ast_Node *node, long *value)
         } break;
         case AST_NODE_KIND_SIZEOF: {
             if (! node->an_lhs->an_type) {
-                return 0;  // the Sem_ pass has not typed the operand yet
+                return false;  // the Sem_ pass has not typed the operand yet
             }
             *value = node->an_lhs->an_type->at_size;
         } break;
         case AST_NODE_KIND_CAST: {
             if (! Sem_Fold(node->an_lhs, &lhs)) {
-                return 0;
+                return false;
             }
             *value = Sem_Truncate(node->an_type, lhs);
         } break;
         case AST_NODE_KIND_COND: {
             if (! Sem_Fold(node->an_cond, &lhs)) {
-                return 0;
+                return false;
             }
             if (! Sem_Fold(lhs ? node->an_then : node->an_els, value)) {
-                return 0;
+                return false;
             }
         } break;
         case AST_NODE_KIND_NEG:
         case AST_NODE_KIND_NOT:
         case AST_NODE_KIND_BITNOT: {
             if (! Sem_Fold(node->an_lhs, &lhs)) {
-                return 0;
+                return false;
             }
             if (! Sem_FoldOp(node->an_kind, lhs, 0, Sem_FoldSign(node), node->an_line, value)) {
-                return 0;
+                return false;
             }
         } break;
         default: {
             if (! Sem_Fold(node->an_lhs, &lhs) || ! Sem_Fold(node->an_rhs, &rhs)) {
-                return 0;
+                return false;
             }
             if (! Sem_FoldOp(node->an_kind, lhs, rhs, Sem_FoldSign(node), node->an_line, value)) {
-                return 0;
+                return false;
             }
         } break;
     }
-    return 1;
+    return true;
 }
 
 // Fold an address constant to the symbol it names.
-int Sem_FoldAddr(const Ast_Node *node, const char **symbol)
+bool Sem_FoldAddr(const Ast_Node *node, const char **symbol)
 {
     if (! node) {
-        return 0;
+        return false;
     }
 
     switch (node->an_kind) {
         case AST_NODE_KIND_STR: {
-            *symbol = Str_Format(".Lstr%d", node->an_str_idx);
+            *symbol = Str_Format(".Lstr%zu", node->an_str_idx);
         } break;
         case AST_NODE_KIND_VAR:
         case AST_NODE_KIND_COMPOUND: {
             if (! node->an_var->av_global) {
-                return 0;  // a local has no address until its frame exists
+                return false;  // a local has no address until its frame exists
             }
             *symbol = node->an_var->av_symbol;
         } break;
         case AST_NODE_KIND_ADDR:
         case AST_NODE_KIND_CAST: {
             if (! Sem_FoldAddr(node->an_lhs, symbol)) {
-                return 0;
+                return false;
             }
         } break;
         default: {
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
 
 // Give a function named as a value the pointer type it decays to.
@@ -392,14 +392,14 @@ Ast_Type *Sem_CalleeType(Ast_Node *node)
 }
 
 // Check a call's argument count.
-void Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const char *what)
+void Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVariadic variadic, Ast_TypeProto proto, const char *what)
 {
-    int given = Sem_CountNodes(node->an_args);
+    int32_t given = Sem_CountNodes(node->an_args);
 
-    if (! proto) {
+    if (proto == AST_TYPE_NOPROTO) {
         return;
     }
-    if (variadic) {
+    if (variadic == AST_TYPE_VARIADIC) {
         if (given < want) {
             Log_ShowErrorAt(node->an_line, "too few arguments to %s: got %d, expected at least %d", what, given, want);
         }
@@ -411,14 +411,14 @@ void Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const cha
 }
 
 // Convert a call's arguments to the types its parameters name.
-void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int nparams, int variadic, int proto)
+void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto)
 {
-    int i = 0;
-    int from = proto && variadic ? nparams : 0;
+    int32_t i = 0;
+    int32_t from = proto == AST_TYPE_PROTO && variadic == AST_TYPE_VARIADIC ? nparams : 0;
     Ast_Node head = {0};
     Ast_Node *tail = &head;
     Ast_Node *arg = node->an_args;
-    Ast_Var *param = proto ? params : NULL;
+    Ast_Var *param = proto == AST_TYPE_PROTO ? params : NULL;
 
     while (arg) {
         Ast_Node *next = arg->an_next;
@@ -457,7 +457,7 @@ void Sem_CheckCall(Ast_Node *node)
 }
 
 // Wrap node in a multiplication by size.
-Ast_Node *Sem_ScaleBy(Ast_Node *node, int size)
+Ast_Node *Sem_ScaleBy(Ast_Node *node, int32_t size)
 {
     Ast_Node *num = Ast_NewNum(size, node->an_line);
     num->an_type = &Ast_TypeInt;
@@ -508,13 +508,13 @@ void Sem_Arith(Ast_Node *node)
 }
 
 // Return whether the statements under node define a label of this name.
-int Sem_FindLabel(Ast_Node *node, const char *name)
+bool Sem_FindLabel(Ast_Node *node, const char *name)
 {
     if (! node) {
-        return 0;
+        return false;
     }
     if (node->an_kind == AST_NODE_KIND_LABEL && strcmp(node->an_funcname, name) == 0) {
-        return 1;
+        return true;
     }
     return Sem_FindLabel(node->an_lhs, name) || Sem_FindLabel(node->an_then, name)
         || Sem_FindLabel(node->an_els, name) || Sem_FindLabel(node->an_body, name)
@@ -638,7 +638,7 @@ void Sem_Node(Ast_Node *node)
         case AST_NODE_KIND_STR: {
             Ast_Str *str = Ast_StringAt(node->an_str_idx);
             Ast_Type *elem = str->as_width > STR_NARROW_WIDTH ? &Ast_TypeInt : &Ast_TypeChar;
-            node->an_type = Ast_NewArray(elem, (int) (str->as_len / str->as_width + 1));
+            node->an_type = Ast_NewArray(elem, (int32_t) (str->as_len / str->as_width + 1));
         } break;
 
         case AST_NODE_KIND_ADDR: {
@@ -756,7 +756,7 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_VA_START: {
-            if (! Sem_CurFunc->af_variadic) {
+            if (Sem_CurFunc->af_variadic == AST_TYPE_FIXED) {
                 Log_ShowErrorAt(node->an_line, "__builtin_va_start outside a variadic function");
             }
             node->an_type = &Ast_TypeInt;

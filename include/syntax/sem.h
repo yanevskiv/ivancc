@@ -7,15 +7,15 @@
 
 // Lookups over the program being analysed
 Ast_Func *Sem_FindFunc(const char *name);
-int       Sem_CountNodes(Ast_Node *list);
+int32_t   Sem_CountNodes(Ast_Node *list);
 
 // Type and expression queries
-int       Sem_IsPointer(const Ast_Type *type);
-int       Sem_IsLvalue(const Ast_Node *node);
-int       Sem_IsAggregate(const Ast_Type *type);
+bool      Sem_IsPointer(const Ast_Type *type);
+bool      Sem_IsLvalue(const Ast_Node *node);
+bool      Sem_IsAggregate(const Ast_Type *type);
 const char *Sem_TypeName(const Ast_Type *type);
 Ast_Type *Sem_Decay(Ast_Type *type);
-int       Sem_SameType(const Ast_Type *a, const Ast_Type *b);
+bool      Sem_SameType(const Ast_Type *a, const Ast_Type *b);
 
 // Conversions
 Ast_Type *Sem_Promote(Ast_Type *type);
@@ -25,24 +25,24 @@ void      Sem_UsualArith(Ast_Node *node);
 void      Sem_PromoteShift(Ast_Node *node);
 
 // Constant expressions
-long      Sem_Truncate(const Ast_Type *type, long value);
+int64_t   Sem_Truncate(const Ast_Type *type, int64_t value);
 Ast_TypeSign Sem_FoldSign(const Ast_Node *node);
-int       Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, Ast_TypeSign sign, int line, long *value);
-int       Sem_Fold(const Ast_Node *node, long *value);
-int       Sem_FoldAddr(const Ast_Node *node, const char **symbol);
+bool      Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, Ast_Line line, int64_t *value);
+bool      Sem_Fold(const Ast_Node *node, int64_t *value);
+bool      Sem_FoldAddr(const Ast_Node *node, const char **symbol);
 
 // Checks the parser cannot make
 Ast_Type *Sem_FuncAddrType(Ast_Node *node);
 Ast_Type *Sem_CallType(Ast_Node *node);
 Ast_Type *Sem_CalleeType(Ast_Node *node);
-void      Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const char *what);
-void      Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int nparams, int variadic, int proto);
+void      Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVariadic variadic, Ast_TypeProto proto, const char *what);
+void      Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto);
 void      Sem_CheckCall(Ast_Node *node);
 
 // Annotation
-Ast_Node *Sem_ScaleBy(Ast_Node *node, int size);
+Ast_Node *Sem_ScaleBy(Ast_Node *node, int32_t size);
 void      Sem_Arith(Ast_Node *node);
-int       Sem_FindLabel(Ast_Node *node, const char *name);
+bool      Sem_FindLabel(Ast_Node *node, const char *name);
 void      Sem_CheckGotos(Ast_Node *node, Ast_Node *body);
 void      Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail);
 void      Sem_Node(Ast_Node *node);

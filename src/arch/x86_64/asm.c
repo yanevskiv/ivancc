@@ -43,7 +43,7 @@ Asm_x86_64_Operand Asm_x86_64_RegWidth(Asm_x86_64_Reg reg, Asm_x86_64_Width widt
 }
 
 // Make an immediate operand ($val).
-Asm_x86_64_Operand Asm_x86_64_Imm(long val)
+Asm_x86_64_Operand Asm_x86_64_Imm(int64_t val)
 {
     return (Asm_x86_64_Operand) {
         .ao_kind = ASM_X86_64_OPERAND_IMM,
@@ -52,7 +52,7 @@ Asm_x86_64_Operand Asm_x86_64_Imm(long val)
 }
 
 // Make a base-plus-displacement memory operand (disp(%base)).
-Asm_x86_64_Operand Asm_x86_64_Mem(Asm_x86_64_Reg base, int disp)
+Asm_x86_64_Operand Asm_x86_64_Mem(Asm_x86_64_Reg base, int32_t disp)
 {
     return (Asm_x86_64_Operand) {
         .ao_kind = ASM_X86_64_OPERAND_MEM,
@@ -147,7 +147,7 @@ void Asm_x86_64_EmitGlobl(const char *name, ...)
 }
 
 // Emit a run of raw data bytes.
-void Asm_x86_64_EmitBytes(const void *data, int len)
+void Asm_x86_64_EmitBytes(const void *data, size_t len)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_BYTES);
     item->ai_bytes = malloc(len);
@@ -386,7 +386,7 @@ void Asm_x86_64_EmitSetbe(Asm_x86_64_Reg reg)
 }
 
 // Emit `cmp $imm, %dst`.
-void Asm_x86_64_EmitCmpImm(long imm, Asm_x86_64_Reg dst)
+void Asm_x86_64_EmitCmpImm(int64_t imm, Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_CMP;
@@ -395,7 +395,7 @@ void Asm_x86_64_EmitCmpImm(long imm, Asm_x86_64_Reg dst)
 }
 
 // Emit `mov $imm, %dst` into a 64-bit register.
-void Asm_x86_64_EmitMovImm(long imm, Asm_x86_64_Reg dst)
+void Asm_x86_64_EmitMovImm(int64_t imm, Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_MOV;
@@ -404,7 +404,7 @@ void Asm_x86_64_EmitMovImm(long imm, Asm_x86_64_Reg dst)
 }
 
 // Emit `mov $imm, %dst` into an 8-bit register.
-void Asm_x86_64_EmitMovImm8(long imm, Asm_x86_64_Reg dst)
+void Asm_x86_64_EmitMovImm8(int64_t imm, Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_MOV;
@@ -413,7 +413,7 @@ void Asm_x86_64_EmitMovImm8(long imm, Asm_x86_64_Reg dst)
 }
 
 // Emit `add $imm, %dst`.
-void Asm_x86_64_EmitAddImm(long imm, Asm_x86_64_Reg dst)
+void Asm_x86_64_EmitAddImm(int64_t imm, Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_ADD;
@@ -422,7 +422,7 @@ void Asm_x86_64_EmitAddImm(long imm, Asm_x86_64_Reg dst)
 }
 
 // Emit `sub $imm, %dst`.
-void Asm_x86_64_EmitSubImm(long imm, Asm_x86_64_Reg dst)
+void Asm_x86_64_EmitSubImm(int64_t imm, Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_SUB;
@@ -431,7 +431,7 @@ void Asm_x86_64_EmitSubImm(long imm, Asm_x86_64_Reg dst)
 }
 
 // Emit a load of width bits from disp(%base) into the full 64-bit %dst.
-void Asm_x86_64_EmitMovLoad(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width)
+void Asm_x86_64_EmitMovLoad(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = width == ASM_X86_64_WIDTH_64 ? ASM_X86_64_OP_MOV : ASM_X86_64_OP_MOVSX;
@@ -441,7 +441,7 @@ void Asm_x86_64_EmitMovLoad(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, A
 }
 
 // Emit a zero-extending load of width bits from disp(%base).
-void Asm_x86_64_EmitMovLoadZero(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width)
+void Asm_x86_64_EmitMovLoadZero(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
 
@@ -452,7 +452,7 @@ void Asm_x86_64_EmitMovLoadZero(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg ds
 }
 
 // Emit a store of the low width bits of %src to disp(%base).
-void Asm_x86_64_EmitMovStore(Asm_x86_64_Reg src, Asm_x86_64_Reg base, int disp, Asm_x86_64_Width width)
+void Asm_x86_64_EmitMovStore(Asm_x86_64_Reg src, Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Width width)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_MOV;
@@ -461,7 +461,7 @@ void Asm_x86_64_EmitMovStore(Asm_x86_64_Reg src, Asm_x86_64_Reg base, int disp, 
 }
 
 // Emit `lea disp(%base), %dst`.
-void Asm_x86_64_EmitLea(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst)
+void Asm_x86_64_EmitLea(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_LEA;

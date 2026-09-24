@@ -36,20 +36,20 @@
 #define VA_SAVE_SIZE (MAX_REG_ARGS * WORD_SIZE)
 
 // Number of values currently pushed with Gen_x86_64_EmitPush().
-static int Gen_x86_64_Depth;
+static int32_t Gen_x86_64_Depth;
 
 // Source of unique label numbers.
-static int Gen_x86_64_LabelId;
+static int32_t Gen_x86_64_LabelId;
 
 // Label numbers the innermost loop uses for break and continue.
-static int Gen_x86_64_BreakId = -1;
-static int Gen_x86_64_ContinueId = -1;
+static int32_t Gen_x86_64_BreakId = -1;
+static int32_t Gen_x86_64_ContinueId = -1;
 
 // The function currently being emitted.
 static const Ast_Func *Gen_x86_64_CurrFunc;
 
 // Frame offset holding the caller's buffer pointer for a memory return.
-static int Gen_x86_64_RetPtrOffset;
+static int32_t Gen_x86_64_RetPtrOffset;
 
 // Registers used to pass the first six integer arguments.
 static const Asm_x86_64_Reg Gen_x86_64_ArgReg[6] = {
@@ -62,7 +62,7 @@ static const Asm_x86_64_Reg Gen_x86_64_ArgReg[6] = {
 };
 
 // Return the next unique label number.
-int Gen_x86_64_Count(void)
+int32_t Gen_x86_64_Count(void)
 {
     return Gen_x86_64_LabelId++;
 }
@@ -82,13 +82,13 @@ void Gen_x86_64_EmitPop(Asm_x86_64_Reg reg)
 }
 
 // Round n up to the nearest multiple of align.
-int Gen_x86_64_AlignTo(int n, int align)
+int32_t Gen_x86_64_AlignTo(int32_t n, int32_t align)
 {
     return (n + align - 1) / align * align;
 }
 
 // Return the frame bytes a local reserves.
-int Gen_x86_64_SlotSize(const Ast_Type *type)
+int32_t Gen_x86_64_SlotSize(const Ast_Type *type)
 {
     if (! Sem_IsAggregate(type)) {
         return type->at_size;
@@ -155,7 +155,7 @@ Ast_TypeSign Gen_x86_64_Sign(const Ast_Node *node)
 }
 
 // Load a value of type from disp(%base) into %dst.
-void Gen_x86_64_EmitLoadFrom(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, const Ast_Type *type)
+void Gen_x86_64_EmitLoadFrom(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg dst, const Ast_Type *type)
 {
     if (type->at_sign == AST_TYPE_UNSIGNED) {
         Asm_x86_64_EmitMovLoadZero(base, disp, dst, Gen_x86_64_TypeWidth(type));
@@ -210,9 +210,9 @@ void Gen_x86_64_EmitCast(const Ast_Type *type)
 }
 
 // Copy size bytes from %rax to %rdi.
-void Gen_x86_64_EmitCopy(int size)
+void Gen_x86_64_EmitCopy(int32_t size)
 {
-    int off = 0;
+    int32_t off = 0;
 
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RSI);
     while (size - off >= GEN_X86_64_COPY_QUAD) {
@@ -234,9 +234,9 @@ void Gen_x86_64_EmitCopy(int size)
 }
 
 // Write size zero bytes at the address in %rdi.
-void Gen_x86_64_EmitZero(int size)
+void Gen_x86_64_EmitZero(int32_t size)
 {
-    int off = 0;
+    int32_t off = 0;
 
     Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RCX);
     while (size - off >= GEN_X86_64_COPY_QUAD) {
@@ -279,7 +279,7 @@ void Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member)
 // Store the low bits of %rax into the bitfield at the address in %rdi.
 void Gen_x86_64_EmitBitfieldStore(const Ast_Member *member)
 {
-    long mask = ((1L << member->am_bits) - 1) << member->am_bitoff;
+    int64_t mask = (((int64_t) 1 << member->am_bits) - 1) << member->am_bitoff;
     Asm_x86_64_Width width = Gen_x86_64_TypeWidth(member->am_type);
 
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDX);
@@ -298,19 +298,19 @@ void Gen_x86_64_EmitBitfieldStore(const Ast_Member *member)
 // Spill every argument register into the save area.
 void Gen_x86_64_EmitVaSaveArea(void)
 {
-    for (int i = 0; i < MAX_REG_ARGS; i++) {
+    for (int32_t i = 0; i < MAX_REG_ARGS; i++) {
         Asm_x86_64_EmitMovStore(Gen_x86_64_ArgReg[i], ASM_X86_64_REG_RBP, -VA_SAVE_SIZE + i * WORD_SIZE, ASM_X86_64_WIDTH_64);
     }
 }
 
 // Count the argument registers and stack slots the named parameters used.
-void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int *reg, int *stack)
+void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int32_t *reg, int32_t *stack)
 {
     *reg   = Abi_x86_64_SysV_ReturnsInMemory(func->af_ret) ? 1 : 0;
     *stack = 0;
 
     for (Ast_Var *param = func->af_params; param; param = param->av_param_next) {
-        int slots = Abi_x86_64_SysV_Eightbytes(param->av_type);
+        int32_t slots = Abi_x86_64_SysV_Eightbytes(param->av_type);
         if (! Abi_x86_64_SysV_InMemory(param->av_type) && *reg + slots <= MAX_REG_ARGS) {
             *reg += slots;
         } else {
@@ -322,8 +322,8 @@ void Gen_x86_64_CountNamedArgs(const Ast_Func *func, int *reg, int *stack)
 // Fill the va_list at the address in %rax.
 void Gen_x86_64_EmitVaStart(void)
 {
-    int reg = 0;
-    int stack = 0;
+    int32_t reg = 0;
+    int32_t stack = 0;
 
     Gen_x86_64_CountNamedArgs(Gen_x86_64_CurrFunc, &reg, &stack);
     Asm_x86_64_EmitMovImm(reg * WORD_SIZE, ASM_X86_64_REG_RCX);
@@ -339,7 +339,7 @@ void Gen_x86_64_EmitVaStart(void)
 // Read into %rax the next argument the va_list at %rax reaches.
 void Gen_x86_64_EmitVaArg(const Ast_Type *type)
 {
-    int count = Gen_x86_64_Count();
+    int32_t count = Gen_x86_64_Count();
 
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
     Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, ABI_X86_64_SYSV_VA_GP_OFFSET, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
@@ -386,10 +386,10 @@ void Gen_x86_64_EmitReturnValue(Ast_Node *node)
 }
 
 // Spill one incoming parameter into its frame slot.
-void Gen_x86_64_EmitParam(Ast_Var *param, int *reg, int *stack)
+void Gen_x86_64_EmitParam(Ast_Var *param, int32_t *reg, int32_t *stack)
 {
-    int slots = Abi_x86_64_SysV_Eightbytes(param->av_type);
-    int inReg = ! Abi_x86_64_SysV_InMemory(param->av_type) && *reg + slots <= MAX_REG_ARGS;
+    int32_t slots = Abi_x86_64_SysV_Eightbytes(param->av_type);
+    bool inReg = ! Abi_x86_64_SysV_InMemory(param->av_type) && *reg + slots <= MAX_REG_ARGS;
 
     if (! Sem_IsAggregate(param->av_type)) {
         Asm_x86_64_Width width = Gen_x86_64_TypeWidth(param->av_type);
@@ -402,7 +402,7 @@ void Gen_x86_64_EmitParam(Ast_Var *param, int *reg, int *stack)
         return;
     }
 
-    for (int k = 0; k < slots; k++) {
+    for (int32_t k = 0; k < slots; k++) {
         if (inReg) {
             Asm_x86_64_EmitMovStore(Gen_x86_64_ArgReg[(*reg)++], ASM_X86_64_REG_RBP, param->av_offset + k * WORD_SIZE, ASM_X86_64_WIDTH_64);
         } else {
@@ -413,13 +413,13 @@ void Gen_x86_64_EmitParam(Ast_Var *param, int *reg, int *stack)
 }
 
 // Return the first argument register the argument at index takes.
-int Gen_x86_64_ArgRegBase(Ast_Node *args, int index, int nHidden)
+int32_t Gen_x86_64_ArgRegBase(Ast_Node *args, int32_t index, int32_t nHidden)
 {
-    int used = nHidden;
-    int i = 0;
+    int32_t used = nHidden;
+    int32_t i = 0;
 
     for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
-        int want = Abi_x86_64_SysV_Eightbytes(arg->an_type);
+        int32_t want = Abi_x86_64_SysV_Eightbytes(arg->an_type);
         if (Abi_x86_64_SysV_InMemory(arg->an_type) || used + want > MAX_REG_ARGS) {
             if (i == index) {
                 return -1;
@@ -435,10 +435,10 @@ int Gen_x86_64_ArgRegBase(Ast_Node *args, int index, int nHidden)
 }
 
 // Count the eightbytes a call leaves on the stack for its memory arguments.
-int Gen_x86_64_CallStackSlots(Ast_Node *args, int nHidden)
+int32_t Gen_x86_64_CallStackSlots(Ast_Node *args, int32_t nHidden)
 {
-    int slots = 0;
-    int i = 0;
+    int32_t slots = 0;
+    int32_t i = 0;
 
     for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
         if (Gen_x86_64_ArgRegBase(args, i, nHidden) < 0) {
@@ -457,7 +457,7 @@ void Gen_x86_64_PushArg(Ast_Node *arg)
         Gen_x86_64_EmitPush();
         return;
     }
-    for (int k = Abi_x86_64_SysV_Eightbytes(arg->an_type) - 1; k >= 0; k--) {
+    for (int32_t k = Abi_x86_64_SysV_Eightbytes(arg->an_type) - 1; k >= 0; k--) {
         Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RAX, k * WORD_SIZE, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_64);
         Asm_x86_64_EmitPush(ASM_X86_64_REG_RCX);
         Gen_x86_64_Depth++;
@@ -465,7 +465,7 @@ void Gen_x86_64_PushArg(Ast_Node *arg)
 }
 
 // Push the arguments the ABI places on the stack, last one first.
-void Gen_x86_64_CallPushStack(Ast_Node *args, Ast_Node *arg, int index, int nHidden)
+void Gen_x86_64_CallPushStack(Ast_Node *args, Ast_Node *arg, int32_t index, int32_t nHidden)
 {
     if (! arg) {
         return;
@@ -477,7 +477,7 @@ void Gen_x86_64_CallPushStack(Ast_Node *args, Ast_Node *arg, int index, int nHid
 }
 
 // Push the arguments the ABI passes in registers, last one first.
-void Gen_x86_64_CallPushReg(Ast_Node *args, Ast_Node *arg, int index, int nHidden)
+void Gen_x86_64_CallPushReg(Ast_Node *args, Ast_Node *arg, int32_t index, int32_t nHidden)
 {
     if (! arg) {
         return;
@@ -489,16 +489,16 @@ void Gen_x86_64_CallPushReg(Ast_Node *args, Ast_Node *arg, int index, int nHidde
 }
 
 // Pop the pushed register arguments into the registers the ABI assigns them.
-void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden)
+void Gen_x86_64_CallPopReg(Ast_Node *args, int32_t nHidden)
 {
-    int i = 0;
+    int32_t i = 0;
 
     for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
-        int base = Gen_x86_64_ArgRegBase(args, i, nHidden);
+        int32_t base = Gen_x86_64_ArgRegBase(args, i, nHidden);
         if (base < 0) {
             continue;
         }
-        for (int k = 0; k < Abi_x86_64_SysV_Eightbytes(arg->an_type); k++) {
+        for (int32_t k = 0; k < Abi_x86_64_SysV_Eightbytes(arg->an_type); k++) {
             Gen_x86_64_EmitPop(Gen_x86_64_ArgReg[base + k]);
         }
     }
@@ -507,10 +507,10 @@ void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden)
 // Emit a call.
 void Gen_x86_64_EmitCall(Ast_Node *node)
 {
-    int nHidden = Abi_x86_64_SysV_ReturnsInMemory(node->an_type) ? 1 : 0;
-    int nStack = Gen_x86_64_CallStackSlots(node->an_args, nHidden);
+    int32_t nHidden = Abi_x86_64_SysV_ReturnsInMemory(node->an_type) ? 1 : 0;
+    int32_t nStack = Gen_x86_64_CallStackSlots(node->an_args, nHidden);
 
-    int nAlignPad = (Gen_x86_64_Depth + nStack) % (STACK_ALIGN / WORD_SIZE);
+    int32_t nAlignPad = (Gen_x86_64_Depth + nStack) % (STACK_ALIGN / WORD_SIZE);
     if (nAlignPad) {
         Asm_x86_64_EmitSubImm(WORD_SIZE, ASM_X86_64_REG_RSP);
         Gen_x86_64_Depth++;
@@ -543,7 +543,7 @@ void Gen_x86_64_EmitCall(Ast_Node *node)
     }
 
     if (Sem_IsAggregate(node->an_type) && ! nHidden) {
-        int slots = Abi_x86_64_SysV_Eightbytes(node->an_type);
+        int32_t slots = Abi_x86_64_SysV_Eightbytes(node->an_type);
         Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_WIDTH_64);
         if (slots > 1) {
             Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RDX, ASM_X86_64_REG_RBP, node->an_tmp + WORD_SIZE, ASM_X86_64_WIDTH_64);
@@ -583,7 +583,7 @@ void Gen_x86_64_EmitShift(Ast_TypeSign sign, Asm_x86_64_Reg reg)
 }
 
 // Apply a compound assignment's operation to %rax and %rcx into %rax.
-void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, int line)
+void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, Ast_Line line)
 {
     Ast_TypeSign sign = type->at_sign;
 
@@ -712,7 +712,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             }
         } break;
         case AST_NODE_KIND_COND: {
-            int count = Gen_x86_64_Count();
+            int32_t count = Gen_x86_64_Count();
             Gen_x86_64_EmitExpr(node->an_cond);
             Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
             Asm_x86_64_EmitJe(".L.else.%d", count);
@@ -756,7 +756,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
         } break;
         case AST_NODE_KIND_AND: {
-            int count = Gen_x86_64_Count();
+            int32_t count = Gen_x86_64_Count();
             Gen_x86_64_EmitExpr(node->an_lhs);
             Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
             Asm_x86_64_EmitJe(".L.false.%d", count);
@@ -770,7 +770,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Asm_x86_64_EmitLabel(".L.end.%d", count);
         } break;
         case AST_NODE_KIND_OR: {
-            int count = Gen_x86_64_Count();
+            int32_t count = Gen_x86_64_Count();
             Gen_x86_64_EmitExpr(node->an_lhs);
             Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
             Asm_x86_64_EmitJne(".L.true.%d", count);
@@ -884,7 +884,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Asm_x86_64_EmitJmp(".L.return.%s", Gen_x86_64_CurrFunc->af_name);
         } break;
         case AST_NODE_KIND_IF: {
-            int count = Gen_x86_64_Count();
+            int32_t count = Gen_x86_64_Count();
             Gen_x86_64_EmitExpr(node->an_cond);
             Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
             Asm_x86_64_EmitJe(".L.else.%d", count);
@@ -897,9 +897,9 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Asm_x86_64_EmitLabel(".L.endif.%d", count);
         } break;
         case AST_NODE_KIND_FOR: {
-            int count = Gen_x86_64_Count();
-            int brk = Gen_x86_64_BreakId;
-            int cnt = Gen_x86_64_ContinueId;
+            int32_t count = Gen_x86_64_Count();
+            int32_t brk = Gen_x86_64_BreakId;
+            int32_t cnt = Gen_x86_64_ContinueId;
             Gen_x86_64_BreakId = Gen_x86_64_ContinueId = count;
 
             if (node->an_init) {
@@ -923,9 +923,9 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Gen_x86_64_ContinueId = cnt;
         } break;
         case AST_NODE_KIND_DO: {
-            int count = Gen_x86_64_Count();
-            int brk = Gen_x86_64_BreakId;
-            int cnt = Gen_x86_64_ContinueId;
+            int32_t count = Gen_x86_64_Count();
+            int32_t brk = Gen_x86_64_BreakId;
+            int32_t cnt = Gen_x86_64_ContinueId;
             Gen_x86_64_BreakId = Gen_x86_64_ContinueId = count;
 
             Asm_x86_64_EmitLabel(".L.begin.%d", count);
@@ -940,8 +940,8 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Gen_x86_64_ContinueId = cnt;
         } break;
         case AST_NODE_KIND_SWITCH: {
-            int count = Gen_x86_64_Count();
-            int brk = Gen_x86_64_BreakId;
+            int32_t count = Gen_x86_64_Count();
+            int32_t brk = Gen_x86_64_BreakId;
             Gen_x86_64_BreakId = count;
 
             Gen_x86_64_EmitExpr(node->an_cond);
@@ -1000,7 +1000,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
         case AST_NODE_KIND_ZERO: {
             Gen_x86_64_EmitAddr(node->an_lhs);
             Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
-            Gen_x86_64_EmitZero((int) node->an_val);
+            Gen_x86_64_EmitZero((int32_t) node->an_val);
         } break;
         case AST_NODE_KIND_NOP: {
             // empty
@@ -1012,7 +1012,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
 }
 
 // Give every call that returns an aggregate a frame slot to land the result in.
-void Gen_x86_64_AssignCallTemps(Ast_Node *node, int *offset)
+void Gen_x86_64_AssignCallTemps(Ast_Node *node, int32_t *offset)
 {
     if (! node) {
         return;
@@ -1041,7 +1041,7 @@ void Gen_x86_64_AssignCallTemps(Ast_Node *node, int *offset)
 // Assign each local a stack slot and record the frame size.
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
 {
-    int offset = func->af_variadic ? VA_SAVE_SIZE : 0;
+    int32_t offset = func->af_variadic == AST_TYPE_VARIADIC ? VA_SAVE_SIZE : 0;
 
     if (Abi_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
         offset += WORD_SIZE;
@@ -1062,24 +1062,24 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
 // Emit the .rodata section holding all string literals.
 void Gen_x86_64_EmitDataSection(void)
 {
-    int count = Ast_StringCount();
+    size_t count = Ast_StringCount();
     if (count == 0) {
         return;
     }
     Asm_x86_64_EmitSection(".rodata", ELF_SHT_PROGBITS, ELF_SHF_ALLOC);
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         Ast_Str *str = Ast_StringAt(i);
-        Asm_x86_64_EmitLabel(".Lstr%d", i);
-        Asm_x86_64_EmitBytes(str->as_data, (int) (str->as_len + str->as_width));
+        Asm_x86_64_EmitLabel(".Lstr%zu", i);
+        Asm_x86_64_EmitBytes(str->as_data, str->as_len + str->as_width);
     }
 }
 
 // Write one flattened initializer into a global's image.
-void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int *naddrs)
+void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int32_t *naddrs)
 {
-    int size = item->an_type->at_size;
-    int offset = (int) item->an_val;
-    long val = 0;
+    int32_t size = item->an_type->at_size;
+    int32_t offset = (int32_t) item->an_val;
+    int64_t val = 0;
     const char *symbol = NULL;
 
     if (offset + size > var->av_type->at_size) {
@@ -1100,11 +1100,11 @@ void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const A
     }
 
     if (item->an_member) {
-        long mask = ((1L << item->an_member->am_bits) - 1) << item->an_member->am_bitoff;
+        int64_t mask = (((int64_t) 1 << item->an_member->am_bits) - 1) << item->an_member->am_bitoff;
         val = (val << item->an_member->am_bitoff) & mask;
     }
-    for (int i = 0; i < size; i++) {
-        unsigned char byte = (val >> (i * ASM_X86_64_BITS_PER_BYTE)) & GEN_X86_64_BYTE_MASK;
+    for (int32_t i = 0; i < size; i++) {
+        uint8_t byte = (val >> (i * ASM_X86_64_BITS_PER_BYTE)) & GEN_X86_64_BYTE_MASK;
         if (item->an_member) {
             bytes[offset + i] |= byte;
         } else {
@@ -1114,11 +1114,11 @@ void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const A
 }
 
 // Emit an image as runs of bytes broken by the addresses the linker fills in.
-void Gen_x86_64_EmitImage(const unsigned char *bytes, int size, const Gen_x86_64_Addr *addrs, int naddrs)
+void Gen_x86_64_EmitImage(const uint8_t *bytes, int32_t size, const Gen_x86_64_Addr *addrs, int32_t naddrs)
 {
-    int at = 0;
+    int32_t at = 0;
 
-    for (int i = 0; i < naddrs; i++) {
+    for (int32_t i = 0; i < naddrs; i++) {
         if (addrs[i].ga_offset > at) {
             Asm_x86_64_EmitBytes(bytes + at, addrs[i].ga_offset - at);
         }
@@ -1133,15 +1133,15 @@ void Gen_x86_64_EmitImage(const unsigned char *bytes, int size, const Gen_x86_64
 // Emit one global into .data.
 void Gen_x86_64_EmitGlobal(Ast_Var *var)
 {
-    int size = var->av_type->at_size;
-    int naddrs = 0;
+    int32_t size = var->av_type->at_size;
+    int32_t naddrs = 0;
     Gen_x86_64_Addr addrs[GEN_X86_64_MAX_ADDRS];
 
     if (var->av_storage == AST_STORAGE_EXTERN) {
         return;
     }
 
-    unsigned char *bytes = calloc(size ? size : 1, 1);
+    uint8_t *bytes = calloc(size ? size : 1, 1);
     for (Ast_Node *item = var->av_init; item; item = item->an_next) {
         Gen_x86_64_EmitConstant(bytes, item, var, addrs, &naddrs);
     }
@@ -1190,12 +1190,12 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
             Asm_x86_64_EmitSubImm(func->af_stack_size, ASM_X86_64_REG_RSP);
         }
 
-        if (func->af_variadic) {
+        if (func->af_variadic == AST_TYPE_VARIADIC) {
             Gen_x86_64_EmitVaSaveArea();
         }
 
-        int reg = 0;
-        int stack = 0;
+        int32_t reg = 0;
+        int32_t stack = 0;
         if (Abi_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
             Asm_x86_64_EmitMovStore(Gen_x86_64_ArgReg[reg++], ASM_X86_64_REG_RBP, Gen_x86_64_RetPtrOffset, ASM_X86_64_WIDTH_64);
         }

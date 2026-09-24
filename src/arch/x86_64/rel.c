@@ -16,10 +16,10 @@ uint64_t Rel_x86_64_SymbolAddr(const Elf_Sym *sym)
 }
 
 // Patch width little-endian bytes at a section offset with value.
-void Rel_x86_64_PatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, int width)
+void Rel_x86_64_PatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width)
 {
     uint8_t *at = Elf_Buffer_At(Elf_Section_Data(sec), offset);
-    for (int i = 0; i < width; i++) {
+    for (size_t i = 0; i < width; i++) {
         at[i] = (value >> (8 * i)) & 0xFF;
     }
 }

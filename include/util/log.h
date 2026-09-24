@@ -19,7 +19,7 @@
 // Print a diagnostic naming the source line it came from and exit.
 #define Log_ShowErrorAt(line, ...)                             \
     do {                                                       \
-        File_Print(File_Err(), "cc: error: line %d: ", (line)); \
+        File_Print(File_Err(), "cc: error: line %u: ", (line)); \
         File_Print(File_Err(), __VA_ARGS__);                   \
         File_Print(File_Err(), "\n");                          \
         exit(1);                                               \

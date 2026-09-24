@@ -12,7 +12,7 @@
 #include "c.tab.h"
 
 /* Stamp every token with the line it starts on. */
-#define YY_USER_ACTION  yylloc = yylineno;
+#define YY_USER_ACTION  yylloc = (Ast_Line) yylineno;
 
 %}
 
@@ -72,12 +72,12 @@ ISUFFIX ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
 0[0-7]*{ISUFFIX}?            { yylval.num = Par_NumLiteral(yytext); return NUM; }
 [1-9]{DIGIT}*{ISUFFIX}?      { yylval.num = Par_NumLiteral(yytext); return NUM; }
 
-L?\"([^"\\\n]|\\.)*\"   { int wide = yytext[0] == 'L';
+L?\"([^"\\\n]|\\.)*\"   { bool wide = yytext[0] == 'L';
                           Ast_Str *str = &yylval.str;
                           str->as_width = wide ? AST_TYPE_SIZE_INT : STR_NARROW_WIDTH;
                           str->as_data = Str_Unescape(yytext + wide + 1, yyleng - wide - 2, str->as_width, &str->as_len);
                           return STR; }
-L?'([^'\\\n]|\\.)+'     { int wide = yytext[0] == 'L';
+L?'([^'\\\n]|\\.)+'     { bool wide = yytext[0] == 'L';
                           yylval.num = Par_CharLiteral(yytext + wide + 1, yyleng - wide - 2, wide ? AST_TYPE_SIZE_INT : STR_NARROW_WIDTH);
                           return NUM; }
 
@@ -130,6 +130,6 @@ L?'([^'\\\n]|\\.)+'     { int wide = yytext[0] == 'L';
 ","                     return COMMA;
 "."                     return DOT;
 
-.                       { Log_ShowErrorAt(yylineno, "lexer: unexpected character '%s'", yytext); }
+.                       { Log_ShowErrorAt((Ast_Line) yylineno, "lexer: unexpected character '%s'", yytext); }
 
 %%

@@ -11,17 +11,17 @@ static File_Stream File_OutStream;
 static File_Stream File_ErrStream;
 
 // Read the whole file at path.
-char *File_GetContents(const char *path, long *len)
+char *File_GetContents(const char *path, size_t *len)
 {
     File_Stream *file = File_Open(path, "rb");
     if (! file) {
         return NULL;
     }
 
-    long size = File_Size(file);
+    size_t size = File_Size(file);
     char *buf = malloc(size + 1);
 
-    if (File_GetBytes(file, buf, (size_t) size) != (size_t) size) {
+    if (File_GetBytes(file, buf, size) != size) {
         Str_Free(buf);
         File_Close(file);
         return NULL;
@@ -36,15 +36,15 @@ char *File_GetContents(const char *path, long *len)
 }
 
 // Write len bytes to path, replacing it.
-int File_PutContents(const char *path, const void *data, long len)
+bool File_PutContents(const char *path, const void *data, size_t len)
 {
     File_Stream *file = File_Open(path, "wb");
     if (! file) {
-        return -1;
+        return false;
     }
-    int ok = fwrite(data, 1, len, file->fs_file) == (size_t) len;
+    bool ok = fwrite(data, 1, len, file->fs_file) == len;
     File_Close(file);
-    return ok ? 0 : -1;
+    return ok;
 }
 
 // Open path, or return NULL where it cannot be opened.
@@ -58,7 +58,7 @@ File_Stream *File_Open(const char *path, const char *mode)
     File_Stream *file = malloc(sizeof(*file));
 
     file->fs_file = raw;
-    file->fs_owned = 1;
+    file->fs_owned = true;
     return file;
 }
 
@@ -77,12 +77,12 @@ File_Stream *File_Err(void)
 }
 
 // Return the number of bytes in an open stream.
-long File_Size(File_Stream *file)
+size_t File_Size(File_Stream *file)
 {
     fseek(file->fs_file, 0, SEEK_END);
     long size = ftell(file->fs_file);
     fseek(file->fs_file, 0, SEEK_SET);
-    return size;
+    return (size_t) size;
 }
 
 // Push whatever a stream is still holding.
@@ -109,7 +109,7 @@ size_t File_GetBytes(File_Stream *file, void *data, size_t len)
 }
 
 // Write one byte.
-void File_PutByte(File_Stream *file, int byte)
+void File_PutByte(File_Stream *file, uint8_t byte)
 {
     fputc(byte, file->fs_file);
 }
