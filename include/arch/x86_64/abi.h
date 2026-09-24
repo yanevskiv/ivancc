@@ -25,7 +25,8 @@ typedef enum Abi_x86_64_SysV_Class Abi_x86_64_SysV_Class;
 enum Abi_x86_64_SysV_Class {
     ABI_X86_64_SYSV_CLASS_INTEGER, // a general-purpose register carries it
     ABI_X86_64_SYSV_CLASS_SSE,     // an SSE register carries it; no type reaches this yet
-    ABI_X86_64_SYSV_CLASS_MEMORY   // the stack carries it, or a hidden pointer returns it
+    ABI_X86_64_SYSV_CLASS_MEMORY,  // the stack carries it, or a hidden pointer returns it
+    ABI_X86_64_SYSV_CLASS_COUNT    // number of classes
 };
 
 // Classification
