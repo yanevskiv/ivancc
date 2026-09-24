@@ -5,8 +5,8 @@
 
 #include "syntax/ast.h"
 
-// Bits in the unsigned long a literal's value is read into.
-#define PAR_LONG_BITS 64
+// Bits in the value a literal is read into.
+#define PAR_VALUE_BITS 64
 
 // What an array declarator's brackets carry besides a length.
 typedef enum Par_ArrayDecor Par_ArrayDecor;
@@ -40,10 +40,17 @@ enum Par_DerivKind {
     PAR_DERIV_COUNT // number of kinds
 };
 
+// Whether an initializer list was written with its own braces.
+typedef enum Par_List Par_List;
+enum Par_List {
+    PAR_LIST_UNBRACED,
+    PAR_LIST_BRACED
+};
+
 // An integer literal.
 typedef struct Par_Num Par_Num;
 struct Par_Num {
-    long      pn_val;
+    int64_t   pn_val;
     Ast_Type *pn_type;
 };
 
@@ -58,11 +65,11 @@ struct Par_Specs {
 // A parameter list as the grammar collects it.
 typedef struct Par_ParamList Par_ParamList;
 struct Par_ParamList {
-    Ast_Var *pl_head;
-    Ast_Var *pl_tail;
-    int      pl_count;
-    int      pl_variadic; // the list ended in `...`
-    int      pl_proto;    // false for `()`
+    Ast_Var          *pl_head;
+    Ast_Var          *pl_tail;
+    int32_t           pl_count;
+    Ast_TypeVariadic  pl_variadic; // the list ended in `...`
+    Ast_TypeProto     pl_proto;    // written `()`
 };
 
 // One derivation and the operands its kind needs.
@@ -70,11 +77,11 @@ typedef struct Par_Deriv Par_Deriv;
 struct Par_Deriv {
     Par_Deriv     *pd_next;
     Par_DerivKind  pd_kind;
-    long           pd_len;    // element count of an ARRAY
-    int            pd_empty;  // the ARRAY was written `[]`
+    int64_t        pd_len;    // element count of an ARRAY
+    bool           pd_empty;  // the ARRAY was written `[]`
     Par_ArrayDecor pd_decor;  // what the ARRAY's brackets carried besides a length
     Par_ParamList  pd_params; // parameter list of a FUNCTION
-    int            pd_line;
+    Ast_Line       pd_line;
 };
 
 // A declarator.
@@ -85,7 +92,7 @@ struct Par_Decl {
     Par_Deriv *pc_tail;
     Par_Decl  *pc_next;     // next declarator of a comma-separated member declaration
     Ast_Node  *pc_bits;     // width of a bit-field, or NULL
-    int        pc_line;
+    Ast_Line   pc_line;
 };
 
 // Shared declaration state
@@ -98,17 +105,17 @@ void  Par_PushParam(Par_ParamList *list, Ast_Var *var);
 
 // Declarators
 Par_Decl  *Par_NewDecl(char *name);
-void       Par_NeedName(Par_Decl *decl, int line);
-Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line);
+void       Par_NeedName(Par_Decl *decl, Ast_Line line);
+Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, Ast_Line line);
 Ast_Type  *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv);
 Ast_Type  *Par_ApplyDecl(Ast_Type *base, Par_Decl *decl);
 Ast_Type  *Par_AdjustParam(Ast_Type *type);
-void       Par_TakeArrayDecor(Par_Decl *decl, int line);
-Ast_Var   *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line);
-Ast_Var   *Par_MakeKnrParam(char *name, int line);
-void       Par_SetKnrParam(Par_Decl *decl, int line);
+void       Par_TakeArrayDecor(Par_Decl *decl, Ast_Line line);
+Ast_Var   *Par_MakeParam(Ast_Type *base, Par_Decl *decl, Ast_Line line);
+Ast_Var   *Par_MakeKnrParam(char *name, Ast_Line line);
+void       Par_SetKnrParam(Par_Decl *decl, Ast_Line line);
 void       Par_CheckKnrParams(void);
-Ast_Var   *Par_MakeAnonParam(Ast_Type *type, int line);
+Ast_Var   *Par_MakeAnonParam(Ast_Type *type, Ast_Line line);
 
 // Literals
 Par_Num Par_NumLiteral(const char *text);
@@ -118,54 +125,54 @@ Ast_Str Par_ConcatStrings(Ast_Str left, Ast_Str right);
 
 // Types
 void      Par_ClearSpecs(Par_Specs *specs);
-Par_Spec  Par_AddSpec(Par_Spec specs, Par_Spec spec, int line);
-void      Par_TakeSpec(Par_Specs *into, const Par_Specs *one, int line);
-Ast_Type *Par_SpecType(Par_Spec specs, int line);
-Ast_Type *Par_SpecsType(const Par_Specs *specs, int line);
+Par_Spec  Par_AddSpec(Par_Spec specs, Par_Spec spec, Ast_Line line);
+void      Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line);
+Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line);
+Ast_Type *Par_SpecsType(const Par_Specs *specs, Ast_Line line);
 Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims);
 Ast_Type *Par_VaListType(void);
-Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, int line);
+Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line);
 
 // Aggregates
 Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail);
-void        Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line);
+void        Par_AddBitfield(Ast_Member *member, Ast_Node *width, Ast_Line line);
 Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls);
-Ast_Type   *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, int line);
-Ast_Type   *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, int line);
-void        Par_AddEnumConst(const char *name, Ast_Node *value, int line);
+Ast_Type   *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line);
+Ast_Type   *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line);
+void        Par_AddEnumConst(const char *name, Ast_Node *value, Ast_Line line);
 
 // Initializers
-Ast_Node *Par_InitStore(Ast_Var *var, int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line);
-Ast_Node *Par_InitAt(int off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, int line);
-void      Par_Designate(Ast_Type *type, Ast_Node *desig, int *index, Ast_Member **member, int line);
-void      Par_Step(Ast_Type **type, int *off, Ast_Node *desig, int index, Ast_Member *member);
+Ast_Node *Par_InitStore(Ast_Var *var, int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line);
+Ast_Node *Par_InitAt(int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line);
+void      Par_Designate(Ast_Type *type, Ast_Node *desig, int32_t *index, Ast_Member **member, Ast_Line line);
+void      Par_Step(Ast_Type **type, int32_t *off, Ast_Node *desig, int32_t index, Ast_Member *member);
 Ast_Type *Par_ExprType(Ast_Node *node);
-void      Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, int line);
-void      Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail, int braced, int line);
-void      Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line);
-Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, int line);
-Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, int line);
-Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, int line);
-Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line);
+void      Par_FlattenSlot(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, Ast_Line line);
+void      Par_FlattenList(Ast_Type *type, int32_t base, Ast_Node **item, Ast_Node **tail, Par_List braced, Ast_Line line);
+void      Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, Ast_Line line);
+Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, Ast_Line line);
+Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, Ast_Line line);
+Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line);
+Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line);
 
 // Declarations
-void      Par_CheckComplete(const char *name, Ast_Type *type, int line);
-void      Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, int line);
-Ast_Var  *Par_DeclareLocal(const char *name, Ast_Type *type, int line);
-Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, int line);
+void      Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line);
+void      Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_Line line);
+Ast_Var  *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line);
+Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 
 // Functions
 Ast_Func *Par_FindFunction(const char *name);
 void      Par_AddFunction(Ast_Func *fn);
 void      Par_DeclarePrototype(const char *name, Ast_Type *type);
 Ast_Func *Par_MakeFunction(Ast_Node *body);
-void      Par_BeginExternal(Par_Decl *decl, int line);
-void      Par_EndExternal(Ast_Node *init, int line);
+void      Par_BeginExternal(Par_Decl *decl, Ast_Line line);
+void      Par_EndExternal(Ast_Node *init, Ast_Line line);
 void      Par_EndFunction(Ast_Node *body);
-void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, int line);
+void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 
 // Expressions
-Ast_Node *Par_Designator(char *name, int line);
-Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, int line);
+Ast_Node *Par_Designator(char *name, Ast_Line line);
+Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line);
 
 #endif // PAR_H

@@ -16,20 +16,20 @@ Abi_x86_64_SysV_Class Abi_x86_64_SysV_Classify(const Ast_Type *type)
 }
 
 // Return the number of registers or stack slots a type occupies when passed.
-int Abi_x86_64_SysV_Eightbytes(const Ast_Type *type)
+int32_t Abi_x86_64_SysV_Eightbytes(const Ast_Type *type)
 {
-    int size = Sem_IsAggregate(type) ? type->at_size : ABI_X86_64_SYSV_EIGHTBYTE;
+    int32_t size = Sem_IsAggregate(type) ? type->at_size : ABI_X86_64_SYSV_EIGHTBYTE;
     return (size + ABI_X86_64_SYSV_EIGHTBYTE - 1) / ABI_X86_64_SYSV_EIGHTBYTE;
 }
 
 // True when an argument of this type is passed on the stack.
-int Abi_x86_64_SysV_InMemory(const Ast_Type *type)
+bool Abi_x86_64_SysV_InMemory(const Ast_Type *type)
 {
     return Abi_x86_64_SysV_Classify(type) == ABI_X86_64_SYSV_CLASS_MEMORY;
 }
 
 // True when this type is returned through a hidden pointer.
-int Abi_x86_64_SysV_ReturnsInMemory(const Ast_Type *type)
+bool Abi_x86_64_SysV_ReturnsInMemory(const Ast_Type *type)
 {
     return type && Sem_IsAggregate(type) && type->at_size > ABI_X86_64_SYSV_MAX_REG_SIZE;
 }

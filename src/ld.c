@@ -1,5 +1,6 @@
 // C source file for the ivanld linker.
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -62,14 +63,14 @@ int main(int argc, char **argv)
     size_t nobjs = 0;
     const char **objs = calloc(argc, sizeof(*objs));
 
-    for (int i = 1; i < argc; i++) {
+    for (int32_t i = 1; i < argc; i++) {
         const char *arg = argv[i];
         if (strcmp(arg, "-o") == 0 && i + 1 < argc) {
             output = argv[++i];
         } else if (strcmp(arg, "-e") == 0 && i + 1 < argc) {
             opts.lo_entry = argv[++i];
         } else if (strcmp(arg, "-r") == 0) {
-            opts.lo_relocatable = 1;
+            opts.lo_relocatable = true;
         } else if (strncmp(arg, "-place=", 7) == 0) {
             Ld_ParsePlace(arg + 7, &opts);
         } else if (arg[0] == '-') {
@@ -84,7 +85,7 @@ int main(int argc, char **argv)
     }
 
     Elf *e = Elf_Link_Run((const char *const *) objs, nobjs, &opts);
-    if (Elf_Write_Path(e, output) != 0) {
+    if (! Elf_Write_Path(e, output)) {
         File_ShowError(output);
         return 1;
     }

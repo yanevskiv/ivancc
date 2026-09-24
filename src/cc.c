@@ -2,6 +2,7 @@
 
 #include <getopt.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -164,24 +165,24 @@ int main(int argc, char **argv)
     const char *arch = DEFAULT_ARCH;
     const char *target = DEFAULT_TARGET;
     const char *prefix = NULL;
-    int emit_text = 0;
-    int emit_obj = 0;
+    bool emit_text = false;
+    bool emit_obj = false;
 
     static struct option longopts[] = {
         { 0, 0, 0, 0 }
     };
 
-    int opt;
+    int32_t opt;
     while ((opt = getopt_long(argc, argv, "o:cESgB:I:D:U:l:L:W:f:m:O::", longopts, NULL)) != -1) {
         switch (opt) {
             case 'o': {
                 output = optarg;
             } break;
             case 'S': {
-                emit_text = 1;
+                emit_text = true;
             } break;
             case 'c': {
-                emit_obj = 1;
+                emit_obj = true;
             } break;
             case 'B': {
                 prefix = optarg;
@@ -228,7 +229,7 @@ int main(int argc, char **argv)
         }
     }
 
-    int result = 0;
+    int32_t result = 0;
 
     // Front end: build the AST
     yyin = fopen(input, "r");

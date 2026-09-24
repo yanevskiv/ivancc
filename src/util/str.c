@@ -11,7 +11,7 @@
 // Return an owned copy of str.
 char *Str_Clone(const char *str)
 {
-    return str ? Str_Slice(str, 0, (int) strlen(str)) : NULL;
+    return str ? Str_Slice(str, 0, strlen(str)) : NULL;
 }
 
 // Return an owned copy of the bytes of str from start up to end.
@@ -47,7 +47,7 @@ char *Str_FormatVa(const char *fmt, va_list ap)
     va_list ap2;
     va_copy(ap2, ap);
 
-    int len = vsnprintf(NULL, 0, fmt, ap);
+    size_t len = (size_t) vsnprintf(NULL, 0, fmt, ap);
     char *out = malloc(len + 1);
     vsnprintf(out, len + 1, fmt, ap2);
     va_end(ap2);
@@ -73,13 +73,13 @@ char *Str_ChangeOrAppendExt(const char *input, const char *suffix)
 }
 
 // Test whether two strings are equal.
-int Str_Equals(const char *a, const char *b)
+bool Str_Equals(const char *a, const char *b)
 {
     return strcmp(a, b) == 0;
 }
 
 // Test whether str begins with prefix.
-int Str_StartsWith(const char *str, const char *prefix)
+bool Str_StartsWith(const char *str, const char *prefix)
 {
     return strncmp(str, prefix, strlen(prefix)) == 0;
 }
@@ -139,7 +139,7 @@ void Str_ListFree(Str_List *list)
 }
 
 // Return the value of a digit, or -1 when it is not one.
-int Str_DigitValue(char c)
+int32_t Str_DigitValue(char c)
 {
     if (c >= '0' && c <= '9') {
         return c - '0';
@@ -154,34 +154,34 @@ int Str_DigitValue(char c)
 }
 
 // Scan up to count digits of the given base, advancing the position.
-unsigned long Str_ScanDigits(const char *p, size_t len, size_t *pos, int base, size_t count)
+uint64_t Str_ScanDigits(const char *p, size_t len, size_t *pos, Str_Base base, size_t count)
 {
-    unsigned long value = 0;
+    uint64_t value = 0;
 
     for (size_t n = 0; n < count && *pos < len; n++) {
-        int digit = Str_DigitValue(p[*pos]);
-        if (digit < 0 || digit >= base) {
+        int32_t digit = Str_DigitValue(p[*pos]);
+        if (digit < 0 || digit >= (int32_t) base) {
             break;
         }
-        value = value * base + digit;
+        value = value * (uint64_t) base + (uint64_t) digit;
         (*pos)++;
     }
     return value;
 }
 
 // Read one little-endian element of width bytes.
-unsigned long Str_GetValue(const char *p, size_t width)
+uint64_t Str_GetValue(const char *p, size_t width)
 {
-    unsigned long value = 0;
+    uint64_t value = 0;
 
     for (size_t i = 0; i < width; i++) {
-        value |= (unsigned long) (unsigned char) p[i] << (i * STR_BITS_PER_BYTE);
+        value |= (uint64_t) (uint8_t) p[i] << (i * STR_BITS_PER_BYTE);
     }
     return value;
 }
 
 // Append one little-endian element of width bytes holding value.
-void Str_PutValue(char *buf, size_t *len, size_t width, unsigned long value)
+void Str_PutValue(char *buf, size_t *len, size_t width, uint64_t value)
 {
     for (size_t i = 0; i < width; i++) {
         buf[(*len)++] = (char) (value >> (i * STR_BITS_PER_BYTE));
@@ -189,9 +189,9 @@ void Str_PutValue(char *buf, size_t *len, size_t width, unsigned long value)
 }
 
 // Append the element an escape sequence stands for.
-void Str_PutEscape(char *buf, size_t *len, size_t width, unsigned long value)
+void Str_PutEscape(char *buf, size_t *len, size_t width, uint64_t value)
 {
-    unsigned long room = ~0UL >> (STR_LONG_BITS - width * STR_BITS_PER_BYTE);
+    uint64_t room = ~(uint64_t) 0 >> (STR_VALUE_BITS - width * STR_BITS_PER_BYTE);
 
     if (value > room) {
         Log_ShowError("escape sequence out of range for a %zu-byte character", width);
@@ -200,7 +200,7 @@ void Str_PutEscape(char *buf, size_t *len, size_t width, unsigned long value)
 }
 
 // Append a code point as its UTF-8 bytes.
-void Str_PutUtf8(char *buf, size_t *len, unsigned long value)
+void Str_PutUtf8(char *buf, size_t *len, uint64_t value)
 {
     if (value < STR_UTF8_MAX_ONE) {
         Str_PutValue(buf, len, STR_NARROW_WIDTH, value);
@@ -215,10 +215,10 @@ void Str_PutUtf8(char *buf, size_t *len, unsigned long value)
         n = STR_UTF8_LEN_THREE;
     }
 
-    unsigned long lead = (STR_BYTE_MASK << (STR_BITS_PER_BYTE - n)) & STR_BYTE_MASK;
+    uint64_t lead = (STR_BYTE_MASK << (STR_BITS_PER_BYTE - n)) & STR_BYTE_MASK;
 
     Str_PutValue(buf, len, STR_NARROW_WIDTH, lead | (value >> ((n - 1) * STR_UTF8_SHIFT)));
-    for (int k = n - 1; k > 0; k--) {
+    for (size_t k = n - 1; k > 0; k--) {
         Str_PutValue(buf, len, STR_NARROW_WIDTH, STR_UTF8_CONT | ((value >> ((k - 1) * STR_UTF8_SHIFT)) & STR_UTF8_MASK));
     }
 }
@@ -234,7 +234,7 @@ char *Str_Unescape(const char *p, size_t len, size_t width, size_t *out_len)
             break;
         }
         if (p[i] != '\\' || i + 1 == len) {
-            Str_PutValue(buf, &n, width, (unsigned char) p[i]);
+            Str_PutValue(buf, &n, width, (uint8_t) p[i]);
             continue;
         }
 
@@ -287,7 +287,7 @@ char *Str_Unescape(const char *p, size_t len, size_t width, size_t *out_len)
             } break;
             case 'x': {
                 size_t start = pos;
-                unsigned long value = Str_ScanDigits(p, len, &pos, STR_BASE_HEX, STR_MAX_HEX_DIGITS);
+                uint64_t value = Str_ScanDigits(p, len, &pos, STR_BASE_HEX, STR_MAX_HEX_DIGITS);
                 if (pos == start) {
                     Log_ShowError("\\x used with no following hex digits");
                 }
@@ -297,7 +297,7 @@ char *Str_Unescape(const char *p, size_t len, size_t width, size_t *out_len)
             case 'U': {
                 size_t count = p[i + 1] == 'u' ? STR_UCN_SHORT_DIGITS : STR_UCN_LONG_DIGITS;
                 size_t start = pos;
-                unsigned long value = Str_ScanDigits(p, len, &pos, STR_BASE_HEX, count);
+                uint64_t value = Str_ScanDigits(p, len, &pos, STR_BASE_HEX, count);
                 if (pos - start != count) {
                     Log_ShowError("incomplete universal character name");
                 }

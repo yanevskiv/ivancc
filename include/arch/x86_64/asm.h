@@ -110,8 +110,8 @@ typedef struct Asm_x86_64_Operand Asm_x86_64_Operand;
 struct Asm_x86_64_Operand {
     Asm_x86_64_OperandKind ao_kind;
     Asm_x86_64_Reg         ao_reg;    // REG, or base of MEM
-    long                   ao_imm;    // IMM
-    int                    ao_disp;   // MEM displacement
+    int64_t                ao_imm;    // IMM
+    int32_t                ao_disp;   // MEM displacement
     const char            *ao_label;  // RIP / LABEL
     Asm_x86_64_Width       ao_width;  // REG width, as ASM_X86_64_WIDTH_*
 };
@@ -124,21 +124,21 @@ struct Asm_x86_64_Item {
     Asm_x86_64_Op        ai_op;       // INSTR
     Asm_x86_64_Operand   ai_dst;      // INSTR
     Asm_x86_64_Operand   ai_src;      // INSTR
-    const char   *ai_label;    // LABEL / GLOBL
-    const char   *ai_text;     // DIRECTIVE
-    const char   *ai_secname;  // SECTION
-    uint32_t      ai_sectype;  // SECTION
-    uint64_t      ai_secflags; // SECTION
-    unsigned char *ai_bytes;   // BYTES
-    int           ai_nbytes;   // BYTES
+    const char          *ai_label;    // LABEL / GLOBL
+    const char          *ai_text;     // DIRECTIVE
+    const char          *ai_secname;  // SECTION
+    uint32_t             ai_sectype;  // SECTION
+    uint64_t             ai_secflags; // SECTION
+    uint8_t             *ai_bytes;    // BYTES
+    size_t               ai_nbytes;   // BYTES
 };
 
 // Operand constructors
 Asm_x86_64_Operand Asm_x86_64_Reg64(Asm_x86_64_Reg reg);
 Asm_x86_64_Operand Asm_x86_64_Reg8(Asm_x86_64_Reg reg);
 Asm_x86_64_Operand Asm_x86_64_RegWidth(Asm_x86_64_Reg reg, Asm_x86_64_Width width);
-Asm_x86_64_Operand Asm_x86_64_Imm(long val);
-Asm_x86_64_Operand Asm_x86_64_Mem(Asm_x86_64_Reg base, int disp);
+Asm_x86_64_Operand Asm_x86_64_Imm(int64_t val);
+Asm_x86_64_Operand Asm_x86_64_Mem(Asm_x86_64_Reg base, int32_t disp);
 Asm_x86_64_Operand Asm_x86_64_Rip(const char *label);
 Asm_x86_64_Operand Asm_x86_64_Target(const char *label);
 
@@ -151,7 +151,7 @@ Asm_x86_64_Item *Asm_x86_64_Items(void);
 void Asm_x86_64_EmitLabel(const char *name, ...);
 void Asm_x86_64_EmitSection(const char *name, uint32_t type, uint64_t flags);
 void Asm_x86_64_EmitGlobl(const char *name, ...);
-void Asm_x86_64_EmitBytes(const void *data, int len);
+void Asm_x86_64_EmitBytes(const void *data, size_t len);
 void Asm_x86_64_EmitAddress(const char *label);
 void Asm_x86_64_EmitDirective(const char *text, ...);
 
@@ -189,17 +189,17 @@ void Asm_x86_64_EmitSetb(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitSetbe(Asm_x86_64_Reg reg);
 
 // Immediate operands
-void Asm_x86_64_EmitCmpImm(long imm, Asm_x86_64_Reg dst);
-void Asm_x86_64_EmitMovImm(long imm, Asm_x86_64_Reg dst);
-void Asm_x86_64_EmitMovImm8(long imm, Asm_x86_64_Reg dst);
-void Asm_x86_64_EmitAddImm(long imm, Asm_x86_64_Reg dst);
-void Asm_x86_64_EmitSubImm(long imm, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitCmpImm(int64_t imm, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitMovImm(int64_t imm, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitMovImm8(int64_t imm, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitAddImm(int64_t imm, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitSubImm(int64_t imm, Asm_x86_64_Reg dst);
 
 // Memory loads, stores and addresses
-void Asm_x86_64_EmitMovLoad(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
-void Asm_x86_64_EmitMovLoadZero(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
-void Asm_x86_64_EmitMovStore(Asm_x86_64_Reg src, Asm_x86_64_Reg base, int disp, Asm_x86_64_Width width);
-void Asm_x86_64_EmitLea(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitMovLoad(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
+void Asm_x86_64_EmitMovLoadZero(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
+void Asm_x86_64_EmitMovStore(Asm_x86_64_Reg src, Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Width width);
+void Asm_x86_64_EmitLea(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitLeaRip(Asm_x86_64_Reg dst, const char *label, ...);
 
 // Stack

@@ -31,8 +31,8 @@ enum Abi_x86_64_SysV_Class {
 
 // Classification
 Abi_x86_64_SysV_Class Abi_x86_64_SysV_Classify(const Ast_Type *type);
-int                   Abi_x86_64_SysV_Eightbytes(const Ast_Type *type);
-int                   Abi_x86_64_SysV_InMemory(const Ast_Type *type);
-int                   Abi_x86_64_SysV_ReturnsInMemory(const Ast_Type *type);
+int32_t               Abi_x86_64_SysV_Eightbytes(const Ast_Type *type);
+bool                  Abi_x86_64_SysV_InMemory(const Ast_Type *type);
+bool                  Abi_x86_64_SysV_ReturnsInMemory(const Ast_Type *type);
 
 #endif // ABI_X86_64_H

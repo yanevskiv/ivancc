@@ -18,10 +18,10 @@ void yyerror(const char *s);
 }
 
 %locations
-%define api.location.type {int}
+%define api.location.type {Ast_Line}
 
 %union {
-    long            val;
+    int64_t         val;
     Ast_TypeKind    kind;
     Ast_Qual        qual;
     Ast_Storage     storage;
@@ -176,7 +176,7 @@ params
     : /* empty */          { Par_ClearParams(&$$); }
     | param_list           { $$ = $1; }
     | param_list COMMA ELLIPSIS
-        { $$ = $1; $$.pl_variadic = 1; }
+        { $$ = $1; $$.pl_variadic = AST_TYPE_VARIADIC; }
     | ident_list           { $$ = $1; }
     ;
 
@@ -190,7 +190,7 @@ ident_list
 
 /* A prototype's parameters. */
 param_list
-    : param                { Par_ClearParams(&$$); $$.pl_proto = 1; Par_PushParam(&$$, $1); }
+    : param                { Par_ClearParams(&$$); $$.pl_proto = AST_TYPE_PROTO; Par_PushParam(&$$, $1); }
     | param_list COMMA param
         { $$ = $1; Par_PushParam(&$$, $3); }
     ;
@@ -201,7 +201,7 @@ param
         { $$ = Par_MakeParam($1, $2, @1); }
     | decl_spec stars array_dims
         { Ast_Type *t = $1;
-          for (int i = 0; i < $2; i++) { t = Ast_NewPointer(t); }
+          for (int64_t i = 0; i < $2; i++) { t = Ast_NewPointer(t); }
           $$ = Par_MakeAnonParam(Par_ArrayType(t, $3), @1); }
     ;
 
@@ -236,7 +236,7 @@ spec
 type_name
     : decl_spec stars array_dims
         { Ast_Type *t = $1;
-          for (int i = 0; i < $2; i++) { t = Ast_NewPointer(t); }
+          for (int64_t i = 0; i < $2; i++) { t = Ast_NewPointer(t); }
           $$ = Par_ArrayType(t, $3); }
     ;
 
@@ -244,7 +244,7 @@ type_name
 declarator
     : stars direct_declarator
         { $$ = $2;
-          for (int i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
+          for (int64_t i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
     ;
 
 /* A declarator without its leading pointers. */
@@ -254,11 +254,11 @@ direct_declarator
     /* An unnamed declarator. */
     | LPAREN stars RPAREN
         { $$ = Par_NewDecl(NULL); $$->pc_line = @1;
-          for (int i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
+          for (int64_t i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
     | direct_declarator LSQUARE array_decor array_len RSQUARE
         { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_len = $4; d->pd_decor = $3; }
     | direct_declarator LSQUARE array_decor RSQUARE
-        { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_empty = 1; d->pd_decor = $3; }
+        { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_empty = true; d->pd_decor = $3; }
     | direct_declarator LPAREN { Ast_PushScope(); } params RPAREN
         { Ast_PopScope(); $$ = $1; Par_AddDeriv($$, PAR_DERIV_FUNCTION, @2)->pd_params = $4; }
     ;
@@ -512,7 +512,7 @@ array_dims
 /* An array length. */
 array_len
     : expr
-        { long val;
+        { int64_t val;
           if (! Sem_Fold($1, &val)) {
               Log_ShowErrorAt(@1, "an array length is not a constant");
           }
@@ -616,7 +616,7 @@ primary
     | string               { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_STR, @1);
                              n->an_str_idx = Ast_AddString($1.as_data, $1.as_len, $1.as_width); $$ = n; }
     | IDENT
-        { long val;
+        { int64_t val;
           if (Ast_FindEnumConst($1, &val)) { $$ = Ast_NewNum(val, @1); }
           else { $$ = Par_Designator($1, @1); } }
     | LPAREN expr_comma RPAREN { $$ = $2; }
@@ -652,6 +652,6 @@ arg_list
 // Report a parse error and stop.
 void yyerror(const char *s)
 {
-    File_Print(File_Err(), "cc: parse error: %s near line %d\n", s, yylloc);
+    File_Print(File_Err(), "cc: parse error: %s near line %u\n", s, yylloc);
     exit(1);
 }
