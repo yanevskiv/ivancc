@@ -10,7 +10,7 @@
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/txt.h"
 
-// 64-bit register names, indexed by Asm_x86_64_Reg.
+// 64-bit register names.
 static const char *Txt_x86_64_Reg64Name[16] = {
     "rax",
     "rcx",
@@ -30,7 +30,7 @@ static const char *Txt_x86_64_Reg64Name[16] = {
     "r15"
 };
 
-// 8-bit (low-byte) register names, indexed by Asm_x86_64_Reg.
+// 8-bit (low-byte) register names.
 static const char *Txt_x86_64_Reg8Name[16] = {
     "al",
     "cl",
@@ -50,7 +50,7 @@ static const char *Txt_x86_64_Reg8Name[16] = {
     "r15b"
 };
 
-// 32-bit register names, indexed by Asm_x86_64_Reg.
+// 32-bit register names.
 static const char *Txt_x86_64_Reg32Name[16] = {
     "eax", "ecx", "edx",  "ebx",  "esp",  "ebp",  "esi",  "edi",
     "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d"
@@ -62,7 +62,7 @@ static const char *Txt_x86_64_Reg16Name[16] = {
     "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w"
 };
 
-// Mnemonics, indexed by Asm_x86_64_Op.
+// Mnemonics.
 static const char *Txt_x86_64_OpName[] = {
     [ASM_X86_64_OP_MOV]     = "mov",
     [ASM_X86_64_OP_MOVSX]   = "movs",
@@ -99,25 +99,6 @@ static const char *Txt_x86_64_OpName[] = {
     [ASM_X86_64_OP_RET]     = "ret",
     [ASM_X86_64_OP_SYSCALL] = "syscall"
 };
-
-// Return the AT&T letter naming an operand width.
-char Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width)
-{
-    switch (width) {
-        case ASM_X86_64_WIDTH_8: {
-            return 'b';
-        } break;
-        case ASM_X86_64_WIDTH_16: {
-            return 'w';
-        } break;
-        case ASM_X86_64_WIDTH_64: {
-            return 'q';
-        } break;
-        default: {
-            return 'l';
-        }
-    }
-}
 
 // Write one operand in AT&T syntax.
 void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
@@ -219,7 +200,56 @@ void Txt_x86_64_Att_Write(FILE *out)
     }
 }
 
-// Return the register index for an AT&T name like "rax"/"al", or -1; set *width.
+// Return the AT&T letter naming an operand width.
+char Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width)
+{
+    switch (width) {
+        case ASM_X86_64_WIDTH_8: {
+            return 'b';
+        } break;
+        case ASM_X86_64_WIDTH_16: {
+            return 'w';
+        } break;
+        case ASM_X86_64_WIDTH_64: {
+            return 'q';
+        } break;
+        default: {
+            return 'l';
+        }
+    }
+}
+
+// Return the opcode an extending mnemonic names.
+int Txt_x86_64_Att_ExtendOp(const char *mnem, Asm_x86_64_Width *width)
+{
+    const char *rest = NULL;
+
+    if (strncmp(mnem, "movs", 4) == 0) {
+        rest = mnem + 4;
+    } else if (strncmp(mnem, "movz", 4) == 0) {
+        rest = mnem + 4;
+    }
+    if (! rest || strlen(rest) != 2 || rest[1] != 'q') {
+        return -1;
+    }
+    switch (rest[0]) {
+        case 'b': {
+            *width = ASM_X86_64_WIDTH_8;
+        } break;
+        case 'w': {
+            *width = ASM_X86_64_WIDTH_16;
+        } break;
+        case 'l': {
+            *width = ASM_X86_64_WIDTH_32;
+        } break;
+        default: {
+            return -1;
+        }
+    }
+    return mnem[3] == 's' ? ASM_X86_64_OP_MOVSX : ASM_X86_64_OP_MOVZX;
+}
+
+// Return the register index for an AT&T name like "rax"/"al".
 int Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
 {
     for (int i = 0; i < 16; i++) {
@@ -243,7 +273,7 @@ int Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
     return -1;
 }
 
-// Return the opcode for a mnemonic, or -1 if it names no instruction we encode.
+// Return the opcode for a mnemonic.
 int Txt_x86_64_OpByName(const char *name)
 {
     int count = (int) (sizeof(Txt_x86_64_OpName) / sizeof(Txt_x86_64_OpName[0]));
@@ -255,7 +285,7 @@ int Txt_x86_64_OpByName(const char *name)
     return -1;
 }
 
-// Parse one AT&T operand into op; return nonzero on success.
+// Parse one AT&T operand into op.
 int Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
 {
     char *g[3];
@@ -323,7 +353,7 @@ void Txt_x86_64_Att_EmitInts(const char *args, int width)
     Str_ListFree(&parts);
 }
 
-// Emit a `.quad` item that names a symbol, returning false for an ordinary number.
+// Emit a `.quad` item that names a symbol.
 int Txt_x86_64_Att_EmitAddress(const char *text, int width)
 {
     if (! Str_RegexMatch(text, "^[.A-Za-z_]")) {
@@ -336,7 +366,7 @@ int Txt_x86_64_Att_EmitAddress(const char *text, int width)
     return 1;
 }
 
-// Emit the bytes of a quoted string, adding a NUL when terminate is set.
+// Emit the bytes of a quoted string.
 void Txt_x86_64_Att_EmitString(const char *args, int terminate)
 {
     const char *p = strchr(args, '"');
@@ -350,36 +380,6 @@ void Txt_x86_64_Att_EmitString(const char *args, int terminate)
 
     Asm_x86_64_EmitBytes(buf, len + (terminate ? 1 : 0));
     Str_Free(buf);
-}
-
-// Return the opcode an extending mnemonic names.
-int Txt_x86_64_Att_ExtendOp(const char *mnem, Asm_x86_64_Width *width)
-{
-    const char *rest = NULL;
-
-    if (strncmp(mnem, "movs", 4) == 0) {
-        rest = mnem + 4;
-    } else if (strncmp(mnem, "movz", 4) == 0) {
-        rest = mnem + 4;
-    }
-    if (! rest || strlen(rest) != 2 || rest[1] != 'q') {
-        return -1;
-    }
-    switch (rest[0]) {
-        case 'b': {
-            *width = ASM_X86_64_WIDTH_8;
-        } break;
-        case 'w': {
-            *width = ASM_X86_64_WIDTH_16;
-        } break;
-        case 'l': {
-            *width = ASM_X86_64_WIDTH_32;
-        } break;
-        default: {
-            return -1;
-        }
-    }
-    return mnem[3] == 's' ? ASM_X86_64_OP_MOVSX : ASM_X86_64_OP_MOVZX;
 }
 
 // Parse one instruction line ("mnemonic [op[, op]]") into an instruction item.
@@ -465,8 +465,8 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
     } else if (Str_Equals(name, ".rodata")) {
         Asm_x86_64_EmitSection(".rodata", ELF_SHT_PROGBITS, ELF_SHF_ALLOC);
     } else if (Str_Equals(name, ".section")) {
-        char    *secname = strndup(args, strcspn(args, " ,\t"));
-        uint32_t type    = ELF_SHT_PROGBITS;
+        char *secname = strndup(args, strcspn(args, " ,\t"));
+        uint32_t type = ELF_SHT_PROGBITS;
         uint64_t flags;
         const char *quote = strchr(args, '"');
         if (quote) {
@@ -514,7 +514,7 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
     }
 }
 
-// Parse one line: strip its comment, then dispatch by line shape.
+// Parse one line.
 void Txt_x86_64_Att_ParseLine(char *line)
 {
     int inq = 0;

@@ -6,7 +6,7 @@
 #include "object/elf.h"
 #include "arch/x86_64/rel.h"
 
-// Virtual address a symbol resolves to: its section's load address plus its offset.
+// Virtual address a symbol resolves to.
 uint64_t Rel_x86_64_SymbolAddr(const Elf_Sym *sym)
 {
     if (sym->sym_sec) {

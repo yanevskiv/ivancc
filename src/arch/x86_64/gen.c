@@ -16,7 +16,7 @@
 // Size in bytes of a stack slot and a general-purpose register.
 #define WORD_SIZE 8
 
-// Required %rsp alignment, in bytes, at the point of a `call`.
+// Required %rsp alignment.
 #define STACK_ALIGN 16
 
 // Largest global a single scalar initializer may fill.
@@ -41,7 +41,7 @@ static int Gen_x86_64_Depth;
 // Source of unique label numbers.
 static int Gen_x86_64_LabelId;
 
-// Label numbers the innermost loop uses for break and continue, or -1 outside one.
+// Label numbers the innermost loop uses for break and continue.
 static int Gen_x86_64_BreakId = -1;
 static int Gen_x86_64_ContinueId = -1;
 
@@ -51,7 +51,7 @@ static const Ast_Func *Gen_x86_64_CurrFunc;
 // Frame offset holding the caller's buffer pointer for a memory return.
 static int Gen_x86_64_RetPtrOffset;
 
-// Registers used to pass the first six integer arguments, in ABI order.
+// Registers used to pass the first six integer arguments.
 static const Asm_x86_64_Reg Gen_x86_64_ArgReg[6] = {
     ASM_X86_64_REG_RDI,
     ASM_X86_64_REG_RSI,
@@ -164,7 +164,7 @@ void Gen_x86_64_EmitLoadFrom(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, 
     Asm_x86_64_EmitMovLoad(base, disp, dst, Gen_x86_64_TypeWidth(type));
 }
 
-// Load the value at the address in %rax, leaving an array or aggregate as that address.
+// Load the value at the address in %rax.
 void Gen_x86_64_EmitLoad(const Ast_Type *type)
 {
     if (type->at_kind == AST_TYPE_KIND_ARRAY || type->at_kind == AST_TYPE_KIND_FUNC || Sem_IsAggregate(type)) {
@@ -204,32 +204,12 @@ void Gen_x86_64_EmitCast(const Ast_Type *type)
         case AST_TYPE_KIND_STRUCT:
         case AST_TYPE_KIND_UNION:
         case AST_TYPE_KIND_COUNT: {
-            // already as wide as a register, or addressed rather than held in one
+            // already as wide as a register
         } break;
     }
 }
 
-// Write size zero bytes at the address in %rdi.
-void Gen_x86_64_EmitZero(int size)
-{
-    int off = 0;
-
-    Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RCX);
-    while (size - off >= GEN_X86_64_COPY_QUAD) {
-        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_64);
-        off += GEN_X86_64_COPY_QUAD;
-    }
-    while (size - off >= GEN_X86_64_COPY_LONG) {
-        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_32);
-        off += GEN_X86_64_COPY_LONG;
-    }
-    while (off < size) {
-        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_8);
-        off++;
-    }
-}
-
-// Copy size bytes from %rax to %rdi, leaving the destination in %rax.
+// Copy size bytes from %rax to %rdi.
 void Gen_x86_64_EmitCopy(int size)
 {
     int off = 0;
@@ -253,7 +233,27 @@ void Gen_x86_64_EmitCopy(int size)
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
 }
 
-// Return the bitfield a node reads or writes, or NULL when it names a whole object.
+// Write size zero bytes at the address in %rdi.
+void Gen_x86_64_EmitZero(int size)
+{
+    int off = 0;
+
+    Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RCX);
+    while (size - off >= GEN_X86_64_COPY_QUAD) {
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_64);
+        off += GEN_X86_64_COPY_QUAD;
+    }
+    while (size - off >= GEN_X86_64_COPY_LONG) {
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_32);
+        off += GEN_X86_64_COPY_LONG;
+    }
+    while (off < size) {
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, off, ASM_X86_64_WIDTH_8);
+        off++;
+    }
+}
+
+// Return the bitfield a node reads or writes.
 const Ast_Member *Gen_x86_64_Bitfield(const Ast_Node *node)
 {
     if (node->an_kind == AST_NODE_KIND_MEMBER && node->an_member->am_bits) {
@@ -412,7 +412,7 @@ void Gen_x86_64_EmitParam(Ast_Var *param, int *reg, int *stack)
     }
 }
 
-// Return the first argument register the argument at index takes, or -1 for the stack.
+// Return the first argument register the argument at index takes.
 int Gen_x86_64_ArgRegBase(Ast_Node *args, int index, int nHidden)
 {
     int used = nHidden;
@@ -504,11 +504,11 @@ void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden)
     }
 }
 
-// Emit a call, leaving its result in %rax, or an aggregate's address there.
+// Emit a call.
 void Gen_x86_64_EmitCall(Ast_Node *node)
 {
     int nHidden = Abi_x86_64_SysV_ReturnsInMemory(node->an_type) ? 1 : 0;
-    int nStack  = Gen_x86_64_CallStackSlots(node->an_args, nHidden);
+    int nStack = Gen_x86_64_CallStackSlots(node->an_args, nHidden);
 
     int nAlignPad = (Gen_x86_64_Depth + nStack) % (STACK_ALIGN / WORD_SIZE);
     if (nAlignPad) {
@@ -625,7 +625,7 @@ void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, int line)
     }
 }
 
-// Emit code for an expression, leaving its result in %rax.
+// Emit code for an expression.
 void Gen_x86_64_EmitExpr(Ast_Node *node)
 {
     switch (node->an_kind) {
@@ -1059,6 +1059,21 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
     func->af_stack_size = Gen_x86_64_AlignTo(offset, STACK_ALIGN);
 }
 
+// Emit the .rodata section holding all string literals.
+void Gen_x86_64_EmitDataSection(void)
+{
+    int count = Ast_StringCount();
+    if (count == 0) {
+        return;
+    }
+    Asm_x86_64_EmitSection(".rodata", ELF_SHT_PROGBITS, ELF_SHF_ALLOC);
+    for (int i = 0; i < count; i++) {
+        Ast_Str *str = Ast_StringAt(i);
+        Asm_x86_64_EmitLabel(".Lstr%d", i);
+        Asm_x86_64_EmitBytes(str->as_data, str->as_len + 1);
+    }
+}
+
 // Write one flattened initializer into a global's image.
 void Gen_x86_64_EmitConstant(unsigned char *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int *naddrs)
 {
@@ -1115,7 +1130,7 @@ void Gen_x86_64_EmitImage(const unsigned char *bytes, int size, const Gen_x86_64
     }
 }
 
-// Emit one global into .data, or into .bss when it is zeroed.
+// Emit one global into .data.
 void Gen_x86_64_EmitGlobal(Ast_Var *var)
 {
     int size = var->av_type->at_size;
@@ -1144,26 +1159,11 @@ void Gen_x86_64_EmitGlobal(Ast_Var *var)
     free(bytes);
 }
 
-// Emit every file-scope variable, before the code that refers to them.
+// Emit every file-scope variable.
 void Gen_x86_64_EmitGlobals(void)
 {
     for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
         Gen_x86_64_EmitGlobal(var);
-    }
-}
-
-// Emit the .rodata section holding all string literals.
-void Gen_x86_64_EmitDataSection(void)
-{
-    int count = Ast_StringCount();
-    if (count == 0) {
-        return;
-    }
-    Asm_x86_64_EmitSection(".rodata", ELF_SHT_PROGBITS, ELF_SHF_ALLOC);
-    for (int i = 0; i < count; i++) {
-        Ast_Str *str = Ast_StringAt(i);
-        Asm_x86_64_EmitLabel(".Lstr%d", i);
-        Asm_x86_64_EmitBytes(str->as_data, str->as_len + 1);
     }
 }
 

@@ -12,13 +12,6 @@
 // Bits in the unsigned long a literal's value is read into.
 #define PAR_LONG_BITS 64
 
-// An integer literal.
-typedef struct Par_Num Par_Num;
-struct Par_Num {
-    long      pn_val;
-    Ast_Type *pn_type;
-};
-
 // One type specifier keyword.
 typedef enum Par_Spec Par_Spec;
 enum Par_Spec {
@@ -34,14 +27,6 @@ enum Par_Spec {
     PAR_SPEC_UNSIGNED = 1 << 8
 };
 
-// The type specifiers and qualifiers one declaration wrote.
-typedef struct Par_Specs Par_Specs;
-struct Par_Specs {
-    int       ps_specs; // the PAR_SPEC_ keywords seen
-    int       ps_qual;  // the AST_QUAL_ keywords seen
-    Ast_Type *ps_type;  // the type a struct, union, enum or typedef name named
-};
-
 // One step of a declarator, collected walking outward from the name.
 typedef enum Par_DerivKind Par_DerivKind;
 enum Par_DerivKind {
@@ -50,14 +35,29 @@ enum Par_DerivKind {
     PAR_DERIV_FUNCTION
 };
 
-// A parameter list as the grammar collects it, before it becomes a function type.
+// An integer literal.
+typedef struct Par_Num Par_Num;
+struct Par_Num {
+    long      pn_val;
+    Ast_Type *pn_type;
+};
+
+// The type specifiers and qualifiers one declaration wrote.
+typedef struct Par_Specs Par_Specs;
+struct Par_Specs {
+    int       ps_specs; // the PAR_SPEC_ keywords seen
+    int       ps_qual;  // the AST_QUAL_ keywords seen
+    Ast_Type *ps_type;  // the type a struct, union, enum or typedef name named
+};
+
+// A parameter list as the grammar collects it.
 typedef struct Par_ParamList Par_ParamList;
 struct Par_ParamList {
     Ast_Var *pl_head;
     Ast_Var *pl_tail;
     int      pl_count;
     int      pl_variadic; // the list ended in `...`
-    int      pl_proto;    // false for `()`, which promises nothing
+    int      pl_proto;    // false for `()`
 };
 
 // One derivation and the operands its kind needs.
@@ -66,20 +66,20 @@ struct Par_Deriv {
     Par_Deriv     *pd_next;
     Par_DerivKind  pd_kind;
     long           pd_len;    // element count of an ARRAY
-    int            pd_empty;  // the ARRAY was written `[]`, leaving its length unsaid
+    int            pd_empty;  // the ARRAY was written `[]`
     int            pd_decor;  // PAR_ARRAY_* the ARRAY's brackets carried
     Par_ParamList  pd_params; // parameter list of a FUNCTION
     int            pd_line;
 };
 
-// A declarator: the name it declares and the derivations reading outward from it.
+// A declarator.
 typedef struct Par_Decl Par_Decl;
 struct Par_Decl {
     char      *pc_name;
     Par_Deriv *pc_head;
     Par_Deriv *pc_tail;
     Par_Decl  *pc_next;     // next declarator of a comma-separated member declaration
-    Ast_Node  *pc_bits;     // width of a bit-field, or NULL when it is not one
+    Ast_Node  *pc_bits;     // width of a bit-field, or NULL
     int        pc_line;
 };
 

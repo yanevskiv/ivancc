@@ -49,7 +49,7 @@ static void As_Assemble(const char *input, const char *output)
 int main(int argc, char **argv)
 {
     const char *output = NULL;
-    const char *input  = NULL;
+    const char *input = NULL;
 
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];

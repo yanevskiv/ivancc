@@ -199,6 +199,33 @@ void Asm_x86_64_EmitImul(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
     item->ai_src = Asm_x86_64_Reg64(src);
 }
 
+// Emit `and %src, %dst`.
+void Asm_x86_64_EmitAnd(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_AND;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg64(src);
+}
+
+// Emit `or %src, %dst`.
+void Asm_x86_64_EmitOr(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_OR;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg64(src);
+}
+
+// Emit `xor %src, %dst`.
+void Asm_x86_64_EmitXor(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_XOR;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg64(src);
+}
+
 // Emit `cmp %src, %dst`.
 void Asm_x86_64_EmitCmp(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
 {
@@ -244,33 +271,6 @@ void Asm_x86_64_EmitMovzx(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Wid
     item->ai_src = Asm_x86_64_RegWidth(src, width);
 }
 
-// Emit `and %src, %dst`.
-void Asm_x86_64_EmitAnd(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
-{
-    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
-    item->ai_op  = ASM_X86_64_OP_AND;
-    item->ai_dst = Asm_x86_64_Reg64(dst);
-    item->ai_src = Asm_x86_64_Reg64(src);
-}
-
-// Emit `or %src, %dst`.
-void Asm_x86_64_EmitOr(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
-{
-    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
-    item->ai_op  = ASM_X86_64_OP_OR;
-    item->ai_dst = Asm_x86_64_Reg64(dst);
-    item->ai_src = Asm_x86_64_Reg64(src);
-}
-
-// Emit `xor %src, %dst`.
-void Asm_x86_64_EmitXor(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
-{
-    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
-    item->ai_op  = ASM_X86_64_OP_XOR;
-    item->ai_dst = Asm_x86_64_Reg64(dst);
-    item->ai_src = Asm_x86_64_Reg64(src);
-}
-
 // Emit `idiv %reg`.
 void Asm_x86_64_EmitIdiv(Asm_x86_64_Reg reg)
 {
@@ -312,7 +312,7 @@ void Asm_x86_64_EmitShl(Asm_x86_64_Reg dst)
     item->ai_src = Asm_x86_64_Reg8(ASM_X86_64_REG_RCX);
 }
 
-// Emit `sar %cl, %dst`, which is what >> means on a signed operand.
+// Emit `sar %cl, %dst`.
 void Asm_x86_64_EmitSar(Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);

@@ -6,7 +6,7 @@
 #include "syntax/ast.h"
 #include "arch/x86_64/asm.h"
 
-// An address a global's image holds, which only the linker can fill in.
+// An address a global's image holds.
 typedef struct Gen_x86_64_Addr Gen_x86_64_Addr;
 struct Gen_x86_64_Addr {
     int         ga_offset;  // bytes into the image the address occupies
@@ -21,6 +21,8 @@ int              Gen_x86_64_AlignTo(int n, int align);
 int              Gen_x86_64_SlotSize(const Ast_Type *type);
 Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type);
 void             Gen_x86_64_EmitAddr(Ast_Node *node);
+int              Gen_x86_64_IsUnsigned(const Ast_Node *node);
+void             Gen_x86_64_EmitLoadFrom(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, const Ast_Type *type);
 void             Gen_x86_64_EmitLoad(const Ast_Type *type);
 void             Gen_x86_64_EmitCast(const Ast_Type *type);
 void             Gen_x86_64_EmitCopy(int size);

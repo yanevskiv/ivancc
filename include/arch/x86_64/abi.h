@@ -8,14 +8,14 @@
 // Bytes in one eightbyte, the unit the SysV ABI classifies an argument in.
 #define ABI_X86_64_SYSV_EIGHTBYTE 8
 
-// Largest aggregate the ABI passes in registers; anything wider goes in memory.
+// Largest aggregate the ABI passes in registers.
 #define ABI_X86_64_SYSV_MAX_REG_SIZE 16
 
 // Byte offsets of the fields in the SysV va_list record the parser builds.
 typedef enum Abi_x86_64_SysV_VaField Abi_x86_64_SysV_VaField;
 enum Abi_x86_64_SysV_VaField {
     ABI_X86_64_SYSV_VA_GP_OFFSET = 0,  // bytes of the register save area already read
-    ABI_X86_64_SYSV_VA_FP_OFFSET = 4,  // the same for SSE registers, which none reach yet
+    ABI_X86_64_SYSV_VA_FP_OFFSET = 4,  // the same for SSE registers
     ABI_X86_64_SYSV_VA_OVERFLOW  = 8,  // next argument above the return address
     ABI_X86_64_SYSV_VA_REG_SAVE  = 16  // start of the spilled argument registers
 };

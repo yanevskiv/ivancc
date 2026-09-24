@@ -9,7 +9,7 @@
 #include "object/elf.h"
 #include "arch/x86_64/asm.h"
 
-// A rel32 fixup targets its exact site, so it carries an addend of -4.
+// A rel32 fixup targets its exact site.
 #define ENC_X86_64_REL32_ADDEND (-4)
 
 // Field layout of the ModRM byte: mod at bit 6, reg at bit 3, r/m at bit 0.
@@ -26,7 +26,7 @@ enum Enc_x86_64_Rex {
     ENC_X86_64_REX_B    = 0x01
 };
 
-// ModRM mod field, which says how the r/m operand is addressed.
+// ModRM mod field.
 typedef enum Enc_x86_64_Mod Enc_x86_64_Mod;
 enum Enc_x86_64_Mod {
     ENC_X86_64_MOD_INDIRECT = 0, // (%rm)
@@ -38,7 +38,7 @@ enum Enc_x86_64_Mod {
 // r/m encodings that name something other than a register.
 typedef enum Enc_x86_64_Rm Enc_x86_64_Rm;
 enum Enc_x86_64_Rm {
-    ENC_X86_64_RM_RIP = 5 // rip-relative, when mod is INDIRECT
+    ENC_X86_64_RM_RIP = 5 // rip-relative
 };
 
 // SIB byte selecting %rsp as base with no index.
@@ -66,7 +66,7 @@ enum Enc_x86_64_Grp {
     ENC_X86_64_GRP_CALL = 2
 };
 
-// Primary opcode bytes, named <mnemonic>_<dst>_<src> as the Intel tables list them.
+// Primary opcode bytes, named as the Intel tables list them.
 typedef enum Enc_x86_64_Opcode Enc_x86_64_Opcode;
 enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_ADD_RM_R      = 0x01,
@@ -97,7 +97,7 @@ enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_ESCAPE        = 0x0F  // introduces a two-byte opcode
 };
 
-// Second bytes of the two-byte opcodes, each following ENC_X86_64_OPCODE_ESCAPE.
+// Second bytes of the two-byte opcodes.
 typedef enum Enc_x86_64_Opcode2 Enc_x86_64_Opcode2;
 enum Enc_x86_64_Opcode2 {
     ENC_X86_64_OPCODE2_SYSCALL     = 0x05,

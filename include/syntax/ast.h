@@ -35,7 +35,7 @@ enum Ast_TypeKind {
     AST_TYPE_KIND_COUNT
 };
 
-// The target ABI's sizes in bytes; C does not define void's.
+// The target ABI's sizes in bytes.
 typedef enum Ast_TypeSize Ast_TypeSize;
 enum Ast_TypeSize {
     AST_TYPE_SIZE_VOID  = 1,
@@ -71,52 +71,6 @@ enum Ast_Qual {
     AST_QUAL_RESTRICT = 4
 };
 
-// Forward declaration: a struct type lists its members.
-typedef struct Ast_Member Ast_Member;
-
-// Forward declaration: a function type lists its parameters.
-typedef struct Ast_Var Ast_Var;
-
-// A C type: a primitive, or a pointer, array or aggregate built over others.
-typedef struct Ast_Type Ast_Type;
-struct Ast_Type {
-    Ast_TypeKind at_kind;
-    int          at_size;    // bytes an object of this type occupies
-    int          at_align;   // address multiple an object must sit on
-    int          at_unsigned;
-    int          at_qual;    // the AST_QUAL_ bits written on the declaration
-    Ast_Type    *at_base;    // pointee for PTR, element type for ARRAY
-    int          at_len;     // element count for ARRAY
-    char        *at_tag;     // tag a STRUCT or UNION was declared with, or NULL
-    Ast_Member  *at_members; // members of a STRUCT or UNION, in declaration order
-    int          at_complete; // false until the member list has been seen
-    Ast_Type    *at_ret;     // return type of a FUNC
-    Ast_Var     *at_params;  // parameters of a FUNC, in declaration order
-    int          at_nparams; // number of parameters a FUNC declares
-    int          at_variadic; // true when a FUNC's parameter list ended in `...`
-    int          at_proto;   // false for `int f()`, whose parameter list is unspecified
-};
-
-// One member of a struct or union, at the offset layout gave it.
-struct Ast_Member {
-    Ast_Member *am_next;
-    char       *am_name;     // NULL for a bitfield declared only to pad
-    Ast_Type   *am_type;
-    Ast_Type   *am_owner;    // aggregate the member was declared in
-    int         am_offset;   // bytes from the start of the enclosing aggregate
-    int         am_line;     // source line the member was declared on
-    int         am_flexible; // true for a trailing `d[]`, which takes no space
-    int         am_bits;     // width of a bitfield, or 0 when it is not one
-    int         am_bitoff;   // bits into am_offset where a bitfield starts
-};
-
-// An interned string literal, kept with its length because it may embed a NUL.
-typedef struct Ast_Str Ast_Str;
-struct Ast_Str {
-    char *as_data; // decoded bytes, also NUL-terminated so it can be printed
-    int   as_len;  // number of bytes before that terminator
-};
-
 // The kind of an AST node.
 typedef enum Ast_NodeKind Ast_NodeKind;
 enum Ast_NodeKind {
@@ -138,9 +92,9 @@ enum Ast_NodeKind {
     AST_NODE_KIND_SHR,       // lhs >> rhs, arithmetic on a signed operand
     AST_NODE_KIND_ADDR,      // &lhs
     AST_NODE_KIND_DEREF,     // *lhs
-    AST_NODE_KIND_MEMBER,    // lhs.an_member, with `a->b` parsed as `(*a).b`
+    AST_NODE_KIND_MEMBER,    // lhs.an_member
     AST_NODE_KIND_CAST,      // (type) lhs
-    AST_NODE_KIND_SIZEOF,    // sizeof lhs, folded to a constant by the Sem_ pass
+    AST_NODE_KIND_SIZEOF,    // sizeof lhs
     AST_NODE_KIND_EQ,        // lhs == rhs
     AST_NODE_KIND_NE,        // lhs != rhs
     AST_NODE_KIND_LT,        // lhs <  rhs   (> is LT reversed)
@@ -148,19 +102,19 @@ enum Ast_NodeKind {
     AST_NODE_KIND_AND,       // lhs && rhs
     AST_NODE_KIND_OR,        // lhs || rhs
     AST_NODE_KIND_ASSIGN,    // lhs = rhs
-    AST_NODE_KIND_OPASSIGN,  // lhs an_op= rhs, with the address evaluated once
+    AST_NODE_KIND_OPASSIGN,  // lhs an_op= rhs
     AST_NODE_KIND_POSTINC,   // lhs++ or lhs--, stepping by an_val
     AST_NODE_KIND_COND,      // cond ? then : els
     AST_NODE_KIND_COMMA,     // lhs, rhs
-    AST_NODE_KIND_INIT,      // one flattened initializer: an_val is a byte offset into the object
-    AST_NODE_KIND_INITLIST,  // a braced initializer list, its items chained on an_body
+    AST_NODE_KIND_INIT,      // one flattened initializer
+    AST_NODE_KIND_INITLIST,  // a braced initializer list
     AST_NODE_KIND_DESIGNATOR,// `[an_val]` or `.an_memname` naming where an item lands
     AST_NODE_KIND_ZERO,      // zero an_val bytes of the object an_lhs addresses
-    AST_NODE_KIND_COMPOUND,  // (type){...}: the unnamed an_var object the an_body statements fill
-    AST_NODE_KIND_CALL,      // function call, direct by name or indirect through an_lhs
-    AST_NODE_KIND_FUNCADDR,  // a function named as a value, which is its address
-    AST_NODE_KIND_VA_START,  // __builtin_va_start(lhs, last), which fills the lhs va_list
-    AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs, T), the next argument the lhs va_list reaches
+    AST_NODE_KIND_COMPOUND,  // (type){...}
+    AST_NODE_KIND_CALL,      // function call
+    AST_NODE_KIND_FUNCADDR,  // a function named as a value
+    AST_NODE_KIND_VA_START,  // __builtin_va_start(lhs, last)
+    AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs, T)
     AST_NODE_KIND_RETURN,    // return lhs;
     AST_NODE_KIND_IF,        // if (cond) then; else els;
     AST_NODE_KIND_FOR,       // for (init; cond; inc) body;
@@ -177,13 +131,59 @@ enum Ast_NodeKind {
     AST_NODE_KIND_NOP        // empty statement / bare declaration
 };
 
-// What a declaration's storage class asks for; register, auto and inline map to NONE.
+// What a declaration's storage class asks for.
 typedef enum Ast_Storage Ast_Storage;
 enum Ast_Storage {
     AST_STORAGE_NONE,
     AST_STORAGE_STATIC,  // visible only to this translation unit
     AST_STORAGE_EXTERN,  // declared here, defined elsewhere
     AST_STORAGE_TYPEDEF  // binds a name to a type rather than declaring an object
+};
+
+// Forward declaration: a struct type lists its members.
+typedef struct Ast_Member Ast_Member;
+
+// Forward declaration: a function type lists its parameters.
+typedef struct Ast_Var Ast_Var;
+
+// A C type.
+typedef struct Ast_Type Ast_Type;
+struct Ast_Type {
+    Ast_TypeKind at_kind;
+    int          at_size;    // bytes an object of this type occupies
+    int          at_align;   // address multiple an object must sit on
+    int          at_unsigned;
+    int          at_qual;    // the AST_QUAL_ bits written on the declaration
+    Ast_Type    *at_base;    // pointee for PTR, element type for ARRAY
+    int          at_len;     // element count for ARRAY
+    char        *at_tag;     // tag a STRUCT or UNION was declared with, or NULL
+    Ast_Member  *at_members; // members of a STRUCT or UNION
+    int          at_complete; // false until the member list has been seen
+    Ast_Type    *at_ret;     // return type of a FUNC
+    Ast_Var     *at_params;  // parameters of a FUNC
+    int          at_nparams; // number of parameters a FUNC declares
+    int          at_variadic; // true when a FUNC's parameter list ended in `...`
+    int          at_proto;   // false for `int f()`
+};
+
+// One member of a struct or union, at the offset layout gave it.
+struct Ast_Member {
+    Ast_Member *am_next;
+    char       *am_name;     // NULL for a bitfield declared only to pad
+    Ast_Type   *am_type;
+    Ast_Type   *am_owner;    // aggregate the member was declared in
+    int         am_offset;   // bytes from the start of the enclosing aggregate
+    int         am_line;     // source line the member was declared on
+    int         am_flexible; // true for a trailing `d[]`
+    int         am_bits;     // width of a bitfield, or 0
+    int         am_bitoff;   // bits into am_offset where a bitfield starts
+};
+
+// An interned string literal.
+typedef struct Ast_Str Ast_Str;
+struct Ast_Str {
+    char *as_data; // decoded bytes
+    int   as_len;  // number of bytes before that terminator
 };
 
 // Forward declaration: a global's initializer is one of these.
@@ -197,14 +197,14 @@ struct Ast_Var {
     char     *av_name;      // identifier as written in the source
     Ast_Type *av_type;      // declared type
     int      av_line;       // source line the declaration appeared on
-    int      av_offset;     // offset from %rbp, filled in by the back end
-    char     *av_symbol;    // name the symbol takes, which a static local mangles
+    int      av_offset;     // offset from %rbp
+    char     *av_symbol;    // name the symbol takes
     int       av_global;    // true when the variable lives in .data or .bss
     Ast_Storage av_storage; // storage class the declaration asked for
-    Ast_Node *av_init;      // initializer of a global, or NULL for zeroed
+    Ast_Node *av_init;      // initializer of a global, or NULL
 };
 
-// A struct, union or enum tag, which lives in a namespace of its own.
+// A struct, union or enum tag.
 typedef struct Ast_Tag Ast_Tag;
 struct Ast_Tag {
     Ast_Tag  *ag_next;
@@ -242,7 +242,7 @@ struct Ast_Scope {
 struct Ast_Node {
     Ast_NodeKind an_kind;     // which kind of node this is
     Ast_NodeKind an_op;       // operation of AST_NODE_KIND_OPASSIGN
-    Ast_Type    *an_type;     // type of the value, filled in by the Sem_ pass
+    Ast_Type    *an_type;     // type of the value
     int          an_line;     // source line the construct started on
     Ast_Node    *an_next;     // next node in a statement / argument list
     Ast_Node    *an_lhs;      // generic left operand
@@ -261,11 +261,11 @@ struct Ast_Node {
     long         an_val;      // integer value for AST_NODE_KIND_NUM
     int          an_str_idx;  // string table slot for AST_NODE_KIND_STR
     Ast_Var     *an_var;      // variable a VAR names, or the object a COMPOUND fills
-    Ast_Node    *an_items;    // flattened initializer a COMPOUND fills that object with
+    Ast_Node    *an_items;    // flattened initializer a COMPOUND fills
     Ast_Member  *an_member;   // resolved member of AST_NODE_KIND_MEMBER
     char        *an_memname;  // member name a MEMBER node was written with
-    int          an_tmp;      // frame slot a CALL returning an aggregate lands in
-    int          an_calltmp;  // frame slot an indirect CALL parks its callee address in
+    int          an_tmp;      // frame slot an aggregate return lands in
+    int          an_calltmp;  // frame slot an indirect CALL parks its callee in
 };
 
 // A function definition.
@@ -275,13 +275,13 @@ struct Ast_Func {
     char     *af_name;       // function name
     Ast_Node *af_body;       // function body (AST_NODE_KIND_BLOCK)
     Ast_Type *af_ret;        // type the function returns
-    Ast_Var  *af_params;     // parameters, in declaration order
+    Ast_Var  *af_params;     // parameters
     int       af_nparams;    // number of parameters
     int       af_variadic;   // true if the parameter list ended in `...`
-    int       af_proto;      // false for `int f()` and an old-style definition, which promise nothing
+    int       af_proto;      // false for `int f()` and an old-style definition
     int       af_static;     // true when the function is local to this file
     Ast_Var  *af_locals;     // every local, including parameters
-    int       af_stack_size; // frame size, filled in by the code generator
+    int       af_stack_size; // frame size
 };
 
 // The finished program, produced by the parser.
