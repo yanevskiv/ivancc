@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // A flexible array member names the storage that follows a struct without
 // taking any of its own, so sizeof stops at the member before it.
 
@@ -34,5 +34,6 @@ int main()
     w->vals[1] = 9;
     if (w->tag != 1) return 4;
 
-    return b->len + w->vals[0] + w->vals[1];
+    if (b->len + w->vals[0] + w->vals[1] != 42) return 5;
+    return 200;
 }

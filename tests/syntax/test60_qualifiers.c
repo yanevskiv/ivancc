@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Type qualifiers. All three parse wherever a specifier may stand, in any
 // order beside the type they qualify, and are recorded on the type they build.
 // None of them changes the code generated for a read or a write.
@@ -112,5 +112,6 @@ int main()
     Fixed f = 30;
     if (f != 30) return 26;
 
-    return limit - 58;
+    if (limit - 58 != 42) return 27;
+    return 200;
 }

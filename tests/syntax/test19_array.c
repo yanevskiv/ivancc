@@ -1,4 +1,4 @@
-// (Test) Return: 60
+// (Test) Return: 200
 // Subscripting reads and writes elements, an array's name is its address, and
 // an array parameter is really a pointer. A dimension may be any constant
 // expression, since only a variable one would make the array a VLA.
@@ -39,5 +39,6 @@ int main()
 
     a[2] = a[2] + 5;
 
-    return a[4] + a[2] - 5;
+    if (a[4] + a[2] - 5 != 60) return 11;
+    return 200;
 }

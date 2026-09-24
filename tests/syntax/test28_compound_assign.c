@@ -1,4 +1,4 @@
-// (Test) Return: 110
+// (Test) Return: 200
 // Every compound assignment, including on a narrow lvalue, and the rule that
 // the target's address is evaluated once however complicated it is.
 
@@ -40,5 +40,6 @@ int main()
     arr[bump(&calls)] += 100;
     if (calls != 1) return 13;
 
-    return arr[1];
+    if (arr[1] != 110) return 14;
+    return 200;
 }

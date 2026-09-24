@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Struct declaration, member access and whole-struct assignment. The layout is
 // what sizeof has to agree with gcc about: padding between members and after
 // the last one. A member may be named in an initializer, and a `?:`, an
@@ -49,5 +49,6 @@ int main()
     pad.d = 2;
     if (pad.c != 1 || pad.n != 5 || pad.d != 2) return 4;
 
-    return q.x + q.y + pad.n + pad.c + pad.d - 1;
+    if (q.x + q.y + pad.n + pad.c + pad.d - 1 != 42) return 12;
+    return 200;
 }

@@ -1,4 +1,4 @@
-// (Test) Return: 44
+// (Test) Return: 200
 // File-scope variables: zeroed ones in .bss, initialized ones in .data, both
 // addressed off %rip rather than off the frame. An initializer here is folded
 // whole, so any constant expression serves and not only a literal, and an
@@ -49,5 +49,6 @@ int main()
     }
     if (table[3] != 9) return 6;
 
-    return counter + seed / 2;
+    if (counter + seed / 2 != 44) return 16;
+    return 200;
 }

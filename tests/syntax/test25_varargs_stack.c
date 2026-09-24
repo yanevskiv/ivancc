@@ -1,4 +1,4 @@
-// (Test) Return: 165
+// (Test) Return: 200
 // Ten arguments, so the last four sit in the overflow area above the return
 // address rather than in the register save area.
 
@@ -39,5 +39,6 @@ int main()
     if (pick(3, 5, 11, 22, 33, 44, 55) != 44) return 2;
     if (pick(4, 5, 11, 22, 33, 44, 55) != 55) return 3;
 
-    return weigh(9, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+    if (weigh(9, 9, 8, 7, 6, 5, 4, 3, 2, 1) != 165) return 4;
+    return 200;
 }

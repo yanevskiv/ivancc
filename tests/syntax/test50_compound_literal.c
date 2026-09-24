@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Compound literals: `(T){...}` names an unnamed object of type T, filled the
 // way a declaration's initializer fills a variable. Inside a function the
 // object has automatic storage and is refilled on each evaluation; outside one
@@ -80,5 +80,6 @@ int main()
     static struct Point kept = (struct Point){5, 6};
     if (kept.x != 5 || kept.y != 6) return 16;
 
-    return sum((struct Point){20, 22});
+    if (sum((struct Point){20, 22}) != 42) return 17;
+    return 200;
 }

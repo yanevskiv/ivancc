@@ -1,4 +1,4 @@
-// (Test) Return: 66
+// (Test) Return: 200
 // A two-dimensional array is an array of arrays, indexed row then column.
 
 int main()
@@ -25,5 +25,6 @@ int main()
         }
     }
 
-    return sum;
+    if (sum != 66) return 4;
+    return 200;
 }

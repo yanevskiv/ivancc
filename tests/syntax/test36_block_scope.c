@@ -1,4 +1,4 @@
-// (Test) Return: 65
+// (Test) Return: 200
 // A nested block shadows the names around it, and each shadowing variable gets
 // a frame slot of its own.
 
@@ -39,5 +39,6 @@ int main()
         total = x;
     }
 
-    return total;
+    if (total != 65) return 4;
+    return 200;
 }

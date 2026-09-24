@@ -1,4 +1,4 @@
-// (Test) Return: 39
+// (Test) Return: 200
 // Shifts, including the arithmetic right shift a signed operand requires and
 // the count travelling through %cl.
 
@@ -21,5 +21,6 @@ int main()
     if ((2 << 3 >> 1) != 8) return 6;
     if ((1 << 2 + 1) != 8) return 7;
 
-    return (1 << n) + shift_right(248, 3);
+    if ((1 << n) + shift_right(248, 3) != 39) return 8;
+    return 200;
 }

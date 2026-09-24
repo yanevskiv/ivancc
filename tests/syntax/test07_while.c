@@ -1,4 +1,4 @@
-// (Test) Return: 45
+// (Test) Return: 200
 // A while loop that runs, and one whose condition is false on entry.
 
 int main()
@@ -15,5 +15,6 @@ int main()
         s = s + 1000;
     }
 
-    return s;
+    if (s != 45) return 1;
+    return 200;
 }

@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Reading and writing through a pointer reaches the object it points at.
 
 int main()
@@ -17,5 +17,6 @@ int main()
     x = x + 1;
     if (*p != 43) return 3;
 
-    return *p - 1;
+    if (*p - 1 != 42) return 4;
+    return 200;
 }
