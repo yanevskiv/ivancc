@@ -5,7 +5,6 @@
 }
 
 %code {
-#include <stdio.h>
 
 #include "util/log.h"
 #include "syntax/ast.h"
@@ -22,26 +21,30 @@ void yyerror(const char *s);
 %define api.location.type {int}
 
 %union {
-    long        num;
-    Par_Num     lit;
-    Par_Specs   specs;
-    char       *str;
-    Ast_Str     str_lit;
-    Ast_Node   *node;
-    Ast_Type   *type;
-    Ast_Member *member;
-    Par_Decl   *decl;
-    Par_ParamList params;
-    Ast_Var    *var;
+    long            val;
+    Ast_TypeKind    kind;
+    Ast_Qual        qual;
+    Ast_Storage     storage;
+    Par_ArrayDecor  decor;
+    Par_Num         num;
+    Par_Specs       specs;
+    Par_Decl       *decl;
+    Par_ParamList   params;
+    Ast_Str         str;
+    Ast_Node       *node;
+    Ast_Type       *type;
+    Ast_Member     *member;
+    Ast_Var        *var;
+    char           *name;
 }
 
-%token <lit>     NUM
-%token <str>     IDENT
-%token <str_lit> STR
+%token <num>  NUM
+%token <name> IDENT
+%token <str>  STR
 %token INT CHAR SHORT LONG SIGNED UNSIGNED BOOL VOID RETURN IF ELSE FOR WHILE DO BREAK CONTINUE SIZEOF
 %token CONST VOLATILE RESTRICT
 %token STRUCT UNION ENUM TYPEDEF
-%token <str> TYPEDEF_NAME
+%token <name> TYPEDEF_NAME
 %token SWITCH CASE DEFAULT GOTO
 %token STATIC EXTERN REGISTER AUTO INLINE
 %token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END
@@ -56,6 +59,7 @@ void yyerror(const char *s);
 %type <node> for_init expr expr_comma expr_opt args arg_list
 %type <node> initializer init_list init_item designators designator
 %type <node> cast unary postfix primary array_dims
+%type <str>  string
 %type <var>  param
 %type <decl> member_declarators member_declarator
 %type <node> enumerator_opt
@@ -64,8 +68,12 @@ void yyerror(const char *s);
 %type <specs> spec_seq spec named_type
 %type <decl> declarator direct_declarator
 %type <params> params param_list ident_list
-%type <str>  tag_name
-%type <num>  stars storage struct_or_union array_len array_decor qual
+%type <name> tag_name
+%type <val>     stars array_len
+%type <kind>    struct_or_union
+%type <qual>    qual
+%type <storage> storage
+%type <decor>   array_decor
 
 /* Lowest precedence first. */
 %nonassoc LOWER_THAN_ELSE
@@ -258,7 +266,7 @@ direct_declarator
 
 /* The `static` and qualifiers a parameter's outermost array may carry. */
 array_decor
-    : /* empty */          { $$ = 0; }
+    : /* empty */          { $$ = PAR_ARRAY_NONE; }
     | STATIC               { $$ = PAR_ARRAY_STATIC; }
     | STATIC qual_list     { $$ = PAR_ARRAY_STATIC | PAR_ARRAY_QUAL; }
     | qual_list            { $$ = PAR_ARRAY_QUAL; }
@@ -605,8 +613,8 @@ postfix
 /* An operand that stands alone. */
 primary
     : NUM                  { $$ = Ast_NewNum($1.pn_val, @1); $$->an_type = $1.pn_type; }
-    | STR                  { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_STR, @1);
-                             n->an_str_idx = Ast_AddString($1.as_data, $1.as_len); $$ = n; }
+    | string               { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_STR, @1);
+                             n->an_str_idx = Ast_AddString($1.as_data, $1.as_len, $1.as_width); $$ = n; }
     | IDENT
         { long val;
           if (Ast_FindEnumConst($1, &val)) { $$ = Ast_NewNum(val, @1); }
@@ -619,6 +627,12 @@ primary
     /* va_end has nothing to undo. */
     | BUILTIN_VA_END LPAREN expr RPAREN
         { $$ = $3; }
+    ;
+
+/* One string literal, or several written next to each other. */
+string
+    : STR                  { $$ = $1; }
+    | string STR           { $$ = Par_ConcatStrings($1, $2); }
     ;
 
 /* A call's argument list. */
@@ -638,6 +652,6 @@ arg_list
 // Report a parse error and stop.
 void yyerror(const char *s)
 {
-    fprintf(stderr, "cc: parse error: %s near line %d\n", s, yylloc);
+    File_Print(File_Err(), "cc: parse error: %s near line %d\n", s, yylloc);
     exit(1);
 }

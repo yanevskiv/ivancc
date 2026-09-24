@@ -14,56 +14,12 @@
 /* Stamp every token with the line it starts on. */
 #define YY_USER_ACTION  yylloc = yylineno;
 
-/* Decode a C literal body into raw bytes. */
-static char *Lex_Unescape(const char *p, int len, int *out_len)
-{
-    int n = 0;
-    char *buf = malloc(len + 1);
-
-    for (int i = 0; i < len; i++) {
-        if (p[i] != '\\' || i + 1 == len) {
-            buf[n++] = p[i];
-            continue;
-        }
-        switch (p[++i]) {
-            case 'n': {
-                buf[n++] = '\n';
-            } break;
-            case 't': {
-                buf[n++] = '\t';
-            } break;
-            case 'r': {
-                buf[n++] = '\r';
-            } break;
-            case '0': {
-                buf[n++] = '\0';
-            } break;
-            case '\\': {
-                buf[n++] = '\\';
-            } break;
-            case '\'': {
-                buf[n++] = '\'';
-            } break;
-            case '"': {
-                buf[n++] = '"';
-            } break;
-            default: {
-                buf[n++] = p[i];
-            } break;
-        }
-    }
-
-    buf[n] = '\0';
-    *out_len = n;
-    return buf;
-}
-
 %}
 
 DIGIT   [0-9]
 ALPHA   [A-Za-z_]
 ALNUM   [A-Za-z_0-9]
-ISUF    ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
+ISUFFIX ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
 
 %%
 
@@ -109,19 +65,21 @@ ISUF    ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
 "__builtin_va_arg"      return BUILTIN_VA_ARG;
 "__builtin_va_end"      return BUILTIN_VA_END;
 
-{ALPHA}{ALNUM}*         { yylval.str = Str_Duplicate(yytext);
+{ALPHA}{ALNUM}*         { yylval.name = Str_Clone(yytext);
                           return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }
 
-0[xX][0-9A-Fa-f]+{ISUF}?  { yylval.lit = Par_NumLiteral(yytext); return NUM; }
-0[0-7]*{ISUF}?            { yylval.lit = Par_NumLiteral(yytext); return NUM; }
-[1-9]{DIGIT}*{ISUF}?      { yylval.lit = Par_NumLiteral(yytext); return NUM; }
+0[xX][0-9A-Fa-f]+{ISUFFIX}?  { yylval.num = Par_NumLiteral(yytext); return NUM; }
+0[0-7]*{ISUFFIX}?            { yylval.num = Par_NumLiteral(yytext); return NUM; }
+[1-9]{DIGIT}*{ISUFFIX}?      { yylval.num = Par_NumLiteral(yytext); return NUM; }
 
-\"([^"\\\n]|\\.)*\"     { Ast_Str *lit = &yylval.str_lit;
-                          lit->as_data = Lex_Unescape(yytext + 1, yyleng - 2, &lit->as_len);
+L?\"([^"\\\n]|\\.)*\"   { int wide = yytext[0] == 'L';
+                          Ast_Str *str = &yylval.str;
+                          str->as_width = wide ? AST_TYPE_SIZE_INT : STR_NARROW_WIDTH;
+                          str->as_data = Str_Unescape(yytext + wide + 1, yyleng - wide - 2, str->as_width, &str->as_len);
                           return STR; }
-'([^'\\\n]|\\.)'        { int n; char *s = Lex_Unescape(yytext + 1, yyleng - 2, &n);
-                          yylval.lit.pn_val = (unsigned char) s[0]; yylval.lit.pn_type = &Ast_TypeInt;
-                          Str_Free(s); return NUM; }
+L?'([^'\\\n]|\\.)+'     { int wide = yytext[0] == 'L';
+                          yylval.num = Par_CharLiteral(yytext + wide + 1, yyleng - wide - 2, wide ? AST_TYPE_SIZE_INT : STR_NARROW_WIDTH);
+                          return NUM; }
 
 "=="                    return EQ;
 "!="                    return NE;
