@@ -13,11 +13,11 @@ Checklist toward ISO C99.
 - [x] integer suffixes (`u U l L ll LL` and combinations)
 - [ ] floating-point literals (`1.0`, `1e10`, `0x1p0`)
 - [x] character literals
-- [ ] full escape set (`\a \b \f \v \xHH`, octal `\nnn`, `\uXXXX`/`\UXXXXXXXX`)
+- [x] full escape set (`\a \b \f \v \xHH`, octal `\nnn`, `\uXXXX`/`\UXXXXXXXX`)
 - [x] string literals
-- [ ] adjacent string literal concatenation (`"a" "b"`)
-- [ ] wide literals (`L"..."`, `L'x'`)
-- [ ] multi-character constants (`'ab'`)
+- [x] adjacent string literal concatenation (`"a" "b"`)
+- [x] wide literals (`L"..."`, `L'x'`)
+- [x] multi-character constants (`'ab'`)
 
 ## Types
 
