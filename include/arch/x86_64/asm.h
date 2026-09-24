@@ -26,7 +26,8 @@ enum Asm_x86_64_Reg {
     ASM_X86_64_REG_R12,
     ASM_X86_64_REG_R13,
     ASM_X86_64_REG_R14,
-    ASM_X86_64_REG_R15
+    ASM_X86_64_REG_R15,
+    ASM_X86_64_REG_COUNT // number of registers
 };
 
 // The width in bits of a register operand, and so of the access it makes.
@@ -75,7 +76,8 @@ enum Asm_x86_64_Op {
     ASM_X86_64_OP_CALL,
     ASM_X86_64_OP_CALL_REG,
     ASM_X86_64_OP_RET,
-    ASM_X86_64_OP_SYSCALL
+    ASM_X86_64_OP_SYSCALL,
+    ASM_X86_64_OP_COUNT // number of operations
 };
 
 // How an operand is addressed.
@@ -86,7 +88,8 @@ enum Asm_x86_64_OperandKind {
     ASM_X86_64_OPERAND_IMM,   // ao_imm                $42
     ASM_X86_64_OPERAND_MEM,   // ao_reg (base), ao_disp   -8(%rbp)
     ASM_X86_64_OPERAND_RIP,   // ao_label              .Lstr0(%rip)
-    ASM_X86_64_OPERAND_LABEL  // ao_label              jump / call target
+    ASM_X86_64_OPERAND_LABEL, // ao_label              jump / call target
+    ASM_X86_64_OPERAND_COUNT  // number of kinds
 };
 
 // The kind of one item in the instruction list.
@@ -98,7 +101,8 @@ enum Asm_x86_64_ItemKind {
     ASM_X86_64_ITEM_SECTION,   // switch to ai_secname
     ASM_X86_64_ITEM_BYTES,     // ai_bytes / ai_nbytes raw data
     ASM_X86_64_ITEM_ADDR,      // eight bytes holding the address of ai_label
-    ASM_X86_64_ITEM_DIRECTIVE  // ai_text raw assembler line
+    ASM_X86_64_ITEM_DIRECTIVE, // ai_text raw assembler line
+    ASM_X86_64_ITEM_COUNT      // number of kinds
 };
 
 // A single instruction operand.

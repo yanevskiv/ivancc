@@ -14,6 +14,11 @@
 - Every macro constant and enum constant must be `SCREAMING_SNAKE_CASE`.
 - Every macro constant and enum constant must be prefixed with its module or type.
 - Every macro constant and enum constant must read like `ELF_LINK_MAX_PLACE`.
+- Every enum that numbers a set must end with a `_COUNT` member, as `AST_TYPE_KIND_COUNT` does.
+- Every `_COUNT` member must take the value the enum gives it, never `= <the last member>`.
+- Every bound on such an enum must read `i < PREFIX_COUNT`, never `i <= PREFIX_LAST` or `+ 1`.
+- Every named sub-range must be marked by a `_FIRST_<name>` and a `_LAST_<name>` member.
+- Do not give a `_COUNT` to an enum of flag bits, of sizes or of values an external spec fixes.
 - Every function-like macro must be named as a function, as `Log_ShowErrorAt` is.
 - Every name fixed by an external spec must keep that spec's spelling, as `R_X86_64_PC32` does.
 - Every magic number must be named by a `#define` or an enum constant.
@@ -30,6 +35,8 @@
 - Every empty case body must still get its `{ }` with `// empty` inside.
 - Every struct and enum member must align its name and value in a column.
 - Every local declaration must have a single space after its type.
+- Every designated initializer must put each field on its own line.
+- Every designated initializer must align its `=` in a column.
 - Every function declaration, definition and call must stay on one line, however long it gets.
 - Indent with 4 spaces.
 - Write the opening `{` of a function definition on its own line.
@@ -45,6 +52,7 @@
   - Place a local that depends on an earlier one after it, ahead of the length order.
 - Do not use tabs, except where the tool requires them, as in a Makefile recipe line.
 - Do not write a one-line `switch` case.
+- Do not write a designated initializer on one line, however few fields it sets.
 - Do not align local variables in columns.
 - Do not write `sizeof buf`.
 - Do not wrap a declaration, definition or call across two lines.

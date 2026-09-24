@@ -92,7 +92,8 @@ enum Emu_x86_64_RmKind {
     EMU_X86_64_RM_NONE, // the instruction has no ModRM byte
     EMU_X86_64_RM_REG,  // %reg
     EMU_X86_64_RM_MEM,  // disp(%base)
-    EMU_X86_64_RM_RIP   // disp(%rip)
+    EMU_X86_64_RM_RIP,  // disp(%rip)
+    EMU_X86_64_RM_COUNT // number of kinds
 };
 
 // One decoded instruction, as the fields an interpreter needs.
