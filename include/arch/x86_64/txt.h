@@ -24,6 +24,8 @@ void Txt_x86_64_Att_Write(File_Stream *out);
 // Name-to-value lookups
 char    Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width);
 int32_t Txt_x86_64_Att_ExtendOp(const char *mnem, Asm_x86_64_Width *width);
+int32_t Txt_x86_64_Att_IndirectOp(int32_t opcode);
+bool    Txt_x86_64_Att_IsDirectBranch(int32_t opcode);
 int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width);
 int32_t Txt_x86_64_OpByName(const char *name);
 
