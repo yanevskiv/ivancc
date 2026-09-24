@@ -21,7 +21,7 @@ int              Gen_x86_64_AlignTo(int n, int align);
 int              Gen_x86_64_SlotSize(const Ast_Type *type);
 Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type);
 void             Gen_x86_64_EmitAddr(Ast_Node *node);
-int              Gen_x86_64_IsUnsigned(const Ast_Node *node);
+Ast_TypeSign     Gen_x86_64_Sign(const Ast_Node *node);
 void             Gen_x86_64_EmitLoadFrom(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, const Ast_Type *type);
 void             Gen_x86_64_EmitLoad(const Ast_Type *type);
 void             Gen_x86_64_EmitCast(const Ast_Type *type);
@@ -52,8 +52,8 @@ void Gen_x86_64_EmitCall(Ast_Node *node);
 
 // Expressions, statements and data
 void Gen_x86_64_EmitNarrow(const Ast_Type *type);
-void Gen_x86_64_EmitDivide(int is_unsigned, Asm_x86_64_Reg reg);
-void Gen_x86_64_EmitShift(int is_unsigned, Asm_x86_64_Reg reg);
+void Gen_x86_64_EmitDivide(Ast_TypeSign sign, Asm_x86_64_Reg reg);
+void Gen_x86_64_EmitShift(Ast_TypeSign sign, Asm_x86_64_Reg reg);
 void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, int line);
 void Gen_x86_64_EmitExpr(Ast_Node *node);
 void Gen_x86_64_EmitStmt(Ast_Node *node);

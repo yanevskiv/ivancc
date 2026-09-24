@@ -1,6 +1,5 @@
 // C source file for the parser's declarator and parameter helpers.
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -137,6 +136,9 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
             }
             return Ast_NewFunction(inner, deriv->pd_params.pl_head, deriv->pd_params.pl_count, deriv->pd_params.pl_variadic, deriv->pd_params.pl_proto);
         }
+        case PAR_DERIV_COUNT: {
+            // empty
+        } break;
     }
     return inner;
 }
@@ -172,7 +174,7 @@ void Par_TakeArrayDecor(Par_Decl *decl, int line)
         if ((deriv->pd_decor & PAR_ARRAY_STATIC) && deriv->pd_empty) {
             Log_ShowErrorAt(line, "'static' in an array declarator needs a length");
         }
-        deriv->pd_decor = 0;
+        deriv->pd_decor = PAR_ARRAY_NONE;
     }
 }
 
@@ -239,15 +241,15 @@ Ast_Var *Par_MakeAnonParam(Ast_Type *type, int line)
 Par_Num Par_NumLiteral(const char *text)
 {
     const char *suffix = text;
-    int is_unsigned = 0;
-    int least = AST_TYPE_KIND_INT;
+    Ast_TypeSign sign = AST_TYPE_SIGNED;
+    Ast_TypeKind least = AST_TYPE_KIND_INT;
 
     int decimal = text[0] != '0';
     unsigned long val = strtoul(text, (char **) &suffix, 0);
 
     for (const char *p = suffix; *p; p++) {
         if (*p == 'u' || *p == 'U') {
-            is_unsigned = 1;
+            sign = AST_TYPE_UNSIGNED;
         } else if (least == AST_TYPE_KIND_LONG) {
             least = AST_TYPE_KIND_LLONG;
         } else {
@@ -255,22 +257,94 @@ Par_Num Par_NumLiteral(const char *text)
         }
     }
 
-    for (int kind = least; kind <= AST_TYPE_KIND_LLONG; kind++) {
-        Ast_Type *type = Ast_IntegerType(kind, is_unsigned);
+    for (Ast_TypeKind kind = least; kind <= AST_TYPE_KIND_LAST_INT; kind++) {
+        Ast_Type *type = Ast_IntegerType(kind, sign);
         int bits = type->at_size * AST_BITS_PER_BYTE;
-        unsigned long room = type->at_unsigned ? ~0UL >> (PAR_LONG_BITS - bits)
-                                               : ~0UL >> (PAR_LONG_BITS - bits + 1);
-        if (val <= room) {
-            return (Par_Num) { .pn_val = (long) val, .pn_type = type };
+        unsigned long room;
+
+        if (type->at_sign == AST_TYPE_UNSIGNED) {
+            room = ~0UL >> (PAR_LONG_BITS - bits);
+        } else {
+            room = ~0UL >> (PAR_LONG_BITS - bits + 1);
         }
-        if (! decimal && ! type->at_unsigned) {
+        if (val <= room) {
+            return (Par_Num) {
+                .pn_val  = (long) val,
+                .pn_type = type
+            };
+        }
+        if (! decimal && type->at_sign != AST_TYPE_UNSIGNED) {
             Ast_Type *alt = Ast_IntegerType(kind, AST_TYPE_UNSIGNED);
             if (val <= ~0UL >> (PAR_LONG_BITS - alt->at_size * AST_BITS_PER_BYTE)) {
-                return (Par_Num) { .pn_val = (long) val, .pn_type = alt };
+                return (Par_Num) {
+                    .pn_val  = (long) val,
+                    .pn_type = alt
+                };
             }
         }
     }
-    return (Par_Num) { .pn_val = (long) val, .pn_type = Ast_IntegerType(AST_TYPE_KIND_LLONG, 1) };
+    return (Par_Num) {
+        .pn_val  = (long) val,
+        .pn_type = Ast_IntegerType(AST_TYPE_KIND_LLONG, AST_TYPE_UNSIGNED)
+    };
+}
+
+// Decode a character literal body into its value and type.
+Par_Num Par_CharLiteral(const char *body, size_t len, size_t width)
+{
+    long value = 0;
+    size_t bytes = 0;
+    char *data = Str_Unescape(body, len, width, &bytes);
+
+    if (width > STR_NARROW_WIDTH) {
+        value = (int) Str_GetValue(data + bytes - width, width);
+    } else if (bytes == 1) {
+        value = (signed char) data[0];
+    } else {
+        for (size_t i = 0; i < bytes; i++) {
+            value = (int) ((value << STR_BITS_PER_BYTE) | (unsigned char) data[i]);
+        }
+    }
+    Str_Free(data);
+    return (Par_Num) {
+        .pn_val  = value,
+        .pn_type = &Ast_TypeInt
+    };
+}
+
+// Re-encode a string literal into elements of the given width.
+Ast_Str Par_WidenString(Ast_Str str, size_t width)
+{
+    size_t n = 0;
+    Ast_Str out;
+
+    out.as_data  = calloc(str.as_len / str.as_width + 1, width);
+    out.as_width = width;
+    for (size_t i = 0; i < str.as_len; i += str.as_width) {
+        Str_PutValue(out.as_data, &n, width, Str_GetValue(str.as_data + i, str.as_width));
+    }
+    out.as_len = n;
+    return out;
+}
+
+// Join two adjacent string literals into one.
+Ast_Str Par_ConcatStrings(Ast_Str left, Ast_Str right)
+{
+    size_t width = left.as_width > right.as_width ? left.as_width : right.as_width;
+    Ast_Str a = Par_WidenString(left, width);
+    Ast_Str b = Par_WidenString(right, width);
+    Ast_Str out;
+
+    out.as_data  = calloc(a.as_len + b.as_len + width, 1);
+    out.as_len   = a.as_len + b.as_len;
+    out.as_width = width;
+    memcpy(out.as_data, a.as_data, a.as_len);
+    memcpy(out.as_data + a.as_len, b.as_data, b.as_len);
+    Str_Free(a.as_data);
+    Str_Free(b.as_data);
+    Str_Free(left.as_data);
+    Str_Free(right.as_data);
+    return out;
 }
 
 // Empty a specifier set.
@@ -282,7 +356,7 @@ void Par_ClearSpecs(Par_Specs *specs)
 }
 
 // Add one type specifier keyword to a declaration's set.
-int Par_AddSpec(int specs, Par_Spec spec, int line)
+Par_Spec Par_AddSpec(Par_Spec specs, Par_Spec spec, int line)
 {
     if (spec == PAR_SPEC_LONG && (specs & PAR_SPEC_LONG)) {
         spec = PAR_SPEC_LLONG;
@@ -312,47 +386,47 @@ void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, int line)
 }
 
 // Return the type a declaration's specifier keywords name.
-Ast_Type *Par_SpecType(int specs, int line)
+Ast_Type *Par_SpecType(Par_Spec specs, int line)
 {
-    int is_unsigned = (specs & PAR_SPEC_UNSIGNED) != 0;
-    int sign = specs & (PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED);
+    Par_Spec explicit = specs & (PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED);
+    Ast_TypeSign sign = specs & PAR_SPEC_UNSIGNED ? AST_TYPE_UNSIGNED : AST_TYPE_SIGNED;
 
     switch (specs & ~(PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED)) {
         case PAR_SPEC_VOID: {
-            if (sign) {
+            if (explicit) {
                 Log_ShowErrorAt(line, "'void' cannot be signed or unsigned");
             }
             return &Ast_TypeVoid;
         } break;
         case PAR_SPEC_BOOL: {
-            if (sign) {
+            if (explicit) {
                 Log_ShowErrorAt(line, "'_Bool' cannot be signed or unsigned");
             }
             return &Ast_TypeBool;
         } break;
         case PAR_SPEC_CHAR: {
-            return Ast_IntegerType(AST_TYPE_KIND_CHAR, is_unsigned);
+            return Ast_IntegerType(AST_TYPE_KIND_CHAR, sign);
         } break;
         case PAR_SPEC_SHORT:
         case PAR_SPEC_SHORT | PAR_SPEC_INT: {
-            return Ast_IntegerType(AST_TYPE_KIND_SHORT, is_unsigned);
+            return Ast_IntegerType(AST_TYPE_KIND_SHORT, sign);
         } break;
         case PAR_SPEC_INT: {
-            return Ast_IntegerType(AST_TYPE_KIND_INT, is_unsigned);
+            return Ast_IntegerType(AST_TYPE_KIND_INT, sign);
         } break;
         case PAR_SPEC_NONE: {
-            if (! sign) {
+            if (! explicit) {
                 Log_ShowErrorAt(line, "a declaration needs a type specifier");
             }
-            return Ast_IntegerType(AST_TYPE_KIND_INT, is_unsigned);
+            return Ast_IntegerType(AST_TYPE_KIND_INT, sign);
         } break;
         case PAR_SPEC_LONG:
         case PAR_SPEC_LONG | PAR_SPEC_INT: {
-            return Ast_IntegerType(AST_TYPE_KIND_LONG, is_unsigned);
+            return Ast_IntegerType(AST_TYPE_KIND_LONG, sign);
         } break;
         case PAR_SPEC_LONG | PAR_SPEC_LLONG:
         case PAR_SPEC_LONG | PAR_SPEC_LLONG | PAR_SPEC_INT: {
-            return Ast_IntegerType(AST_TYPE_KIND_LLONG, is_unsigned);
+            return Ast_IntegerType(AST_TYPE_KIND_LLONG, sign);
         } break;
         default: {
             Log_ShowErrorAt(line, "these type specifiers do not name a type");

@@ -26,7 +26,7 @@ Ast_Type Ast_TypeBool = {
     .at_kind     = AST_TYPE_KIND_BOOL,
     .at_size     = AST_TYPE_SIZE_BOOL,
     .at_align    = AST_TYPE_ALIGN_BOOL,
-    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_sign     = AST_TYPE_UNSIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -35,6 +35,7 @@ Ast_Type Ast_TypeChar = {
     .at_kind     = AST_TYPE_KIND_CHAR,
     .at_size     = AST_TYPE_SIZE_CHAR,
     .at_align    = AST_TYPE_ALIGN_CHAR,
+    .at_sign     = AST_TYPE_SIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -43,7 +44,7 @@ Ast_Type Ast_TypeUChar = {
     .at_kind     = AST_TYPE_KIND_CHAR,
     .at_size     = AST_TYPE_SIZE_CHAR,
     .at_align    = AST_TYPE_ALIGN_CHAR,
-    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_sign     = AST_TYPE_UNSIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -52,6 +53,7 @@ Ast_Type Ast_TypeShort = {
     .at_kind     = AST_TYPE_KIND_SHORT,
     .at_size     = AST_TYPE_SIZE_SHORT,
     .at_align    = AST_TYPE_ALIGN_SHORT,
+    .at_sign     = AST_TYPE_SIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -60,7 +62,7 @@ Ast_Type Ast_TypeUShort = {
     .at_kind     = AST_TYPE_KIND_SHORT,
     .at_size     = AST_TYPE_SIZE_SHORT,
     .at_align    = AST_TYPE_ALIGN_SHORT,
-    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_sign     = AST_TYPE_UNSIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -69,6 +71,7 @@ Ast_Type Ast_TypeInt = {
     .at_kind     = AST_TYPE_KIND_INT,
     .at_size     = AST_TYPE_SIZE_INT,
     .at_align    = AST_TYPE_ALIGN_INT,
+    .at_sign     = AST_TYPE_SIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -77,7 +80,7 @@ Ast_Type Ast_TypeUInt = {
     .at_kind     = AST_TYPE_KIND_INT,
     .at_size     = AST_TYPE_SIZE_INT,
     .at_align    = AST_TYPE_ALIGN_INT,
-    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_sign     = AST_TYPE_UNSIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -86,6 +89,7 @@ Ast_Type Ast_TypeLong = {
     .at_kind     = AST_TYPE_KIND_LONG,
     .at_size     = AST_TYPE_SIZE_LONG,
     .at_align    = AST_TYPE_ALIGN_LONG,
+    .at_sign     = AST_TYPE_SIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -94,7 +98,7 @@ Ast_Type Ast_TypeULong = {
     .at_kind     = AST_TYPE_KIND_LONG,
     .at_size     = AST_TYPE_SIZE_LONG,
     .at_align    = AST_TYPE_ALIGN_LONG,
-    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_sign     = AST_TYPE_UNSIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -103,6 +107,7 @@ Ast_Type Ast_TypeLLong = {
     .at_kind     = AST_TYPE_KIND_LLONG,
     .at_size     = AST_TYPE_SIZE_LLONG,
     .at_align    = AST_TYPE_ALIGN_LLONG,
+    .at_sign     = AST_TYPE_SIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -111,7 +116,7 @@ Ast_Type Ast_TypeULLong = {
     .at_kind     = AST_TYPE_KIND_LLONG,
     .at_size     = AST_TYPE_SIZE_LLONG,
     .at_align    = AST_TYPE_ALIGN_LLONG,
-    .at_unsigned = AST_TYPE_UNSIGNED,
+    .at_sign     = AST_TYPE_UNSIGNED,
     .at_complete = AST_TYPE_COMPLETE
 };
 
@@ -156,13 +161,13 @@ int Ast_AlignDown(int n, int align)
 }
 
 // Return the shared type of that kind and signedness.
-Ast_Type *Ast_IntegerType(Ast_TypeKind kind, int is_unsigned)
+Ast_Type *Ast_IntegerType(Ast_TypeKind kind, Ast_TypeSign sign)
 {
-    return Ast_IntTypes[kind][is_unsigned ? 1 : 0];
+    return Ast_IntTypes[kind][sign];
 }
 
 // Return the type carrying those qualifiers.
-Ast_Type *Ast_Qualify(Ast_Type *type, int qual)
+Ast_Type *Ast_Qualify(Ast_Type *type, Ast_Qual qual)
 {
     if (! qual || type->at_qual == qual) {
         return type;
@@ -177,7 +182,7 @@ Ast_Type *Ast_Qualify(Ast_Type *type, int qual)
 // Return whether this type is an integer type.
 int Ast_IsInteger(const Ast_Type *type)
 {
-    return type->at_kind >= AST_TYPE_KIND_BOOL && type->at_kind <= AST_TYPE_KIND_LLONG;
+    return type->at_kind >= AST_TYPE_KIND_FIRST_INT && type->at_kind <= AST_TYPE_KIND_LAST_INT;
 }
 
 // Build the pointer type that points at base.
@@ -227,7 +232,7 @@ Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
     type->at_kind  = kind;
     type->at_align = 1;
-    type->at_tag   = Str_Duplicate(tag);
+    type->at_tag   = Str_Clone(tag);
     return type;
 }
 
@@ -235,7 +240,7 @@ Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag)
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, int line)
 {
     Ast_Member *member = calloc(1, sizeof(Ast_Member));
-    member->am_name = Str_Duplicate(name);
+    member->am_name = Str_Clone(name);
     member->am_type = type;
     member->am_line = line;
     return member;
@@ -408,7 +413,7 @@ Ast_Node *Ast_NewPostInc(Ast_Node *lhs, long step, int line)
 Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, int line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_MEMBER, lhs, line);
-    node->an_memname = Str_Duplicate(name);
+    node->an_memname = Str_Clone(name);
     return node;
 }
 
@@ -468,7 +473,7 @@ Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, int line)
     }
 
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
-    var->av_name   = Str_Duplicate(name);
+    var->av_name   = Str_Clone(name);
     var->av_symbol = var->av_name;
     var->av_type   = type;
     var->av_line   = line;
@@ -501,7 +506,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
     }
 
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
-    var->av_name   = Str_Duplicate(name);
+    var->av_name   = Str_Clone(name);
     var->av_symbol = var->av_name;
     var->av_type   = type;
     var->av_line   = line;
@@ -520,7 +525,7 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, int line)
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, int line)
 {
     Ast_Var *var = Ast_DeclareGlobal(symbol, type, line);
-    var->av_name = Str_Duplicate(name);
+    var->av_name = Str_Clone(name);
 
     var->av_scope_next = Ast_CurScope->as_vars;
     Ast_CurScope->as_vars = var;
@@ -561,7 +566,7 @@ Ast_Type *Ast_FindTagHere(const char *name)
 void Ast_DeclareTag(const char *name, Ast_Type *type)
 {
     Ast_Tag *tag = calloc(1, sizeof(Ast_Tag));
-    tag->ag_name = Str_Duplicate(name);
+    tag->ag_name = Str_Clone(name);
     tag->ag_type = type;
     tag->ag_next = Ast_CurScope->as_tags;
     Ast_CurScope->as_tags = tag;
@@ -584,7 +589,7 @@ Ast_Type *Ast_FindTypedef(const char *name)
 void Ast_DeclareTypedef(const char *name, Ast_Type *type)
 {
     Ast_Typedef *def = calloc(1, sizeof(Ast_Typedef));
-    def->ad_name = Str_Duplicate(name);
+    def->ad_name = Str_Clone(name);
     def->ad_type = type;
     def->ad_next = Ast_CurScope->as_typedefs;
     Ast_CurScope->as_typedefs = def;
@@ -608,20 +613,21 @@ int Ast_FindEnumConst(const char *name, long *value)
 void Ast_DeclareEnumConst(const char *name, long value)
 {
     Ast_EnumConst *item = calloc(1, sizeof(Ast_EnumConst));
-    item->ae_name  = Str_Duplicate(name);
+    item->ae_name  = Str_Clone(name);
     item->ae_value = value;
     item->ae_next  = Ast_CurScope->as_enums;
     Ast_CurScope->as_enums = item;
 }
 
 // Intern a decoded string literal of len bytes and return its table slot.
-int Ast_AddString(char *str, int len)
+int Ast_AddString(char *str, size_t len, size_t width)
 {
     if (Ast_NumStrings >= AST_MAX_STRINGS) {
         Log_ShowError("too many string literals (max %d)", AST_MAX_STRINGS);
     }
-    Ast_Strings[Ast_NumStrings].as_data = str;
-    Ast_Strings[Ast_NumStrings].as_len  = len;
+    Ast_Strings[Ast_NumStrings].as_data  = str;
+    Ast_Strings[Ast_NumStrings].as_len   = len;
+    Ast_Strings[Ast_NumStrings].as_width = width;
     return Ast_NumStrings++;
 }
 
