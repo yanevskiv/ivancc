@@ -1,4 +1,4 @@
-// (Test) Return: 21
+// (Test) Return: 200
 // & yields an address a callee can write through, and each object has its own.
 
 int store(int *p, int v)
@@ -23,5 +23,6 @@ int main()
     if (a != 20) return 2;
     if (b != 1) return 3;
 
-    return a + b;
+    if (a + b != 21) return 4;
+    return 200;
 }

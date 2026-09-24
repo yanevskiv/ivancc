@@ -1,4 +1,4 @@
-// (Test) Return: 23
+// (Test) Return: 200
 // The comma operator: it evaluates both sides and yields the right one, and it
 // stays out of the way of the commas that separate arguments.
 
@@ -32,5 +32,6 @@ int main()
     i = 0, j = 0;
     if (i != 0) return 8;
 
-    return j + k + 17;
+    if (j + k + 17 != 23) return 9;
+    return 200;
 }

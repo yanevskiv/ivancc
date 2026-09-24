@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // A union is its widest member, and every member starts at offset zero. Writing
 // one and reading another is how that overlap is visible.
 
@@ -32,5 +32,6 @@ int main()
     m.n = 2;
     if (m.c != 2) return 5;
 
-    return w.bytes[0] + m.n;
+    if (w.bytes[0] + m.n != 42) return 6;
+    return 200;
 }

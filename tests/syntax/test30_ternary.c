@@ -1,4 +1,4 @@
-// (Test) Return: 31
+// (Test) Return: 200
 // The conditional operator, including nesting and its precedence against
 // assignment: a = b ? c : d assigns the whole conditional.
 
@@ -29,5 +29,6 @@ int main()
     s = a == 3 ? "yes" : "no";
     if (*s != 'y') return 8;
 
-    return max(a, b) - 69;
+    if (max(a, b) - 69 != 31) return 9;
+    return 200;
 }

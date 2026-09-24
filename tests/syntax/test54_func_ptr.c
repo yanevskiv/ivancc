@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // A function named without calling it is its own address, and a pointer holding
 // one is called by naming the pointer. The declarator is what says so: the
 // parentheses in `int (*f)(int, int)` bind the star before the parameter list,
@@ -93,5 +93,6 @@ int main()
     p = first(arr);
     if (*p != 42) return 18;
 
-    return apply(table[0], 20, 22);
+    if (apply(table[0], 20, 22) != 42) return 19;
+    return 200;
 }

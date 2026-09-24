@@ -1,4 +1,4 @@
-// (Test) Return: 43
+// (Test) Return: 200
 // goto and labels, including a jump out of a loop and a backward jump that
 // makes a loop of its own.
 
@@ -43,5 +43,6 @@ top:
     total = 999;
 skip:
 
-    return total + 33;
+    if (total + 33 != 43) return 4;
+    return 200;
 }

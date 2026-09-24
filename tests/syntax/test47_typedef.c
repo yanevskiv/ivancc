@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // typedef binds a name to a type, which the lexer has to know about: `Point`
 // below is a type specifier everywhere after its declaration, and an ordinary
 // identifier in the declaration that introduces it.
@@ -35,5 +35,6 @@ int main()
     if (area(&q) != 40) return 3;
     if (s[0] != 'o') return 4;
 
-    return area(&q) + n;
+    if (area(&q) + n != 42) return 5;
+    return 200;
 }

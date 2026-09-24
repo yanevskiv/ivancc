@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Enumeration constants count from zero, and an explicit value moves the count
 // to that point. The constants are ints wherever a name can appear, and any
 // constant expression may set one, including an earlier constant.
@@ -34,5 +34,6 @@ int main()
     if (BASE != 40 || NEXT != 42 || WIDE != 4) return 7;
     if (classify(OK) != 1 || classify(FAILED) != 2 || classify(BUSY) != 0) return 5;
 
-    return c + FAILED + OK + GONE - 11;
+    if (c + FAILED + OK + GONE - 11 != 42) return 8;
+    return 200;
 }

@@ -1,4 +1,4 @@
-// (Test) Return: 46
+// (Test) Return: 200
 // Prefix and postfix ++ and --: which value each yields, and that ++ on a
 // pointer steps by the size of what it points at.
 
@@ -37,5 +37,6 @@ int main()
     if (i != 1) return 11;
     if (total != 10) return 12;
 
-    return total + i * 36;
+    if (total + i * 36 != 46) return 13;
+    return 200;
 }

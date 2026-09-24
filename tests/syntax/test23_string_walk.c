@@ -1,4 +1,4 @@
-// (Test) Return: 12
+// (Test) Return: 200
 // Walking a literal through a char * finds its length, as printf must.
 
 int length(char *s)
@@ -23,5 +23,6 @@ int main()
     if (s[11] != '!') return 3;
     if (s[12] != 0) return 4;
 
-    return length(s);
+    if (length(s) != 12) return 5;
+    return 200;
 }

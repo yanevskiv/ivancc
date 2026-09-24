@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // The integer type zoo. Each width has its own size and its own range, and a
 // value that leaves that range wraps into it rather than keeping the bits it
 // had. A narrow type still promotes to int the moment it is used in arithmetic.
@@ -119,5 +119,6 @@ int main()
 
     l = 40;
     s = 2;
-    return l + s;
+    if (l + s != 42) return 37;
+    return 200;
 }

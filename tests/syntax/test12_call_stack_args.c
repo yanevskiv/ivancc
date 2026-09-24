@@ -1,4 +1,4 @@
-// (Test) Return: 204
+// (Test) Return: 200
 // Eight arguments, so two travel on the stack rather than in registers.
 // Each is weighted, so a misordered or dropped argument changes the result.
 
@@ -9,5 +9,6 @@ int weigh(int a, int b, int c, int d, int e, int f, int g, int h)
 
 int main()
 {
-    return weigh(1, 2, 3, 4, 5, 6, 7, 8);
+    if (weigh(1, 2, 3, 4, 5, 6, 7, 8) != 204) return 1;
+    return 200;
 }

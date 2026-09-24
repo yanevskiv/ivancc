@@ -1,4 +1,4 @@
-// (Test) Return: 5
+// (Test) Return: 200
 // && and ||, including the short circuit: the guarded division by zero
 // raises SIGFPE if either operator evaluates its right side needlessly.
 
@@ -17,7 +17,8 @@ int main()
     }
 
     if (!zero || 1 / zero) {
-        return r;
+        if (r != 5) return 102;
+        return 200;
     }
 
     return 101;

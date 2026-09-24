@@ -1,4 +1,4 @@
-// (Test) Return: 23
+// (Test) Return: 200
 // Every relational and equality operator, each weighted so that a wrong
 // answer names itself in the return value.
 
@@ -13,5 +13,6 @@ int main()
     r = r + (5 == 5) * 16;
     r = r + (5 != 5) * 32;
 
-    return r;
+    if (r != 23) return 1;
+    return 200;
 }

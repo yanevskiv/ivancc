@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // do-while runs its body before testing, so a false condition still runs once.
 
 int main()
@@ -24,5 +24,6 @@ int main()
     do i--; while (i > 6);
     if (i != 6) return 3;
 
-    return i + 36;
+    if (i + 36 != 42) return 4;
+    return 200;
 }

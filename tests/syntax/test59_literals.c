@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Integer literals. A leading zero makes a constant octal, and a suffix fixes
 // its signedness and its least width. Where no suffix says otherwise the value
 // itself picks the first type of the list that can hold it.
@@ -78,5 +78,5 @@ int main()
     if (u != 3735928559) return 41;
     if ((u >> 28) != 13) return 42;
 
-    return 052;
+    return 0310;
 }

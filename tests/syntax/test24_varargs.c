@@ -1,4 +1,4 @@
-// (Test) Return: 55
+// (Test) Return: 200
 // The anonymous arguments of a variadic function, walked with a va_list that
 // starts in the register save area. Every argument here still fits in a register.
 
@@ -23,5 +23,6 @@ int main()
     if (sum(1, 7) != 7) return 2;
     if (sum(3, 1, 2, 3) != 6) return 3;
 
-    return sum(5, 1, 2, 3, 4, 45);
+    if (sum(5, 1, 2, 3, 4, 45) != 55) return 4;
+    return 200;
 }

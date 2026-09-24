@@ -1,4 +1,4 @@
-// (Test) Return: 25
+// (Test) Return: 200
 // Compound statements nest, and an empty one is legal.
 
 int main()
@@ -18,5 +18,6 @@ int main()
         r = r + 5;
     }
 
-    return r;
+    if (r != 25) return 1;
+    return 200;
 }

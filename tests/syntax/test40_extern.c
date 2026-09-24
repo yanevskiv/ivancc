@@ -1,4 +1,4 @@
-// (Test) Return: 30
+// (Test) Return: 200
 // extern declares without defining, so the definition later in the file is the
 // one that counts and no second slot appears.
 
@@ -20,5 +20,6 @@ int main()
     shared += 6;
     if (reader() != 18) return 3;
 
-    return shared + 12;
+    if (shared + 12 != 30) return 4;
+    return 200;
 }

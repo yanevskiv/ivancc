@@ -1,4 +1,4 @@
-// (Test) Return: 41
+// (Test) Return: 200
 // Designated initializers for arrays: [i] = v places an element, and the
 // elements after it carry on from that index.
 
@@ -20,5 +20,6 @@ int main()
     if (follow[1] != 2 || follow[2] != 3) return 7;
     if (follow[0] != 0 || follow[3] != 0) return 8;
 
-    return sparse[2] + sparse[4] + desig[1] + follow[2] + 14;
+    if (sparse[2] + sparse[4] + desig[1] + follow[2] + 14 != 41) return 9;
+    return 200;
 }

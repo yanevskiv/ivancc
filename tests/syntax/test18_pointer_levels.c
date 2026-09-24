@@ -1,4 +1,4 @@
-// (Test) Return: 55
+// (Test) Return: 200
 // A pointer to a pointer gives up one level of indirection at a time.
 
 int main()
@@ -18,5 +18,6 @@ int main()
     **pp = 55;
     if (x != 55) return 4;
 
-    return **pp;
+    if (**pp != 55) return 5;
+    return 200;
 }

@@ -1,4 +1,4 @@
-// (Test) Return: 42
+// (Test) Return: 200
 // Array initializers, at file scope and inside a function. What a list leaves
 // out is zero, which for a local means the code has to write those zeros.
 
@@ -23,5 +23,6 @@ int main()
     if (partial[0] != 5 || partial[1] != 6) return 5;
     if (partial[2] != 0 || partial[3] != 0) return 6;
 
-    return total + table[1] + 12;
+    if (total + table[1] + 12 != 42) return 7;
+    return 200;
 }
