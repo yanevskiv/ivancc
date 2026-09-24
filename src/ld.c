@@ -44,7 +44,7 @@ static char *Ld_PlaceName(const char *spec, int len)
     return name;
 }
 
-// Parse a -place=SEC@ADDR argument into opts, or abort on a malformed value.
+// Parse a -place=SEC@ADDR argument into opts.
 static void Ld_ParsePlace(const char *spec, Elf_LinkOptions *opts)
 {
     const char *at = strchr(spec, '@');
@@ -58,9 +58,8 @@ static void Ld_ParsePlace(const char *spec, Elf_LinkOptions *opts)
 int main(int argc, char **argv)
 {
     const char  *output = LD_DEFAULT_OUTPUT;
-    Elf_LinkOptions opts    = {0};
+    Elf_LinkOptions opts = {0};
 
-    // ld's flags use single-dash forms, so arguments are walked by hand.
     int nobjs = 0;
     const char **objs = calloc(argc, sizeof(*objs));
 

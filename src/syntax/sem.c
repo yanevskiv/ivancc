@@ -410,12 +410,12 @@ void Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const cha
 // Convert a call's arguments to the types its parameters name.
 void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int nparams, int variadic, int proto)
 {
-    Ast_Node  head = {0};
-    Ast_Node *tail = &head;
-    Ast_Node *arg  = node->an_args;
-    Ast_Var  *param = proto ? params : NULL;
-    int from = proto && variadic ? nparams : 0;
     int i = 0;
+    int from = proto && variadic ? nparams : 0;
+    Ast_Node head = {0};
+    Ast_Node *tail = &head;
+    Ast_Node *arg = node->an_args;
+    Ast_Var *param = proto ? params : NULL;
 
     while (arg) {
         Ast_Node *next = arg->an_next;
@@ -434,6 +434,7 @@ void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int nparams, int variadic,
     node->an_args = head.an_next;
 }
 
+// Check a call and convert its arguments.
 void Sem_CheckCall(Ast_Node *node)
 {
     if (node->an_lhs) {
@@ -450,65 +451,6 @@ void Sem_CheckCall(Ast_Node *node)
     Sem_CheckArity(node, func->af_nparams, func->af_variadic, func->af_proto, what);
     Str_Free(what);
     Sem_ConvertArgs(node, func->af_params, func->af_nparams, func->af_variadic, func->af_proto);
-}
-
-// Attach every case and default of a switch to it.
-void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
-{
-    if (! node || node->an_kind == AST_NODE_KIND_SWITCH) {
-        return;
-    }
-
-    if (node->an_kind == AST_NODE_KIND_CASE || node->an_kind == AST_NODE_KIND_DEFAULT) {
-        for (Ast_Node *seen = sw->an_cases; seen; seen = seen->an_case_next) {
-            if (seen->an_kind == node->an_kind
-                && (node->an_kind == AST_NODE_KIND_DEFAULT || seen->an_val == node->an_val)) {
-                Log_ShowErrorAt(node->an_line, "duplicate case in switch");
-            }
-        }
-        if (*tail) {
-            (*tail)->an_case_next = node;
-        } else {
-            sw->an_cases = node;
-        }
-        *tail = node;
-    }
-
-    Sem_CollectCases(node->an_lhs, sw, tail);
-    Sem_CollectCases(node->an_then, sw, tail);
-    Sem_CollectCases(node->an_els, sw, tail);
-    Sem_CollectCases(node->an_body, sw, tail);
-    Sem_CollectCases(node->an_next, sw, tail);
-}
-
-// Return whether the statements under node define a label of this name.
-int Sem_FindLabel(Ast_Node *node, const char *name)
-{
-    if (! node) {
-        return 0;
-    }
-    if (node->an_kind == AST_NODE_KIND_LABEL && strcmp(node->an_funcname, name) == 0) {
-        return 1;
-    }
-    return Sem_FindLabel(node->an_lhs, name) || Sem_FindLabel(node->an_then, name)
-        || Sem_FindLabel(node->an_els, name) || Sem_FindLabel(node->an_body, name)
-        || Sem_FindLabel(node->an_next, name);
-}
-
-// Reject a goto that names a label its function never defines.
-void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
-{
-    if (! node) {
-        return;
-    }
-    if (node->an_kind == AST_NODE_KIND_GOTO && ! Sem_FindLabel(body, node->an_funcname)) {
-        Log_ShowErrorAt(node->an_line, "goto names an undefined label '%s'", node->an_funcname);
-    }
-    Sem_CheckGotos(node->an_lhs, body);
-    Sem_CheckGotos(node->an_then, body);
-    Sem_CheckGotos(node->an_els, body);
-    Sem_CheckGotos(node->an_body, body);
-    Sem_CheckGotos(node->an_next, body);
 }
 
 // Wrap node in a multiplication by size.
@@ -560,6 +502,65 @@ void Sem_Arith(Ast_Node *node)
 
     node->an_rhs  = Sem_ScaleBy(node->an_rhs, lhs->at_base->at_size);
     node->an_type = Sem_Decay(lhs);
+}
+
+// Return whether the statements under node define a label of this name.
+int Sem_FindLabel(Ast_Node *node, const char *name)
+{
+    if (! node) {
+        return 0;
+    }
+    if (node->an_kind == AST_NODE_KIND_LABEL && strcmp(node->an_funcname, name) == 0) {
+        return 1;
+    }
+    return Sem_FindLabel(node->an_lhs, name) || Sem_FindLabel(node->an_then, name)
+        || Sem_FindLabel(node->an_els, name) || Sem_FindLabel(node->an_body, name)
+        || Sem_FindLabel(node->an_next, name);
+}
+
+// Reject a goto that names a label its function never defines.
+void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
+{
+    if (! node) {
+        return;
+    }
+    if (node->an_kind == AST_NODE_KIND_GOTO && ! Sem_FindLabel(body, node->an_funcname)) {
+        Log_ShowErrorAt(node->an_line, "goto names an undefined label '%s'", node->an_funcname);
+    }
+    Sem_CheckGotos(node->an_lhs, body);
+    Sem_CheckGotos(node->an_then, body);
+    Sem_CheckGotos(node->an_els, body);
+    Sem_CheckGotos(node->an_body, body);
+    Sem_CheckGotos(node->an_next, body);
+}
+
+// Attach every case and default of a switch to it.
+void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
+{
+    if (! node || node->an_kind == AST_NODE_KIND_SWITCH) {
+        return;
+    }
+
+    if (node->an_kind == AST_NODE_KIND_CASE || node->an_kind == AST_NODE_KIND_DEFAULT) {
+        for (Ast_Node *seen = sw->an_cases; seen; seen = seen->an_case_next) {
+            if (seen->an_kind == node->an_kind
+                && (node->an_kind == AST_NODE_KIND_DEFAULT || seen->an_val == node->an_val)) {
+                Log_ShowErrorAt(node->an_line, "duplicate case in switch");
+            }
+        }
+        if (*tail) {
+            (*tail)->an_case_next = node;
+        } else {
+            sw->an_cases = node;
+        }
+        *tail = node;
+    }
+
+    Sem_CollectCases(node->an_lhs, sw, tail);
+    Sem_CollectCases(node->an_then, sw, tail);
+    Sem_CollectCases(node->an_els, sw, tail);
+    Sem_CollectCases(node->an_body, sw, tail);
+    Sem_CollectCases(node->an_next, sw, tail);
 }
 
 // Annotate a node and everything below it.

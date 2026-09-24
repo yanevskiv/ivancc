@@ -11,7 +11,7 @@
 #include "syntax/ast.h"
 #include "syntax/sem.h"
 
-// Give a rule the line of its first token, or of the preceding one if empty.
+// Give a rule the line of its first token.
 #define YYLLOC_DEFAULT(cur, rhs, n)  ((cur) = (n) ? YYRHSLOC(rhs, 1) : YYRHSLOC(rhs, 0))
 
 int  yylex(void);
@@ -146,7 +146,7 @@ knr_declarators
     | knr_declarators COMMA declarator { Par_SetKnrParam($3, @3); }
     ;
 
-/* A storage class; register, auto and inline are accepted and ignored. */
+/* A storage class. */
 storage
     : /* empty */          { $$ = AST_STORAGE_NONE; }
     | STATIC               { $$ = AST_STORAGE_STATIC; }
@@ -204,7 +204,7 @@ decl_spec
     : spec_seq             { $$ = Par_SpecsType(&$1, @1); }
     ;
 
-/* The specifiers and qualifiers a declaration opens with, in any order. */
+/* The specifiers and qualifiers a declaration opens with. */
 spec_seq
     : spec                 { Par_ClearSpecs(&$$); Par_TakeSpec(&$$, &$1, @1); }
     | spec_seq spec        { $$ = $1; Par_TakeSpec(&$$, &$2, @2); }
@@ -243,7 +243,7 @@ declarator
 direct_declarator
     : IDENT                                  { $$ = Par_NewDecl($1); $$->pc_line = @1; }
     | LPAREN declarator RPAREN               { $$ = $2; }
-    /* An unnamed declarator, which only a parameter may be. */
+    /* An unnamed declarator. */
     | LPAREN stars RPAREN
         { $$ = Par_NewDecl(NULL); $$->pc_line = @1;
           for (int i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
@@ -305,7 +305,7 @@ struct_or_union
     | UNION                { $$ = AST_TYPE_KIND_UNION; }
     ;
 
-/* A struct, union or enum tag, which may reuse a typedef's name. */
+/* A struct, union or enum tag. */
 tag_name
     : IDENT                { $$ = $1; }
     | TYPEDEF_NAME         { $$ = $1; }
@@ -317,7 +317,7 @@ members
     | members member_decl  { $$ = Par_AppendMembers($1, $2); }
     ;
 
-/* One member declaration, which may name several members. */
+/* One member declaration. */
 member_decl
     : decl_spec member_declarators SEMI  { $$ = Par_MakeMembers($1, $2); }
     ;
@@ -365,7 +365,7 @@ stars
 
 /* ---- statements ---------------------------------------------------- */
 
-/* A braced block, which is a scope of its own. */
+/* A braced block. */
 compound_stmt
     : LBRACE { Ast_PushScope(); } stmt_list RBRACE
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @1); n->an_body = $3;
@@ -452,7 +452,7 @@ local_decl
     | declarator ASSIGN initializer    { $$ = Par_AddLocal($1, $3, @1); }
     ;
 
-/* A scalar initializer, or a braced list of items. */
+/* A scalar initializer. */
 initializer
     : expr                       { $$ = $1; }
     | LBRACE init_list RBRACE
@@ -501,7 +501,7 @@ array_dims
         { Ast_Node *n = Ast_NewNum($2, @1); n->an_next = $4; $$ = n; }
     ;
 
-/* An array length, which must fold to a constant. */
+/* An array length. */
 array_len
     : expr
         { long val;
@@ -511,7 +511,7 @@ array_len
           $$ = val; }
     ;
 
-/* A comma expression, which an argument list cannot contain. */
+/* A comma expression. */
 expr_comma
     : expr                       { $$ = $1; }
     | expr_comma COMMA expr      { $$ = Ast_NewBinary(AST_NODE_KIND_COMMA, $1, $3, @2); }
@@ -562,7 +562,7 @@ expr
     | expr SHR_ASSIGN expr { $$ = Ast_NewOpAssign(AST_NODE_KIND_SHR, $1, $3, @2); }
     ;
 
-/* A cast, or the unary expression under it. */
+/* A cast. */
 cast
     : unary                { $$ = $1; }
     | LPAREN type_name RPAREN cast
@@ -616,12 +616,12 @@ primary
         { $$ = Ast_NewUnary(AST_NODE_KIND_VA_START, $3, @1); }
     | BUILTIN_VA_ARG LPAREN expr COMMA type_name RPAREN
         { $$ = Par_VaArg($3, $5, @1); }
-    /* va_end has nothing to undo, so it becomes the evaluation of its operand. */
+    /* va_end has nothing to undo. */
     | BUILTIN_VA_END LPAREN expr RPAREN
         { $$ = $3; }
     ;
 
-/* A call's argument list, which may be empty. */
+/* A call's argument list. */
 args
     : /* empty */          { $$ = NULL; }
     | arg_list             { $$ = $1; }

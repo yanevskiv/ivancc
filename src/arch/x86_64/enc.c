@@ -78,7 +78,7 @@ void Enc_x86_64_RecordGlobl(const char *name)
     Enc_x86_64_Globls[Enc_x86_64_NumGlobls++] = name;
 }
 
-// Record a rel32 fixup at the current site; the caller writes the placeholder bytes.
+// Record a rel32 fixup at the current site.
 void Enc_x86_64_RecordFixup(const char *name, uint32_t type, int64_t addend)
 {
     if (Enc_x86_64_NumFixes == Enc_x86_64_CapFixes) {
@@ -106,6 +106,20 @@ void Enc_x86_64_EmitRexW(int regHigh, int rmHigh)
     Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | ENC_X86_64_REX_W | (regHigh ? ENC_X86_64_REX_R : 0) | (rmHigh ? ENC_X86_64_REX_B : 0));
 }
 
+// Emit a REX prefix when the operand width or the registers chosen require one.
+void Enc_x86_64_EmitRex(Asm_x86_64_Width width, Asm_x86_64_Reg reg, Asm_x86_64_Reg rm)
+{
+    int bits = (width == ASM_X86_64_WIDTH_64 ? ENC_X86_64_REX_W : 0)
+             | (Enc_x86_64_RegHigh(reg) ? ENC_X86_64_REX_R : 0)
+             | (Enc_x86_64_RegHigh(rm) ? ENC_X86_64_REX_B : 0);
+
+    int lowbyte = width == ASM_X86_64_WIDTH_8 && reg >= ASM_X86_64_REG_RSP && reg < ASM_X86_64_REG_R8;
+
+    if (bits || lowbyte) {
+        Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | bits);
+    }
+}
+
 // Emit a register-direct ModRM byte pairing reg with rm.
 void Enc_x86_64_EmitModRR(int reg, Asm_x86_64_Reg rm)
 {
@@ -115,7 +129,7 @@ void Enc_x86_64_EmitModRR(int reg, Asm_x86_64_Reg rm)
 // Emit the ModRM, optional SIB and displacement for disp(%base).
 void Enc_x86_64_EmitMem(int reg, Asm_x86_64_Reg base, int disp)
 {
-    int rm  = base & ENC_X86_64_REG_MASK;
+    int rm = base & ENC_X86_64_REG_MASK;
     int mod;
     if (disp == 0 && rm != (ASM_X86_64_REG_RBP & ENC_X86_64_REG_MASK)) {
         mod = ENC_X86_64_MOD_INDIRECT;
@@ -165,20 +179,6 @@ void Enc_x86_64_EmitMovImm(long imm, Asm_x86_64_Reg dst)
         Enc_x86_64_EmitRexW(0, Enc_x86_64_RegHigh(dst));
         Enc_x86_64_Emit8(ENC_X86_64_OPCODE_MOV_R_IMM64 + (dst & ENC_X86_64_REG_MASK));
         Enc_x86_64_Emit64((unsigned long long) imm);
-    }
-}
-
-// Emit a REX prefix when the operand width or the registers chosen require one.
-void Enc_x86_64_EmitRex(Asm_x86_64_Width width, Asm_x86_64_Reg reg, Asm_x86_64_Reg rm)
-{
-    int bits = (width == ASM_X86_64_WIDTH_64 ? ENC_X86_64_REX_W : 0)
-             | (Enc_x86_64_RegHigh(reg) ? ENC_X86_64_REX_R : 0)
-             | (Enc_x86_64_RegHigh(rm) ? ENC_X86_64_REX_B : 0);
-
-    int lowbyte = width == ASM_X86_64_WIDTH_8 && reg >= ASM_X86_64_REG_RSP && reg < ASM_X86_64_REG_R8;
-
-    if (bits || lowbyte) {
-        Enc_x86_64_Emit8(ENC_X86_64_REX_BASE | bits);
     }
 }
 
@@ -498,7 +498,7 @@ void Enc_x86_64_SelectSection(const char *name, uint32_t type, uint64_t flags)
     Enc_x86_64_Cur = Elf_Section_Get(Enc_x86_64_Out, name, type, flags);
 }
 
-// Create a symbol for every label, then an undefined symbol for each unresolved target.
+// Create a symbol for every label and unresolved target.
 void Enc_x86_64_BuildSymbols(void)
 {
     for (size_t i = 0; i < Enc_x86_64_NumLabels; i++) {
@@ -524,8 +524,8 @@ void Enc_x86_64_BuildSymbols(void)
 void Enc_x86_64_BuildRelocs(void)
 {
     for (size_t i = 0; i < Enc_x86_64_NumFixes; i++) {
-        Enc_x86_64_Fix *f   = &Enc_x86_64_Fixes[i];
-        Elf_Sym        *sym = Elf_Symbol_Find(Enc_x86_64_Out, f->af_name);
+        Enc_x86_64_Fix *f = &Enc_x86_64_Fixes[i];
+        Elf_Sym *sym = Elf_Symbol_Find(Enc_x86_64_Out, f->af_name);
         Elf_Rela_Add(f->af_sec, f->af_off, sym, f->af_type, f->af_addend);
     }
 }

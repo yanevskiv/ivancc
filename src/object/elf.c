@@ -187,7 +187,7 @@ uint16_t Elf_GetType(const Elf *elf)
     return elf->elf_type;
 }
 
-// Return the last error message recorded on the object, or NULL.
+// Return the last error message recorded on the object.
 const char *Elf_Error(const Elf *elf)
 {
     return elf->elf_err;
@@ -211,7 +211,7 @@ Elf_Sec *Elf_Section_Add(Elf *elf, const char *name, uint32_t type, uint64_t fla
     return sec;
 }
 
-// Find a section by name, or return NULL.
+// Find a section by name.
 Elf_Sec *Elf_Section_Find(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < elf->elf_nsecs; i++) {
@@ -256,7 +256,7 @@ void Elf_Section_Addr(Elf_Sec *sec, uint64_t addr)
     sec->sec_addr = addr;
 }
 
-// Append a symbol and return it; sec == NULL records an undefined reference.
+// Append a symbol and return it.
 Elf_Sym *Elf_Symbol_Add(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value, uint8_t bind, uint8_t type)
 {
     Elf_Sym *sym = calloc(1, sizeof(*sym));
@@ -274,7 +274,7 @@ Elf_Sym *Elf_Symbol_Add(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value
     return sym;
 }
 
-// Find a symbol by name, or return NULL.
+// Find a symbol by name.
 Elf_Sym *Elf_Symbol_Find(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < elf->elf_nsyms; i++) {
@@ -324,7 +324,7 @@ Elf_Rela *Elf_Rela_At(const Elf_Sec *target, size_t i)
     return (Elf_Rela *) &target->sec_relas[i];
 }
 
-// Validate the file header and return it, or NULL if it is not an ELF object.
+// Validate the file header and return it.
 const Elf64_Ehdr *Elf_Read_Ehdr(const uint8_t *data, size_t n)
 {
     if (n < sizeof(Elf64_Ehdr)) {
@@ -338,11 +338,11 @@ const Elf64_Ehdr *Elf_Read_Ehdr(const uint8_t *data, size_t n)
     return eh;
 }
 
-// Parse ELF bytes into a new object, or return NULL on error.
+// Parse ELF bytes into a new object.
 Elf *Elf_Read_Mem(const void *buf, size_t n)
 {
     const uint8_t    *data = buf;
-    const Elf64_Ehdr *eh   = Elf_Read_Ehdr(data, n);
+    const Elf64_Ehdr *eh = Elf_Read_Ehdr(data, n);
     if (! eh) {
         return NULL;
     }
@@ -364,7 +364,6 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
         sec->sec_addr      = sh[i].sh_addr;
         sec->sec_addralign = sh[i].sh_addralign ? sh[i].sh_addralign : 1;
         sec->sec_entsize   = sh[i].sh_entsize;
-        // A NOBITS section carries no bytes, only the space it asks for.
         if (sh[i].sh_type == ELF_SHT_NOBITS) {
             Elf_Buffer_Zero(&sec->sec_data, sh[i].sh_size);
         } else {
@@ -373,7 +372,7 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
         secmap[i] = sec;
     }
 
-    // Phase: rebuild the symbol table, resolving names and defining sections.
+    // Phase: rebuild the symbol table.
     int nsyms = 0;
     const char *symstr = NULL;
     const Elf64_Sym *syms = NULL;
@@ -388,9 +387,9 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
 
     Elf_Sym **symmap = calloc(nsyms ? nsyms : 1, sizeof(*symmap));
     for (int i = 1; i < nsyms; i++) {
-        const Elf64_Sym *sym  = &syms[i];
+        const Elf64_Sym *sym = &syms[i];
         const char      *name = symstr + sym->st_name;
-        Elf_Sec         *sec  = (sym->st_shndx != ELF_SHN_UNDEF && sym->st_shndx < shnum)
+        Elf_Sec *sec = (sym->st_shndx != ELF_SHN_UNDEF && sym->st_shndx < shnum)
                                     ? secmap[sym->st_shndx] : NULL;
         symmap[i] = Elf_Symbol_Add(elf, name, sec, sym->st_value, ELF_ST_BIND(sym->st_info), ELF_ST_TYPE(sym->st_info));
         symmap[i]->sym_size  = sym->st_size;
@@ -420,7 +419,7 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
     return elf;
 }
 
-// Parse an ELF file into a new object, or return NULL on error.
+// Parse an ELF file into a new object.
 Elf *Elf_Read_Path(const char *path)
 {
     FILE *file = fopen(path, "rb");
@@ -521,7 +520,7 @@ void Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, E
     }
 }
 
-// Serialize a relocatable object (ET_REL): sections, .symtab/.strtab, .rela.* and .shstrtab.
+// Serialize a relocatable object (ET_REL).
 int Elf_Write_Rel(const Elf *elf, FILE *out)
 {
     size_t nuser = elf->elf_nsecs;
@@ -629,7 +628,7 @@ int Elf_Write_Rel(const Elf *elf, FILE *out)
     sizes[idx_shstrtab]  = shstr.eb_len;
     shdrs[idx_shstrtab].sh_size = shstr.eb_len;
 
-    // Phase: assign file offsets, then write header, bodies and shdr table.
+    // Phase: assign file offsets.
     uint64_t off = sizeof(Elf64_Ehdr);
     for (uint32_t i = 1; i < shnum; i++) {
         uint64_t align = shdrs[i].sh_addralign ? shdrs[i].sh_addralign : 1;
@@ -700,7 +699,7 @@ uint32_t Elf_Write_SegFlags(const Elf_Sec *sec)
     return flags;
 }
 
-// Smallest file offset >= pos that is page-congruent with vaddr, as PT_LOAD requires.
+// Smallest file offset >= pos that is page-congruent with vaddr.
 uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr)
 {
     return pos + (vaddr - pos) % ELF_PAGE;
@@ -794,7 +793,7 @@ int Elf_Write_Path(const Elf *elf, const char *path)
     return rc;
 }
 
-// Index of a section within an object, or -1 if it holds none.
+// Index of a section within an object.
 long Elf_Link_SectionIndex(const Elf *elf, const Elf_Sec *target)
 {
     for (size_t i = 0; i < Elf_Section_Count(elf); i++) {
@@ -805,7 +804,7 @@ long Elf_Link_SectionIndex(const Elf *elf, const Elf_Sec *target)
     return -1;
 }
 
-// Index of a symbol within an object, or -1 if it holds none.
+// Index of a symbol within an object.
 long Elf_Link_SymbolIndex(const Elf *elf, const Elf_Sym *target)
 {
     for (size_t i = 0; i < Elf_Symbol_Count(elf); i++) {
@@ -816,7 +815,7 @@ long Elf_Link_SymbolIndex(const Elf *elf, const Elf_Sym *target)
     return -1;
 }
 
-// Find an existing global symbol by name, or return NULL.
+// Find an existing global symbol by name.
 Elf_Sym *Elf_Link_FindGlobal(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < Elf_Symbol_Count(elf); i++) {
@@ -828,7 +827,7 @@ Elf_Sym *Elf_Link_FindGlobal(Elf *elf, const char *name)
     return NULL;
 }
 
-// Merge one input object into the output, unifying globals and rebasing relocations.
+// Merge one input object into the output.
 void Elf_Link_Merge(Elf *out, Elf *in)
 {
     size_t nsec = Elf_Section_Count(in);
@@ -840,9 +839,9 @@ void Elf_Link_Merge(Elf *out, Elf *in)
 
     // Phase: merge section bytes, recording each input section's new base.
     for (size_t i = 0; i < nsec; i++) {
-        Elf_Sec *sec   = Elf_Section_At(in, i);
+        Elf_Sec *sec = Elf_Section_At(in, i);
         Elf_Sec *dst = Elf_Section_Get(out, sec->sec_name, sec->sec_type, sec->sec_flags);
-        Elf_Buffer *db  = Elf_Section_Data(dst);
+        Elf_Buffer *db = Elf_Section_Data(dst);
         if (sec->sec_addralign > dst->sec_addralign) {
             dst->sec_addralign = sec->sec_addralign;
         }
@@ -854,8 +853,8 @@ void Elf_Link_Merge(Elf *out, Elf *in)
 
     // Phase: copy symbols, unifying globals and resolving undefined references.
     for (size_t i = 0; i < nsym; i++) {
-        Elf_Sym *sym   = Elf_Symbol_At(in, i);
-        Elf_Sec *dsec  = NULL;
+        Elf_Sym *sym = Elf_Symbol_At(in, i);
+        Elf_Sec *dsec = NULL;
         uint64_t value = 0;
         if (sym->sym_sec) {
             long j = Elf_Link_SectionIndex(in, sym->sym_sec);
@@ -924,7 +923,7 @@ void Elf_Link_AddPlace(Elf_LinkOptions *opts, const char *name, uint64_t addr)
     opts->lo_nplaces++;
 }
 
-// Load address requested for a section by name, or 0 if it is unplaced.
+// Load address requested for a section by name.
 uint64_t Elf_Link_PlacedAddr(const Elf_LinkOptions *opts, const char *name, int *placed)
 {
     for (int i = 0; i < opts->lo_nplaces; i++) {
@@ -1039,7 +1038,7 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
         Log_ShowError("not an executable: '%s'", path);
     }
 
-    // Phase: the extent of every PT_LOAD, which the image has to cover.
+    // Phase: the extent of every PT_LOAD.
     uint64_t lo = UINT64_MAX;
     uint64_t hi = 0;
     for (int i = 0; i < eh->e_phnum; i++) {
@@ -1059,7 +1058,6 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
         Log_ShowError("no loadable segments in '%s'", path);
     }
 
-    // The stack shares the allocation so that one range covers every access.
     img->li_base    = Elf_Load_AlignDown(lo, ELF_PAGE);
     img->li_size    = Elf_Load_AlignUp(hi, ELF_PAGE) - img->li_base + LOAD_STACK_SIZE;
     img->li_entry   = eh->e_entry;
@@ -1067,10 +1065,9 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
     img->li_stack   = Elf_Load_AlignDown(img->li_base + img->li_size, LOAD_STACK_ALIGN);
     img->li_mem     = calloc(img->li_size, 1);
 
-    // Phase: the bytes themselves, leaving p_memsz beyond p_filesz zeroed.
+    // Phase: the bytes themselves.
     for (int i = 0; i < eh->e_phnum; i++) {
         const Elf64_Phdr *ph = (const Elf64_Phdr *) (data + eh->e_phoff + (uint64_t) i * eh->e_phentsize);
-        // A segment with no file bytes, such as .bss, has nothing to copy.
         if (ph->p_type != ELF_PT_LOAD || ph->p_filesz == 0) {
             continue;
         }
@@ -1085,7 +1082,7 @@ int Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
     return 0;
 }
 
-// Return a pointer to size bytes of the image at vaddr, or NULL when unmapped.
+// Return a pointer to size bytes of the image at vaddr.
 void *Elf_Load_At(const Elf_LoadImage *img, uint64_t vaddr, uint64_t size)
 {
     if (vaddr < img->li_base || size > img->li_size) {

@@ -88,6 +88,14 @@ Par_Decl *Par_NewDecl(char *name)
     return decl;
 }
 
+// Reject a declarator with no name.
+void Par_NeedName(Par_Decl *decl, int line)
+{
+    if (! decl->pc_name) {
+        Log_ShowErrorAt(decl->pc_line ? decl->pc_line : line, "this declaration needs a name");
+    }
+}
+
 // Append one derivation to a declarator.
 Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, int line)
 {
@@ -173,7 +181,7 @@ Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
 {
     Par_TakeArrayDecor(decl, line);
     Ast_Type *type = Par_AdjustParam(Par_ApplyDecl(base, decl));
-    Ast_Var  *var  = calloc(1, sizeof(Ast_Var));
+    Ast_Var *var = calloc(1, sizeof(Ast_Var));
 
     var->av_name = decl->pc_name;
     var->av_type = type;
@@ -181,7 +189,7 @@ Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, int line)
     return var;
 }
 
-// Build one old-style parameter, which arrives as a bare name.
+// Build one old-style parameter.
 Ast_Var *Par_MakeKnrParam(char *name, int line)
 {
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
@@ -189,16 +197,6 @@ Ast_Var *Par_MakeKnrParam(char *name, int line)
     var->av_name = name;
     var->av_line = line;
     return var;
-}
-
-// Reject an old-style parameter the declaration list never typed.
-void Par_CheckKnrParams(void)
-{
-    for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
-        if (! param->av_type) {
-            Log_ShowErrorAt(param->av_line, "parameter '%s' has no declaration", param->av_name);
-        }
-    }
 }
 
 // Give an old-style parameter the type its declaration list names.
@@ -213,6 +211,16 @@ void Par_SetKnrParam(Par_Decl *decl, int line)
         }
     }
     Log_ShowErrorAt(line, "'%s' is not a parameter of this function", decl->pc_name);
+}
+
+// Reject an old-style parameter the declaration list never typed.
+void Par_CheckKnrParams(void)
+{
+    for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
+        if (! param->av_type) {
+            Log_ShowErrorAt(param->av_line, "parameter '%s' has no declaration", param->av_name);
+        }
+    }
 }
 
 // Build one unnamed parameter.
@@ -307,7 +315,7 @@ void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, int line)
 Ast_Type *Par_SpecType(int specs, int line)
 {
     int is_unsigned = (specs & PAR_SPEC_UNSIGNED) != 0;
-    int sign  = specs & (PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED);
+    int sign = specs & (PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED);
 
     switch (specs & ~(PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED)) {
         case PAR_SPEC_VOID: {
@@ -369,7 +377,7 @@ Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims)
     return Ast_NewArray(Par_ArrayType(base, dims->an_next), (int) dims->an_val);
 }
 
-// The type __builtin_va_list names, an array of one so passing it hands on its address.
+// The type __builtin_va_list names.
 Ast_Type *Par_VaListType(void)
 {
     if (Par_VaList) {
@@ -565,7 +573,7 @@ void Par_Step(Ast_Type **type, int *off, Ast_Node *desig, int index, Ast_Member 
     *type = (*type)->at_base;
 }
 
-// The type an expression already has, or NULL where only the Sem_ pass can say.
+// The type an expression already has.
 Ast_Type *Par_ExprType(Ast_Node *node)
 {
     Ast_Type *type = NULL;
@@ -607,7 +615,7 @@ Ast_Type *Par_ExprType(Ast_Node *node)
 // Fill one slot from the cursor.
 void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, int line)
 {
-    Ast_Node *iter  = *item;
+    Ast_Node *iter = *item;
     Ast_Node *value = iter->an_lhs;
 
     if (value->an_kind == AST_NODE_KIND_INITLIST) {
@@ -856,7 +864,7 @@ Ast_Func *Par_FindFunction(const char *name)
     return NULL;
 }
 
-// Append a function to the program, or fill in one a prototype declared.
+// Append a function to the program.
 void Par_AddFunction(Ast_Func *fn)
 {
     Ast_Func *seen = Par_FindFunction(fn->af_name);
@@ -912,14 +920,6 @@ Ast_Func *Par_MakeFunction(Ast_Node *body)
     fn->af_static   = Par_CurStatic;
     fn->af_locals   = body ? Ast_CurrentLocals() : NULL;
     return fn;
-}
-
-// Reject a declarator with no name.
-void Par_NeedName(Par_Decl *decl, int line)
-{
-    if (! decl->pc_name) {
-        Log_ShowErrorAt(decl->pc_line ? decl->pc_line : line, "this declaration needs a name");
-    }
 }
 
 // Note the declarator a top-level declaration named.

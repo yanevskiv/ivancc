@@ -45,7 +45,7 @@ extern FILE *yyin;
 // Runtime objects the default (linked) output is always merged with.
 static const char *const Cc_RuntimeNames[] = { "crt0.o", "libc.o" };
 
-// Entry point of the generated parser; fills in Ast_Program.
+// Entry point of the generated parser.
 int yyparse(void);
 
 // Show usage information and exit.
@@ -63,7 +63,7 @@ static void Cc_ShowUsage(const char *prog)
     exit(1);
 }
 
-// Return the directory holding this executable, or NULL if it cannot be found.
+// Return the directory holding this executable.
 static char *Cc_GetExeDir(void)
 {
     char buf[PATH_MAX];
@@ -97,7 +97,7 @@ static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
     return dir;
 }
 
-// Open the output stream, where the name "-" means standard output.
+// Open the output stream.
 static FILE *Cc_OpenOutput(const char *output, const char *mode)
 {
     if (Str_Equals(output, STDOUT_NAME)) {
@@ -106,7 +106,7 @@ static FILE *Cc_OpenOutput(const char *output, const char *mode)
     return fopen(output, mode);
 }
 
-// Close the output stream, leaving standard output open.
+// Close the output stream.
 static void Cc_CloseOutput(FILE *out)
 {
     if (out == stdout) {
@@ -187,18 +187,23 @@ int main(int argc, char **argv)
                 prefix = optarg;
             } break;
             case 'm': {
-                // -m carries machine options; only -march=ARCH is recognised.
                 if (Str_StartsWith(optarg, MARCH_PREFIX)) {
                     arch = optarg + strlen(MARCH_PREFIX);
                 } else if (Str_StartsWith(optarg, MTARGET_PREFIX)) {
                     target = optarg + strlen(MTARGET_PREFIX);
                 }
             } break;
-            case 'E': case 'g':
-            case 'I': case 'D': case 'U': case 'l':
-            case 'L': case 'W': case 'f':
+            case 'E':
+            case 'g':
+            case 'I':
+            case 'D':
+            case 'U':
+            case 'l':
+            case 'L':
+            case 'W':
+            case 'f':
             case 'O': {
-                // Recognised compiler flag with no effect here.
+                // empty
             } break;
         }
     }
@@ -252,7 +257,6 @@ int main(int argc, char **argv)
     }
     Cc_CloseOutput(out);
 
-    // Only the freestanding executable is made runnable; .s and .o are not.
     if (! emit_text && ! emit_obj && ! Str_Equals(output, STDOUT_NAME)) {
         chmod(output, ELF_MODE);
     }

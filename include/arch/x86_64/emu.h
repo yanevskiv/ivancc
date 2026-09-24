@@ -7,7 +7,7 @@
 
 #include "object/elf.h"
 
-// Register widths a decoded operand can name, in bits.
+// Register widths a decoded operand can name.
 #define EMU_X86_64_WIDTH_8  8
 #define EMU_X86_64_WIDTH_16 16
 #define EMU_X86_64_WIDTH_32 32
@@ -35,11 +35,11 @@
 #define EMU_X86_64_REG_COUNT      16
 #define EMU_X86_64_REG_INDEX_MASK 15
 
-// A REX prefix is any byte with this nibble, and REX.R or REX.B extends a register number.
+// The nibble marking a REX prefix, and the bit extending a register.
 #define EMU_X86_64_REX_PREFIX_MASK 0xF0
 #define EMU_X86_64_REG_HIGH_BIT    8
 
-// The bits of an opcode that remain once a register is baked into its low three.
+// The bits of an opcode outside its baked-in register.
 #define EMU_X86_64_OPCODE_REG_MASK 0xF8
 
 // Bytes push, pop, call and ret move %rsp by.
@@ -91,7 +91,7 @@ typedef struct Emu_x86_64_Insn Emu_x86_64_Insn;
 struct Emu_x86_64_Insn {
     int     ei_len;     // bytes the instruction occupies
     int     ei_op;      // primary opcode byte
-    int     ei_op2;     // byte following 0x0F, or -1 when there is none
+    int     ei_op2;     // byte following 0x0F, or -1
     int     ei_rexw;    // true when REX.W selects a 64-bit operand
     int     ei_opsize16; // true when a 0x66 prefix selects a 16-bit operand
     int     ei_reg;     // ModRM reg field, extended by REX.R

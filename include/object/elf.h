@@ -140,10 +140,10 @@ struct Elf_Buffer {
     size_t   eb_cap;
 };
 
-// Forward declaration: a symbol's defining section is a pointer to one of these.
+// Forward declaration: a symbol names its defining section.
 typedef struct Elf_Sec Elf_Sec;
 
-// One symbol; sym_sec == NULL means undefined (an external reference).
+// One symbol.
 typedef struct Elf_Sym Elf_Sym;
 struct Elf_Sym {
     const char *sym_name;    // owned by the Elf string pool
@@ -155,7 +155,7 @@ struct Elf_Sym {
     uint8_t     sym_other;   // visibility
 };
 
-// One relocation; it lives in the section it patches and rel_type is opaque here.
+// One relocation.
 typedef struct Elf_Rela Elf_Rela;
 struct Elf_Rela {
     uint64_t  rel_offset;    // within the patched section
@@ -164,7 +164,7 @@ struct Elf_Rela {
     int64_t   rel_addend;
 };
 
-// One section; PROGBITS carry bytes in sec_data and may own their relocations.
+// One section.
 struct Elf_Sec {
     const char *sec_name;    // owned by the string pool
     uint32_t    sec_type;    // ELF_SHT_*
