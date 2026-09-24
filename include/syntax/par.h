@@ -5,17 +5,21 @@
 
 #include "syntax/ast.h"
 
-// What an array declarator's brackets carry besides a length.
-#define PAR_ARRAY_STATIC 1
-#define PAR_ARRAY_QUAL   2
-
 // Bits in the unsigned long a literal's value is read into.
 #define PAR_LONG_BITS 64
+
+// What an array declarator's brackets carry besides a length.
+typedef enum Par_ArrayDecor Par_ArrayDecor;
+enum Par_ArrayDecor {
+    PAR_ARRAY_NONE   = 0,      // plain brackets
+    PAR_ARRAY_STATIC = 1 << 0, // `static` before the length
+    PAR_ARRAY_QUAL   = 1 << 1  // one or more qualifiers
+};
 
 // One type specifier keyword.
 typedef enum Par_Spec Par_Spec;
 enum Par_Spec {
-    PAR_SPEC_NONE     = 0,
+    PAR_SPEC_NONE     = 0,       // no specifier keyword was written
     PAR_SPEC_VOID     = 1 << 0,
     PAR_SPEC_BOOL     = 1 << 1,
     PAR_SPEC_CHAR     = 1 << 2,
@@ -32,7 +36,8 @@ typedef enum Par_DerivKind Par_DerivKind;
 enum Par_DerivKind {
     PAR_DERIV_POINTER,
     PAR_DERIV_ARRAY,
-    PAR_DERIV_FUNCTION
+    PAR_DERIV_FUNCTION,
+    PAR_DERIV_COUNT // number of kinds
 };
 
 // An integer literal.
@@ -45,8 +50,8 @@ struct Par_Num {
 // The type specifiers and qualifiers one declaration wrote.
 typedef struct Par_Specs Par_Specs;
 struct Par_Specs {
-    int       ps_specs; // the PAR_SPEC_ keywords seen
-    int       ps_qual;  // the AST_QUAL_ keywords seen
+    Par_Spec  ps_specs; // the type specifier keywords seen
+    Ast_Qual  ps_qual;  // the qualifier keywords seen
     Ast_Type *ps_type;  // the type a struct, union, enum or typedef name named
 };
 
@@ -67,7 +72,7 @@ struct Par_Deriv {
     Par_DerivKind  pd_kind;
     long           pd_len;    // element count of an ARRAY
     int            pd_empty;  // the ARRAY was written `[]`
-    int            pd_decor;  // PAR_ARRAY_* the ARRAY's brackets carried
+    Par_ArrayDecor pd_decor;  // what the ARRAY's brackets carried besides a length
     Par_ParamList  pd_params; // parameter list of a FUNCTION
     int            pd_line;
 };
@@ -105,12 +110,17 @@ void       Par_SetKnrParam(Par_Decl *decl, int line);
 void       Par_CheckKnrParams(void);
 Ast_Var   *Par_MakeAnonParam(Ast_Type *type, int line);
 
+// Literals
+Par_Num Par_NumLiteral(const char *text);
+Par_Num Par_CharLiteral(const char *body, size_t len, size_t width);
+Ast_Str Par_WidenString(Ast_Str str, size_t width);
+Ast_Str Par_ConcatStrings(Ast_Str left, Ast_Str right);
+
 // Types
-Par_Num   Par_NumLiteral(const char *text);
 void      Par_ClearSpecs(Par_Specs *specs);
-int       Par_AddSpec(int specs, Par_Spec spec, int line);
+Par_Spec  Par_AddSpec(Par_Spec specs, Par_Spec spec, int line);
 void      Par_TakeSpec(Par_Specs *into, const Par_Specs *one, int line);
-Ast_Type *Par_SpecType(int specs, int line);
+Ast_Type *Par_SpecType(Par_Spec specs, int line);
 Ast_Type *Par_SpecsType(const Par_Specs *specs, int line);
 Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims);
 Ast_Type *Par_VaListType(void);

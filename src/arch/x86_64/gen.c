@@ -146,18 +146,18 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
     }
 }
 
-// Return whether an operator's operands make it an unsigned operation.
-int Gen_x86_64_IsUnsigned(const Ast_Node *node)
+// Return the signedness an operator's operands give it.
+Ast_TypeSign Gen_x86_64_Sign(const Ast_Node *node)
 {
     const Ast_Type *type = node->an_lhs ? node->an_lhs->an_type : node->an_type;
 
-    return type && type->at_unsigned;
+    return type ? type->at_sign : AST_TYPE_SIGNED;
 }
 
 // Load a value of type from disp(%base) into %dst.
 void Gen_x86_64_EmitLoadFrom(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, const Ast_Type *type)
 {
-    if (type->at_unsigned) {
+    if (type->at_sign == AST_TYPE_UNSIGNED) {
         Asm_x86_64_EmitMovLoadZero(base, disp, dst, Gen_x86_64_TypeWidth(type));
         return;
     }
@@ -187,7 +187,7 @@ void Gen_x86_64_EmitCast(const Ast_Type *type)
         case AST_TYPE_KIND_CHAR:
         case AST_TYPE_KIND_SHORT:
         case AST_TYPE_KIND_INT: {
-            if (! type->at_unsigned) {
+            if (type->at_sign != AST_TYPE_UNSIGNED) {
                 Asm_x86_64_EmitMovsx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, width);
             } else if (width == ASM_X86_64_WIDTH_32) {
                 Asm_x86_64_EmitMovRRWidth(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, width);
@@ -269,7 +269,7 @@ void Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member)
     Asm_x86_64_EmitMovImm(ASM_X86_64_WIDTH_64 - member->am_bitoff - member->am_bits, ASM_X86_64_REG_RCX);
     Asm_x86_64_EmitShl(ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitMovImm(ASM_X86_64_WIDTH_64 - member->am_bits, ASM_X86_64_REG_RCX);
-    if (member->am_type->at_unsigned) {
+    if (member->am_type->at_sign == AST_TYPE_UNSIGNED) {
         Asm_x86_64_EmitShr(ASM_X86_64_REG_RAX);
     } else {
         Asm_x86_64_EmitSar(ASM_X86_64_REG_RAX);
@@ -555,15 +555,15 @@ void Gen_x86_64_EmitCall(Ast_Node *node)
 // Bring a result in %rax back into its type.
 void Gen_x86_64_EmitNarrow(const Ast_Type *type)
 {
-    if (Ast_IsInteger(type) && type->at_unsigned && type->at_size < WORD_SIZE) {
+    if (Ast_IsInteger(type) && type->at_sign == AST_TYPE_UNSIGNED && type->at_size < WORD_SIZE) {
         Gen_x86_64_EmitCast(type);
     }
 }
 
 // Divide %rax by %reg.
-void Gen_x86_64_EmitDivide(int is_unsigned, Asm_x86_64_Reg reg)
+void Gen_x86_64_EmitDivide(Ast_TypeSign sign, Asm_x86_64_Reg reg)
 {
-    if (is_unsigned) {
+    if (sign == AST_TYPE_UNSIGNED) {
         Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RDX);
         Asm_x86_64_EmitDiv(reg);
         return;
@@ -573,9 +573,9 @@ void Gen_x86_64_EmitDivide(int is_unsigned, Asm_x86_64_Reg reg)
 }
 
 // Shift %reg right by %cl.
-void Gen_x86_64_EmitShift(int is_unsigned, Asm_x86_64_Reg reg)
+void Gen_x86_64_EmitShift(Ast_TypeSign sign, Asm_x86_64_Reg reg)
 {
-    if (is_unsigned) {
+    if (sign == AST_TYPE_UNSIGNED) {
         Asm_x86_64_EmitShr(reg);
         return;
     }
@@ -585,7 +585,7 @@ void Gen_x86_64_EmitShift(int is_unsigned, Asm_x86_64_Reg reg)
 // Apply a compound assignment's operation to %rax and %rcx into %rax.
 void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, int line)
 {
-    int is_unsigned = type->at_unsigned;
+    Ast_TypeSign sign = type->at_sign;
 
     switch (op) {
         case AST_NODE_KIND_ADD: {
@@ -598,10 +598,10 @@ void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, int line)
             Asm_x86_64_EmitImul(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
         } break;
         case AST_NODE_KIND_DIV: {
-            Gen_x86_64_EmitDivide(is_unsigned, ASM_X86_64_REG_RCX);
+            Gen_x86_64_EmitDivide(sign, ASM_X86_64_REG_RCX);
         } break;
         case AST_NODE_KIND_MOD: {
-            Gen_x86_64_EmitDivide(is_unsigned, ASM_X86_64_REG_RCX);
+            Gen_x86_64_EmitDivide(sign, ASM_X86_64_REG_RCX);
             Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RDX, ASM_X86_64_REG_RAX);
         } break;
         case AST_NODE_KIND_BITAND: {
@@ -617,7 +617,7 @@ void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, int line)
             Asm_x86_64_EmitShl(ASM_X86_64_REG_RAX);
         } break;
         case AST_NODE_KIND_SHR: {
-            Gen_x86_64_EmitShift(is_unsigned, ASM_X86_64_REG_RAX);
+            Gen_x86_64_EmitShift(sign, ASM_X86_64_REG_RAX);
         } break;
         default: {
             Log_ShowErrorAt(line, "codegen: unexpected compound assignment %d", op);
@@ -746,7 +746,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                 Asm_x86_64_EmitShl(ASM_X86_64_REG_RAX);
                 Gen_x86_64_EmitNarrow(node->an_type);
             } else {
-                Gen_x86_64_EmitShift(node->an_type->at_unsigned, ASM_X86_64_REG_RAX);
+                Gen_x86_64_EmitShift(node->an_type->at_sign, ASM_X86_64_REG_RAX);
             }
         } break;
         case AST_NODE_KIND_NOT: {
@@ -798,7 +798,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitCall(node);
         } break;
         default: {
-            int is_unsigned = Gen_x86_64_IsUnsigned(node);
+            Ast_TypeSign sign = Gen_x86_64_Sign(node);
 
             Gen_x86_64_EmitExpr(node->an_rhs);
             Gen_x86_64_EmitPush();
@@ -819,7 +819,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                     Gen_x86_64_EmitNarrow(node->an_type);
                 } break;
                 case AST_NODE_KIND_DIV: {
-                    Gen_x86_64_EmitDivide(is_unsigned, ASM_X86_64_REG_RDI);
+                    Gen_x86_64_EmitDivide(sign, ASM_X86_64_REG_RDI);
                 } break;
                 case AST_NODE_KIND_BITAND: {
                     Asm_x86_64_EmitAnd(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
@@ -831,7 +831,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                     Asm_x86_64_EmitXor(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
                 } break;
                 case AST_NODE_KIND_MOD: {
-                    Gen_x86_64_EmitDivide(is_unsigned, ASM_X86_64_REG_RDI);
+                    Gen_x86_64_EmitDivide(sign, ASM_X86_64_REG_RDI);
                     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RDX, ASM_X86_64_REG_RAX);
                 } break;
                 case AST_NODE_KIND_EQ: {
@@ -846,7 +846,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                 } break;
                 case AST_NODE_KIND_LT: {
                     Asm_x86_64_EmitCmp(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
-                    if (is_unsigned) {
+                    if (sign == AST_TYPE_UNSIGNED) {
                         Asm_x86_64_EmitSetb(ASM_X86_64_REG_RAX);
                     } else {
                         Asm_x86_64_EmitSetl(ASM_X86_64_REG_RAX);
@@ -855,7 +855,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                 } break;
                 case AST_NODE_KIND_LE: {
                     Asm_x86_64_EmitCmp(ASM_X86_64_REG_RDI, ASM_X86_64_REG_RAX);
-                    if (is_unsigned) {
+                    if (sign == AST_TYPE_UNSIGNED) {
                         Asm_x86_64_EmitSetbe(ASM_X86_64_REG_RAX);
                     } else {
                         Asm_x86_64_EmitSetle(ASM_X86_64_REG_RAX);
@@ -1070,7 +1070,7 @@ void Gen_x86_64_EmitDataSection(void)
     for (int i = 0; i < count; i++) {
         Ast_Str *str = Ast_StringAt(i);
         Asm_x86_64_EmitLabel(".Lstr%d", i);
-        Asm_x86_64_EmitBytes(str->as_data, str->as_len + 1);
+        Asm_x86_64_EmitBytes(str->as_data, (int) (str->as_len + str->as_width));
     }
 }
 

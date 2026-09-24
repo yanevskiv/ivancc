@@ -26,8 +26,8 @@ void      Sem_PromoteShift(Ast_Node *node);
 
 // Constant expressions
 long      Sem_Truncate(const Ast_Type *type, long value);
-int       Sem_FoldUnsigned(const Ast_Node *node);
-int       Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int is_unsigned, int line, long *value);
+Ast_TypeSign Sem_FoldSign(const Ast_Node *node);
+int       Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, Ast_TypeSign sign, int line, long *value);
 int       Sem_Fold(const Ast_Node *node, long *value);
 int       Sem_FoldAddr(const Ast_Node *node, const char **symbol);
 
