@@ -158,14 +158,12 @@ void Par_TakeArrayDecor(Par_Decl *decl, int line)
         if (! deriv->pd_decor) {
             continue;
         }
-        // The outermost derivation is the one nearest the name.
         if (deriv != decl->pc_head || deriv->pd_kind != PAR_DERIV_ARRAY) {
             Log_ShowErrorAt(line, "'static' and qualifiers are only allowed on a parameter's outermost array");
         }
         if ((deriv->pd_decor & PAR_ARRAY_STATIC) && deriv->pd_empty) {
             Log_ShowErrorAt(line, "'static' in an array declarator needs a length");
         }
-        // Both decay away with the array, and we have no qualified types to carry them into.
         deriv->pd_decor = 0;
     }
 }
@@ -190,7 +188,6 @@ Ast_Var *Par_MakeKnrParam(char *name, int line)
 
     var->av_name = name;
     var->av_line = line;
-    // The type stays NULL until the declaration list supplies one.
     return var;
 }
 
@@ -228,6 +225,139 @@ Ast_Var *Par_MakeAnonParam(Ast_Type *type, int line)
     var->av_type = Par_AdjustParam(type);
     var->av_line = line;
     return var;
+}
+
+// Give an integer literal the type its spelling and value ask for.
+Par_Num Par_NumLiteral(const char *text)
+{
+    const char *suffix = text;
+    int is_unsigned = 0;
+    int least = AST_TYPE_KIND_INT;
+
+    int decimal = text[0] != '0';
+    unsigned long val = strtoul(text, (char **) &suffix, 0);
+
+    for (const char *p = suffix; *p; p++) {
+        if (*p == 'u' || *p == 'U') {
+            is_unsigned = 1;
+        } else if (least == AST_TYPE_KIND_LONG) {
+            least = AST_TYPE_KIND_LLONG;
+        } else {
+            least = AST_TYPE_KIND_LONG;
+        }
+    }
+
+    for (int kind = least; kind <= AST_TYPE_KIND_LLONG; kind++) {
+        Ast_Type *type = Ast_IntegerType(kind, is_unsigned);
+        int bits = type->at_size * AST_BITS_PER_BYTE;
+        unsigned long room = type->at_unsigned ? ~0UL >> (PAR_LONG_BITS - bits)
+                                               : ~0UL >> (PAR_LONG_BITS - bits + 1);
+        if (val <= room) {
+            return (Par_Num) { .pn_val = (long) val, .pn_type = type };
+        }
+        if (! decimal && ! type->at_unsigned) {
+            Ast_Type *alt = Ast_IntegerType(kind, AST_TYPE_UNSIGNED);
+            if (val <= ~0UL >> (PAR_LONG_BITS - alt->at_size * AST_BITS_PER_BYTE)) {
+                return (Par_Num) { .pn_val = (long) val, .pn_type = alt };
+            }
+        }
+    }
+    return (Par_Num) { .pn_val = (long) val, .pn_type = Ast_IntegerType(AST_TYPE_KIND_LLONG, 1) };
+}
+
+// Empty a specifier set.
+void Par_ClearSpecs(Par_Specs *specs)
+{
+    specs->ps_specs = 0;
+    specs->ps_qual  = 0;
+    specs->ps_type  = NULL;
+}
+
+// Add one type specifier keyword to a declaration's set.
+int Par_AddSpec(int specs, Par_Spec spec, int line)
+{
+    if (spec == PAR_SPEC_LONG && (specs & PAR_SPEC_LONG)) {
+        spec = PAR_SPEC_LLONG;
+    }
+    if (specs & spec) {
+        Log_ShowErrorAt(line, "a type specifier is repeated");
+    }
+    return specs | spec;
+}
+
+// Merge one specifier or qualifier into a declaration's set.
+void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, int line)
+{
+    if (one->ps_type && (into->ps_type || into->ps_specs)) {
+        Log_ShowErrorAt(line, "two or more data types in one declaration");
+    }
+    if (one->ps_specs && into->ps_type) {
+        Log_ShowErrorAt(line, "two or more data types in one declaration");
+    }
+    if (one->ps_specs) {
+        into->ps_specs = Par_AddSpec(into->ps_specs, one->ps_specs, line);
+    }
+    if (one->ps_type) {
+        into->ps_type = one->ps_type;
+    }
+    into->ps_qual |= one->ps_qual;
+}
+
+// Return the type a declaration's specifier keywords name.
+Ast_Type *Par_SpecType(int specs, int line)
+{
+    int is_unsigned = (specs & PAR_SPEC_UNSIGNED) != 0;
+    int sign  = specs & (PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED);
+
+    switch (specs & ~(PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED)) {
+        case PAR_SPEC_VOID: {
+            if (sign) {
+                Log_ShowErrorAt(line, "'void' cannot be signed or unsigned");
+            }
+            return &Ast_TypeVoid;
+        } break;
+        case PAR_SPEC_BOOL: {
+            if (sign) {
+                Log_ShowErrorAt(line, "'_Bool' cannot be signed or unsigned");
+            }
+            return &Ast_TypeBool;
+        } break;
+        case PAR_SPEC_CHAR: {
+            return Ast_IntegerType(AST_TYPE_KIND_CHAR, is_unsigned);
+        } break;
+        case PAR_SPEC_SHORT:
+        case PAR_SPEC_SHORT | PAR_SPEC_INT: {
+            return Ast_IntegerType(AST_TYPE_KIND_SHORT, is_unsigned);
+        } break;
+        case PAR_SPEC_INT: {
+            return Ast_IntegerType(AST_TYPE_KIND_INT, is_unsigned);
+        } break;
+        case PAR_SPEC_NONE: {
+            if (! sign) {
+                Log_ShowErrorAt(line, "a declaration needs a type specifier");
+            }
+            return Ast_IntegerType(AST_TYPE_KIND_INT, is_unsigned);
+        } break;
+        case PAR_SPEC_LONG:
+        case PAR_SPEC_LONG | PAR_SPEC_INT: {
+            return Ast_IntegerType(AST_TYPE_KIND_LONG, is_unsigned);
+        } break;
+        case PAR_SPEC_LONG | PAR_SPEC_LLONG:
+        case PAR_SPEC_LONG | PAR_SPEC_LLONG | PAR_SPEC_INT: {
+            return Ast_IntegerType(AST_TYPE_KIND_LLONG, is_unsigned);
+        } break;
+        default: {
+            Log_ShowErrorAt(line, "these type specifiers do not name a type");
+        }
+    }
+    return &Ast_TypeInt;
+}
+
+// Return the type one declaration's specifiers name.
+Ast_Type *Par_SpecsType(const Par_Specs *specs, int line)
+{
+    Ast_Type *type = specs->ps_type ? specs->ps_type : Par_SpecType(specs->ps_specs, line);
+    return Ast_Qualify(type, specs->ps_qual);
 }
 
 // Wrap base in the array dimensions listed outermost first.
@@ -286,12 +416,11 @@ Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail)
 void Par_AddBitfield(Ast_Member *member, Ast_Node *width, int line)
 {
     long bits = 0;
-    Ast_TypeKind kind = member->am_type->at_kind;
 
     if (! Sem_Fold(width, &bits)) {
         Log_ShowErrorAt(line, "a bit-field width is not a constant");
     }
-    if (kind != AST_TYPE_KIND_INT && kind != AST_TYPE_KIND_CHAR) {
+    if (! Ast_IsInteger(member->am_type)) {
         Log_ShowErrorAt(line, "a bit-field must have an integer type");
     }
     if (bits < 0) {
@@ -318,7 +447,6 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
         }
         tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
-        // `T d[]` last in a struct is a flexible array member, which takes no space.
         if (decl->pc_head && decl->pc_head->pd_kind == PAR_DERIV_ARRAY && decl->pc_head->pd_empty) {
             tail->am_flexible = 1;
         }
@@ -479,17 +607,18 @@ Ast_Type *Par_ExprType(Ast_Node *node)
 // Fill one slot from the cursor.
 void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, int line)
 {
-    Ast_Node *value = (*item)->an_lhs;
+    Ast_Node *iter  = *item;
+    Ast_Node *value = iter->an_lhs;
 
     if (value->an_kind == AST_NODE_KIND_INITLIST) {
         Par_Flatten(type, base, bits, value, tail, line);
-        *item = (*item)->an_next;
+        *item = iter->an_next;
         return;
     }
     if (Sem_IsAggregate(type) && Par_ExprType(value) == type) {
         (*tail)->an_next = Par_InitAt(base, type, bits, value, line);
         *tail = (*tail)->an_next;
-        *item = (*item)->an_next;
+        *item = iter->an_next;
         return;
     }
     if (type->at_kind == AST_TYPE_KIND_ARRAY || Sem_IsAggregate(type)) {
@@ -498,7 +627,7 @@ void Par_FlattenSlot(Ast_Type *type, int base, Ast_Member *bits, Ast_Node **item
     }
     (*tail)->an_next = Par_InitAt(base, type, bits, value, line);
     *tail = (*tail)->an_next;
-    *item = (*item)->an_next;
+    *item = iter->an_next;
 }
 
 // Walk an aggregate's slots from the cursor.
@@ -508,12 +637,14 @@ void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail,
     Ast_Member *member = type->at_members;
 
     while (*item) {
-        if ((*item)->an_cond) {
+        Ast_Node *iter = *item;
+
+        if (iter->an_cond) {
             if (! braced) {
                 return;
             }
             int off = base;
-            Ast_Node *desig = (*item)->an_cond;
+            Ast_Node *desig = iter->an_cond;
             Ast_Type *slot = type;
 
             Par_Designate(type, desig, &index, &member, line);
@@ -527,9 +658,9 @@ void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail,
                 bits = next->an_memname && inner->am_bits ? inner : NULL;
             }
 
-            (*item)->an_cond = NULL;
-            Par_Flatten(slot, off, bits, (*item)->an_lhs, tail, line);
-            *item = (*item)->an_next;
+            iter->an_cond = NULL;
+            Par_Flatten(slot, off, bits, iter->an_lhs, tail, line);
+            *item = iter->an_next;
             if (desig->an_memname) {
                 member = type->at_kind == AST_TYPE_KIND_UNION ? NULL : member->am_next;
             } else {
@@ -564,7 +695,6 @@ void Par_FlattenList(Ast_Type *type, int base, Ast_Node **item, Ast_Node **tail,
 // Flatten one initializer, braced or not, into the object at base.
 void Par_Flatten(Ast_Type *type, int base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, int line)
 {
-    // A literal of the slot's own type fills it with the items it holds.
     if (init->an_kind == AST_NODE_KIND_COMPOUND && init->an_type == type) {
         for (Ast_Node *item = init->an_items; item; item = item->an_next) {
             (*tail)->an_next = Par_InitAt(base + (int) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
@@ -642,7 +772,6 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, int line)
     node->an_type  = type;
     node->an_items = Par_FlattenInit(type, list, line);
 
-    // Outside a function the object is static, so the linker lays it down.
     if (! Par_InFunction) {
         node->an_var = Ast_DeclareGlobal(name, type, line);
         node->an_var->av_storage = AST_STORAGE_STATIC;
@@ -670,7 +799,6 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, int l
         Ast_DeclareTypedef(name, type);
         return;
     }
-    // A function type here declares a prototype, not an object.
     if (type->at_kind == AST_TYPE_KIND_FUNC) {
         Par_DeclarePrototype(name, type);
         return;
@@ -710,7 +838,6 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, int line)
     if (! var) {
         Log_ShowErrorAt(line, "a typedef takes no initializer");
     }
-    // A `static` local lives in .data, so its initializer is an image rather than a statement.
     if (var->av_global) {
         var->av_init = Par_FlattenInit(var->av_type, init, line);
         return Ast_NewNode(AST_NODE_KIND_NOP, line);
@@ -817,10 +944,8 @@ void Par_BeginExternal(Par_Decl *decl, int line)
     Par_CurProto     = type->at_proto;
     Par_InFunction   = 1;
 
-    // Declaring it before the body is what lets the body call itself.
     Par_DeclarePrototype(decl->pc_name, type);
 
-    // The parameters were built without a scope, so the body's scope makes them visible.
     Ast_BeginScope();
     for (Ast_Var *param = type->at_params; param; param = param->av_param_next) {
         if (param->av_name) {

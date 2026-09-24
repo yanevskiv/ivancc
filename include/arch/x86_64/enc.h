@@ -58,6 +58,8 @@ enum Enc_x86_64_Grp {
     ENC_X86_64_GRP_SHL  = 4,
     ENC_X86_64_GRP_SUB  = 5,
     ENC_X86_64_GRP_XOR  = 6,
+    ENC_X86_64_GRP_SHR  = 5,
+    ENC_X86_64_GRP_DIV  = 6,
     ENC_X86_64_GRP_CMP  = 7,
     ENC_X86_64_GRP_IDIV = 7,
     ENC_X86_64_GRP_SAR  = 7,
@@ -91,6 +93,7 @@ enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_GRP2_RM_CL    = 0xD3, // shl/sar by %cl, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_GRP3_RM       = 0xF7, // neg/not/idiv, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_GRP5_RM       = 0xFF, // inc/dec/call/jmp/push, selected the same way
+    ENC_X86_64_OPCODE_OPSIZE        = 0x66, // narrows the operand to 16 bits
     ENC_X86_64_OPCODE_ESCAPE        = 0x0F  // introduces a two-byte opcode
 };
 
@@ -103,10 +106,14 @@ enum Enc_x86_64_Opcode2 {
     ENC_X86_64_OPCODE2_SETE        = 0x94,
     ENC_X86_64_OPCODE2_SETNE       = 0x95,
     ENC_X86_64_OPCODE2_SETL        = 0x9C,
+    ENC_X86_64_OPCODE2_SETB        = 0x92,
+    ENC_X86_64_OPCODE2_SETBE       = 0x96,
     ENC_X86_64_OPCODE2_SETLE       = 0x9E,
     ENC_X86_64_OPCODE2_IMUL_R_RM   = 0xAF,
-    ENC_X86_64_OPCODE2_MOVZX_R_RM8 = 0xB6,
-    ENC_X86_64_OPCODE2_MOVSX_R_RM8 = 0xBE
+    ENC_X86_64_OPCODE2_MOVZX_R_RM8  = 0xB6,
+    ENC_X86_64_OPCODE2_MOVZX_R_RM16 = 0xB7,
+    ENC_X86_64_OPCODE2_MOVSX_R_RM8  = 0xBE,
+    ENC_X86_64_OPCODE2_MOVSX_R_RM16 = 0xBF
 };
 
 // A label defined in the stream, awaiting its symbol-table entry.
@@ -152,6 +159,7 @@ void Enc_x86_64_EmitMovImm(long imm, Asm_x86_64_Reg dst);
 void Enc_x86_64_EmitMovImm8(long imm, Asm_x86_64_Reg dst);
 void Enc_x86_64_EmitMemForm(int opcode, Asm_x86_64_Reg reg, Asm_x86_64_Reg base, int disp, Asm_x86_64_Width width);
 void Enc_x86_64_EmitMovsx(const Asm_x86_64_Item *item);
+void Enc_x86_64_EmitMovzx(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitLeaRip(Asm_x86_64_Reg dst, const char *label);
 void Enc_x86_64_EmitGrpUnary(int grp, Asm_x86_64_Reg reg);
 void Enc_x86_64_EmitShift(int grp, Asm_x86_64_Reg dst);

@@ -15,10 +15,19 @@ int       Sem_IsLvalue(const Ast_Node *node);
 int       Sem_IsAggregate(const Ast_Type *type);
 const char *Sem_TypeName(const Ast_Type *type);
 Ast_Type *Sem_Decay(Ast_Type *type);
+int       Sem_SameType(const Ast_Type *a, const Ast_Type *b);
+
+// Conversions
+Ast_Type *Sem_Promote(Ast_Type *type);
+Ast_Type *Sem_CommonType(Ast_Type *lhs, Ast_Type *rhs);
+Ast_Node *Sem_Convert(Ast_Node *node, Ast_Type *type);
+void      Sem_UsualArith(Ast_Node *node);
+void      Sem_PromoteShift(Ast_Node *node);
 
 // Constant expressions
 long      Sem_Truncate(const Ast_Type *type, long value);
-int       Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int line, long *value);
+int       Sem_FoldUnsigned(const Ast_Node *node);
+int       Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int is_unsigned, int line, long *value);
 int       Sem_Fold(const Ast_Node *node, long *value);
 int       Sem_FoldAddr(const Ast_Node *node, const char **symbol);
 
@@ -27,7 +36,7 @@ Ast_Type *Sem_FuncAddrType(Ast_Node *node);
 Ast_Type *Sem_CallType(Ast_Node *node);
 Ast_Type *Sem_CalleeType(Ast_Node *node);
 void      Sem_CheckArity(Ast_Node *node, int want, int variadic, int proto, const char *what);
-void      Sem_PromoteArgs(Ast_Node *node, int nparams, int variadic, int proto);
+void      Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int nparams, int variadic, int proto);
 void      Sem_CheckCall(Ast_Node *node);
 
 // Annotation

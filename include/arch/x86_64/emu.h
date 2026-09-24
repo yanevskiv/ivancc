@@ -9,6 +9,7 @@
 
 // Register widths a decoded operand can name, in bits.
 #define EMU_X86_64_WIDTH_8  8
+#define EMU_X86_64_WIDTH_16 16
 #define EMU_X86_64_WIDTH_32 32
 #define EMU_X86_64_WIDTH_64 64
 
@@ -17,6 +18,7 @@
 
 // The value a result of each width is truncated to.
 #define EMU_X86_64_MASK_8  0xFF
+#define EMU_X86_64_MASK_16 0xFFFF
 #define EMU_X86_64_MASK_32 0xFFFFFFFF
 #define EMU_X86_64_MASK_64 (~(uint64_t) 0)
 
@@ -91,6 +93,7 @@ struct Emu_x86_64_Insn {
     int     ei_op;      // primary opcode byte
     int     ei_op2;     // byte following 0x0F, or -1 when there is none
     int     ei_rexw;    // true when REX.W selects a 64-bit operand
+    int     ei_opsize16; // true when a 0x66 prefix selects a 16-bit operand
     int     ei_reg;     // ModRM reg field, extended by REX.R
     int     ei_rm;      // r/m register, or the base register of a memory operand
     Emu_x86_64_RmKind ei_rmkind;
@@ -136,6 +139,7 @@ int64_t Emu_x86_64_ReadImm(const uint8_t *p, int n);
 int Emu_x86_64_HasModRM(int op);
 int Emu_x86_64_HasModRM2(int op2);
 int Emu_x86_64_DecodeModRM(const uint8_t *p, int avail, int rex, Emu_x86_64_Insn *insn);
+int Emu_x86_64_Width(const Emu_x86_64_Insn *insn);
 int Emu_x86_64_Decode(const uint8_t *code, int avail, Emu_x86_64_Insn *insn);
 
 // Naming what was decoded
