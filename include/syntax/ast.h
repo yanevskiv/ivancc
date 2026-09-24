@@ -3,19 +3,22 @@
 #ifndef AST_H
 #define AST_H
 
+#include <stddef.h>
+
 // Maximum number of distinct string literals in one translation unit.
 #define AST_MAX_STRINGS 1024
 
 // Bits in a byte, for placing a bitfield inside the unit that holds it.
 #define AST_BITS_PER_BYTE 8
 
-// Whether an integer type holds negative values.
-#define AST_TYPE_SIGNED   0
-#define AST_TYPE_UNSIGNED 1
+// Forward declaration: a struct type lists its members.
+typedef struct Ast_Member Ast_Member;
 
-// Whether a type's members have been seen.
-#define AST_TYPE_INCOMPLETE 0
-#define AST_TYPE_COMPLETE   1
+// Forward declaration: a function type lists its parameters.
+typedef struct Ast_Var Ast_Var;
+
+// Forward declaration: a global's initializer is one of these.
+typedef struct Ast_Node Ast_Node;
 
 // The kind of a type, the integer kinds in rank order.
 typedef enum Ast_TypeKind Ast_TypeKind;
@@ -32,7 +35,9 @@ enum Ast_TypeKind {
     AST_TYPE_KIND_FUNC,
     AST_TYPE_KIND_STRUCT,
     AST_TYPE_KIND_UNION,
-    AST_TYPE_KIND_COUNT
+    AST_TYPE_KIND_COUNT,                           // number of kinds
+    AST_TYPE_KIND_FIRST_INT = AST_TYPE_KIND_BOOL,  // narrowest integer kind
+    AST_TYPE_KIND_LAST_INT  = AST_TYPE_KIND_LLONG  // widest integer kind
 };
 
 // The target ABI's sizes in bytes.
@@ -63,12 +68,26 @@ enum Ast_TypeAlign {
     AST_TYPE_ALIGN_FUNC  = 1
 };
 
+// Whether an integer type holds negative values.
+typedef enum Ast_TypeSign Ast_TypeSign;
+enum Ast_TypeSign {
+    AST_TYPE_SIGNED,
+    AST_TYPE_UNSIGNED
+};
+
 // The qualifiers a declaration may carry.
 typedef enum Ast_Qual Ast_Qual;
 enum Ast_Qual {
     AST_QUAL_CONST    = 1,
     AST_QUAL_VOLATILE = 2,
     AST_QUAL_RESTRICT = 4
+};
+
+// Whether a type's members have been seen.
+typedef enum Ast_TypeComplete Ast_TypeComplete;
+enum Ast_TypeComplete {
+    AST_TYPE_INCOMPLETE,
+    AST_TYPE_COMPLETE
 };
 
 // The kind of an AST node.
@@ -128,42 +147,38 @@ enum Ast_NodeKind {
     AST_NODE_KIND_CONTINUE,  // continue;
     AST_NODE_KIND_BLOCK,     // { ... }
     AST_NODE_KIND_EXPR_STMT, // expression used as a statement
-    AST_NODE_KIND_NOP        // empty statement / bare declaration
+    AST_NODE_KIND_NOP,       // empty statement / bare declaration
+    AST_NODE_KIND_COUNT      // number of kinds
 };
 
 // What a declaration's storage class asks for.
 typedef enum Ast_Storage Ast_Storage;
 enum Ast_Storage {
-    AST_STORAGE_NONE,
+    AST_STORAGE_NONE,    // no storage class was written
     AST_STORAGE_STATIC,  // visible only to this translation unit
     AST_STORAGE_EXTERN,  // declared here, defined elsewhere
-    AST_STORAGE_TYPEDEF  // binds a name to a type rather than declaring an object
+    AST_STORAGE_TYPEDEF, // binds a name to a type rather than declaring an object
+    AST_STORAGE_COUNT    // number of storage classes
 };
-
-// Forward declaration: a struct type lists its members.
-typedef struct Ast_Member Ast_Member;
-
-// Forward declaration: a function type lists its parameters.
-typedef struct Ast_Var Ast_Var;
 
 // A C type.
 typedef struct Ast_Type Ast_Type;
 struct Ast_Type {
-    Ast_TypeKind at_kind;
-    int          at_size;    // bytes an object of this type occupies
-    int          at_align;   // address multiple an object must sit on
-    int          at_unsigned;
-    int          at_qual;    // the AST_QUAL_ bits written on the declaration
-    Ast_Type    *at_base;    // pointee for PTR, element type for ARRAY
-    int          at_len;     // element count for ARRAY
-    char        *at_tag;     // tag a STRUCT or UNION was declared with, or NULL
-    Ast_Member  *at_members; // members of a STRUCT or UNION
-    int          at_complete; // false until the member list has been seen
-    Ast_Type    *at_ret;     // return type of a FUNC
-    Ast_Var     *at_params;  // parameters of a FUNC
-    int          at_nparams; // number of parameters a FUNC declares
-    int          at_variadic; // true when a FUNC's parameter list ended in `...`
-    int          at_proto;   // false for `int f()`
+    Ast_TypeKind     at_kind;     // which kind of type this is
+    int              at_size;     // bytes an object of this type occupies
+    int              at_align;    // address multiple an object must sit on
+    Ast_TypeSign     at_sign;     // signedness of an integer kind
+    Ast_Qual         at_qual;     // the qualifiers written on the declaration
+    Ast_Type        *at_base;     // pointee for PTR, element type for ARRAY
+    int              at_len;      // element count for ARRAY
+    char            *at_tag;      // tag a STRUCT or UNION was declared with, or NULL
+    Ast_Member      *at_members;  // members of a STRUCT or UNION
+    Ast_TypeComplete at_complete; // incomplete until the member list has been seen
+    Ast_Type        *at_ret;      // return type of a FUNC
+    Ast_Var         *at_params;   // parameters of a FUNC
+    int              at_nparams;  // number of parameters a FUNC declares
+    int              at_variadic; // true when a FUNC's parameter list ended in `...`
+    int              at_proto;    // false for `int f()`
 };
 
 // One member of a struct or union, at the offset layout gave it.
@@ -182,12 +197,10 @@ struct Ast_Member {
 // An interned string literal.
 typedef struct Ast_Str Ast_Str;
 struct Ast_Str {
-    char *as_data; // decoded bytes
-    int   as_len;  // number of bytes before that terminator
+    char   *as_data;  // decoded bytes
+    size_t  as_len;   // number of bytes before that terminator
+    size_t  as_width; // bytes one element takes
 };
-
-// Forward declaration: a global's initializer is one of these.
-typedef struct Ast_Node Ast_Node;
 
 // A local variable or function parameter.
 struct Ast_Var {
@@ -307,8 +320,8 @@ extern Ast_Type Ast_TypeULLong;
 // Type construction
 int       Ast_AlignTo(int n, int align);
 int       Ast_AlignDown(int n, int align);
-Ast_Type *Ast_IntegerType(Ast_TypeKind kind, int is_unsigned);
-Ast_Type *Ast_Qualify(Ast_Type *type, int qual);
+Ast_Type *Ast_IntegerType(Ast_TypeKind kind, Ast_TypeSign sign);
+Ast_Type *Ast_Qualify(Ast_Type *type, Ast_Qual qual);
 int       Ast_IsInteger(const Ast_Type *type);
 Ast_Type *Ast_NewPointer(Ast_Type *base);
 Ast_Type *Ast_NewArray(Ast_Type *base, int len);
@@ -352,7 +365,7 @@ int       Ast_FindEnumConst(const char *name, long *value);
 void      Ast_DeclareEnumConst(const char *name, long value);
 
 // String literal interning
-int      Ast_AddString(char *s, int len);
+int      Ast_AddString(char *s, size_t len, size_t width);
 int      Ast_StringCount(void);
 Ast_Str *Ast_StringAt(int idx);
 

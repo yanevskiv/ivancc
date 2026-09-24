@@ -76,7 +76,7 @@ int Sem_SameType(const Ast_Type *a, const Ast_Type *b)
     if (a == b) {
         return 1;
     }
-    return a->at_kind == b->at_kind && a->at_unsigned == b->at_unsigned && a->at_base == b->at_base
+    return a->at_kind == b->at_kind && a->at_sign == b->at_sign && a->at_base == b->at_base
         && a->at_members == b->at_members;
 }
 
@@ -98,12 +98,12 @@ Ast_Type *Sem_CommonType(Ast_Type *lhs, Ast_Type *rhs)
     if (! Ast_IsInteger(lhs) || ! Ast_IsInteger(rhs)) {
         return Ast_IsInteger(lhs) ? rhs : lhs;
     }
-    if (lhs->at_unsigned == rhs->at_unsigned) {
+    if (lhs->at_sign == rhs->at_sign) {
         return lhs->at_kind >= rhs->at_kind ? lhs : rhs;
     }
 
-    Ast_Type *sign = lhs->at_unsigned ? rhs : lhs;
-    Ast_Type *unsig = lhs->at_unsigned ? lhs : rhs;
+    Ast_Type *sign = lhs->at_sign == AST_TYPE_UNSIGNED ? rhs : lhs;
+    Ast_Type *unsig = lhs->at_sign == AST_TYPE_UNSIGNED ? lhs : rhs;
 
     if (unsig->at_kind >= sign->at_kind) {
         return unsig;
@@ -155,13 +155,13 @@ long Sem_Truncate(const Ast_Type *type, long value)
             value = value != 0;
         } break;
         case AST_TYPE_KIND_CHAR: {
-            value = type->at_unsigned ? (long) (unsigned char) value : (long) (signed char) value;
+            value = type->at_sign == AST_TYPE_UNSIGNED ? (long) (unsigned char) value : (long) (signed char) value;
         } break;
         case AST_TYPE_KIND_SHORT: {
-            value = type->at_unsigned ? (long) (unsigned short) value : (long) (short) value;
+            value = type->at_sign == AST_TYPE_UNSIGNED ? (long) (unsigned short) value : (long) (short) value;
         } break;
         case AST_TYPE_KIND_INT: {
-            value = type->at_unsigned ? (long) (unsigned int) value : (long) (int) value;
+            value = type->at_sign == AST_TYPE_UNSIGNED ? (long) (unsigned int) value : (long) (int) value;
         } break;
         case AST_TYPE_KIND_LONG:
         case AST_TYPE_KIND_LLONG:
@@ -178,20 +178,23 @@ long Sem_Truncate(const Ast_Type *type, long value)
     return value;
 }
 
-// Return whether an operator's operands are unsigned.
-int Sem_FoldUnsigned(const Ast_Node *node)
+// Return the signedness an operator's operands fold with.
+Ast_TypeSign Sem_FoldSign(const Ast_Node *node)
 {
     const Ast_Type *lhs = node->an_lhs ? node->an_lhs->an_type : NULL;
     const Ast_Type *rhs = node->an_rhs ? node->an_rhs->an_type : NULL;
 
-    if (lhs && Ast_IsInteger(lhs) && lhs->at_unsigned && lhs->at_kind >= AST_TYPE_KIND_INT) {
-        return 1;
+    if (lhs && Ast_IsInteger(lhs) && lhs->at_sign == AST_TYPE_UNSIGNED && lhs->at_kind >= AST_TYPE_KIND_INT) {
+        return AST_TYPE_UNSIGNED;
     }
-    return rhs && Ast_IsInteger(rhs) && rhs->at_unsigned && rhs->at_kind >= AST_TYPE_KIND_INT;
+    if (rhs && Ast_IsInteger(rhs) && rhs->at_sign == AST_TYPE_UNSIGNED && rhs->at_kind >= AST_TYPE_KIND_INT) {
+        return AST_TYPE_UNSIGNED;
+    }
+    return AST_TYPE_SIGNED;
 }
 
 // Apply one operator to folded operands.
-int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int is_unsigned, int line, long *value)
+int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, Ast_TypeSign sign, int line, long *value)
 {
     unsigned long ulhs = (unsigned long) lhs;
     unsigned long urhs = (unsigned long) rhs;
@@ -211,7 +214,7 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int is_unsigned, int line,
             if (rhs == 0) {
                 Log_ShowErrorAt(line, "division by zero in a constant expression");
             }
-            if (is_unsigned) {
+            if (sign == AST_TYPE_UNSIGNED) {
                 *value = (long) (kind == AST_NODE_KIND_DIV ? ulhs / urhs : ulhs % urhs);
             } else {
                 *value = kind == AST_NODE_KIND_DIV ? lhs / rhs : lhs % rhs;
@@ -230,7 +233,7 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int is_unsigned, int line,
             *value = lhs << rhs;
         } break;
         case AST_NODE_KIND_SHR: {
-            *value = is_unsigned ? (long) (ulhs >> rhs) : lhs >> rhs;
+            *value = sign == AST_TYPE_UNSIGNED ? (long) (ulhs >> rhs) : lhs >> rhs;
         } break;
         case AST_NODE_KIND_EQ: {
             *value = lhs == rhs;
@@ -239,10 +242,10 @@ int Sem_FoldOp(Ast_NodeKind kind, long lhs, long rhs, int is_unsigned, int line,
             *value = lhs != rhs;
         } break;
         case AST_NODE_KIND_LT: {
-            *value = is_unsigned ? ulhs < urhs : lhs < rhs;
+            *value = sign == AST_TYPE_UNSIGNED ? ulhs < urhs : lhs < rhs;
         } break;
         case AST_NODE_KIND_LE: {
-            *value = is_unsigned ? ulhs <= urhs : lhs <= rhs;
+            *value = sign == AST_TYPE_UNSIGNED ? ulhs <= urhs : lhs <= rhs;
         } break;
         case AST_NODE_KIND_AND: {
             *value = lhs && rhs;
@@ -306,7 +309,7 @@ int Sem_Fold(const Ast_Node *node, long *value)
             if (! Sem_Fold(node->an_lhs, &lhs)) {
                 return 0;
             }
-            if (! Sem_FoldOp(node->an_kind, lhs, 0, Sem_FoldUnsigned(node), node->an_line, value)) {
+            if (! Sem_FoldOp(node->an_kind, lhs, 0, Sem_FoldSign(node), node->an_line, value)) {
                 return 0;
             }
         } break;
@@ -314,7 +317,7 @@ int Sem_Fold(const Ast_Node *node, long *value)
             if (! Sem_Fold(node->an_lhs, &lhs) || ! Sem_Fold(node->an_rhs, &rhs)) {
                 return 0;
             }
-            if (! Sem_FoldOp(node->an_kind, lhs, rhs, Sem_FoldUnsigned(node), node->an_line, value)) {
+            if (! Sem_FoldOp(node->an_kind, lhs, rhs, Sem_FoldSign(node), node->an_line, value)) {
                 return 0;
             }
         } break;
@@ -634,7 +637,8 @@ void Sem_Node(Ast_Node *node)
 
         case AST_NODE_KIND_STR: {
             Ast_Str *str = Ast_StringAt(node->an_str_idx);
-            node->an_type = Ast_NewArray(&Ast_TypeChar, str->as_len + 1);
+            Ast_Type *elem = str->as_width > STR_NARROW_WIDTH ? &Ast_TypeInt : &Ast_TypeChar;
+            node->an_type = Ast_NewArray(elem, (int) (str->as_len / str->as_width + 1));
         } break;
 
         case AST_NODE_KIND_ADDR: {
@@ -793,7 +797,8 @@ void Sem_Node(Ast_Node *node)
         case AST_NODE_KIND_INITLIST:
         case AST_NODE_KIND_DESIGNATOR:
         case AST_NODE_KIND_ZERO:
-        case AST_NODE_KIND_NOP: {
+        case AST_NODE_KIND_NOP:
+        case AST_NODE_KIND_COUNT: {
             // empty
         } break;
     }
