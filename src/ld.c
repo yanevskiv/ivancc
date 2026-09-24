@@ -1,6 +1,5 @@
 // C source file for the ivanld linker.
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -18,7 +17,7 @@
 // Show usage information and exit.
 static void Ld_Usage(const char *prog)
 {
-    fprintf(stderr,
+    File_Print(File_Err(),
         "Usage: %s [options] INPUT.o...\n"
         "  -o OUTPUT          write the output to OUTPUT (default: " LD_DEFAULT_OUTPUT ")\n"
         "  -e ENTRY           set the entry symbol (default: _start)\n"
@@ -30,16 +29,16 @@ static void Ld_Usage(const char *prog)
 }
 
 // Map a -place name to its ELF section: text -> .text, data/rodata -> .rodata.
-static char *Ld_PlaceName(const char *spec, int len)
+static char *Ld_PlaceName(const char *spec, size_t len)
 {
-    char *name = strndup(spec, len);
+    char *name = Str_Slice(spec, 0, len);
     if (strcmp(name, "text") == 0) {
         Str_Free(name);
-        return Str_Duplicate(".text");
+        return Str_Clone(".text");
     }
     if (strcmp(name, "data") == 0 || strcmp(name, "rodata") == 0) {
         Str_Free(name);
-        return Str_Duplicate(".rodata");
+        return Str_Clone(".rodata");
     }
     return name;
 }
@@ -51,7 +50,7 @@ static void Ld_ParsePlace(const char *spec, Elf_LinkOptions *opts)
     if (! at) {
         Log_ShowError("malformed -place (expected SEC@ADDR): '%s'", spec);
     }
-    Elf_Link_AddPlace(opts, Ld_PlaceName(spec, (int) (at - spec)), strtoull(at + 1, NULL, 0));
+    Elf_Link_AddPlace(opts, Ld_PlaceName(spec, (size_t) (at - spec)), strtoull(at + 1, NULL, 0));
 }
 
 // Main function
@@ -60,7 +59,7 @@ int main(int argc, char **argv)
     const char  *output = LD_DEFAULT_OUTPUT;
     Elf_LinkOptions opts = {0};
 
-    int nobjs = 0;
+    size_t nobjs = 0;
     const char **objs = calloc(argc, sizeof(*objs));
 
     for (int i = 1; i < argc; i++) {
@@ -86,7 +85,7 @@ int main(int argc, char **argv)
 
     Elf *e = Elf_Link_Run((const char *const *) objs, nobjs, &opts);
     if (Elf_Write_Path(e, output) != 0) {
-        perror(output);
+        File_ShowError(output);
         return 1;
     }
     Elf_Free(e);
