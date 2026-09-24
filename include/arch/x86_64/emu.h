@@ -77,6 +77,15 @@
 // Exit status reserved for a fault in the machine rather than in the program.
 #define EMU_X86_64_STATUS_FAULT 125
 
+// The type a `%llx` conversion takes.
+typedef unsigned long long Emu_TypeULLong;
+
+// The signed double-width dividend an idiv consumes.
+typedef __int128 Emu_TypeInt128;
+
+// The unsigned double-width dividend a div consumes.
+typedef unsigned __int128 Emu_TypeUInt128;
+
 // How an instruction reaches its r/m operand.
 typedef enum Emu_x86_64_RmKind Emu_x86_64_RmKind;
 enum Emu_x86_64_RmKind {

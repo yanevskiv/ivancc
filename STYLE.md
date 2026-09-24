@@ -66,6 +66,7 @@ Order inside a header, after the guard and the banner:
 
 - Put includes first.
 - Put every `#define` next, before the first enum.
+- Put every scalar `typedef` next, before the first enum.
 - Put every enum next, before the first struct.
 - Put every struct next, before the first variable.
 - Put every `extern` variable next, before the first function.

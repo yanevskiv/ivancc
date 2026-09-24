@@ -44,7 +44,7 @@ void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img)
 // Report a fault against the instruction that caused it and stop the program.
 void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, const char *what, uint64_t addr)
 {
-    fprintf(stderr, "ivanemu: %s at 0x%llx from %%rip = 0x%llx\n", what, (unsigned long long) addr, (unsigned long long) cpu->ec_rip);
+    fprintf(stderr, "ivanemu: %s at 0x%llx from %%rip = 0x%llx\n", what, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
     cpu->ec_halted = 1;
     cpu->ec_status = EMU_X86_64_STATUS_FAULT;
 }
@@ -230,7 +230,7 @@ void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
             cpu->ec_status = cpu->ec_reg[EMU_X86_64_REG_RDI] & EMU_X86_64_MASK_8;
         } break;
         default: {
-            fprintf(stderr, "ivanemu: unimplemented syscall %llu from %%rip = 0x%llx\n", (unsigned long long) nr, (unsigned long long) cpu->ec_rip);
+            fprintf(stderr, "ivanemu: unimplemented syscall %llu from %%rip = 0x%llx\n", (Emu_TypeULLong) nr, (Emu_TypeULLong) cpu->ec_rip);
             cpu->ec_halted = 1;
             cpu->ec_status = EMU_X86_64_STATUS_FAULT;
         }
@@ -252,7 +252,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, int trace)
     if (trace) {
         char text[128];
         Emu_x86_64_Format(&insn, rip, text, sizeof(text));
-        fprintf(stderr, "%016llx: %s\n", (unsigned long long) rip, text);
+        fprintf(stderr, "%016llx: %s\n", (Emu_TypeULLong) rip, text);
     }
 
     uint64_t next = rip + insn.ei_len;
@@ -470,7 +470,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, int trace)
                         Emu_x86_64_Fault(cpu, "divide by zero", rip);
                         return;
                     }
-                    __int128 num = ((__int128) (int64_t) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
+                    Emu_TypeInt128 num = ((Emu_TypeInt128) (int64_t) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
                                  | cpu->ec_reg[EMU_X86_64_REG_RAX];
                     cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (int64_t) (num / d);
                     cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (int64_t) (num % d);
@@ -481,7 +481,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, int trace)
                         Emu_x86_64_Fault(cpu, "divide by zero", rip);
                         return;
                     }
-                    unsigned __int128 num = ((unsigned __int128) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
+                    Emu_TypeUInt128 num = ((Emu_TypeUInt128) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
                                           | cpu->ec_reg[EMU_X86_64_REG_RAX];
                     cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (num / d);
                     cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (num % d);
@@ -857,7 +857,7 @@ void Emu_x86_64_FormatRm(const Emu_x86_64_Insn *insn, int width, uint64_t next, 
             }
         } break;
         case EMU_X86_64_RM_RIP: {
-            snprintf(out, n, "0x%llx(%%rip)", (unsigned long long) (next + (int64_t) insn->ei_disp));
+            snprintf(out, n, "0x%llx(%%rip)", (Emu_TypeULLong) (next + (int64_t) insn->ei_disp));
         } break;
         default: {
             snprintf(out, n, "?");
@@ -875,7 +875,7 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
 
     if (insn->ei_op == ENC_X86_64_OPCODE_CALL_REL32 || insn->ei_op == ENC_X86_64_OPCODE_JMP_REL32
         || insn->ei_op2 == ENC_X86_64_OPCODE2_JE_REL32 || insn->ei_op2 == ENC_X86_64_OPCODE2_JNE_REL32) {
-        snprintf(out, n, "%s 0x%llx", name, (unsigned long long) (next + insn->ei_imm));
+        snprintf(out, n, "%s 0x%llx", name, (Emu_TypeULLong) (next + insn->ei_imm));
         return;
     }
     if (insn->ei_rmkind == EMU_X86_64_RM_NONE) {
@@ -889,15 +889,15 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, int
             snprintf(out, n, "%s %%%s", name, Emu_x86_64_RegName(insn->ei_rm, EMU_X86_64_WIDTH_64));
         } break;
         case ENC_X86_64_OPCODE_MOV_R8_IMM8: {
-            snprintf(out, n, "%s $0x%llx, %%%s", name, (unsigned long long) insn->ei_imm, Emu_x86_64_RegName(insn->ei_rm, EMU_X86_64_WIDTH_8));
+            snprintf(out, n, "%s $0x%llx, %%%s", name, (Emu_TypeULLong) insn->ei_imm, Emu_x86_64_RegName(insn->ei_rm, EMU_X86_64_WIDTH_8));
         } break;
         case ENC_X86_64_OPCODE_MOV_R_IMM64: {
-            snprintf(out, n, "%s $0x%llx, %%%s", name, (unsigned long long) insn->ei_imm, Emu_x86_64_RegName(insn->ei_rm, width));
+            snprintf(out, n, "%s $0x%llx, %%%s", name, (Emu_TypeULLong) insn->ei_imm, Emu_x86_64_RegName(insn->ei_rm, width));
         } break;
         case ENC_X86_64_OPCODE_MOV_RM_IMM32:
         case ENC_X86_64_OPCODE_GRP1_RM_IMM32: {
             Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
-            snprintf(out, n, "%s $0x%llx, %s", name, (unsigned long long) insn->ei_imm, rm);
+            snprintf(out, n, "%s $0x%llx, %s", name, (Emu_TypeULLong) insn->ei_imm, rm);
         } break;
         case ENC_X86_64_OPCODE_GRP3_RM: {
             Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
