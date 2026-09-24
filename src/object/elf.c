@@ -1,7 +1,6 @@
 // C source file for ELF objects and executables.
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -422,23 +421,16 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
 // Parse an ELF file into a new object.
 Elf *Elf_Read_Path(const char *path)
 {
-    FILE *file = fopen(path, "rb");
-    if (! file) {
-        return NULL;
-    }
-    fseek(file, 0, SEEK_END);
-    long size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    uint8_t *buf = malloc(size > 0 ? size : 1);
-    if (fread(buf, 1, size, file) != (size_t) size) {
-        free(buf);
-        fclose(file);
-        return NULL;
-    }
-    fclose(file);
+    long size = 0;
+    char *buf = File_GetContents(path, &size);
 
-    Elf *elf = Elf_Read_Mem(buf, size);
-    free(buf);
+    if (! buf) {
+        return NULL;
+    }
+
+    Elf *elf = Elf_Read_Mem((const uint8_t *) buf, size);
+
+    Str_Free(buf);
     return elf;
 }
 
@@ -521,7 +513,7 @@ void Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, E
 }
 
 // Serialize a relocatable object (ET_REL).
-int Elf_Write_Rel(const Elf *elf, FILE *out)
+int Elf_Write_Rel(const Elf *elf, File_Stream *out)
 {
     size_t nuser = elf->elf_nsecs;
 
@@ -604,8 +596,7 @@ int Elf_Write_Rel(const Elf *elf, FILE *out)
         if (! relaidx[i]) {
             continue;
         }
-        char name[64];
-        snprintf(name, sizeof(name), ".rela%s", elf->elf_secs[i]->sec_name);
+        char *name = Str_Format(".rela%s", elf->elf_secs[i]->sec_name);
         shdrs[relaidx[i]] = (Elf64_Shdr) {
             .sh_name      = Elf_Write_Str(&shstr, name),
             .sh_type      = ELF_SHT_RELA,
@@ -615,6 +606,7 @@ int Elf_Write_Rel(const Elf *elf, FILE *out)
             .sh_addralign = 8,
             .sh_entsize   = sizeof(Elf64_Rela)
         };
+        Str_Free(name);
         bodies[relaidx[i]] = relas[i].eb_data;
         sizes[relaidx[i]]  = relas[i].eb_len;
     }
@@ -652,23 +644,23 @@ int Elf_Write_Rel(const Elf *elf, FILE *out)
     };
 
     long pos = 0;
-    fwrite(&ehdr, sizeof(ehdr), 1, out);
+    File_PutBytes(out, &ehdr, sizeof(ehdr));
     pos += sizeof(ehdr);
     for (uint32_t i = 1; i < shnum; i++) {
         while (pos < (long) shdrs[i].sh_offset) {
-            fputc(0, out);
+            File_PutByte(out, 0);
             pos++;
         }
         if (sizes[i]) {
-            fwrite(bodies[i], 1, sizes[i], out);
+            File_PutBytes(out, bodies[i], sizes[i]);
         }
         pos += sizes[i];
     }
     while (pos < (long) shoff) {
-        fputc(0, out);
+        File_PutByte(out, 0);
         pos++;
     }
-    fwrite(shdrs, sizeof(Elf64_Shdr), shnum, out);
+    File_PutBytes(out, shdrs, sizeof(Elf64_Shdr) * shnum);
 
     Elf_Buffer_Free(&symtab);
     Elf_Buffer_Free(&strtab);
@@ -706,7 +698,7 @@ uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr)
 }
 
 // Serialize a static executable, one PT_LOAD per placed section.
-int Elf_Write_Exec(const Elf *elf, FILE *out)
+int Elf_Write_Exec(const Elf *elf, File_Stream *out)
 {
     // Phase: select the loadable sections.
     Elf_Sec **segs = calloc(elf->elf_nsecs ? elf->elf_nsecs : 1, sizeof(*segs));
@@ -739,7 +731,7 @@ int Elf_Write_Exec(const Elf *elf, FILE *out)
         .e_phentsize = sizeof(Elf64_Phdr),
         .e_phnum     = (uint16_t) nseg
     };
-    fwrite(&ehdr, sizeof(ehdr), 1, out);
+    File_PutBytes(out, &ehdr, sizeof(ehdr));
     for (int i = 0; i < nseg; i++) {
         int nobits = segs[i]->sec_type == ELF_SHT_NOBITS;
         Elf64_Phdr phdr = {
@@ -752,7 +744,7 @@ int Elf_Write_Exec(const Elf *elf, FILE *out)
             .p_memsz  = segs[i]->sec_data.eb_len,
             .p_align  = ELF_PAGE
         };
-        fwrite(&phdr, sizeof(phdr), 1, out);
+        File_PutBytes(out, &phdr, sizeof(phdr));
     }
     long pos2 = sizeof(Elf64_Ehdr) + (long) nseg * sizeof(Elf64_Phdr);
     for (int i = 0; i < nseg; i++) {
@@ -760,10 +752,10 @@ int Elf_Write_Exec(const Elf *elf, FILE *out)
             continue;
         }
         while (pos2 < (long) offs[i]) {
-            fputc(0, out);
+            File_PutByte(out, 0);
             pos2++;
         }
-        fwrite(segs[i]->sec_data.eb_data, 1, segs[i]->sec_data.eb_len, out);
+        File_PutBytes(out, segs[i]->sec_data.eb_data, segs[i]->sec_data.eb_len);
         pos2 += segs[i]->sec_data.eb_len;
     }
 
@@ -773,7 +765,7 @@ int Elf_Write_Exec(const Elf *elf, FILE *out)
 }
 
 // Serialize an object to an open stream, returning 0 on success or -1.
-int Elf_Write_File(const Elf *elf, FILE *out)
+int Elf_Write_File(const Elf *elf, File_Stream *out)
 {
     if (elf->elf_type == ELF_ET_EXEC) {
         return Elf_Write_Exec(elf, out);
@@ -784,12 +776,15 @@ int Elf_Write_File(const Elf *elf, FILE *out)
 // Serialize an object to a file, returning 0 on success or -1 on error.
 int Elf_Write_Path(const Elf *elf, const char *path)
 {
-    FILE *out = fopen(path, "wb");
+    File_Stream *out = File_Open(path, "wb");
+
     if (! out) {
         return -1;
     }
+
     int rc = Elf_Write_File(elf, out);
-    fclose(out);
+
+    File_Close(out);
     return rc;
 }
 
@@ -902,9 +897,9 @@ void Elf_Link_Merge(Elf *out, Elf *in)
 }
 
 // Read each object file and merge it into out.
-void Elf_Link_MergeFiles(Elf *out, const char *const *paths, int npaths)
+void Elf_Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths)
 {
-    for (int i = 0; i < npaths; i++) {
+    for (size_t i = 0; i < npaths; i++) {
         Elf *in = Elf_Read_Path(paths[i]);
         if (! in) {
             Log_ShowError("cannot read object '%s'", paths[i]);
@@ -926,7 +921,7 @@ void Elf_Link_AddPlace(Elf_LinkOptions *opts, const char *name, uint64_t addr)
 // Load address requested for a section by name.
 uint64_t Elf_Link_PlacedAddr(const Elf_LinkOptions *opts, const char *name, int *placed)
 {
-    for (int i = 0; i < opts->lo_nplaces; i++) {
+    for (size_t i = 0; i < opts->lo_nplaces; i++) {
         if (strcmp(opts->lo_places[i].lp_name, name) == 0) {
             *placed = 1;
             return opts->lo_places[i].lp_addr;
@@ -991,7 +986,7 @@ void Elf_Link_Exec(Elf *elf, const Elf_LinkOptions *opts)
 }
 
 // Read and link the given objects into one Elf.
-Elf *Elf_Link_Run(const char *const *paths, int npaths, const Elf_LinkOptions *opts)
+Elf *Elf_Link_Run(const char *const *paths, size_t npaths, const Elf_LinkOptions *opts)
 {
     Elf *out = Elf_New(ELF_ET_REL, ELF_EM_X86_64);
     Elf_Link_MergeFiles(out, paths, npaths);
