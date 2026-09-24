@@ -1,9 +1,10 @@
 // C source file for x86-64 assembly text in AT&T syntax.
 
-#include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "util/file.h"
 #include "util/log.h"
 #include "util/str.h"
 #include "object/elf.h"
@@ -11,7 +12,7 @@
 #include "arch/x86_64/txt.h"
 
 // 64-bit register names.
-static const char *Txt_x86_64_Reg64Name[16] = {
+static const char *Txt_x86_64_Reg64Name[ASM_X86_64_REG_COUNT] = {
     "rax",
     "rcx",
     "rdx",
@@ -31,7 +32,7 @@ static const char *Txt_x86_64_Reg64Name[16] = {
 };
 
 // 8-bit (low-byte) register names.
-static const char *Txt_x86_64_Reg8Name[16] = {
+static const char *Txt_x86_64_Reg8Name[ASM_X86_64_REG_COUNT] = {
     "al",
     "cl",
     "dl",
@@ -51,19 +52,19 @@ static const char *Txt_x86_64_Reg8Name[16] = {
 };
 
 // 32-bit register names.
-static const char *Txt_x86_64_Reg32Name[16] = {
+static const char *Txt_x86_64_Reg32Name[ASM_X86_64_REG_COUNT] = {
     "eax", "ecx", "edx",  "ebx",  "esp",  "ebp",  "esi",  "edi",
     "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d"
 };
 
 // 16-bit register names.
-static const char *Txt_x86_64_Reg16Name[16] = {
+static const char *Txt_x86_64_Reg16Name[ASM_X86_64_REG_COUNT] = {
     "ax",  "cx",  "dx",   "bx",   "sp",   "bp",   "si",   "di",
     "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w"
 };
 
 // Mnemonics.
-static const char *Txt_x86_64_OpName[] = {
+static const char *Txt_x86_64_OpName[ASM_X86_64_OP_COUNT] = {
     [ASM_X86_64_OP_MOV]     = "mov",
     [ASM_X86_64_OP_MOVSX]   = "movs",
     [ASM_X86_64_OP_LEA]     = "lea",
@@ -101,7 +102,7 @@ static const char *Txt_x86_64_OpName[] = {
 };
 
 // Write one operand in AT&T syntax.
-void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
+void Txt_x86_64_Att_WriteOperand(File_Stream *out, const Asm_x86_64_Operand *op)
 {
     switch (op->ao_kind) {
         case ASM_X86_64_OPERAND_REG: {
@@ -113,59 +114,60 @@ void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
             } else if (op->ao_width == ASM_X86_64_WIDTH_32) {
                 name = Txt_x86_64_Reg32Name[op->ao_reg];
             }
-            fprintf(out, "%%%s", name);
+            File_Print(out, "%%%s", name);
         } break;
         case ASM_X86_64_OPERAND_IMM: {
-            fprintf(out, "$%ld", op->ao_imm);
+            File_Print(out, "$%ld", op->ao_imm);
         } break;
         case ASM_X86_64_OPERAND_MEM: {
             if (op->ao_disp) {
-                fprintf(out, "%d(%%%s)", op->ao_disp, Txt_x86_64_Reg64Name[op->ao_reg]);
+                File_Print(out, "%d(%%%s)", op->ao_disp, Txt_x86_64_Reg64Name[op->ao_reg]);
             } else {
-                fprintf(out, "(%%%s)", Txt_x86_64_Reg64Name[op->ao_reg]);
+                File_Print(out, "(%%%s)", Txt_x86_64_Reg64Name[op->ao_reg]);
             }
         } break;
         case ASM_X86_64_OPERAND_RIP: {
-            fprintf(out, "%s(%%rip)", op->ao_label);
+            File_Print(out, "%s(%%rip)", op->ao_label);
         } break;
         case ASM_X86_64_OPERAND_LABEL: {
-            fprintf(out, "%s", op->ao_label);
+            File_Print(out, "%s", op->ao_label);
         } break;
-        case ASM_X86_64_OPERAND_NONE: {
+        case ASM_X86_64_OPERAND_NONE:
+        case ASM_X86_64_OPERAND_COUNT: {
             // empty
         } break;
     }
 }
 
 // Write one instruction: mnemonic plus operands in AT&T order.
-void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
+void Txt_x86_64_Att_WriteInstr(File_Stream *out, const Asm_x86_64_Item *item)
 {
     if (item->ai_op == ASM_X86_64_OP_MOVSX || item->ai_op == ASM_X86_64_OP_MOVZX) {
         const char *stem = item->ai_op == ASM_X86_64_OP_MOVSX ? "movs" : "movz";
-        fprintf(out, "  %s%cq", stem, Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
+        File_Print(out, "  %s%cq", stem, Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
     } else {
-        fprintf(out, "  %s", Txt_x86_64_OpName[item->ai_op]);
+        File_Print(out, "  %s", Txt_x86_64_OpName[item->ai_op]);
     }
 
     int have_src = item->ai_src.ao_kind != ASM_X86_64_OPERAND_NONE;
     int have_dst = item->ai_dst.ao_kind != ASM_X86_64_OPERAND_NONE;
 
     if (have_src) {
-        fputc(' ', out);
+        File_PutByte(out, ' ');
         Txt_x86_64_Att_WriteOperand(out, &item->ai_src);
     }
     if (have_dst) {
-        fputs(have_src ? ", " : " ", out);
+        File_PutText(out, have_src ? ", " : " ");
         if (item->ai_op == ASM_X86_64_OP_CALL_REG) {
-            fputc('*', out);
+            File_PutByte(out, '*');
         }
         Txt_x86_64_Att_WriteOperand(out, &item->ai_dst);
     }
-    fputc('\n', out);
+    File_PutByte(out, '\n');
 }
 
 // Walk the instruction list and write AT&T-syntax assembly to out.
-void Txt_x86_64_Att_Write(FILE *out)
+void Txt_x86_64_Att_Write(File_Stream *out)
 {
     for (Asm_x86_64_Item *item = Asm_x86_64_Items(); item; item = item->ai_next) {
         switch (item->ai_kind) {
@@ -173,28 +175,31 @@ void Txt_x86_64_Att_Write(FILE *out)
                 Txt_x86_64_Att_WriteInstr(out, item);
             } break;
             case ASM_X86_64_ITEM_LABEL: {
-                fprintf(out, "%s:\n", item->ai_label);
+                File_Print(out, "%s:\n", item->ai_label);
             } break;
             case ASM_X86_64_ITEM_GLOBL: {
-                fprintf(out, "  .globl %s\n", item->ai_label);
+                File_Print(out, "  .globl %s\n", item->ai_label);
             } break;
             case ASM_X86_64_ITEM_SECTION: {
                 if (strcmp(item->ai_secname, ".text") == 0) {
-                    fprintf(out, "  .text\n");
+                    File_Print(out, "  .text\n");
                 } else {
-                    fprintf(out, "  .section %s\n", item->ai_secname);
+                    File_Print(out, "  .section %s\n", item->ai_secname);
                 }
             } break;
             case ASM_X86_64_ITEM_BYTES: {
                 for (int i = 0; i < item->ai_nbytes; i++) {
-                    fprintf(out, "  .byte %d\n", item->ai_bytes[i]);
+                    File_Print(out, "  .byte %d\n", item->ai_bytes[i]);
                 }
             } break;
             case ASM_X86_64_ITEM_ADDR: {
-                fprintf(out, "  .quad %s\n", item->ai_label);
+                File_Print(out, "  .quad %s\n", item->ai_label);
             } break;
             case ASM_X86_64_ITEM_DIRECTIVE: {
-                fprintf(out, "  %s\n", item->ai_text);
+                File_Print(out, "  %s\n", item->ai_text);
+            } break;
+            case ASM_X86_64_ITEM_COUNT: {
+                // empty
             } break;
         }
     }
@@ -252,7 +257,7 @@ int Txt_x86_64_Att_ExtendOp(const char *mnem, Asm_x86_64_Width *width)
 // Return the register index for an AT&T name like "rax"/"al".
 int Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
 {
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < ASM_X86_64_REG_COUNT; i++) {
         if (strcmp(name, Txt_x86_64_Reg64Name[i]) == 0) {
             *width = ASM_X86_64_WIDTH_64;
             return i;
@@ -276,8 +281,7 @@ int Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
 // Return the opcode for a mnemonic.
 int Txt_x86_64_OpByName(const char *name)
 {
-    int count = (int) (sizeof(Txt_x86_64_OpName) / sizeof(Txt_x86_64_OpName[0]));
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < ASM_X86_64_OP_COUNT; i++) {
         if (Txt_x86_64_OpName[i] && strcmp(name, Txt_x86_64_OpName[i]) == 0) {
             return i;
         }
@@ -285,47 +289,137 @@ int Txt_x86_64_OpByName(const char *name)
     return -1;
 }
 
+// True if c can open a symbol name.
+int Txt_x86_64_Att_IsNameStart(char c)
+{
+    return c == '.' || c == '_' || isalpha((unsigned char) c);
+}
+
+// True if c can continue a symbol name.
+int Txt_x86_64_Att_IsNameChar(char c)
+{
+    return c == '.' || c == '_' || c == '$' || isalnum((unsigned char) c);
+}
+
+// True if c can open a label.
+int Txt_x86_64_Att_IsLabelStart(char c)
+{
+    return c == '$' || Txt_x86_64_Att_IsNameStart(c);
+}
+
+// True if text names a branch target.
+int Txt_x86_64_Att_IsTarget(const char *text)
+{
+    const char *p = text;
+
+    while (Txt_x86_64_Att_IsNameChar(*p)) {
+        p++;
+    }
+    return p > text && *p == '\0';
+}
+
+// True if text names a symbol a .quad can hold.
+int Txt_x86_64_Att_IsAddress(const char *text)
+{
+    return Txt_x86_64_Att_IsNameStart(text[0]) && Txt_x86_64_Att_IsTarget(text);
+}
+
+// Scan a register name, or return NULL where none stands.
+const char *Txt_x86_64_Att_ScanReg(const char *p)
+{
+    if (! isalpha((unsigned char) *p)) {
+        return NULL;
+    }
+    while (isalnum((unsigned char) *p)) {
+        p++;
+    }
+    return p;
+}
+
+// Scan a decimal, octal or hex integer, or return NULL where none stands.
+const char *Txt_x86_64_Att_ScanNumber(const char *p, long *out)
+{
+    const char *start = p;
+
+    if (*p == '-') {
+        p++;
+    }
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+        p += 2;
+        if (! isxdigit((unsigned char) *p)) {
+            return NULL;
+        }
+        while (isxdigit((unsigned char) *p)) {
+            p++;
+        }
+    } else {
+        if (! isdigit((unsigned char) *p)) {
+            return NULL;
+        }
+        while (isdigit((unsigned char) *p)) {
+            p++;
+        }
+    }
+    *out = strtol(start, NULL, 0);
+    return p;
+}
+
 // Parse one AT&T operand into op.
 int Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
 {
-    char *g[3];
+    long disp = 0;
+    const char *end;
+    const char *p = text;
+    Asm_x86_64_Width width;
 
-    if (text[0] == '%' && Str_RegexExtract(text, "^%([A-Za-z][A-Za-z0-9]*)$", g, 1)) {
-        Asm_x86_64_Width width;
-        int reg = Txt_x86_64_RegByName(g[0], &width);
-        Str_Free(g[0]);
-        if (reg < 0) {
-            return 0;
+    if (text[0] == '%') {
+        end = Txt_x86_64_Att_ScanReg(text + 1);
+        if (end && *end == '\0') {
+            int reg = Txt_x86_64_RegByName(text + 1, &width);
+            if (reg < 0) {
+                return 0;
+            }
+            *op = Asm_x86_64_RegWidth(reg, width);
+            return 1;
         }
-        *op = Asm_x86_64_RegWidth(reg, width);
-        return 1;
     }
-    if (text[0] == '$' && Str_RegexExtract(text, "^[$](-?(0[xX][0-9A-Fa-f]+|[0-9]+))$", g, 1)) {
-        long val = strtol(g[0], NULL, 0);
-        Str_Free(g[0]);
-        *op = Asm_x86_64_Imm(val);
-        return 1;
-    }
-    if (Str_RegexExtract(text, "^([.A-Za-z0-9_$]+)[(]%rip[)]$", g, 1)) {
-        *op = Asm_x86_64_Rip(Str_Duplicate(g[0]));
-        Str_Free(g[0]);
-        return 1;
-    }
-    if (Str_RegexExtract(text, "^(-?(0[xX][0-9A-Fa-f]+|[0-9]+))?[(]%([A-Za-z][A-Za-z0-9]*)[)]$", g, 3)) {
-        Asm_x86_64_Width width;
-        int base = Txt_x86_64_RegByName(g[2], &width);
-        int disp = g[0] ? (int) strtol(g[0], NULL, 0) : 0;
-        Str_Free(g[0]);
-        Str_Free(g[1]);
-        Str_Free(g[2]);
-        if (base < 0) {
-            return 0;
+    if (text[0] == '$') {
+        end = Txt_x86_64_Att_ScanNumber(text + 1, &disp);
+        if (end && *end == '\0') {
+            *op = Asm_x86_64_Imm(disp);
+            return 1;
         }
-        *op = Asm_x86_64_Mem(base, disp);
+    }
+
+    while (Txt_x86_64_Att_IsNameChar(*p)) {
+        p++;
+    }
+    if (p > text && strcmp(p, "(%rip)") == 0) {
+        *op = Asm_x86_64_Rip(Str_Slice(text, 0, (size_t) (p - text)));
         return 1;
     }
-    if (Str_RegexMatch(text, "^[.A-Za-z0-9_$]+$")) {
-        *op = Asm_x86_64_Target(Str_Duplicate(text));
+
+    disp = 0;
+    p = Txt_x86_64_Att_ScanNumber(text, &disp);
+    if (! p) {
+        p = text;
+    }
+    if (p[0] == '(' && p[1] == '%') {
+        end = Txt_x86_64_Att_ScanReg(p + 2);
+        if (end && end[0] == ')' && end[1] == '\0') {
+            char *name = Str_Slice(p, 2, (size_t) (end - p));
+            int base = Txt_x86_64_RegByName(name, &width);
+            Str_Free(name);
+            if (base < 0) {
+                return 0;
+            }
+            *op = Asm_x86_64_Mem(base, (int) disp);
+            return 1;
+        }
+    }
+
+    if (Txt_x86_64_Att_IsTarget(text)) {
+        *op = Asm_x86_64_Target(Str_Clone(text));
         return 1;
     }
     return 0;
@@ -335,7 +429,7 @@ int Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
 void Txt_x86_64_Att_EmitInts(const char *args, int width)
 {
     Str_List parts = Str_Split(args, ",");
-    for (int i = 0; i < parts.sl_count; i++) {
+    for (size_t i = 0; i < parts.sl_count; i++) {
         char *text = Str_Trim(parts.sl_items[i]);
         if (! *text) {
             continue;
@@ -356,10 +450,10 @@ void Txt_x86_64_Att_EmitInts(const char *args, int width)
 // Emit a `.quad` item that names a symbol.
 int Txt_x86_64_Att_EmitAddress(const char *text, int width)
 {
-    if (! Str_RegexMatch(text, "^[.A-Za-z_]")) {
+    if (! Txt_x86_64_Att_IsNameStart(text[0])) {
         return 0;
     }
-    if (width != 8 || ! Str_RegexMatch(text, "^[.A-Za-z_][.A-Za-z0-9_$]*$")) {
+    if (width != 8 || ! Txt_x86_64_Att_IsAddress(text)) {
         Log_ShowError("as: '%s' is not an address a .quad can hold", text);
     }
     Asm_x86_64_EmitAddress(text);
@@ -375,10 +469,10 @@ void Txt_x86_64_Att_EmitString(const char *args, int terminate)
     }
     p++;
 
-    int len = 0;
-    char *buf = Str_Unescape(p, (int) strlen(p), &len);
+    size_t len = 0;
+    char *buf = Str_Unescape(p, strlen(p), STR_NARROW_WIDTH, &len);
 
-    Asm_x86_64_EmitBytes(buf, len + (terminate ? 1 : 0));
+    Asm_x86_64_EmitBytes(buf, (int) (len + (terminate ? 1 : 0)));
     Str_Free(buf);
 }
 
@@ -413,7 +507,7 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
     }
     if (*rest) {
         Str_List parts = Str_Split(rest, ",");
-        for (int i = 0; i < parts.sl_count; i++) {
+        for (size_t i = 0; i < parts.sl_count; i++) {
             char *text = Str_Trim(parts.sl_items[i]);
             if (! *text) {
                 continue;
@@ -465,7 +559,7 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
     } else if (Str_Equals(name, ".rodata")) {
         Asm_x86_64_EmitSection(".rodata", ELF_SHT_PROGBITS, ELF_SHF_ALLOC);
     } else if (Str_Equals(name, ".section")) {
-        char *secname = strndup(args, strcspn(args, " ,\t"));
+        char *secname = Str_Slice(args, 0, strcspn(args, " ,\t"));
         uint32_t type = ELF_SHT_PROGBITS;
         uint64_t flags;
         const char *quote = strchr(args, '"');
@@ -489,7 +583,7 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
         }
         Asm_x86_64_EmitSection(secname, type, flags);
     } else if (Str_Equals(name, ".globl") || Str_Equals(name, ".global")) {
-        char *sym = strndup(args, strcspn(args, " ,\t"));
+        char *sym = Str_Slice(args, 0, strcspn(args, " ,\t"));
         Asm_x86_64_EmitGlobl("%s", sym);
         Str_Free(sym);
     } else if (Str_Equals(name, ".byte")) {
@@ -532,14 +626,23 @@ void Txt_x86_64_Att_ParseLine(char *line)
         return;
     }
 
-    char *g[2];
-    if (Str_RegexExtract(text, "^([.A-Za-z_$][.A-Za-z0-9_$]*):[ \t]*(.*)$", g, 2)) {
-        Asm_x86_64_EmitLabel("%s", g[0]);
-        if (g[1] && *g[1]) {
-            Txt_x86_64_Att_ParseLine(g[1]);
+    char *p = text;
+    if (Txt_x86_64_Att_IsLabelStart(*p)) {
+        while (Txt_x86_64_Att_IsNameChar(*p)) {
+            p++;
         }
-        Str_Free(g[0]);
-        Str_Free(g[1]);
+    }
+    if (p > text && *p == ':') {
+        char *name = Str_Slice(text, 0, (size_t) (p - text));
+        Asm_x86_64_EmitLabel("%s", name);
+        Str_Free(name);
+        p++;
+        while (*p == ' ' || *p == '\t') {
+            p++;
+        }
+        if (*p) {
+            Txt_x86_64_Att_ParseLine(p);
+        }
     } else if (text[0] == '.') {
         Txt_x86_64_Att_ParseDirective(text);
     } else {
@@ -552,7 +655,7 @@ void Txt_x86_64_Att_Parse(const char *text)
 {
     Asm_x86_64_Reset();
     Str_List lines = Str_Split(text, "\n");
-    for (int i = 0; i < lines.sl_count; i++) {
+    for (size_t i = 0; i < lines.sl_count; i++) {
         Txt_x86_64_Att_ParseLine(lines.sl_items[i]);
     }
     Str_ListFree(&lines);
