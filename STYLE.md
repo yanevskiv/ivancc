@@ -57,71 +57,113 @@
 - Every enum and struct must be typedef'd on the line above its definition.
 - Every define, enum and struct must live in the header wherever it can.
 - Every file-scope variable must be `static` and kept out of the header.
-- Every header must declare its defines, enums and structs before its functions.
-- Every header must declare a type before the types and functions that use it.
-- Every divider group must open with what creates its subject and close with what frees it.
-- Every new declaration must join the group it belongs to, not the end of the header.
-- Every `.c` file must define things in the same order its header declares them.
-- Every `.c` file must include system headers first, then a blank line, then project headers.
 - Every project include must carry its module path: `#include "syntax/ast.h"`.
-- Every `.c` file must follow one layout order.
-  - Put includes, defines, enums and structs first.
-  - Put global variables, then static global variables, then function definitions.
+- Every `.c` file must include system headers first, then a blank line, then project headers.
 - Do not make a function `static`.
 - Do not export a file-scope variable unless another module needs it, as with `Ast_Program`.
+
+Order inside a header, after the guard and the banner:
+
+- Put includes first.
+- Put every `#define` next, before the first enum.
+- Put every enum next, before the first struct.
+- Put every struct next, before the first variable.
+- Put every `extern` variable next, before the first function.
+- Put every function declaration last.
+- Declare a type before the types and functions that name it.
+- Do not place a `#define` between two enums, or an enum between two structs.
+
+Order inside a `.c` file, after the banner:
+
+- Put includes first.
+- Put the defines, enums and structs the header could not hold next.
+- Put every non-`static` variable next, before the first `static` one.
+- Put every `static` variable next, before the first function.
+- Put every function definition last.
+- Define every entity in the order the header declares it.
+- Do not place a non-`static` variable after a `static` one.
+
+Groups:
+
+- Every divider group must open with what creates its subject and close with what frees it.
+- Every new declaration must join the group it belongs to, not the end of the header.
+- Write a group of related declarations under one divider in the header.
+- Write no comment on the individual declarations a header divider groups.
+- Write one comment above each of those entities where the `.c` defines them.
+- Do not repeat a header's divider in the `.c` that follows it.
 
 ## Comments
 
 Every rule below applies to a `/* */` comment as much as a `//` one.
 
-What gets a comment:
+A comment states intent and nothing else:
 
-- Every comment must tell the reader something the code cannot.
-  - Carry intent, a non-obvious invariant, or a reason a workaround exists.
-  - Carry what a name abbreviates.
-- Every comment that annotates an entity must say what it is, not how it works.
+- Every comment must say what an entity is or what a function does.
+- Every comment must stop once it has said that.
+- Every comment must be one clause.
+- Every comment must fit one line of at most 80 characters, counting its indentation.
+- Every comment must read as a name for the entity, not as a description of its body.
+- Do not explain how the code works, in any part of any comment.
+- Do not give a reason, a mechanism, a traversal order, a data structure or a call site.
+- Do not state an edge case, a return value, a failure mode or a precondition.
+- Do not restate in English what the identifiers below already say.
+- Do not comment a thing you can name well instead.
+- Do not treat 80 characters as a target, since it is the point a comment is already too long.
+
+Cut the comment at the first comma or semicolon:
+
+- Every comment must end before the first `,` that introduces a clause.
+- Every comment must end before the first `;`.
+- Do not continue a comment with `which`, `so`, `because`, `where`, `when` or `indexed by`.
+- Do not continue a comment with `and` or `or` joining a second idea.
+- Write `// The outermost scope.`, never `// The outermost scope, which holds file-scope tags.`
+- Write `// Every integer type.`, never `// Every integer type, indexed by its kind.`
+- Write `// Fold a constant expression to its value.`, never `// ..., or return false when it is not one.`
+- Write `// Emit a REX prefix.`, never `// Emit a REX prefix, which the width selects.`
+- Keep a comma only where it separates the items of one list, as in `// Pointee of a PTR, element of an ARRAY`.
+
+Where a comment goes:
+
 - Every file must open with a one-line banner naming what it is, then a blank line.
   - Write a header's banner as `// C header file for string utilities.`
   - Write a source file's banner as `// C source file for string utilities.`
-- Every function must have exactly one comment directly above it, saying what it does.
-- Every function comment must say why it exists or what it assumes, where the signature does not.
-- Every grammar rule must have one comment directly above it, as a function does.
-- Every comment must fit one line of at most 120 characters.
-- Every comment must be as short as it can be while staying descriptive.
-- Every function comment must be imperative.
-  - Write `// Emit a REX prefix`, never `// Emits a REX prefix`.
-- Every verb in a comment must be imperative, not only the first.
-- Every verb after an `and` or an `or` must follow: `// Show usage information and exit`.
-- Every verb with its own subject must keep that form, as in `// The section it patches`.
-- Every comment that is a noun phrase must stay as it is: `// True if name was declared`.
+- Every function must have exactly one comment directly above it.
 - Every macro, typedef, struct and enum must have one comment above it.
+- Every grammar rule must have one comment directly above it, as a function does.
 - Every non-obvious struct field and enum constant must get a short trailing `// comment`.
+- Do not comment a struct field or enum constant whose name already says it.
+
+A function body carries no prose:
+
+- Every comment inside a function body must be a phase divider or an empty-case marker.
+- Write a phase divider as `// Phase: <name>` above the lines it groups.
+- Write an empty `switch` case body with `// empty` inside its braces.
+- Do not comment a line inside a function body, however surprising that line is.
+- Do not comment a declaration, a branch, a loop or a return inside a function body.
+- Do not put the reason for a line in the body; it belongs in the commit message or ROADMAP.md.
+
+Section dividers:
+
 - Use a section divider to group related declarations in a header.
-- Use a section divider to group related phases inside a long function, as `// Phase: ...`.
 - Use a section divider only where the grouping itself is information.
 - Write a section divider as a short `// Name` comment, as `// Relocations` is.
 - Write what a divider groups directly beneath it, with no blank line in between.
-- Write a divider for each part of a merged header, and none in the `.c` that follows it.
-- Use a short inline comment at a line where the code does something surprising.
-- Use an inline comment for a non-obvious flag, a deliberate deviation or an external workaround.
-- Use a comment in build configuration, glue code or boilerplate only where a choice is non-obvious.
 
-What does not get a comment:
+What never gets a comment:
 
-- Do not describe *what* a line does when the code already says so in plain identifiers.
-- Do not comment a thing you can name well instead.
-- Do not narrate normal control flow with an inline comment.
+- Do not write a comment across two lines, in any form a file allows.
 - Do not leave commented-out code.
 - Do not leave TODOs-as-narration.
 - Do not leave changelog-style notes such as "added X for the Y fix".
-- Do not comment a block just because it looks like it needs one.
 - Do not comment build configuration, glue code or boilerplate by default.
 - Do not keep a comment you cannot point to a purpose for beyond the code itself.
-- Do not write a comment across two lines, in any form a file allows.
-  - Shorten it, or drop the part that explains the implementation.
-  - Write a file's banner as one line too, since what generates it belongs in the build.
-- Do not let a comment run past 120 characters, counting its indentation.
-- Do not treat 120 characters as a target, since it is the point a comment is already too long.
+
+Voice:
+
+- Every function comment must be imperative.
+  - Write `// Emit a REX prefix`, never `// Emits a REX prefix`.
+- Every verb in a comment must be imperative, not only the first.
+- Every comment that is a noun phrase must stay as it is: `// True if name was declared`.
 
 ## Documentation
 
