@@ -89,17 +89,6 @@ enum Asm_x86_64_OperandKind {
     ASM_X86_64_OPERAND_LABEL  // ao_label              jump / call target
 };
 
-// A single instruction operand.
-typedef struct Asm_x86_64_Operand Asm_x86_64_Operand;
-struct Asm_x86_64_Operand {
-    Asm_x86_64_OperandKind ao_kind;
-    Asm_x86_64_Reg         ao_reg;    // REG, or base of MEM
-    long                   ao_imm;    // IMM
-    int                    ao_disp;   // MEM displacement
-    const char            *ao_label;  // RIP / LABEL
-    Asm_x86_64_Width       ao_width;  // REG width, as ASM_X86_64_WIDTH_*
-};
-
 // The kind of one item in the instruction list.
 typedef enum Asm_x86_64_ItemKind Asm_x86_64_ItemKind;
 enum Asm_x86_64_ItemKind {
@@ -110,6 +99,17 @@ enum Asm_x86_64_ItemKind {
     ASM_X86_64_ITEM_BYTES,     // ai_bytes / ai_nbytes raw data
     ASM_X86_64_ITEM_ADDR,      // eight bytes holding the address of ai_label
     ASM_X86_64_ITEM_DIRECTIVE  // ai_text raw assembler line
+};
+
+// A single instruction operand.
+typedef struct Asm_x86_64_Operand Asm_x86_64_Operand;
+struct Asm_x86_64_Operand {
+    Asm_x86_64_OperandKind ao_kind;
+    Asm_x86_64_Reg         ao_reg;    // REG, or base of MEM
+    long                   ao_imm;    // IMM
+    int                    ao_disp;   // MEM displacement
+    const char            *ao_label;  // RIP / LABEL
+    Asm_x86_64_Width       ao_width;  // REG width, as ASM_X86_64_WIDTH_*
 };
 
 // One node in the ordered instruction list.

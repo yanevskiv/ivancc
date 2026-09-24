@@ -41,7 +41,7 @@ char *Str_VFormat(const char *fmt, va_list ap)
 char *Str_ChangeOrAppendExt(const char *input, const char *suffix)
 {
     const char *slash = strrchr(input, '/');
-    const char *dot   = strrchr(input, '.');
+    const char *dot = strrchr(input, '.');
 
     if (! dot || (slash && dot < slash)) {
         dot = NULL;
@@ -49,7 +49,7 @@ char *Str_ChangeOrAppendExt(const char *input, const char *suffix)
 
     size_t stem = dot ? (size_t) (dot - input) : strlen(input);
     size_t slen = strlen(suffix);
-    char  *out  = malloc(stem + slen + 1);
+    char *out = malloc(stem + slen + 1);
     memcpy(out, input, stem);
     memcpy(out + stem, suffix, slen + 1);
     return out;

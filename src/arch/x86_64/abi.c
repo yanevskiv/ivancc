@@ -28,7 +28,7 @@ int Abi_x86_64_SysV_InMemory(const Ast_Type *type)
     return Abi_x86_64_SysV_Classify(type) == ABI_X86_64_SYSV_CLASS_MEMORY;
 }
 
-// True when this type is returned through a hidden pointer to the caller's buffer.
+// True when this type is returned through a hidden pointer.
 int Abi_x86_64_SysV_ReturnsInMemory(const Ast_Type *type)
 {
     return type && Sem_IsAggregate(type) && type->at_size > ABI_X86_64_SYSV_MAX_REG_SIZE;

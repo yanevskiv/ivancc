@@ -60,11 +60,11 @@ static void Emu_Disassemble(const Elf_LoadImage *img)
 // Main function
 int main(int argc, char **argv)
 {
-    const char *arch    = DEFAULT_ARCH;
+    const char *arch = DEFAULT_ARCH;
     const char *program = NULL;
     int disasm = 0;
-    int info   = 0;
-    int trace  = 0;
+    int info = 0;
+    int trace = 0;
 
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];
