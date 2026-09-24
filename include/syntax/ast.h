@@ -9,37 +9,66 @@
 // Bits in a byte, for placing a bitfield inside the unit that holds it.
 #define AST_BITS_PER_BYTE 8
 
-// The kind of a type.
+// Whether an integer type holds negative values.
+#define AST_TYPE_SIGNED   0
+#define AST_TYPE_UNSIGNED 1
+
+// Whether a type's members have been seen.
+#define AST_TYPE_INCOMPLETE 0
+#define AST_TYPE_COMPLETE   1
+
+// The kind of a type, the integer kinds in rank order.
 typedef enum Ast_TypeKind Ast_TypeKind;
 enum Ast_TypeKind {
     AST_TYPE_KIND_VOID,
+    AST_TYPE_KIND_BOOL,
     AST_TYPE_KIND_CHAR,
+    AST_TYPE_KIND_SHORT,
     AST_TYPE_KIND_INT,
+    AST_TYPE_KIND_LONG,
+    AST_TYPE_KIND_LLONG,
     AST_TYPE_KIND_PTR,
     AST_TYPE_KIND_ARRAY,
     AST_TYPE_KIND_FUNC,
     AST_TYPE_KIND_STRUCT,
-    AST_TYPE_KIND_UNION
+    AST_TYPE_KIND_UNION,
+    AST_TYPE_KIND_COUNT
 };
 
 // The target ABI's sizes in bytes; C does not define void's.
 typedef enum Ast_TypeSize Ast_TypeSize;
 enum Ast_TypeSize {
-    AST_TYPE_SIZE_VOID = 1,
-    AST_TYPE_SIZE_CHAR = 1,
-    AST_TYPE_SIZE_INT  = 4,
-    AST_TYPE_SIZE_PTR  = 8,
-    AST_TYPE_SIZE_FUNC = 1   // C gives a function no size; gcc answers 1
+    AST_TYPE_SIZE_VOID  = 1,
+    AST_TYPE_SIZE_BOOL  = 1,
+    AST_TYPE_SIZE_CHAR  = 1,
+    AST_TYPE_SIZE_SHORT = 2,
+    AST_TYPE_SIZE_INT   = 4,
+    AST_TYPE_SIZE_LONG  = 8,
+    AST_TYPE_SIZE_LLONG = 8,
+    AST_TYPE_SIZE_PTR   = 8,
+    AST_TYPE_SIZE_FUNC  = 1   // C gives a function no size; gcc answers 1
 };
 
 // The target ABI's alignments in bytes.
 typedef enum Ast_TypeAlign Ast_TypeAlign;
 enum Ast_TypeAlign {
-    AST_TYPE_ALIGN_VOID = 1,
-    AST_TYPE_ALIGN_CHAR = 1,
-    AST_TYPE_ALIGN_INT  = 4,
-    AST_TYPE_ALIGN_PTR  = 8,
-    AST_TYPE_ALIGN_FUNC = 1
+    AST_TYPE_ALIGN_VOID  = 1,
+    AST_TYPE_ALIGN_BOOL  = 1,
+    AST_TYPE_ALIGN_CHAR  = 1,
+    AST_TYPE_ALIGN_SHORT = 2,
+    AST_TYPE_ALIGN_INT   = 4,
+    AST_TYPE_ALIGN_LONG  = 8,
+    AST_TYPE_ALIGN_LLONG = 8,
+    AST_TYPE_ALIGN_PTR   = 8,
+    AST_TYPE_ALIGN_FUNC  = 1
+};
+
+// The qualifiers a declaration may carry.
+typedef enum Ast_Qual Ast_Qual;
+enum Ast_Qual {
+    AST_QUAL_CONST    = 1,
+    AST_QUAL_VOLATILE = 2,
+    AST_QUAL_RESTRICT = 4
 };
 
 // Forward declaration: a struct type lists its members.
@@ -54,6 +83,8 @@ struct Ast_Type {
     Ast_TypeKind at_kind;
     int          at_size;    // bytes an object of this type occupies
     int          at_align;   // address multiple an object must sit on
+    int          at_unsigned;
+    int          at_qual;    // the AST_QUAL_ bits written on the declaration
     Ast_Type    *at_base;    // pointee for PTR, element type for ARRAY
     int          at_len;     // element count for ARRAY
     char        *at_tag;     // tag a STRUCT or UNION was declared with, or NULL
@@ -253,24 +284,32 @@ struct Ast_Func {
     int       af_stack_size; // frame size, filled in by the code generator
 };
 
-// The incomplete type, which only a pointer or a return type may name.
-extern Ast_Type Ast_TypeVoid;
-
-// The byte, which is what a string literal is an array of.
-extern Ast_Type Ast_TypeChar;
-
-// The default arithmetic type, which every integer literal and every promotion lands on.
-extern Ast_Type Ast_TypeInt;
-
 // The finished program, produced by the parser.
 extern Ast_Func *Ast_Program;
 
-// Every variable declared at file scope, in declaration order.
+// Every variable declared at file scope.
 extern Ast_Var *Ast_Globals;
+
+// Primitive types
+extern Ast_Type Ast_TypeVoid;
+extern Ast_Type Ast_TypeBool;
+extern Ast_Type Ast_TypeChar;
+extern Ast_Type Ast_TypeUChar;
+extern Ast_Type Ast_TypeShort;
+extern Ast_Type Ast_TypeUShort;
+extern Ast_Type Ast_TypeInt;
+extern Ast_Type Ast_TypeUInt;
+extern Ast_Type Ast_TypeLong;
+extern Ast_Type Ast_TypeULong;
+extern Ast_Type Ast_TypeLLong;
+extern Ast_Type Ast_TypeULLong;
 
 // Type construction
 int       Ast_AlignTo(int n, int align);
 int       Ast_AlignDown(int n, int align);
+Ast_Type *Ast_IntegerType(Ast_TypeKind kind, int is_unsigned);
+Ast_Type *Ast_Qualify(Ast_Type *type, int qual);
+int       Ast_IsInteger(const Ast_Type *type);
 Ast_Type *Ast_NewPointer(Ast_Type *base);
 Ast_Type *Ast_NewArray(Ast_Type *base, int len);
 Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int nparams, int variadic, int proto);

@@ -8,6 +8,7 @@
 #include "util/log.h"
 #include "util/str.h"
 #include "syntax/ast.h"
+#include "syntax/par.h"
 #include "c.tab.h"
 
 /* Stamp every token with the line it starts on. */
@@ -62,6 +63,7 @@ static char *Lex_Unescape(const char *p, int len, int *out_len)
 DIGIT   [0-9]
 ALPHA   [A-Za-z_]
 ALNUM   [A-Za-z_0-9]
+ISUF    ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
 
 %%
 
@@ -71,8 +73,15 @@ ALNUM   [A-Za-z_0-9]
 
 "int"                   return INT;
 "char"                  return CHAR;
+"short"                 return SHORT;
+"long"                  return LONG;
+"signed"                return SIGNED;
+"unsigned"              return UNSIGNED;
+"_Bool"                 return BOOL;
 "void"                  return VOID;
 "const"                 return CONST;
+"volatile"              return VOLATILE;
+"restrict"              return RESTRICT;
 "return"                return RETURN;
 "if"                    return IF;
 "else"                  return ELSE;
@@ -103,14 +112,16 @@ ALNUM   [A-Za-z_0-9]
 {ALPHA}{ALNUM}*         { yylval.str = Str_Duplicate(yytext);
                           return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }
 
-0[xX][0-9A-Fa-f]+       { yylval.num = strtol(yytext, NULL, 16); return NUM; }
-{DIGIT}+                { yylval.num = strtol(yytext, NULL, 10); return NUM; }
+0[xX][0-9A-Fa-f]+{ISUF}?  { yylval.lit = Par_NumLiteral(yytext); return NUM; }
+0[0-7]*{ISUF}?            { yylval.lit = Par_NumLiteral(yytext); return NUM; }
+[1-9]{DIGIT}*{ISUF}?      { yylval.lit = Par_NumLiteral(yytext); return NUM; }
 
 \"([^"\\\n]|\\.)*\"     { Ast_Str *lit = &yylval.str_lit;
                           lit->as_data = Lex_Unescape(yytext + 1, yyleng - 2, &lit->as_len);
                           return STR; }
 '([^'\\\n]|\\.)'        { int n; char *s = Lex_Unescape(yytext + 1, yyleng - 2, &n);
-                          yylval.num = (unsigned char) s[0]; Str_Free(s); return NUM; }
+                          yylval.lit.pn_val = (unsigned char) s[0]; yylval.lit.pn_type = &Ast_TypeInt;
+                          Str_Free(s); return NUM; }
 
 "=="                    return EQ;
 "!="                    return NE;

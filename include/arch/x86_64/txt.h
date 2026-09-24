@@ -13,6 +13,8 @@ void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
 void Txt_x86_64_Att_Write(FILE *out);
 
 // Name-to-value lookups
+char Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width);
+int Txt_x86_64_Att_ExtendOp(const char *mnem, Asm_x86_64_Width *width);
 int Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width);
 int Txt_x86_64_OpByName(const char *name);
 

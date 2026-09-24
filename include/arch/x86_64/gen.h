@@ -49,7 +49,10 @@ void Gen_x86_64_CallPopReg(Ast_Node *args, int nHidden);
 void Gen_x86_64_EmitCall(Ast_Node *node);
 
 // Expressions, statements and data
-void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, int line);
+void Gen_x86_64_EmitNarrow(const Ast_Type *type);
+void Gen_x86_64_EmitDivide(int is_unsigned, Asm_x86_64_Reg reg);
+void Gen_x86_64_EmitShift(int is_unsigned, Asm_x86_64_Reg reg);
+void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, int line);
 void Gen_x86_64_EmitExpr(Ast_Node *node);
 void Gen_x86_64_EmitStmt(Ast_Node *node);
 void Gen_x86_64_AssignCallTemps(Ast_Node *node, int *offset);

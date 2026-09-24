@@ -23,6 +23,8 @@ void yyerror(const char *s);
 
 %union {
     long        num;
+    Par_Num     lit;
+    Par_Specs   specs;
     char       *str;
     Ast_Str     str_lit;
     Ast_Node   *node;
@@ -33,10 +35,11 @@ void yyerror(const char *s);
     Ast_Var    *var;
 }
 
-%token <num>     NUM
+%token <lit>     NUM
 %token <str>     IDENT
 %token <str_lit> STR
-%token INT CHAR VOID CONST RETURN IF ELSE FOR WHILE DO BREAK CONTINUE SIZEOF
+%token INT CHAR SHORT LONG SIGNED UNSIGNED BOOL VOID RETURN IF ELSE FOR WHILE DO BREAK CONTINUE SIZEOF
+%token CONST VOLATILE RESTRICT
 %token STRUCT UNION ENUM TYPEDEF
 %token <str> TYPEDEF_NAME
 %token SWITCH CASE DEFAULT GOTO
@@ -57,11 +60,12 @@ void yyerror(const char *s);
 %type <decl> member_declarators member_declarator
 %type <node> enumerator_opt
 %type <member> members member_decl
-%type <type> type_name base decl_spec
+%type <type> type_name decl_spec
+%type <specs> spec_seq spec named_type
 %type <decl> declarator direct_declarator
 %type <params> params param_list ident_list
 %type <str>  tag_name
-%type <num>  stars storage struct_or_union array_len array_decor
+%type <num>  stars storage struct_or_union array_len array_decor qual
 
 /* Lowest precedence first. */
 %nonassoc LOWER_THAN_ELSE
@@ -197,7 +201,27 @@ param
 
 /* The type every declarator in a declaration shares. */
 decl_spec
-    : quals base           { $$ = $2; }
+    : spec_seq             { $$ = Par_SpecsType(&$1, @1); }
+    ;
+
+/* The specifiers and qualifiers a declaration opens with, in any order. */
+spec_seq
+    : spec                 { Par_ClearSpecs(&$$); Par_TakeSpec(&$$, &$1, @1); }
+    | spec_seq spec        { $$ = $1; Par_TakeSpec(&$$, &$2, @2); }
+    ;
+
+/* One type specifier or qualifier. */
+spec
+    : INT                  { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_INT; }
+    | CHAR                 { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_CHAR; }
+    | SHORT                { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_SHORT; }
+    | LONG                 { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_LONG; }
+    | SIGNED               { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_SIGNED; }
+    | UNSIGNED             { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_UNSIGNED; }
+    | BOOL                 { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_BOOL; }
+    | VOID                 { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_VOID; }
+    | qual                 { Par_ClearSpecs(&$$); $$.ps_qual = $1; }
+    | named_type           { $$ = $1; }
     ;
 
 /* A type written without a name, as a cast or a sizeof takes. */
@@ -231,48 +255,48 @@ direct_declarator
         { Ast_PopScope(); $$ = $1; Par_AddDeriv($$, PAR_DERIV_FUNCTION, @2)->pd_params = $4; }
     ;
 
-/* Type qualifiers, which parse and do nothing. */
-quals
-    : /* empty */
-    | quals CONST
-    ;
 
 /* The `static` and qualifiers a parameter's outermost array may carry. */
 array_decor
     : /* empty */          { $$ = 0; }
-    | STATIC quals         { $$ = PAR_ARRAY_STATIC; }
+    | STATIC               { $$ = PAR_ARRAY_STATIC; }
+    | STATIC qual_list     { $$ = PAR_ARRAY_STATIC | PAR_ARRAY_QUAL; }
     | qual_list            { $$ = PAR_ARRAY_QUAL; }
     | qual_list STATIC     { $$ = PAR_ARRAY_QUAL | PAR_ARRAY_STATIC; }
     ;
 
 /* One or more type qualifiers. */
 qual_list
-    : CONST
-    | qual_list CONST
+    : qual
+    | qual_list qual
     ;
 
-/* The base type a declaration names. */
-base
-    : INT                  { $$ = &Ast_TypeInt; }
-    | CHAR                 { $$ = &Ast_TypeChar; }
-    | VOID                 { $$ = &Ast_TypeVoid; }
-    | struct_or_union tag_name LBRACE
+/* One type qualifier. */
+qual
+    : CONST                { $$ = AST_QUAL_CONST; }
+    | VOLATILE             { $$ = AST_QUAL_VOLATILE; }
+    | RESTRICT             { $$ = AST_QUAL_RESTRICT; }
+    ;
+
+/* A type named rather than spelled out of keywords. */
+named_type
+    : struct_or_union tag_name LBRACE
         { $<type>$ = Par_BeginAggregate($1, $2, @2); }
       members RBRACE
-        { Ast_LayoutAggregate($<type>4, $5, @1); $$ = $<type>4; }
+        { Ast_LayoutAggregate($<type>4, $5, @1); Par_ClearSpecs(&$$); $$.ps_type = $<type>4; }
     | struct_or_union LBRACE
         { $<type>$ = Par_BeginAggregate($1, NULL, @1); }
       members RBRACE
-        { Ast_LayoutAggregate($<type>3, $4, @1); $$ = $<type>3; }
+        { Ast_LayoutAggregate($<type>3, $4, @1); Par_ClearSpecs(&$$); $$.ps_type = $<type>3; }
     | struct_or_union tag_name
-        { $$ = Par_ReferenceAggregate($1, $2, @2); }
+        { Par_ClearSpecs(&$$); $$.ps_type = Par_ReferenceAggregate($1, $2, @2); }
     | ENUM tag_name LBRACE { Par_ResetEnum(); } enumerators RBRACE
-        { Ast_DeclareTag($2, &Ast_TypeInt); $$ = &Ast_TypeInt; }
+        { Ast_DeclareTag($2, &Ast_TypeInt); Par_ClearSpecs(&$$); $$.ps_type = &Ast_TypeInt; }
     | ENUM LBRACE { Par_ResetEnum(); } enumerators RBRACE
-        { $$ = &Ast_TypeInt; }
-    | ENUM tag_name        { $$ = &Ast_TypeInt; }
-    | TYPEDEF_NAME         { $$ = Ast_FindTypedef($1); }
-    | BUILTIN_VA_LIST      { $$ = Par_VaListType(); }
+        { Par_ClearSpecs(&$$); $$.ps_type = &Ast_TypeInt; }
+    | ENUM tag_name        { Par_ClearSpecs(&$$); $$.ps_type = &Ast_TypeInt; }
+    | TYPEDEF_NAME         { Par_ClearSpecs(&$$); $$.ps_type = Ast_FindTypedef($1); }
+    | BUILTIN_VA_LIST      { Par_ClearSpecs(&$$); $$.ps_type = Par_VaListType(); }
     ;
 
 /* The keyword that opens an aggregate. */
@@ -332,10 +356,11 @@ enumerator_opt
     | ASSIGN expr          { $$ = $2; }
     ;
 
-/* A run of pointer stars. */
+/* A run of pointer stars, each able to carry qualifiers of its own. */
 stars
     : /* empty */          { $$ = 0; }
     | stars MUL            { $$ = $1 + 1; }
+    | stars MUL qual_list  { $$ = $1 + 1; }
     ;
 
 /* ---- statements ---------------------------------------------------- */
@@ -579,7 +604,7 @@ postfix
 
 /* An operand that stands alone. */
 primary
-    : NUM                  { $$ = Ast_NewNum($1, @1); }
+    : NUM                  { $$ = Ast_NewNum($1.pn_val, @1); $$->an_type = $1.pn_type; }
     | STR                  { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_STR, @1);
                              n->an_str_idx = Ast_AddString($1.as_data, $1.as_len); $$ = n; }
     | IDENT

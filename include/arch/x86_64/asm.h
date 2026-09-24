@@ -34,6 +34,7 @@ typedef enum Asm_x86_64_Width Asm_x86_64_Width;
 enum Asm_x86_64_Width {
     ASM_X86_64_WIDTH_NONE = 0, // the operand is not a register
     ASM_X86_64_WIDTH_8    = 8,
+    ASM_X86_64_WIDTH_16   = 16,
     ASM_X86_64_WIDTH_32   = 32,
     ASM_X86_64_WIDTH_64   = 64
 };
@@ -50,12 +51,14 @@ enum Asm_x86_64_Op {
     ASM_X86_64_OP_SUB,
     ASM_X86_64_OP_IMUL,
     ASM_X86_64_OP_IDIV,
+    ASM_X86_64_OP_DIV,
     ASM_X86_64_OP_AND,
     ASM_X86_64_OP_OR,
     ASM_X86_64_OP_XOR,
     ASM_X86_64_OP_NOT,
     ASM_X86_64_OP_SHL,
     ASM_X86_64_OP_SAR,
+    ASM_X86_64_OP_SHR,
     ASM_X86_64_OP_CQO,
     ASM_X86_64_OP_NEG,
     ASM_X86_64_OP_CMP,
@@ -63,7 +66,9 @@ enum Asm_x86_64_Op {
     ASM_X86_64_OP_SETNE,
     ASM_X86_64_OP_SETL,
     ASM_X86_64_OP_SETLE,
-    ASM_X86_64_OP_MOVZB,
+    ASM_X86_64_OP_SETB,
+    ASM_X86_64_OP_SETBE,
+    ASM_X86_64_OP_MOVZX,
     ASM_X86_64_OP_JMP,
     ASM_X86_64_OP_JE,
     ASM_X86_64_OP_JNE,
@@ -155,16 +160,20 @@ void Asm_x86_64_EmitOr(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitXor(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitCmp(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitMovRR(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitMovRRWidth(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
 void Asm_x86_64_EmitMovsx(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
+void Asm_x86_64_EmitMovzx(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
 
 // Single register
 void Asm_x86_64_EmitIdiv(Asm_x86_64_Reg reg);
+void Asm_x86_64_EmitDiv(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitNeg(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitNot(Asm_x86_64_Reg reg);
 
 // Shifts of a register by %cl
 void Asm_x86_64_EmitShl(Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitSar(Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitShr(Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitCqo(void);
 
 // Condition flags to a register
@@ -172,7 +181,8 @@ void Asm_x86_64_EmitSete(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitSetne(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitSetl(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitSetle(Asm_x86_64_Reg reg);
-void Asm_x86_64_EmitMovzb(Asm_x86_64_Reg src, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitSetb(Asm_x86_64_Reg reg);
+void Asm_x86_64_EmitSetbe(Asm_x86_64_Reg reg);
 
 // Immediate operands
 void Asm_x86_64_EmitCmpImm(long imm, Asm_x86_64_Reg dst);
@@ -183,6 +193,7 @@ void Asm_x86_64_EmitSubImm(long imm, Asm_x86_64_Reg dst);
 
 // Memory loads, stores and addresses
 void Asm_x86_64_EmitMovLoad(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
+void Asm_x86_64_EmitMovLoadZero(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width);
 void Asm_x86_64_EmitMovStore(Asm_x86_64_Reg src, Asm_x86_64_Reg base, int disp, Asm_x86_64_Width width);
 void Asm_x86_64_EmitLea(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitLeaRip(Asm_x86_64_Reg dst, const char *label, ...);

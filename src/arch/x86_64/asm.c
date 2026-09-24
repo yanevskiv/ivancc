@@ -217,11 +217,29 @@ void Asm_x86_64_EmitMovRR(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
     item->ai_src = Asm_x86_64_Reg64(src);
 }
 
+// Emit `mov %src, %dst` between two registers at the given width.
+void Asm_x86_64_EmitMovRRWidth(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Width width)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_MOV;
+    item->ai_dst = Asm_x86_64_RegWidth(dst, width);
+    item->ai_src = Asm_x86_64_RegWidth(src, width);
+}
+
 // Emit `movs<w>q %src, %dst` (sign-extend the low width bits into 64 bits).
 void Asm_x86_64_EmitMovsx(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Width width)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_MOVSX;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_RegWidth(src, width);
+}
+
+// Emit `movz<w> %src, %dst`, zero-extending src to 64 bits.
+void Asm_x86_64_EmitMovzx(Asm_x86_64_Reg src, Asm_x86_64_Reg dst, Asm_x86_64_Width width)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_MOVZX;
     item->ai_dst = Asm_x86_64_Reg64(dst);
     item->ai_src = Asm_x86_64_RegWidth(src, width);
 }
@@ -261,6 +279,14 @@ void Asm_x86_64_EmitIdiv(Asm_x86_64_Reg reg)
     item->ai_dst = Asm_x86_64_Reg64(reg);
 }
 
+// Emit `div %reg`.
+void Asm_x86_64_EmitDiv(Asm_x86_64_Reg reg)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_DIV;
+    item->ai_dst = Asm_x86_64_Reg64(reg);
+}
+
 // Emit `neg %reg`.
 void Asm_x86_64_EmitNeg(Asm_x86_64_Reg reg)
 {
@@ -291,6 +317,15 @@ void Asm_x86_64_EmitSar(Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = ASM_X86_64_OP_SAR;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Reg8(ASM_X86_64_REG_RCX);
+}
+
+// Emit `shr %cl, %dst`.
+void Asm_x86_64_EmitShr(Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_SHR;
     item->ai_dst = Asm_x86_64_Reg64(dst);
     item->ai_src = Asm_x86_64_Reg8(ASM_X86_64_REG_RCX);
 }
@@ -334,13 +369,20 @@ void Asm_x86_64_EmitSetle(Asm_x86_64_Reg reg)
     item->ai_dst = Asm_x86_64_Reg8(reg);
 }
 
-// Emit `movzb %src, %dst` (zero-extend a byte into a 64-bit register).
-void Asm_x86_64_EmitMovzb(Asm_x86_64_Reg src, Asm_x86_64_Reg dst)
+// Emit `setb %reg`.
+void Asm_x86_64_EmitSetb(Asm_x86_64_Reg reg)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
-    item->ai_op  = ASM_X86_64_OP_MOVZB;
-    item->ai_dst = Asm_x86_64_Reg64(dst);
-    item->ai_src = Asm_x86_64_Reg8(src);
+    item->ai_op  = ASM_X86_64_OP_SETB;
+    item->ai_dst = Asm_x86_64_Reg8(reg);
+}
+
+// Emit `setbe %reg`.
+void Asm_x86_64_EmitSetbe(Asm_x86_64_Reg reg)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_SETBE;
+    item->ai_dst = Asm_x86_64_Reg8(reg);
 }
 
 // Emit `cmp $imm, %dst`.
@@ -394,6 +436,17 @@ void Asm_x86_64_EmitMovLoad(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, A
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op  = width == ASM_X86_64_WIDTH_64 ? ASM_X86_64_OP_MOV : ASM_X86_64_OP_MOVSX;
     item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_Mem(base, disp);
+    item->ai_src.ao_width = width;
+}
+
+// Emit a zero-extending load of width bits from disp(%base).
+void Asm_x86_64_EmitMovLoadZero(Asm_x86_64_Reg base, int disp, Asm_x86_64_Reg dst, Asm_x86_64_Width width)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+
+    item->ai_op  = width < ASM_X86_64_WIDTH_32 ? ASM_X86_64_OP_MOVZX : ASM_X86_64_OP_MOV;
+    item->ai_dst = width == ASM_X86_64_WIDTH_32 ? Asm_x86_64_RegWidth(dst, width) : Asm_x86_64_Reg64(dst);
     item->ai_src = Asm_x86_64_Mem(base, disp);
     item->ai_src.ao_width = width;
 }
