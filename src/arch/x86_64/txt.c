@@ -254,6 +254,21 @@ int32_t Txt_x86_64_Att_ExtendOp(const char *mnem, Asm_x86_64_Width *width)
     return mnem[3] == 's' ? ASM_X86_64_OP_MOVSX : ASM_X86_64_OP_MOVZX;
 }
 
+// Return the indirect form of an opcode.
+int32_t Txt_x86_64_Att_IndirectOp(int32_t opcode)
+{
+    if (opcode == ASM_X86_64_OP_CALL) {
+        return ASM_X86_64_OP_CALL_REG;
+    }
+    return -1;
+}
+
+// True if an opcode branches to a label.
+bool Txt_x86_64_Att_IsDirectBranch(int32_t opcode)
+{
+    return opcode == ASM_X86_64_OP_JMP || opcode == ASM_X86_64_OP_JE || opcode == ASM_X86_64_OP_JNE || opcode == ASM_X86_64_OP_CALL;
+}
+
 // Return the register index for an AT&T name like "rax"/"al".
 int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
 {
@@ -488,19 +503,19 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
     mnem[mlen] = '\0';
 
     Asm_x86_64_Width ext_width = ASM_X86_64_WIDTH_NONE;
-    int32_t ext_op = Txt_x86_64_Att_ExtendOp(mnem, &ext_width);
+    int32_t ext_opcode = Txt_x86_64_Att_ExtendOp(mnem, &ext_width);
 
-    int32_t op = ext_width ? ext_op : Txt_x86_64_OpByName(mnem);
-    if (op < 0 && mlen >= 2 && strchr("bwlq", mnem[mlen - 1])) {
+    int32_t opcode = ext_width ? ext_opcode : Txt_x86_64_OpByName(mnem);
+    if (opcode < 0 && mlen >= 2 && strchr("bwlq", mnem[mlen - 1])) {
         mnem[mlen - 1] = '\0';
-        op = Txt_x86_64_OpByName(mnem);
+        opcode = Txt_x86_64_OpByName(mnem);
     }
-    if (op < 0) {
+    if (opcode < 0) {
         Log_ShowError("as: unknown mnemonic '%.*s'", (int) mlen, line);
     }
 
     Asm_x86_64_Operand ops[2];
-    int32_t nops = 0;
+    int32_t n_ops = 0;
     const char *rest = line + mlen;
     while (*rest == ' ' || *rest == '\t') {
         rest++;
@@ -512,26 +527,43 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
             if (! *text) {
                 continue;
             }
-            if (nops >= 2) {
+            if (n_ops >= 2) {
                 Log_ShowError("as: too many operands in '%s'", line);
             }
-            if (! Txt_x86_64_Att_ParseOperand(text, &ops[nops])) {
+            const char *op_name = text;
+            if (*op_name == '*') {
+                opcode = Txt_x86_64_Att_IndirectOp(opcode);
+                if (opcode < 0) {
+                    Log_ShowError("as: '%s' takes no indirect operand", line);
+                }
+                op_name++;
+            }
+            if (! Txt_x86_64_Att_ParseOperand(op_name, &ops[n_ops])) {
                 Log_ShowError("as: bad operand '%s'", text);
             }
-            nops++;
+            n_ops++;
         }
         Str_ListFree(&parts);
     }
 
+    if (Txt_x86_64_Att_IsDirectBranch(opcode)) {
+        if (n_ops != 1) {
+            Log_ShowError("as: '%s' takes one operand", line);
+        }
+        if (ops[0].ao_kind != ASM_X86_64_OPERAND_LABEL) {
+            Log_ShowError("as: '%s' needs a label", line);
+        }
+    }
+
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
-    item->ai_op = op;
-    if (nops == 2) {
+    item->ai_op = opcode;
+    if (n_ops == 2) {
         item->ai_src = ops[0];
         item->ai_dst = ops[1];
         if (ext_width) {
             item->ai_src.ao_width = ext_width;
         }
-    } else if (nops == 1) {
+    } else if (n_ops == 1) {
         item->ai_dst = ops[0];
     }
 }
