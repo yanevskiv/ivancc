@@ -72,6 +72,10 @@ enum Err_Code {
     ERR_PP_LINE_NUMBER_INVALID,        // token length, token
     ERR_PP_LINE_OUT_OF_RANGE,
     ERR_PP_LINE_NAME_INVALID,          // token length, token
+    ERR_PP_PRAGMA_MALFORMED,
+    ERR_PP_ONCE_IN_MAIN_FILE,
+    ERR_PP_ERROR_DIRECTIVE,            // text
+    ERR_PP_WARNING_DIRECTIVE,          // text
 
     ERR_LEX_UNEXPECTED_CHAR,           // character
 

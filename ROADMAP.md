@@ -18,7 +18,7 @@ corpus. Stage 3 made that measurable by giving us a machine of our own to run it
 on; every stage since has been counted in tests.
 
 ISO C99 is the destination, and it is reached at the end of stage 14: the
-complete C99 *language*, every box in SYNTAX.md closed, 80 tests green. Every
+complete C99 *language*, every box in SYNTAX.md closed, 81 tests green. Every
 stage up to there closes SYNTAX.md boxes and teaches whichever tools the new
 syntax reaches — the encoder and the interpreter together when it needs
 instructions, the linker when it needs sections or relocations.
@@ -1240,6 +1240,9 @@ and it would need a second start symbol.
   the source. Its search starts in the current directory. It is gcc's
   `-include`, spelled as a long option, because `getopt` reads a single-dash
   `-include` as the letters `-i -n -c ...`.
+- Each `--include` becomes an `#include "file"` line in the `<command line>`
+  buffer, after every `-D` and `-U`, as in gcc. That buffer's directory is
+  empty, so the quoted search starts in the current directory.
 
 Re-inclusion is correct by construction. Two fast paths are optional. A header
 whose whole body sits in `#ifndef X` / `#endif` is skipped while `X` is defined.
@@ -1348,8 +1351,9 @@ things `ivancc` must accept before it can build this project.
   `ivancc -MMD` today writes no `.d` and says nothing. That quietly restores the
   stale-object bug. Until step 8 lands, `cc.c` refuses every `-M` flag with an
   error. `-I`, `-D` and `-U` are ignored the same way today, so step 0 refuses
-  them too, until steps 1 and 2 give them meaning. `--include` is refused until
-  step 7. Any option `cc.c` does not know now prints the usage and fails.
+  them too, until steps 1 and 2 give them meaning. `--include` was refused the
+  same way until step 7. Any option `cc.c` does not know now prints the usage
+  and fails.
 - **`-include` is two different things.** GNU make's `-include` directive pulls
   the generated `.d` files into the Makefile, and asks nothing of us. gcc's
   `-include <file>` flag is the preprocessor feature described under
@@ -1414,6 +1418,16 @@ suite green.
    The printer now starts a new map entry after `#line`.
 7. **Pragmas and errors** (`test72_pragma_error`). Add `#pragma once`,
    `_Pragma`, `#error`, `#warning` and `--include`. Stop refusing `--include`.
+   **Done.** `#pragma once` marks its `Pp_File`, and an include of a marked file
+   is skipped. In the main file it warns, as in gcc. Extra tokens after `once`
+   are a warning. The operand of `_Pragma` is macro-expanded, as in gcc. Its
+   text runs as a `#pragma` through a file of its own, which is tokenized, run
+   and freed. The token after a `_Pragma` inherits its flags, as after a macro
+   that expands to nothing. `#error` and `#warning` print the rest of the line,
+   with each gap between tokens as one space, as gcc does. `test72_pragma_error`
+   includes each of its headers twice, and a second read reaches an unknown
+   directive, so a broken `once` fails with the wrong error. `run_test` cannot
+   pass flags yet, so `--include` is checked by hand until step 8.
 8. **Dependency generation** (`test75_depend`). Add the `-M` family, and stop
    refusing it.
 

@@ -171,6 +171,34 @@ Pp_File *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir
     return file;
 }
 
+// Tokenize the directive a _Pragma operand stands for.
+Pp_File *Pp_OpenPragma(const Pp_Token *str, Ast_Line line)
+{
+    Buf *text = Buf_New();
+    Pp_File *file = calloc(1, sizeof(*file));
+    const char *c = strchr(str->pt_text, '"') + 1;
+    const char *end = str->pt_text + str->pt_len - 1;
+
+    Buf_PutText(text, PP_PRAGMA_DIRECTIVE);
+    for (; c < end; c++) {
+        if (c[0] == '\\' && (c[1] == '"' || c[1] == '\\')) {
+            c++;
+        }
+        Buf_PutByte(text, *c);
+    }
+    Buf_PutByte(text, '\0');
+
+    file->pf_index = PP_FILE_NONE;
+    file->pf_dir = PP_DIR_NONE;
+    file->pf_len = Buf_Len(text) - 1;
+    file->pf_text = Buf_Release(text);
+    Pp_Tokenize(file);
+    for (size_t i = 0; i < file->pf_ntokens; i++) {
+        file->pf_tokens[i].pt_line = line;
+    }
+    return file;
+}
+
 // Return the macro whose #ifndef wraps a whole file.
 const Pp_Token *Pp_FindGuard(const Pp_File *file)
 {
@@ -233,6 +261,15 @@ void Pp_DeleteSplices(Buf *out, const char *text, size_t len)
     for (; owed > 0; owed--) {
         Buf_PutByte(out, '\n');
     }
+}
+
+// Free a file.
+void Pp_CloseFile(Pp_File *file)
+{
+    free(file->pf_path);
+    free(file->pf_text);
+    free(file->pf_tokens);
+    free(file);
 }
 
 // Return a heap copy of a token.
@@ -496,6 +533,12 @@ void Pp_PutDefine(Buf *cmdline, const char *arg)
 void Pp_PutUndef(Buf *cmdline, const char *name)
 {
     Buf_Print(cmdline, "#undef %s\n", name);
+}
+
+// Append the directive --include path stands for.
+void Pp_PutInclude(Buf *cmdline, const char *path)
+{
+    Buf_Print(cmdline, "#include \"%s\"\n", path);
 }
 
 // Append the directives that define the predefined macros.
@@ -887,6 +930,17 @@ bool Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok)
     return true;
 }
 
+// Read the next token that is not a macro name.
+const Pp_Token *Pp_ReadExpanded(Pp_Reader *rd)
+{
+    const Pp_Token *tok = Pp_ReadToken(rd);
+
+    while (tok && Pp_ExpandMacro(rd, tok)) {
+        tok = Pp_ReadToken(rd);
+    }
+    return tok;
+}
+
 // Expand every token a reader holds into a list.
 Pp_Token *Pp_ExpandAll(Pp_Reader *rd)
 {
@@ -1212,6 +1266,12 @@ size_t Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos)
         Pp_RunUndef(file, pos);
     } else if (Pp_TokenEquals(name, "line")) {
         Pp_RunLine(pr, file, pos);
+    } else if (Pp_TokenEquals(name, "pragma")) {
+        Pp_RunPragma(file, file, pos);
+    } else if (Pp_TokenEquals(name, "error")) {
+        Pp_RunError(file, pos);
+    } else if (Pp_TokenEquals(name, "warning")) {
+        Pp_RunWarning(file, pos);
     } else {
         Err_RaiseAt(hash->pt_line, ERR_PP_DIRECTIVE_UNKNOWN, (int) name->pt_len, name->pt_text);
     }
@@ -1234,6 +1294,9 @@ void Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include k
     Pp_File *file = Pp_OpenFile(path, dir);
 
     Str_Free(path);
+    if (file->pf_once) {
+        return;
+    }
     if (file->pf_guard && Pp_FindMacro(file->pf_guard->pt_text, file->pf_guard->pt_len)) {
         return;
     }
@@ -1374,6 +1437,78 @@ Ast_Line Pp_ReadLineNumber(const Pp_Token *tok, Ast_Line line)
     }
     Err_AssertAt(line, value > 0, ERR_PP_LINE_OUT_OF_RANGE);
     return (Ast_Line) value;
+}
+
+// Run the #pragma directive at pos of text for a file.
+void Pp_RunPragma(const Pp_File *file, const Pp_File *text, size_t pos)
+{
+    const Pp_Token *arg = &text->pf_tokens[pos + 2];
+    const Pp_Token *name = &text->pf_tokens[pos + 1];
+
+    if ((arg->pt_flags & PP_FLAG_BOL) || arg->pt_kind != PP_TOKEN_IDENT || ! Pp_TokenEquals(arg, "once")) {
+        return;
+    }
+    Pp_CheckLineEnd(text, pos + 3, name);
+    if (file->pf_index == Pp_MainFile) {
+        Err_WarnAt(arg->pt_line, ERR_PP_ONCE_IN_MAIN_FILE);
+    }
+    Pp_Files[file->pf_index]->pf_once = true;
+}
+
+// Run the _Pragma operator a reader has just read.
+void Pp_RunPragmaOperator(Pp_Reader *rd, const Pp_Token *op)
+{
+    const Pp_Token *str = NULL;
+    const Pp_Token *open = Pp_ReadExpanded(rd);
+    const Pp_Token *close = NULL;
+
+    if (open && Pp_TokenEquals(open, "(")) {
+        str = Pp_ReadExpanded(rd);
+    }
+    if (str && str->pt_kind == PP_TOKEN_STRING) {
+        close = Pp_ReadExpanded(rd);
+    }
+    Err_AssertAt(op->pt_line, close && Pp_TokenEquals(close, ")"), ERR_PP_PRAGMA_MALFORMED);
+
+    Pp_File *text = Pp_OpenPragma(str, op->pt_line);
+
+    Pp_RunPragma(rd->rd_file, text, 0);
+    Pp_CloseFile(text);
+    rd->rd_carry |= op->pt_flags;
+}
+
+// Run the #error directive at pos.
+void Pp_RunError(const Pp_File *file, size_t pos)
+{
+    const Pp_Token *name = &file->pf_tokens[pos + 1];
+
+    Err_RaiseAt(name->pt_line, ERR_PP_ERROR_DIRECTIVE, Pp_LineText(file, pos + 2));
+}
+
+// Run the #warning directive at pos.
+void Pp_RunWarning(const Pp_File *file, size_t pos)
+{
+    const Pp_Token *name = &file->pf_tokens[pos + 1];
+    char *text = Pp_LineText(file, pos + 2);
+
+    Err_WarnAt(name->pt_line, ERR_PP_WARNING_DIRECTIVE, text);
+    Str_Free(text);
+}
+
+// Spell the rest of a directive's line as text.
+char *Pp_LineText(const Pp_File *file, size_t pos)
+{
+    Buf *text = Buf_New();
+
+    for (size_t i = pos; ! (file->pf_tokens[i].pt_flags & PP_FLAG_BOL); i++) {
+        const Pp_Token *tok = &file->pf_tokens[i];
+
+        if (i > pos && (tok->pt_flags & PP_FLAG_SPACE)) {
+            Buf_PutByte(text, ' ');
+        }
+        Buf_PutBytes(text, tok->pt_text, tok->pt_len);
+    }
+    return Buf_Release(text);
 }
 
 // True if a directive name opens a conditional.
@@ -1904,7 +2039,12 @@ void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
         if (! tok) {
             break;
         }
-        if (! Pp_ExpandMacro(&rd, tok)) {
+        if (Pp_ExpandMacro(&rd, tok)) {
+            continue;
+        }
+        if (tok->pt_kind == PP_TOKEN_IDENT && Pp_TokenEquals(tok, PP_PRAGMA_OPERATOR)) {
+            Pp_RunPragmaOperator(&rd, tok);
+        } else {
             Pp_PrintToken(pr, tok);
         }
     }
@@ -1937,6 +2077,7 @@ void Pp_Run(const char *path, const Pp_Options *opts, Buf *out)
     if (opts->po_cmdline) {
         Pp_RunFile(&pr, Pp_OpenText(PP_CMDLINE_NAME, opts->po_cmdline, strlen(opts->po_cmdline), PP_DIR_NONE));
     }
+    pr.pr_move = PP_MOVE_NONE;
 
     Pp_File *source = Pp_OpenFile(path, PP_DIR_NONE);
 

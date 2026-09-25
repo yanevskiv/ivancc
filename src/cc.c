@@ -81,6 +81,7 @@ static void Cc_ShowUsage(const char *prog)
         "  -I DIR      search DIR for included files\n"
         "  -D NAME[=V] define NAME as V (default 1)\n"
         "  -U NAME     undefine NAME\n"
+        "  --include=F read F before INPUT.c\n"
         "  --std=STD   language standard (only " DEFAULT_STD ")\n"
         "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n"
         "  -mtarget=T  runtime to link against (default: " DEFAULT_TARGET ")\n"
@@ -221,6 +222,7 @@ int main(int argc, char **argv)
     const char *prefix = NULL;
     const char **incdirs = NULL;
     size_t nincdirs = 0;
+    Buf *forced = Buf_New();
     Buf *cmdline = Buf_New();
     bool emit_text = false;
     bool emit_obj = false;
@@ -282,7 +284,7 @@ int main(int argc, char **argv)
                 Err_Assert(Str_Equals(optarg, DEFAULT_STD), ERR_CC_STD_UNSUPPORTED, optarg, DEFAULT_STD);
             } break;
             case CC_OPTION_INCLUDE: {
-                Err_Raise(ERR_CC_OPTION_UNSUPPORTED, "--include");
+                Pp_PutInclude(forced, optarg);
             } break;
             case 'g':
             case 'l':
@@ -298,6 +300,8 @@ int main(int argc, char **argv)
         }
     }
 
+    Buf_PutBytes(cmdline, Buf_Data(forced), Buf_Len(forced));
+    Buf_Free(forced);
     Err_Assert(Str_Equals(arch, DEFAULT_ARCH), ERR_CC_ARCH_UNSUPPORTED, arch, DEFAULT_ARCH);
 
     if (optind >= argc) {
