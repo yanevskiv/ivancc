@@ -6,10 +6,10 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include "util/err.h"
+#include "util/console/err.h"
 #include "util/str.h"
-#include "syntax/ast.h"
-#include "syntax/par.h"
+#include "lang/ast.h"
+#include "lang/par.h"
 #include "c.tab.h"
 
 /* Stamp every token with the line it starts on. */

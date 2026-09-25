@@ -1,5 +1,6 @@
 // C source file for the ivancc compiler driver.
 
+// Standard headers.
 #include <errno.h>
 #include <getopt.h>
 #include <limits.h>
@@ -10,16 +11,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "util/err.h"
-#include "util/log.h"
+// Project headers.
+#include "util/console/err.h"
+#include "util/console/log.h"
+#include "util/object/elf.h"
 #include "util/str.h"
-#include "syntax/ast.h"
-#include "syntax/par.h"
-#include "syntax/pp.h"
-#include "syntax/sem.h"
-#include "object/elf.h"
-#include "arch/x86_64/gen.h"
+#include "lang/ast.h"
+#include "lang/par.h"
+#include "lang/pp.h"
+#include "lang/sem.h"
 #include "arch/x86_64/enc.h"
+#include "arch/x86_64/gen.h"
 #include "arch/x86_64/link.h"
 #include "arch/x86_64/txt.h"
 

@@ -1,12 +1,6 @@
 // C source file for the x86-64 static linker.
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "util/err.h"
-#include "object/elf.h"
+// Take every include from the module's header.
 #include "arch/x86_64/link.h"
 
 // Virtual address a symbol resolves to.

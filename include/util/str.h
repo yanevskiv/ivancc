@@ -3,9 +3,16 @@
 #ifndef STR_H
 #define STR_H
 
+// Standard headers.
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Project headers.
+#include "util/console/err.h"
 
 // Capacity a new Str_Buf starts with.
 #define STR_BUF_MIN_CAP 64

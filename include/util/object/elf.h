@@ -3,10 +3,13 @@
 #ifndef ELF_H
 #define ELF_H
 
+// Standard headers.
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // Format
 // Object file types (e_type).

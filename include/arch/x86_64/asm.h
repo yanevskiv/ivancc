@@ -3,7 +3,14 @@
 #ifndef ASM_X86_64_H
 #define ASM_X86_64_H
 
+// Standard headers.
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Project headers.
+#include "util/str.h"
 
 // Bits in a byte, for turning a type's size into an operand width.
 #define ASM_X86_64_BITS_PER_BYTE 8

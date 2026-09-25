@@ -1,14 +1,14 @@
 /* Grammar for the cc compiler. */
 
 %code requires {
-    #include "syntax/par.h"
+    #include "lang/par.h"
 }
 
 %code {
 
-#include "util/err.h"
-#include "syntax/ast.h"
-#include "syntax/sem.h"
+#include "util/console/err.h"
+#include "lang/ast.h"
+#include "lang/sem.h"
 
 // Give a rule the line of its first token.
 #define YYLLOC_DEFAULT(cur, rhs, n)  ((cur) = (n) ? YYRHSLOC(rhs, 1) : YYRHSLOC(rhs, 0))

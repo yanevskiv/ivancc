@@ -3,9 +3,16 @@
 #ifndef AST_H
 #define AST_H
 
+// Standard headers.
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Project headers.
+#include "util/console/err.h"
+#include "util/str.h"
 
 // Maximum number of distinct string literals in one translation unit.
 #define AST_MAX_STRINGS 1024

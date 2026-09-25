@@ -1,11 +1,6 @@
 // C source file for string utilities.
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "util/err.h"
+// Take every include from the module's header.
 #include "util/str.h"
 
 // The storage behind a Str_Buf.
