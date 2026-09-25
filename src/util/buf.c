@@ -89,8 +89,8 @@ void Buf_Print(Buf *buf, const char *fmt, ...)
     va_end(ap);
 }
 
-// Turn a buffer into its text.
-char *Buf_Take(Buf *buf)
+// Free a buffer and return its text.
+char *Buf_Release(Buf *buf)
 {
     char *data = buf->buf_data;
 
