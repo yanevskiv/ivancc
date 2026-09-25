@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Function-like macros. A macro name followed directly by a parenthesis takes
 // arguments, and each parameter in its body is replaced by its argument, which
 // is expanded first. # spells an argument as a string literal, ## pastes two

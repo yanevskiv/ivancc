@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Bitwise and, or, xor and complement, including their precedence against
 // each other: & binds tighter than ^, which binds tighter than |.
 

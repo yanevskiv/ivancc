@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Wide literals. An L prefix makes every element a wchar_t, which is an int
 // here, so a wide string is an int array and a wide character constant holds
 // the code point itself. A narrow piece spliced onto a wide one widens to it.

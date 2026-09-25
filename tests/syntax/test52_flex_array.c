@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A flexible array member names the storage that follows a struct without
 // taking any of its own, so sizeof stops at the member before it.
 

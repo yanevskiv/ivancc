@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Prefix and postfix ++ and --: which value each yields, and that ++ on a
 // pointer steps by the size of what it points at.
 

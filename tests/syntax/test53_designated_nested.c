@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Designated initializers walking into subobjects, and the braces C lets a
 // nested initializer leave out. What no item reaches stays zero, and a
 // compound literal is filled by the same rules a declaration is.

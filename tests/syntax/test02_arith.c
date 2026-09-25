@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Binary arithmetic and the precedence between it.
 
 int main()

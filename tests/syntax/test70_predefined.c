@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Predefined macros. __FILE__ and __LINE__ name the file and line they are
 // read on, and __COUNTER__ counts up each time it expands. #line renumbers the
 // lines after it and may rename the file, until the file ends. __STDC__,

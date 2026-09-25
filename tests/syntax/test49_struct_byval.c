@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Passing and returning structs by value, which is the SysV classification
 // algorithm. A struct of 16 bytes or less travels in registers, and anything
 // wider travels on the stack with a hidden pointer carrying the return. A

@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Conditionals. #if keeps its group when its expression is not zero, and each
 // #elif and the #else after it offer the next group in turn. #ifdef, #ifndef
 // and the defined operator ask whether a name is a macro. The expression is

@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Unary minus and logical negation.
 
 int main()

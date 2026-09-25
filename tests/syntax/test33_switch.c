@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // switch, including fallthrough between labels, a default, and the way break
 // leaves the switch while continue carries on with the enclosing loop. A label
 // is any constant expression, folded before the cases are collected.

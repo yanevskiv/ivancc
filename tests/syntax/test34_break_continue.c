@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // break and continue, including that each binds to the innermost loop.
 
 int main()

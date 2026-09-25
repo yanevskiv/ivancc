@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // if, if/else, and a braced branch.
 
 int main()

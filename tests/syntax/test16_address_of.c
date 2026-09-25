@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // & yields an address a callee can write through, and each object has its own.
 
 int store(int *p, int v)

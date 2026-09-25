@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // static keeps a name inside this file, and a static local keeps its value
 // between calls. register, auto and inline parse and mean nothing.
 

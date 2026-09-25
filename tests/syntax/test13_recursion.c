@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Linear and tree recursion.
 
 int fact(int n)

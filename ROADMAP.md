@@ -325,22 +325,28 @@ A test declares what success means on its own first line, above the description,
 so the expectation cannot drift away from the code it describes:
 
 ```c
-// (Test) Return: 42
+// (Test) Status: 42
 // The smallest program that can succeed at all.
 ```
 
 `run_test` reads that, compiles, runs under `timeout`, and compares. The
 `(Test)` prefix keeps directives apart from ordinary prose, and a file declaring
-none fails outright — otherwise a key typed `// (Test) Retrun:` would assert
+none fails outright — otherwise a key typed `// (Test) Stauts:` would assert
 nothing and pass.
 
-Four directives exist: `Return`, `Output`, `Compiler status` and `Compiler
-error`. `Output` is the primary oracle from stage 3 on, because an exit status is
+Six directives exist, and each names the file `run_test` keeps it in:
+`Status`, `Output`, `Compiler flags`, `Compiler status`, `Compiler output` and
+`Compiler error`. `Output` and `Compiler output` are blocks of `// | ` lines,
+and the rest take a single value. `Compiler flags` go after `-o`, so a test's
+own `-o -` wins, and the compile runs in the test's directory. `Compiler error`
+passes when that text, such as `[ERR_PP_ERROR_DIRECTIVE]`, appears in the
+compiler's stderr. The binary runs only when a test declares `Status` or
+`Output`. `Output` is the primary oracle from stage 3 on, because an exit status is
 eight bits and unsigned — enough for `return 42` and nothing a UART or a `printf`
 does. Every test is built `-mtarget=linux` and run on the host; nothing in the
 corpus names a platform, because so far there is only one worth naming.
-It holds a single line, in which `\n` stands for a newline, and a test may
-assert on a return, on output, or on both, but never on nothing.
+A test may assert on a status, on output, on the compile, or on several of
+them, but never on nothing.
 
 gcc is the oracle for the expectations themselves, run by hand rather than
 through the harness: catching a wrong expectation matters more than catching a
@@ -606,7 +612,7 @@ need answering. The fiddly part is
 not the loop, it is EFLAGS: `cmp` followed by `setl`/`setle` needs SF, OF, ZF
 and CF right, and signed comparison is exactly where that goes wrong.
 
-`ivanemu` exits with the guest's status, so `// (Test) Return:` means the same
+`ivanemu` exits with the guest's status, so `// (Test) Status:` means the same
 thing on both sides. It needs one status of its own for the cases where the
 guest never got to decide — an opcode it cannot decode, an access outside the
 image — and 125 is free next to `timeout`'s 124. That leaves the same hole those
@@ -1447,11 +1453,14 @@ syntax a higher-numbered one introduces.
   `ERR_PP_ERROR_DIRECTIVE`, through stage 11's compile-failure path. The pragmas
   and the `#warning` before the `#error` must get that far.
 - `test75_depend` runs `-M` and checks the printed rule. It never runs a binary.
-- `run_test` needs three more changes before step 8:
-  - A `// (Test) Flags:` key, passed to `ivancc`.
-  - A check of `// (Test) Compiler output:`, which is read into `exp.cout.txt`
-    today but never compared.
+- `run_test` got three more changes before step 8:
+  - A `// (Test) Compiler flags:` key, passed to `ivancc`.
+  - A check of `// (Test) Compiler output:`, which was read before but never
+    compared.
   - No run of `a.out` when a test declares only compiler expectations.
+  Its keys and temporary files were renamed to match each other at the same
+  time. `Return` became `Status`, and `Compiler return` became
+  `Compiler status`.
 - `-E` is checked against `.i` files generated once with
   `gcc -std=c99 -E -P` and checked in. The comparison collapses whitespace,
   because gcc's spacing differs from ours. gcc ignores trigraphs by default, which

@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Several declarators in one declaration, at file scope and inside a function,
 // with and without initializers.
 

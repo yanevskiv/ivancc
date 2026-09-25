@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // extern declares without defining, so the definition later in the file is the
 // one that counts and no second slot appears.
 

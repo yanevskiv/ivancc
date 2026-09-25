@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Walking a literal through a char * finds its length, as printf must.
 
 int length(char *s)

@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // sizeof reports the size of a named type, or of what an expression yields.
 // A string literal is an array of char, so its size counts the NUL. An array
 // built on a folded dimension measures the length that expression came to.

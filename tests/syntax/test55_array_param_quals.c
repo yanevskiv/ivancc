@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // An array parameter is really a pointer, and C lets its brackets carry `static`
 // and qualifiers to say so more loudly: `int a[static 4]` promises the caller
 // passes at least four elements. Both decay along with the array, so neither

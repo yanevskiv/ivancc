@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Object-like macros. A name defined with #define is replaced by its tokens
 // wherever it appears, and the result is scanned again for more names. A macro
 // is never replaced inside its own expansion, so a name that expands to itself

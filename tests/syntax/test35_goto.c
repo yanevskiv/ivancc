@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // goto and labels, including a jump out of a loop and a backward jump that
 // makes a loop of its own.
 

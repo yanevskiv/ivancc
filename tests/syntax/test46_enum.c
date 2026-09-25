@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Enumeration constants count from zero, and an explicit value moves the count
 // to that point. The constants are ints wherever a name can appear, and any
 // constant expression may set one, including an earlier constant.

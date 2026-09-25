@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Every compound assignment, including on a narrow lvalue, and the rule that
 // the target's address is evaluated once however complicated it is.
 

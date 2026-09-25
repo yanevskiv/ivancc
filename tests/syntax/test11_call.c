@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Calls with arguments, nested calls, and a call used as an argument.
 
 int add(int a, int b)

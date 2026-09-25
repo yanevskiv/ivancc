@@ -61,46 +61,77 @@ setup()
     TMP=$(mktemp -d) || error "cannot create a temporary directory"
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
-    get_value "${SOURCE}" '(Test) Compiler output' > "${TMP}/exp.cout.txt"
-    get_value "${SOURCE}" '(Test) Compiler return' > "${TMP}/exp.cret.txt"
-    get_value "${SOURCE}" '(Test) Compiler error' > "${TMP}/exp.cerr.txt"
-    get_value "${SOURCE}" '(Test) Return' > "${TMP}/exp.ret.txt"
-    get_text "${SOURCE}" '(Test) Output' > "${TMP}/exp.out.txt"
+    get_value "${SOURCE}" '(Test) Compiler flags' > "${TMP}/compiler_flags"
+    get_value "${SOURCE}" '(Test) Compiler status' > "${TMP}/expected_compiler_status"
+    get_text "${SOURCE}" '(Test) Compiler output' > "${TMP}/expected_compiler_output"
+    get_value "${SOURCE}" '(Test) Compiler error' > "${TMP}/expected_compiler_error"
+    get_value "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
+    get_text "${SOURCE}" '(Test) Output' > "${TMP}/expected_output"
 
-    "${BIN}/ivancc" "$SOURCE" -o "${TMP}/a.out" >"${TMP}/got.cout.txt" 2>"${TMP}/got.cerr.txt"
-    echo $? > "${TMP}/got.cret.txt"
+    cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
+    "${BIN}/ivancc" -o "${TMP}/a.out" $(cat "${TMP}/compiler_flags") "$(basename -- "$SOURCE")" >"${TMP}/compiler_output" 2>"${TMP}/compiler_error"
+    echo $? > "${TMP}/compiler_status"
+    : > "${TMP}/output"
+    : > "${TMP}/status"
 
-    [ -s "${TMP}/exp.cerr.txt" ] && return
-    grep -qx 0 "${TMP}/got.cret.txt" || fail '%s' "$(cat "${TMP}/got.cerr.txt")"
+    [ -s "${TMP}/expected_compiler_error" ] && return
+    [ -s "${TMP}/expected_compiler_status" ] || grep -qx 0 "${TMP}/compiler_status" || fail '%s' "$(cat "${TMP}/compiler_error")"
+    grep -qx 0 "${TMP}/compiler_status" || return
+    [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ] || return
 
-    timeout "$TIMEOUT" "${TMP}/a.out" >"${TMP}/got.out.txt" 2>&1
-    echo $? > "${TMP}/got.ret.txt"
+    timeout "$TIMEOUT" "${TMP}/a.out" >"${TMP}/output" 2>&1
+    echo $? > "${TMP}/status"
 }
 
 # Check the compile failure against `// (Test) Compiler error:`.
 test_compiler_error()
 {
-    EXP="$(cat "${TMP}/exp.cerr.txt")"
-    GOT="$(cat "${TMP}/got.cerr.txt")"
+    EXP="$(cat "${TMP}/expected_compiler_error")"
+    GOT="$(cat "${TMP}/compiler_error")"
 
     [ -n "$EXP" ] || return 0
 
-    grep -qx 0 "${TMP}/got.cret.txt" && fail 'Compiled but expected %s' "$EXP"
-    grep -qF "[$EXP]" "${TMP}/got.cerr.txt" || fail 'Failed with:\n%s\nbut expected %s' "$GOT" "$EXP"
+    grep -qx 0 "${TMP}/compiler_status" && fail 'Compiled but expected %s' "$EXP"
+    grep -qF "$EXP" "${TMP}/compiler_error" || fail 'Failed with:\n%s\nbut expected %s' "$GOT" "$EXP"
 
     pass
 }
 
-# Check the exit status against `// (Test) Return:`.
-test_return()
+# Check the compiler's exit status against `// (Test) Compiler status:`.
+test_compiler_status()
 {
-    EXP="$(cat "${TMP}/exp.ret.txt")"
-    GOT="$(cat "${TMP}/got.ret.txt")"
+    EXP="$(cat "${TMP}/expected_compiler_status")"
+    GOT="$(cat "${TMP}/compiler_status")"
 
     [ -n "$EXP" ] || return 0
 
-    echo "$EXP" | grep -qv '^[0-9][0-9]*$' && fail "Return expects a number between 0 and 255, got '%s'" "$EXP"
-    [ "$EXP" -le 255 ] || fail "Return expects a number between 0 and 255, got '%s'" "$EXP"
+    echo "$EXP" | grep -qv '^[0-9][0-9]*$' && fail "Compiler status expects a number between 0 and 255, got '%s'" "$EXP"
+    [ "$EXP" -le 255 ] || fail "Compiler status expects a number between 0 and 255, got '%s'" "$EXP"
+
+    [ "$GOT" -eq "$EXP" ] || fail 'Compiler returned %s but expected %s:\n%s' "$GOT" "$EXP" "$(cat "${TMP}/compiler_error")"
+}
+
+# Check the compiler's output against `// (Test) Compiler output:`.
+test_compiler_output()
+{
+    EXP="$(cat "${TMP}/expected_compiler_output")"
+    GOT="$(cat "${TMP}/compiler_output")"
+
+    [ -n "$EXP" ] || return 0
+
+    [ "$GOT" = "$EXP" ] || fail 'Compiler printed:\n%s\nbut expected:\n%s' "$GOT" "$EXP"
+}
+
+# Check the exit status against `// (Test) Status:`.
+test_status()
+{
+    EXP="$(cat "${TMP}/expected_status")"
+    GOT="$(cat "${TMP}/status")"
+
+    [ -n "$EXP" ] || return 0
+
+    echo "$EXP" | grep -qv '^[0-9][0-9]*$' && fail "Status expects a number between 0 and 255, got '%s'" "$EXP"
+    [ "$EXP" -le 255 ] || fail "Status expects a number between 0 and 255, got '%s'" "$EXP"
 
     [ "$GOT" -ne "$EXP" ] || return 0
     [ "$GOT" -ne 124 ] || fail 'Timed out after %ss' "$TIMEOUT"
@@ -112,11 +143,11 @@ test_return()
 # Check the program output against `// (Test) Output:`.
 test_output()
 {
-    EXP="$(cat "${TMP}/exp.out.txt")"
-    GOT="$(cat "${TMP}/got.out.txt")"
+    EXP="$(cat "${TMP}/expected_output")"
+    GOT="$(cat "${TMP}/output")"
 
     [ -n "$EXP" ] || return 0
-    [ "$(cat "${TMP}/got.ret.txt")" -ne 124 ] || fail 'Timed out after %ss' "$TIMEOUT"
+    [ "$(cat "${TMP}/status")" -ne 124 ] || fail 'Timed out after %ss' "$TIMEOUT"
 
     [ "$GOT" = "$EXP" ] || fail 'Printed:\n%s\nbut expected:\n%s' "$GOT" "$EXP"
 }
@@ -124,14 +155,18 @@ test_output()
 # Fail a test that declares no expectation.
 test_declared()
 {
-    [ -s "${TMP}/exp.ret.txt" ] && return
-    [ -s "${TMP}/exp.out.txt" ] && return
+    [ -s "${TMP}/expected_compiler_status" ] && return
+    [ -s "${TMP}/expected_compiler_output" ] && return
+    [ -s "${TMP}/expected_status" ] && return
+    [ -s "${TMP}/expected_output" ] && return
     fail 'No expectation declared'
 }
 
 setup
 test_compiler_error
-test_return
+test_compiler_status
+test_compiler_output
+test_status
 test_output
 test_declared
 pass

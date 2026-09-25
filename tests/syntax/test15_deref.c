@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Reading and writing through a pointer reaches the object it points at.
 
 int main()

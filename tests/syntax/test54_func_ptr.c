@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A function named without calling it is its own address, and a pointer holding
 // one is called by naming the pointer. The declarator is what says so: the
 // parentheses in `int (*f)(int, int)` bind the star before the parameter list,

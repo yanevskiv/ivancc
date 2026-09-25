@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // The conditional operator, including nesting and its precedence against
 // assignment: a = b ? c : d assigns the whole conditional.
 

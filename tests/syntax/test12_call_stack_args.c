@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Eight arguments, so two travel on the stack rather than in registers.
 // Each is weighted, so a misordered or dropped argument changes the result.
 

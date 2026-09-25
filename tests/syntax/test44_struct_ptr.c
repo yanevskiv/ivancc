@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Pointers to structs and the -> operator, including a struct that points at
 // its own type. A linked list walked to its end is the shortest proof that
 // both work together.
