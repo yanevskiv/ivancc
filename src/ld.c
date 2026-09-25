@@ -1,10 +1,13 @@
 // C source file for the ivanld linker.
 
+#include <errno.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
+#include "util/err.h"
 #include "util/log.h"
 #include "util/str.h"
 #include "object/elf.h"
@@ -18,7 +21,7 @@
 // Show usage information and exit.
 static void Ld_Usage(const char *prog)
 {
-    File_Print(File_Err(),
+    fprintf(stderr,
         "Usage: %s [options] INPUT.o...\n"
         "  -o OUTPUT          write the output to OUTPUT (default: " LD_DEFAULT_OUTPUT ")\n"
         "  -e ENTRY           set the entry symbol (default: _start)\n"
@@ -48,9 +51,7 @@ static char *Ld_PlaceName(const char *spec, size_t len)
 static void Ld_ParsePlace(const char *spec, Elf_LinkOptions *opts)
 {
     const char *at = strchr(spec, '@');
-    if (! at) {
-        Log_ShowError("malformed -place (expected SEC@ADDR): '%s'", spec);
-    }
+    Err_Assert(at, ERR_LD_PLACE_MALFORMED, spec);
     Elf_Link_AddPlace(opts, Ld_PlaceName(spec, (size_t) (at - spec)), strtoull(at + 1, NULL, 0));
 }
 
@@ -62,6 +63,8 @@ int main(int argc, char **argv)
 
     size_t nobjs = 0;
     const char **objs = calloc(argc, sizeof(*objs));
+
+    Log_SetProgramName(argv[0]);
 
     for (int32_t i = 1; i < argc; i++) {
         const char *arg = argv[i];
@@ -85,10 +88,7 @@ int main(int argc, char **argv)
     }
 
     Elf *e = Elf_Link_Run((const char *const *) objs, nobjs, &opts);
-    if (! Elf_Write_Path(e, output)) {
-        File_ShowError(output);
-        return 1;
-    }
+    Err_Assert(Elf_Write_Path(e, output), ERR_FILE_ACCESS, output, strerror(errno));
     Elf_Free(e);
     if (! opts.lo_relocatable) {
         chmod(output, LD_MODE);
