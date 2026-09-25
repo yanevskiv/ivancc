@@ -5,7 +5,7 @@
 %{
 #include <stdlib.h>
 #include <string.h>
-#include "util/log.h"
+#include "util/err.h"
 #include "util/str.h"
 #include "syntax/ast.h"
 #include "syntax/par.h"
@@ -130,6 +130,6 @@ L?'([^'\\\n]|\\.)+'     { bool wide = yytext[0] == 'L';
 ","                     return COMMA;
 "."                     return DOT;
 
-.                       { Log_ShowErrorAt((Ast_Line) yylineno, "lexer: unexpected character '%s'", yytext); }
+.                       { Err_RaiseAt((Ast_Line) yylineno, ERR_LEX_UNEXPECTED_CHAR, yytext); }
 
 %%

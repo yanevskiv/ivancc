@@ -6,7 +6,7 @@
 
 %code {
 
-#include "util/log.h"
+#include "util/err.h"
 #include "syntax/ast.h"
 #include "syntax/sem.h"
 
@@ -513,9 +513,7 @@ array_dims
 array_len
     : expr
         { int64_t val;
-          if (! Sem_Fold($1, &val)) {
-              Log_ShowErrorAt(@1, "an array length is not a constant");
-          }
+          Err_AssertAt(@1, Sem_Fold($1, &val), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
           $$ = val; }
     ;
 
@@ -652,6 +650,5 @@ arg_list
 // Report a parse error and stop.
 void yyerror(const char *s)
 {
-    File_Print(File_Err(), "cc: parse error: %s near line %u\n", s, yylloc);
-    exit(1);
+    Err_RaiseAt(yylloc, ERR_PAR_SYNTAX, s);
 }

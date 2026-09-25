@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/log.h"
+#include "util/err.h"
 #include "util/str.h"
 #include "syntax/ast.h"
 #include "syntax/sem.h"
@@ -90,9 +90,7 @@ Par_Decl *Par_NewDecl(char *name)
 // Reject a declarator with no name.
 void Par_NeedName(Par_Decl *decl, Ast_Line line)
 {
-    if (! decl->pc_name) {
-        Log_ShowErrorAt(decl->pc_line ? decl->pc_line : line, "this declaration needs a name");
-    }
+    Err_AssertAt(decl->pc_line ? decl->pc_line : line, decl->pc_name, ERR_PAR_DECL_UNNAMED);
 }
 
 // Append one derivation to a declarator.
@@ -122,18 +120,12 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
             return Ast_NewPointer(inner);
         }
         case PAR_DERIV_ARRAY: {
-            if (inner->at_kind == AST_TYPE_KIND_FUNC) {
-                Log_ShowErrorAt(deriv->pd_line, "an array of functions is not a type");
-            }
-            if (deriv->pd_decor) {
-                Log_ShowErrorAt(deriv->pd_line, "'static' and qualifiers in an array declarator are only allowed on a parameter");
-            }
+            Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC, ERR_PAR_ARRAY_OF_FUNCTIONS);
+            Err_AssertAt(deriv->pd_line, ! deriv->pd_decor, ERR_PAR_ARRAY_DECOR_NOT_PARAM);
             return Ast_NewArray(inner, (int32_t) deriv->pd_len);
         }
         case PAR_DERIV_FUNCTION: {
-            if (inner->at_kind == AST_TYPE_KIND_FUNC || inner->at_kind == AST_TYPE_KIND_ARRAY) {
-                Log_ShowErrorAt(deriv->pd_line, "a function cannot return a function or an array");
-            }
+            Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC && inner->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_FUNCTION_BAD_RETURN);
             return Ast_NewFunction(inner, deriv->pd_params.pl_head, deriv->pd_params.pl_count, deriv->pd_params.pl_variadic, deriv->pd_params.pl_proto);
         }
         case PAR_DERIV_COUNT: {
@@ -168,12 +160,8 @@ void Par_TakeArrayDecor(Par_Decl *decl, Ast_Line line)
         if (! deriv->pd_decor) {
             continue;
         }
-        if (deriv != decl->pc_head || deriv->pd_kind != PAR_DERIV_ARRAY) {
-            Log_ShowErrorAt(line, "'static' and qualifiers are only allowed on a parameter's outermost array");
-        }
-        if ((deriv->pd_decor & PAR_ARRAY_STATIC) && deriv->pd_empty) {
-            Log_ShowErrorAt(line, "'static' in an array declarator needs a length");
-        }
+        Err_AssertAt(line, deriv == decl->pc_head && deriv->pd_kind == PAR_DERIV_ARRAY, ERR_PAR_ARRAY_DECOR_NOT_OUTERMOST);
+        Err_AssertAt(line, ! (deriv->pd_decor & PAR_ARRAY_STATIC) || ! deriv->pd_empty, ERR_PAR_ARRAY_STATIC_NO_LEN);
         deriv->pd_decor = PAR_ARRAY_NONE;
     }
 }
@@ -212,16 +200,14 @@ void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
             return;
         }
     }
-    Log_ShowErrorAt(line, "'%s' is not a parameter of this function", decl->pc_name);
+    Err_RaiseAt(line, ERR_PAR_KNR_NOT_PARAM, decl->pc_name);
 }
 
 // Reject an old-style parameter the declaration list never typed.
 void Par_CheckKnrParams(void)
 {
     for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
-        if (! param->av_type) {
-            Log_ShowErrorAt(param->av_line, "parameter '%s' has no declaration", param->av_name);
-        }
+        Err_AssertAt(param->av_line, param->av_type, ERR_PAR_KNR_UNDECLARED, param->av_name);
     }
 }
 
@@ -361,21 +347,15 @@ Par_Spec Par_AddSpec(Par_Spec specs, Par_Spec spec, Ast_Line line)
     if (spec == PAR_SPEC_LONG && (specs & PAR_SPEC_LONG)) {
         spec = PAR_SPEC_LLONG;
     }
-    if (specs & spec) {
-        Log_ShowErrorAt(line, "a type specifier is repeated");
-    }
+    Err_AssertAt(line, ! (specs & spec), ERR_PAR_SPEC_REPEATED);
     return specs | spec;
 }
 
 // Merge one specifier or qualifier into a declaration's set.
 void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line)
 {
-    if (one->ps_type && (into->ps_type || into->ps_specs)) {
-        Log_ShowErrorAt(line, "two or more data types in one declaration");
-    }
-    if (one->ps_specs && into->ps_type) {
-        Log_ShowErrorAt(line, "two or more data types in one declaration");
-    }
+    Err_AssertAt(line, ! one->ps_type || ! (into->ps_type || into->ps_specs), ERR_PAR_SPEC_TWO_TYPES);
+    Err_AssertAt(line, ! one->ps_specs || ! into->ps_type, ERR_PAR_SPEC_TWO_TYPES);
     if (one->ps_specs) {
         into->ps_specs = Par_AddSpec(into->ps_specs, one->ps_specs, line);
     }
@@ -393,15 +373,11 @@ Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line)
 
     switch (specs & ~(PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED)) {
         case PAR_SPEC_VOID: {
-            if (explicit) {
-                Log_ShowErrorAt(line, "'void' cannot be signed or unsigned");
-            }
+            Err_AssertAt(line, ! explicit, ERR_PAR_VOID_SIGNED);
             return &Ast_TypeVoid;
         } break;
         case PAR_SPEC_BOOL: {
-            if (explicit) {
-                Log_ShowErrorAt(line, "'_Bool' cannot be signed or unsigned");
-            }
+            Err_AssertAt(line, ! explicit, ERR_PAR_BOOL_SIGNED);
             return &Ast_TypeBool;
         } break;
         case PAR_SPEC_CHAR: {
@@ -415,9 +391,7 @@ Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line)
             return Ast_IntegerType(AST_TYPE_KIND_INT, sign);
         } break;
         case PAR_SPEC_NONE: {
-            if (! explicit) {
-                Log_ShowErrorAt(line, "a declaration needs a type specifier");
-            }
+            Err_AssertAt(line, explicit, ERR_PAR_SPEC_MISSING);
             return Ast_IntegerType(AST_TYPE_KIND_INT, sign);
         } break;
         case PAR_SPEC_LONG:
@@ -429,7 +403,7 @@ Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line)
             return Ast_IntegerType(AST_TYPE_KIND_LLONG, sign);
         } break;
         default: {
-            Log_ShowErrorAt(line, "these type specifiers do not name a type");
+            Err_RaiseAt(line, ERR_PAR_SPEC_INVALID);
         }
     }
     return &Ast_TypeInt;
@@ -472,9 +446,7 @@ Ast_Type *Par_VaListType(void)
 // Build the node reading the next anonymous argument.
 Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line)
 {
-    if (Sem_IsAggregate(type) || type->at_kind == AST_TYPE_KIND_ARRAY) {
-        Log_ShowErrorAt(line, "__builtin_va_arg of a struct, union or array is not supported");
-    }
+    Err_AssertAt(line, ! Sem_IsAggregate(type) && type->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_VA_ARG_AGGREGATE);
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_VA_ARG, ap, line);
     node->an_type = type;
     return node;
@@ -499,21 +471,11 @@ void Par_AddBitfield(Ast_Member *member, Ast_Node *width, Ast_Line line)
 {
     int64_t bits = 0;
 
-    if (! Sem_Fold(width, &bits)) {
-        Log_ShowErrorAt(line, "a bit-field width is not a constant");
-    }
-    if (! Ast_IsInteger(member->am_type)) {
-        Log_ShowErrorAt(line, "a bit-field must have an integer type");
-    }
-    if (bits < 0) {
-        Log_ShowErrorAt(line, "a bit-field width cannot be negative");
-    }
-    if (bits > member->am_type->at_size * AST_BITS_PER_BYTE) {
-        Log_ShowErrorAt(line, "a bit-field is wider than the type that holds it");
-    }
-    if (bits == 0 && member->am_name) {
-        Log_ShowErrorAt(line, "a bit-field with a name cannot be zero bits wide");
-    }
+    Err_AssertAt(line, Sem_Fold(width, &bits), ERR_PAR_BITFIELD_NOT_CONSTANT);
+    Err_AssertAt(line, Ast_IsInteger(member->am_type), ERR_PAR_BITFIELD_NOT_INTEGER);
+    Err_AssertAt(line, bits >= 0, ERR_PAR_BITFIELD_NEGATIVE);
+    Err_AssertAt(line, bits <= member->am_type->at_size * AST_BITS_PER_BYTE, ERR_PAR_BITFIELD_TOO_WIDE);
+    Err_AssertAt(line, bits != 0 || ! member->am_name, ERR_PAR_BITFIELD_NAMED_ZERO);
     member->am_bits = (int32_t) bits;
 }
 
@@ -524,9 +486,7 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
     Ast_Member *tail = &head;
 
     for (Par_Decl *decl = decls; decl; decl = decl->pc_next) {
-        if (! decl->pc_name && ! decl->pc_bits) {
-            Log_ShowErrorAt(decl->pc_line, "this member needs a name");
-        }
+        Err_AssertAt(decl->pc_line, decl->pc_name || decl->pc_bits, ERR_PAR_MEMBER_UNNAMED);
         tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
         if (decl->pc_head && decl->pc_head->pd_kind == PAR_DERIV_ARRAY && decl->pc_head->pd_empty) {
@@ -544,12 +504,8 @@ Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line)
 {
     Ast_Type *type = tag ? Ast_FindTagHere(tag) : NULL;
 
-    if (type && type->at_complete) {
-        Log_ShowErrorAt(line, "redefinition of '%s'", tag);
-    }
-    if (type && type->at_kind != kind) {
-        Log_ShowErrorAt(line, "'%s' was declared with a different aggregate keyword", tag);
-    }
+    Err_AssertAt(line, ! type || ! type->at_complete, ERR_PAR_TAG_REDEFINED, tag);
+    Err_AssertAt(line, ! type || type->at_kind == kind, ERR_PAR_TAG_WRONG_KIND, tag);
     if (! type) {
         type = Ast_NewAggregate(kind, tag);
         if (tag) {
@@ -564,9 +520,7 @@ Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line li
 {
     Ast_Type *type = Ast_FindTag(tag);
 
-    if (type && type->at_kind != kind) {
-        Log_ShowErrorAt(line, "'%s' was declared with a different aggregate keyword", tag);
-    }
+    Err_AssertAt(line, ! type || type->at_kind == kind, ERR_PAR_TAG_WRONG_KIND, tag);
     if (! type) {
         type = Ast_NewAggregate(kind, tag);
         Ast_DeclareTag(tag, type);
@@ -577,9 +531,7 @@ Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line li
 // Declare one enumeration constant and step the next one's value.
 void Par_AddEnumConst(const char *name, Ast_Node *value, Ast_Line line)
 {
-    if (value && ! Sem_Fold(value, &Par_EnumValue)) {
-        Log_ShowErrorAt(line, "enumerator '%s' is not a constant", name);
-    }
+    Err_AssertAt(line, ! value || Sem_Fold(value, &Par_EnumValue), ERR_PAR_ENUM_NOT_CONSTANT, name);
     Ast_DeclareEnumConst(name, Par_EnumValue++);
 }
 
@@ -616,22 +568,14 @@ Ast_Node *Par_InitAt(int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *va
 void Par_Designate(Ast_Type *type, Ast_Node *desig, int32_t *index, Ast_Member **member, Ast_Line line)
 {
     if (desig->an_memname) {
-        if (! Sem_IsAggregate(type)) {
-            Log_ShowErrorAt(line, "'.%s' designates a member of something that is not a struct or union", desig->an_memname);
-        }
+        Err_AssertAt(line, Sem_IsAggregate(type), ERR_PAR_DESIG_NOT_AGGREGATE, desig->an_memname);
         *member = Ast_FindMember(type, desig->an_memname);
-        if (! *member) {
-            Log_ShowErrorAt(line, "no member named '%s' to initialize", desig->an_memname);
-        }
+        Err_AssertAt(line, *member, ERR_PAR_DESIG_NO_MEMBER, desig->an_memname);
         return;
     }
 
-    if (type->at_kind != AST_TYPE_KIND_ARRAY) {
-        Log_ShowErrorAt(line, "an index designator needs an array");
-    }
-    if (desig->an_val < 0 || desig->an_val >= type->at_len) {
-        Log_ShowErrorAt(line, "initializer index %ld is outside the array", (long) desig->an_val);
-    }
+    Err_AssertAt(line, type->at_kind == AST_TYPE_KIND_ARRAY, ERR_PAR_DESIG_NOT_ARRAY);
+    Err_AssertAt(line, desig->an_val >= 0 && desig->an_val < type->at_len, ERR_PAR_DESIG_OUT_OF_RANGE, (long) desig->an_val);
     *index = (int32_t) desig->an_val;
 }
 
@@ -752,23 +696,19 @@ void Par_FlattenList(Ast_Type *type, int32_t base, Ast_Node **item, Ast_Node **t
         }
 
         if (type->at_kind == AST_TYPE_KIND_ARRAY) {
-            if (index >= type->at_len) {
-                if (braced == PAR_LIST_UNBRACED) {
-                    return;
-                }
-                Log_ShowErrorAt(line, "too many initializers for an array of %d", type->at_len);
+            if (index >= type->at_len && braced == PAR_LIST_UNBRACED) {
+                return;
             }
+            Err_AssertAt(line, index < type->at_len, ERR_PAR_INIT_TOO_MANY_ELEMENTS, type->at_len);
             Par_FlattenSlot(type->at_base, base + index * type->at_base->at_size, NULL, item, tail, line);
             index++;
             continue;
         }
 
-        if (! member) {
-            if (braced == PAR_LIST_UNBRACED) {
-                return;
-            }
-            Log_ShowErrorAt(line, "too many initializers for '%s'", Sem_TypeName(type));
+        if (! member && braced == PAR_LIST_UNBRACED) {
+            return;
         }
+        Err_AssertAt(line, member, ERR_PAR_INIT_TOO_MANY_MEMBERS, Sem_TypeName(type));
         Par_FlattenSlot(member->am_type, base + member->am_offset, member->am_bits ? member : NULL, item, tail, line);
         member = type->at_kind == AST_TYPE_KIND_UNION ? NULL : member->am_next;
     }
@@ -786,9 +726,7 @@ void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init,
     }
 
     if (init->an_kind != AST_NODE_KIND_INITLIST) {
-        if (type->at_kind == AST_TYPE_KIND_ARRAY) {
-            Log_ShowErrorAt(line, "an array needs a braced initializer");
-        }
+        Err_AssertAt(line, type->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_INIT_ARRAY_UNBRACED);
         (*tail)->an_next = Par_InitAt(base, type, bits, init, line);
         *tail = (*tail)->an_next;
         return;
@@ -796,9 +734,7 @@ void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init,
 
     Ast_Node *item = init->an_body;
     if (type->at_kind != AST_TYPE_KIND_ARRAY && ! Sem_IsAggregate(type)) {
-        if (! item) {
-            Log_ShowErrorAt(line, "an empty initializer list has nothing to assign");
-        }
+        Err_AssertAt(line, item, ERR_PAR_INIT_EMPTY);
         Par_Flatten(type, base, bits, item->an_lhs, tail, line);
         return;
     }
@@ -842,9 +778,7 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line)
 // Build the unnamed object a compound literal names.
 Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line)
 {
-    if (! type->at_complete) {
-        Log_ShowErrorAt(line, "a compound literal of an incomplete type has no size");
-    }
+    Err_AssertAt(line, type->at_complete, ERR_PAR_LITERAL_INCOMPLETE);
 
     Ast_Node *list = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
     list->an_body = items;
@@ -869,9 +803,7 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line)
 // Reject an object whose type has no size.
 void Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line)
 {
-    if (! type->at_complete && Par_DeclStorage != AST_STORAGE_EXTERN) {
-        Log_ShowErrorAt(line, "'%s' has an incomplete type", name);
-    }
+    Err_AssertAt(line, type->at_complete || Par_DeclStorage == AST_STORAGE_EXTERN, ERR_PAR_OBJECT_INCOMPLETE, name);
 }
 
 // Declare one file-scope name of the declaration being parsed.
@@ -917,9 +849,7 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
     if (! init) {
         return Ast_NewNode(AST_NODE_KIND_NOP, line);
     }
-    if (! var) {
-        Log_ShowErrorAt(line, "a typedef takes no initializer");
-    }
+    Err_AssertAt(line, var, ERR_PAR_TYPEDEF_INITIALIZED);
     if (var->av_global) {
         var->av_init = Par_FlattenInit(var->av_type, init, line);
         return Ast_NewNode(AST_NODE_KIND_NOP, line);
@@ -1067,9 +997,7 @@ Ast_Node *Par_Designator(char *name, Ast_Line line)
     }
 
     Ast_Func *fn = Par_FindFunction(name);
-    if (! fn) {
-        Log_ShowErrorAt(line, "use of undeclared identifier '%s'", name);
-    }
+    Err_AssertAt(line, fn, ERR_PAR_UNDECLARED, name);
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_FUNCADDR, line);
     node->an_funcname = name;
     return node;
