@@ -12,6 +12,7 @@ static Ast_TypeProto    Par_CurProto;
 static bool             Par_CurStatic;
 static Ast_Type        *Par_CurRetType;
 static bool             Par_InFunction;
+static Ast_Var         *Par_CurFuncVar;
 
 // Serial number of the next compound literal's object.
 static int32_t Par_CompoundCount;
@@ -1124,6 +1125,7 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
     Par_CurVariadic  = type->at_variadic;
     Par_CurProto     = type->at_proto;
     Par_InFunction   = true;
+    Par_CurFuncVar   = NULL;
 
     Par_DeclarePrototype(decl->pc_name, type);
 
@@ -1156,6 +1158,32 @@ void Par_EndFunction(Ast_Node *body)
     Par_InFunction = false;
 }
 
+// Return the array __func__ names in the function being defined.
+Ast_Var *Par_FindFuncName(const char *name, Ast_Line line)
+{
+    if (! Par_InFunction || strcmp(name, PAR_FUNC_NAME) != 0) {
+        return NULL;
+    }
+    if (Par_CurFuncVar) {
+        return Par_CurFuncVar;
+    }
+
+    size_t len = strlen(Par_CurFuncName);
+    Ast_Node *chars = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
+    Ast_Node **tail = &chars->an_body;
+    char *symbol = Str_Format("%s.%s", Par_CurFuncName, PAR_FUNC_NAME);
+    Ast_Type *type = Ast_NewArray(Ast_Qualify(&Ast_TypeChar, AST_QUAL_CONST), (int32_t) len + 1);
+
+    for (size_t i = 0; i <= len; i++) {
+        *tail = Ast_NewUnary(AST_NODE_KIND_INIT, Ast_NewNum(Par_CurFuncName[i], line), line);
+        tail = &(*tail)->an_next;
+    }
+    Par_CurFuncVar = Ast_DeclareGlobal(symbol, type, line);
+    Par_CurFuncVar->av_storage = AST_STORAGE_STATIC;
+    Par_CurFuncVar->av_init = Par_FlattenInit(type, chars, line);
+    return Par_CurFuncVar;
+}
+
 // Declare one more top-level name after a comma.
 void Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line)
 {
@@ -1167,6 +1195,9 @@ void Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line)
 Ast_Node *Par_Designator(char *name, Ast_Line line)
 {
     Ast_Var *var = Ast_FindVar(name);
+    if (! var) {
+        var = Par_FindFuncName(name, line);
+    }
     if (var) {
         return Ast_NewVarNode(var, line);
     }

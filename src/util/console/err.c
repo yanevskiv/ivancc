@@ -11,6 +11,7 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
 
     [ERR_PP_COMMENT_UNTERMINATED]       = { "ERR_PP_COMMENT_UNTERMINATED",       "unterminated comment" },
     [ERR_PP_DIRECTIVE_UNKNOWN]          = { "ERR_PP_DIRECTIVE_UNKNOWN",          "invalid preprocessing directive #%.*s" },
+    [ERR_PP_EXTRA_TOKENS]               = { "ERR_PP_EXTRA_TOKENS",               "extra tokens at end of #%.*s directive" },
     [ERR_PP_INCLUDE_MALFORMED]          = { "ERR_PP_INCLUDE_MALFORMED",          "#include expects \"FILENAME\" or <FILENAME>" },
     [ERR_PP_INCLUDE_NOT_FOUND]          = { "ERR_PP_INCLUDE_NOT_FOUND",          "include file '%s' not found" },
     [ERR_PP_INCLUDE_TOO_DEEP]           = { "ERR_PP_INCLUDE_TOO_DEEP",           "#include nested more than %d deep" },
@@ -27,7 +28,6 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PP_COND_UNTERMINATED]          = { "ERR_PP_COND_UNTERMINATED",          "unterminated #%.*s" },
     [ERR_PP_COND_WITHOUT_IF]            = { "ERR_PP_COND_WITHOUT_IF",            "#%.*s without #if" },
     [ERR_PP_COND_AFTER_ELSE]            = { "ERR_PP_COND_AFTER_ELSE",            "#%.*s after #else" },
-    [ERR_PP_COND_EXTRA_TOKENS]          = { "ERR_PP_COND_EXTRA_TOKENS",          "extra tokens at end of #%.*s directive" },
     [ERR_PP_DEFINED_NAME_MISSING]       = { "ERR_PP_DEFINED_NAME_MISSING",       "operator \"defined\" requires an identifier" },
     [ERR_PP_DEFINED_PAREN_MISSING]      = { "ERR_PP_DEFINED_PAREN_MISSING",      "missing ')' after \"defined\"" },
     [ERR_PP_EXPR_EMPTY]                 = { "ERR_PP_EXPR_EMPTY",                 "#%.*s with no expression" },
@@ -40,6 +40,10 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PP_EXPR_FLOAT]                 = { "ERR_PP_EXPR_FLOAT",                 "floating constant in preprocessor expression" },
     [ERR_PP_EXPR_SUFFIX_INVALID]        = { "ERR_PP_EXPR_SUFFIX_INVALID",        "invalid suffix \"%s\" on integer constant" },
     [ERR_PP_EXPR_TOO_LARGE]             = { "ERR_PP_EXPR_TOO_LARGE",             "integer constant is too large for its type" },
+    [ERR_PP_LINE_NUMBER_MISSING]        = { "ERR_PP_LINE_NUMBER_MISSING",        "#line expects a line number" },
+    [ERR_PP_LINE_NUMBER_INVALID]        = { "ERR_PP_LINE_NUMBER_INVALID",        "\"%.*s\" after #line is not a positive integer" },
+    [ERR_PP_LINE_OUT_OF_RANGE]          = { "ERR_PP_LINE_OUT_OF_RANGE",          "line number out of range" },
+    [ERR_PP_LINE_NAME_INVALID]          = { "ERR_PP_LINE_NAME_INVALID",          "\"%.*s\" is not a valid filename" },
 
     [ERR_LEX_UNEXPECTED_CHAR]           = { "ERR_LEX_UNEXPECTED_CHAR",           "unexpected character '%s'" },
 
