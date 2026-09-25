@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include "util/log.h"
+#include "util/err.h"
 #include "util/str.h"
 #include "syntax/sem.h"
 
@@ -211,9 +211,7 @@ bool Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, 
         } break;
         case AST_NODE_KIND_DIV:
         case AST_NODE_KIND_MOD: {
-            if (rhs == 0) {
-                Log_ShowErrorAt(line, "division by zero in a constant expression");
-            }
+            Err_AssertAt(line, rhs != 0, ERR_SEM_DIVISION_BY_ZERO);
             if (sign == AST_TYPE_UNSIGNED) {
                 *value = (int64_t) (kind == AST_NODE_KIND_DIV ? ulhs / urhs : ulhs % urhs);
             } else {
@@ -385,9 +383,7 @@ Ast_Type *Sem_CalleeType(Ast_Node *node)
     if (type && type->at_kind == AST_TYPE_KIND_PTR) {
         type = type->at_base;
     }
-    if (! type || type->at_kind != AST_TYPE_KIND_FUNC) {
-        Log_ShowErrorAt(node->an_line, "called object is not a function or function pointer");
-    }
+    Err_AssertAt(node->an_line, type && type->at_kind == AST_TYPE_KIND_FUNC, ERR_SEM_CALL_NOT_FUNCTION);
     return type;
 }
 
@@ -400,14 +396,10 @@ void Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVariadic variadic, Ast
         return;
     }
     if (variadic == AST_TYPE_VARIADIC) {
-        if (given < want) {
-            Log_ShowErrorAt(node->an_line, "too few arguments to %s: got %d, expected at least %d", what, given, want);
-        }
+        Err_AssertAt(node->an_line, given >= want, ERR_SEM_ARGS_TOO_FEW, what, given, want);
         return;
     }
-    if (given != want) {
-        Log_ShowErrorAt(node->an_line, "wrong number of arguments to %s: got %d, expected %d", what, given, want);
-    }
+    Err_AssertAt(node->an_line, given == want, ERR_SEM_ARGS_WRONG_COUNT, what, given, want);
 }
 
 // Convert a call's arguments to the types its parameters name.
@@ -479,9 +471,7 @@ void Sem_Arith(Ast_Node *node)
     }
 
     if (Sem_IsPointer(lhs) && Sem_IsPointer(rhs)) {
-        if (node->an_kind != AST_NODE_KIND_SUB) {
-            Log_ShowErrorAt(node->an_line, "cannot add two pointers");
-        }
+        Err_AssertAt(node->an_line, node->an_kind == AST_NODE_KIND_SUB, ERR_SEM_ADD_POINTERS);
 
         Ast_Node *diff = Ast_NewBinary(AST_NODE_KIND_SUB, node->an_lhs, node->an_rhs, node->an_line);
         diff->an_type = &Ast_TypeInt;
@@ -495,9 +485,7 @@ void Sem_Arith(Ast_Node *node)
     }
 
     if (Sem_IsPointer(rhs)) {
-        if (node->an_kind != AST_NODE_KIND_ADD) {
-            Log_ShowErrorAt(node->an_line, "cannot subtract a pointer from an integer");
-        }
+        Err_AssertAt(node->an_line, node->an_kind == AST_NODE_KIND_ADD, ERR_SEM_SUB_POINTER_FROM_INT);
         node->an_lhs  = Sem_ScaleBy(node->an_lhs, rhs->at_base->at_size);
         node->an_type = Sem_Decay(rhs);
         return;
@@ -527,9 +515,7 @@ void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
     if (! node) {
         return;
     }
-    if (node->an_kind == AST_NODE_KIND_GOTO && ! Sem_FindLabel(body, node->an_funcname)) {
-        Log_ShowErrorAt(node->an_line, "goto names an undefined label '%s'", node->an_funcname);
-    }
+    Err_AssertAt(node->an_line, node->an_kind != AST_NODE_KIND_GOTO || Sem_FindLabel(body, node->an_funcname), ERR_SEM_GOTO_UNDEFINED, node->an_funcname);
     Sem_CheckGotos(node->an_lhs, body);
     Sem_CheckGotos(node->an_then, body);
     Sem_CheckGotos(node->an_els, body);
@@ -546,10 +532,7 @@ void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
 
     if (node->an_kind == AST_NODE_KIND_CASE || node->an_kind == AST_NODE_KIND_DEFAULT) {
         for (Ast_Node *seen = sw->an_cases; seen; seen = seen->an_case_next) {
-            if (seen->an_kind == node->an_kind
-                && (node->an_kind == AST_NODE_KIND_DEFAULT || seen->an_val == node->an_val)) {
-                Log_ShowErrorAt(node->an_line, "duplicate case in switch");
-            }
+            Err_AssertAt(node->an_line, seen->an_kind != node->an_kind || (node->an_kind != AST_NODE_KIND_DEFAULT && seen->an_val != node->an_val), ERR_SEM_CASE_DUPLICATE);
         }
         if (*tail) {
             (*tail)->an_case_next = node;
@@ -646,12 +629,8 @@ void Sem_Node(Ast_Node *node)
                 node->an_type = node->an_lhs->an_type;
                 break;
             }
-            if (! Sem_IsLvalue(node->an_lhs)) {
-                Log_ShowErrorAt(node->an_line, "cannot take the address of this expression");
-            }
-            if (node->an_lhs->an_kind == AST_NODE_KIND_MEMBER && node->an_lhs->an_member->am_bits) {
-                Log_ShowErrorAt(node->an_line, "cannot take the address of a bit-field");
-            }
+            Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_ADDRESS_NOT_LVALUE);
+            Err_AssertAt(node->an_line, node->an_lhs->an_kind != AST_NODE_KIND_MEMBER || ! node->an_lhs->an_member->am_bits, ERR_SEM_ADDRESS_BITFIELD);
             node->an_type = Ast_NewPointer(node->an_lhs->an_type);
         } break;
 
@@ -660,30 +639,18 @@ void Sem_Node(Ast_Node *node)
                 node->an_type = node->an_lhs->an_type;
                 break;
             }
-            if (! Sem_IsPointer(node->an_lhs->an_type)) {
-                Log_ShowErrorAt(node->an_line, "indirection requires a pointer operand");
-            }
-            if (node->an_lhs->an_type->at_base->at_kind == AST_TYPE_KIND_VOID) {
-                Log_ShowErrorAt(node->an_line, "cannot dereference a pointer to void");
-            }
-            if (! node->an_lhs->an_type->at_base->at_complete) {
-                Log_ShowErrorAt(node->an_line, "cannot dereference a pointer to an incomplete type");
-            }
+            Err_AssertAt(node->an_line, Sem_IsPointer(node->an_lhs->an_type), ERR_SEM_DEREF_NOT_POINTER);
+            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_base->at_kind != AST_TYPE_KIND_VOID, ERR_SEM_DEREF_VOID);
+            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_base->at_complete, ERR_SEM_DEREF_INCOMPLETE);
             node->an_type = node->an_lhs->an_type->at_base;
         } break;
 
         case AST_NODE_KIND_MEMBER: {
             Ast_Type *type = node->an_lhs->an_type;
-            if (! Sem_IsAggregate(type)) {
-                Log_ShowErrorAt(node->an_line, "request for member '%s' in something that is not a struct or union", node->an_memname);
-            }
-            if (! type->at_complete) {
-                Log_ShowErrorAt(node->an_line, "'%s' is an incomplete type", Sem_TypeName(type));
-            }
+            Err_AssertAt(node->an_line, Sem_IsAggregate(type), ERR_SEM_MEMBER_NOT_AGGREGATE, node->an_memname);
+            Err_AssertAt(node->an_line, type->at_complete, ERR_SEM_MEMBER_INCOMPLETE, Sem_TypeName(type));
             node->an_member = Ast_FindMember(type, node->an_memname);
-            if (! node->an_member) {
-                Log_ShowErrorAt(node->an_line, "no member named '%s' in '%s'", node->an_memname, Sem_TypeName(type));
-            }
+            Err_AssertAt(node->an_line, node->an_member, ERR_SEM_MEMBER_UNKNOWN, node->an_memname, Sem_TypeName(type));
             node->an_type = node->an_member->am_type;
         } break;
 
@@ -704,23 +671,15 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_ASSIGN: {
-            if (! Sem_IsLvalue(node->an_lhs)) {
-                Log_ShowErrorAt(node->an_line, "expression is not assignable");
-            }
-            if (node->an_lhs->an_type->at_kind == AST_TYPE_KIND_ARRAY) {
-                Log_ShowErrorAt(node->an_line, "cannot assign to an array");
-            }
-            if (Sem_IsAggregate(node->an_lhs->an_type) && ! Sem_SameType(node->an_lhs->an_type, node->an_rhs->an_type)) {
-                Log_ShowErrorAt(node->an_line, "cannot assign a value of a different struct or union type");
-            }
+            Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
+            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_kind != AST_TYPE_KIND_ARRAY, ERR_SEM_ASSIGN_ARRAY);
+            Err_AssertAt(node->an_line, ! Sem_IsAggregate(node->an_lhs->an_type) || Sem_SameType(node->an_lhs->an_type, node->an_rhs->an_type), ERR_SEM_ASSIGN_AGGREGATE_MISMATCH);
             node->an_type = node->an_lhs->an_type;
             node->an_rhs  = Sem_Convert(node->an_rhs, node->an_type);
         } break;
 
         case AST_NODE_KIND_OPASSIGN: {
-            if (! Sem_IsLvalue(node->an_lhs)) {
-                Log_ShowErrorAt(node->an_line, "expression is not assignable");
-            }
+            Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
             Ast_Type *type = node->an_lhs->an_type;
             if (Sem_IsPointer(type) && (node->an_op == AST_NODE_KIND_ADD || node->an_op == AST_NODE_KIND_SUB)) {
                 node->an_rhs = Sem_ScaleBy(node->an_rhs, type->at_base->at_size);
@@ -729,9 +688,7 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_POSTINC: {
-            if (! Sem_IsLvalue(node->an_lhs)) {
-                Log_ShowErrorAt(node->an_line, "expression is not assignable");
-            }
+            Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
             Ast_Type *type = node->an_lhs->an_type;
             if (Sem_IsPointer(type)) {
                 node->an_val *= type->at_base->at_size;
@@ -756,9 +713,7 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_VA_START: {
-            if (Sem_CurFunc->af_variadic == AST_TYPE_FIXED) {
-                Log_ShowErrorAt(node->an_line, "__builtin_va_start outside a variadic function");
-            }
+            Err_AssertAt(node->an_line, Sem_CurFunc->af_variadic != AST_TYPE_FIXED, ERR_SEM_VA_START_FIXED);
             node->an_type = &Ast_TypeInt;
         } break;
 
@@ -767,9 +722,7 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_CASE: {
-            if (! Sem_Fold(node->an_cond, &node->an_val)) {
-                Log_ShowErrorAt(node->an_line, "case label is not a constant");
-            }
+            Err_AssertAt(node->an_line, Sem_Fold(node->an_cond, &node->an_val), ERR_SEM_CASE_NOT_CONSTANT);
         } break;
 
         case AST_NODE_KIND_SWITCH: {

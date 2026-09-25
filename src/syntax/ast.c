@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/log.h"
+#include "util/err.h"
 #include "util/str.h"
 #include "syntax/ast.h"
 
@@ -287,28 +287,18 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
     for (Ast_Member *member = members; member; member = member->am_next) {
         member->am_owner = type;
         if (member->am_flexible) {
-            if (type->at_kind == AST_TYPE_KIND_UNION) {
-                Log_ShowErrorAt(member->am_line, "a union cannot have a flexible array member");
-            }
-            if (member->am_next) {
-                Log_ShowErrorAt(member->am_line, "flexible array member '%s' must come last", member->am_name);
-            }
-            if (member == members) {
-                Log_ShowErrorAt(member->am_line, "a struct needs a member before a flexible array member");
-            }
+            Err_AssertAt(member->am_line, type->at_kind != AST_TYPE_KIND_UNION, ERR_AST_FLEXIBLE_IN_UNION);
+            Err_AssertAt(member->am_line, ! member->am_next, ERR_AST_FLEXIBLE_NOT_LAST, member->am_name);
+            Err_AssertAt(member->am_line, member != members, ERR_AST_FLEXIBLE_ALONE);
             member->am_offset = Ast_AlignTo(bits, member->am_type->at_align * AST_BITS_PER_BYTE) / AST_BITS_PER_BYTE;
             if (member->am_type->at_align > align) {
                 align = member->am_type->at_align;
             }
             continue;
         }
-        if (! member->am_type->at_complete) {
-            Log_ShowErrorAt(member->am_line, "member '%s' has an incomplete type", member->am_name);
-        }
+        Err_AssertAt(member->am_line, member->am_type->at_complete, ERR_AST_MEMBER_INCOMPLETE, member->am_name);
         for (Ast_Member *seen = members; seen != member; seen = seen->am_next) {
-            if (seen->am_name && member->am_name && strcmp(seen->am_name, member->am_name) == 0) {
-                Log_ShowErrorAt(member->am_line, "duplicate member '%s'", member->am_name);
-            }
+            Err_AssertAt(member->am_line, ! seen->am_name || ! member->am_name || strcmp(seen->am_name, member->am_name) != 0, ERR_AST_MEMBER_DUPLICATE, member->am_name);
         }
         if (member->am_type->at_align > align) {
             align = member->am_type->at_align;
@@ -330,9 +320,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
     }
 
     Ast_Member *named = Ast_NamedMembers(members);
-    if (! named) {
-        Log_ShowErrorAt(line, "an aggregate must declare at least one named member");
-    }
+    Err_AssertAt(line, named, ERR_AST_AGGREGATE_UNNAMED);
 
     type->at_members  = named;
     type->at_complete = AST_TYPE_COMPLETE;
@@ -622,9 +610,7 @@ void Ast_DeclareEnumConst(const char *name, int64_t value)
 // Intern a decoded string literal of len bytes and return its table slot.
 size_t Ast_AddString(char *str, size_t len, size_t width)
 {
-    if (Ast_NumStrings >= AST_MAX_STRINGS) {
-        Log_ShowError("too many string literals (max %d)", AST_MAX_STRINGS);
-    }
+    Err_Assert(Ast_NumStrings < AST_MAX_STRINGS, ERR_AST_TOO_MANY_STRINGS, AST_MAX_STRINGS);
     Ast_Strings[Ast_NumStrings].as_data  = str;
     Ast_Strings[Ast_NumStrings].as_len   = len;
     Ast_Strings[Ast_NumStrings].as_width = width;
