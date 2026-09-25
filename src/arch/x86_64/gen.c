@@ -1,8 +1,9 @@
 // C source file for x86-64 code generation.
 
+#include <stdlib.h>
 #include <string.h>
 
-#include "util/log.h"
+#include "util/err.h"
 #include "syntax/ast.h"
 #include "syntax/sem.h"
 #include "object/elf.h"
@@ -129,9 +130,7 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
         case AST_NODE_KIND_ASSIGN:
         case AST_NODE_KIND_COMMA:
         case AST_NODE_KIND_COND: {
-            if (! Sem_IsAggregate(node->an_type)) {
-                Log_ShowErrorAt(node->an_line, "codegen: not an lvalue");
-            }
+            Err_AssertAt(node->an_line, Sem_IsAggregate(node->an_type), ERR_GEN_NOT_LVALUE);
             Gen_x86_64_EmitExpr(node);
         } break;
         case AST_NODE_KIND_COMPOUND: {
@@ -141,7 +140,7 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
             Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_var->av_offset, ASM_X86_64_REG_RAX);
         } break;
         default: {
-            Log_ShowErrorAt(node->an_line, "codegen: not an lvalue");
+            Err_RaiseAt(node->an_line, ERR_GEN_NOT_LVALUE);
         }
     }
 }
@@ -620,7 +619,7 @@ void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, Ast_Line lin
             Gen_x86_64_EmitShift(sign, ASM_X86_64_REG_RAX);
         } break;
         default: {
-            Log_ShowErrorAt(line, "codegen: unexpected compound assignment %d", op);
+            Err_RaiseAt(line, ERR_GEN_UNEXPECTED_OPASSIGN, op);
         }
     }
 }
@@ -863,7 +862,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                     Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
                 } break;
                 default: {
-                    Log_ShowErrorAt(node->an_line, "codegen: unexpected node kind %d", node->an_kind);
+                    Err_RaiseAt(node->an_line, ERR_GEN_UNEXPECTED_EXPR, node->an_kind);
                 }
             }
         }
@@ -978,15 +977,11 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Asm_x86_64_EmitJmp(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_funcname);
         } break;
         case AST_NODE_KIND_BREAK: {
-            if (Gen_x86_64_BreakId < 0) {
-                Log_ShowErrorAt(node->an_line, "break outside a loop");
-            }
+            Err_AssertAt(node->an_line, Gen_x86_64_BreakId >= 0, ERR_GEN_BREAK_OUTSIDE_LOOP);
             Asm_x86_64_EmitJmp(".L.brk.%d", Gen_x86_64_BreakId);
         } break;
         case AST_NODE_KIND_CONTINUE: {
-            if (Gen_x86_64_ContinueId < 0) {
-                Log_ShowErrorAt(node->an_line, "continue outside a loop");
-            }
+            Err_AssertAt(node->an_line, Gen_x86_64_ContinueId >= 0, ERR_GEN_CONTINUE_OUTSIDE_LOOP);
             Asm_x86_64_EmitJmp(".L.cnt.%d", Gen_x86_64_ContinueId);
         } break;
         case AST_NODE_KIND_BLOCK: {
@@ -1006,7 +1001,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             // empty
         } break;
         default: {
-            Log_ShowErrorAt(node->an_line, "codegen: unexpected statement kind %d", node->an_kind);
+            Err_RaiseAt(node->an_line, ERR_GEN_UNEXPECTED_STMT, node->an_kind);
         }
     }
 }
@@ -1082,22 +1077,14 @@ void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var
     int64_t val = 0;
     const char *symbol = NULL;
 
-    if (offset + size > var->av_type->at_size) {
-        Log_ShowErrorAt(var->av_line, "initializer for '%s' is larger than it is", var->av_name);
-    }
+    Err_AssertAt(var->av_line, offset + size <= var->av_type->at_size, ERR_GEN_INIT_TOO_LARGE, var->av_name);
     if (Sem_FoldAddr(item->an_lhs, &symbol)) {
-        if (size != WORD_SIZE) {
-            Log_ShowErrorAt(var->av_line, "initializer for '%s' needs a pointer to hold an address", var->av_name);
-        }
-        if (*naddrs == GEN_X86_64_MAX_ADDRS) {
-            Log_ShowErrorAt(var->av_line, "initializer for '%s' holds more addresses than %d", var->av_name, GEN_X86_64_MAX_ADDRS);
-        }
+        Err_AssertAt(var->av_line, size == WORD_SIZE, ERR_GEN_INIT_ADDRESS_WIDTH, var->av_name);
+        Err_AssertAt(var->av_line, *naddrs < GEN_X86_64_MAX_ADDRS, ERR_GEN_INIT_TOO_MANY_ADDRESSES, var->av_name, GEN_X86_64_MAX_ADDRS);
         addrs[(*naddrs)++] = (Gen_x86_64_Addr) { offset, symbol };
         return;
     }
-    if (! Sem_Fold(item->an_lhs, &val)) {
-        Log_ShowErrorAt(var->av_line, "initializer for '%s' is not a constant", var->av_name);
-    }
+    Err_AssertAt(var->av_line, Sem_Fold(item->an_lhs, &val), ERR_GEN_INIT_NOT_CONSTANT, var->av_name);
 
     if (item->an_member) {
         int64_t mask = (((int64_t) 1 << item->an_member->am_bits) - 1) << item->an_member->am_bitoff;

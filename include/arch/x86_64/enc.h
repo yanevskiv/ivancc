@@ -5,7 +5,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "util/file.h"
+#include <stdio.h>
 
 #include "object/elf.h"
 #include "arch/x86_64/asm.h"
@@ -186,6 +186,6 @@ void Enc_x86_64_BuildRelocs(void);
 void Enc_x86_64_Reset(void);
 void Enc_x86_64_BuildObject(void);
 Elf *Enc_x86_64_GetObject(void);
-bool Enc_x86_64_Write(File_Stream *out);
+bool Enc_x86_64_Write(FILE *out);
 
 #endif // ENC_X86_64_H

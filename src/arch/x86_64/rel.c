@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "util/log.h"
+#include "util/err.h"
 #include "object/elf.h"
 #include "arch/x86_64/rel.h"
 
@@ -44,7 +44,7 @@ void Rel_x86_64_One(Elf_Sec *sec, const Elf_Rela *rel)
             Rel_x86_64_PatchLE(sec, rel->rel_offset, S + A, 8);
         } break;
         default: {
-            Log_ShowError("unsupported relocation type %u", rel->rel_type);
+            Err_Raise(ERR_REL_UNSUPPORTED_TYPE, rel->rel_type);
         }
     }
 }
