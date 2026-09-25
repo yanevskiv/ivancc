@@ -155,7 +155,7 @@ Pp_File *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir
     file->pf_dir = dir;
     file->pf_system = dir != PP_DIR_NONE && dir == Pp_SysDir;
     file->pf_len = Buf_Len(text) - 1;
-    file->pf_text = Buf_Take(text);
+    file->pf_text = Buf_Release(text);
 
     Pp_Files = realloc(Pp_Files, (Pp_NumFiles + 1) * sizeof(*Pp_Files));
     Pp_Files[Pp_NumFiles++] = file;
@@ -366,7 +366,7 @@ char *Pp_QuoteName(const char *name)
         Buf_PutByte(text, *name);
     }
     Buf_PutByte(text, '"');
-    return Buf_Take(text);
+    return Buf_Release(text);
 }
 
 // True if a directive's token can name a macro.
@@ -715,7 +715,7 @@ Pp_Token *Pp_Stringize(const Pp_Token *list, const Pp_Token *hash)
 
     str->pt_kind = PP_TOKEN_STRING;
     str->pt_len = Buf_Len(text);
-    str->pt_text = Buf_Take(text);
+    str->pt_text = Buf_Release(text);
     return str;
 }
 
@@ -983,7 +983,7 @@ Pp_Token *Pp_HeaderFromTokens(const Pp_Token *list, Ast_Line line)
     Err_AssertAt(line, tok, ERR_PP_INCLUDE_MALFORMED);
     Buf_PutByte(name, '>');
     operand->pt_len = Buf_Len(name);
-    operand->pt_text = Buf_Take(name);
+    operand->pt_text = Buf_Release(name);
     return operand;
 }
 

@@ -1105,14 +1105,14 @@ void        Buf_PutByte(Buf *buf, char byte);
 void        Buf_PutBytes(Buf *buf, const char *data, size_t len);
 void        Buf_PutText(Buf *buf, const char *text);
 void        Buf_Print(Buf *buf, const char *fmt, ...);
-char       *Buf_Take(Buf *buf);
+char       *Buf_Release(Buf *buf);
 void        Buf_Free(Buf *buf);
 ```
 
 - The struct is opaque. Its fields live in `buf.c`, and callers go through
   `Buf_Data` and `Buf_Len`.
 - `Buf_Print` calls `vsnprintf` twice, once to measure and once to write.
-- `Buf_Take` frees the buffer and hands its data to the caller.
+- `Buf_Release` frees the buffer and hands its data to the caller.
 - `Elf_Buffer` stays in `elf.c`. The ELF code is kept independent of the rest of
   the tree, and `Elf_Buffer` is a binary writer, not a string.
 
