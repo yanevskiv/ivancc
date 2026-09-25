@@ -1,36 +1,40 @@
-// C header file for diagnostics.
+// C header file for diagnostic messages.
 
 #ifndef LOG_H
 #define LOG_H
 
-#include <stdlib.h>
+#include <stdarg.h>
+#include <stdint.h>
 
-#include "util/file.h"
+// Program name a message carries before Log_SetProgramName.
+#define LOG_PROGRAM_DEFAULT "ivancc"
 
-// Print a diagnostic and exit.
-#define Log_ShowError(...)                            \
-    do {                                              \
-        File_Print(File_Err(), "cc: error: ");        \
-        File_Print(File_Err(), __VA_ARGS__);          \
-        File_Print(File_Err(), "\n");                 \
-        exit(1);                                      \
-    } while (0)
+// Line of a message that names no line.
+#define LOG_LINE_NONE 0
 
-// Print a diagnostic naming the source line it came from and exit.
-#define Log_ShowErrorAt(line, ...)                             \
-    do {                                                       \
-        File_Print(File_Err(), "cc: error: line %u: ", (line)); \
-        File_Print(File_Err(), __VA_ARGS__);                   \
-        File_Print(File_Err(), "\n");                          \
-        exit(1);                                               \
-    } while (0)
+// Map a line of the compiled text to its file and source line.
+typedef const char *(*Log_LineLocator)(uint32_t line, uint32_t *source);
 
-// Print a warning diagnostic and continue.
-#define Log_ShowWarning(...)                          \
-    do {                                              \
-        File_Print(File_Err(), "cc: warning: ");      \
-        File_Print(File_Err(), __VA_ARGS__);          \
-        File_Print(File_Err(), "\n");                 \
-    } while (0)
+// Kinds of message.
+typedef enum Log_Severity Log_Severity;
+enum Log_Severity {
+    LOG_SEVERITY_ERROR,
+    LOG_SEVERITY_WARNING,
+    LOG_SEVERITY_INFO,
+    LOG_SEVERITY_DEBUG,
+    LOG_SEVERITY_COUNT
+};
+
+// Setup
+void Log_SetProgramName(const char *name);
+void Log_SetLineLocator(Log_LineLocator locator);
+
+// Messages
+void Log_ShowError(const char *fmt, ...);
+void Log_ShowWarning(const char *fmt, ...);
+void Log_ShowInfo(const char *fmt, ...);
+void Log_ShowDebug(const char *fmt, ...);
+void Log_Show(Log_Severity severity, uint32_t line, const char *fmt, ...);
+void Log_ShowVa(Log_Severity severity, uint32_t line, const char *fmt, va_list ap);
 
 #endif // LOG_H
