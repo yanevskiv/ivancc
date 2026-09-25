@@ -390,7 +390,7 @@ Pp_Value Pp_EvalCond(Pp_Expr *ex, Pp_Eval mode);
 Pp_Value Pp_EvalBinary(Pp_Expr *ex, Pp_Prec min, Pp_Eval mode);
 Pp_Value Pp_EvalUnary(Pp_Expr *ex, Pp_Eval mode);
 Pp_Value Pp_EvalNumber(const Pp_Token *tok, Ast_Line line);
-Pp_Value Pp_EvalChar(const Pp_Token *tok);
+Pp_Value Pp_EvalChar(const Pp_Token *tok, Ast_Line line);
 bool     Pp_IsFloat(const Pp_Token *tok);
 bool     Pp_ReadSuffix(const char *suffix, bool *marked);
 bool     Pp_FindOp(const Pp_Token *tok, Pp_Op *op);

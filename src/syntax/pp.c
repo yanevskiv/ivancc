@@ -1443,7 +1443,7 @@ Pp_Value Pp_EvalUnary(Pp_Expr *ex, Pp_Eval mode)
         return Pp_EvalNumber(tok, ex->pe_line);
     }
     if (tok->pt_kind == PP_TOKEN_CHAR) {
-        return Pp_EvalChar(tok);
+        return Pp_EvalChar(tok, ex->pe_line);
     }
     if (Pp_TokenEquals(tok, "(")) {
         val = Pp_EvalComma(ex, mode);
@@ -1495,10 +1495,10 @@ Pp_Value Pp_EvalNumber(const Pp_Token *tok, Ast_Line line)
 }
 
 // Read the value of a character constant.
-Pp_Value Pp_EvalChar(const Pp_Token *tok)
+Pp_Value Pp_EvalChar(const Pp_Token *tok, Ast_Line line)
 {
     bool wide = tok->pt_text[0] == 'L';
-    Par_Num num = Par_CharLiteral(tok->pt_text + wide + 1, tok->pt_len - wide - 2, wide ? AST_TYPE_SIZE_INT : AST_TYPE_SIZE_CHAR);
+    Par_Num num = Par_CharLiteral(tok->pt_text + wide + 1, tok->pt_len - wide - 2, wide ? AST_TYPE_SIZE_INT : AST_TYPE_SIZE_CHAR, line);
     Pp_Value val = {
         .pv_bits     = (uintmax_t) num.pn_val,
         .pv_unsigned = false
