@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "object/elf.h"
+#include "arch/x86_64/load.h"
 
 // Bits in a byte, for turning an operand width into a count of bytes.
 #define EMU_X86_64_BITS_PER_BYTE 8
@@ -147,11 +147,11 @@ struct Emu_x86_64_Cpu {
     bool     ec_cf;      // the result carried out of an unsigned operand
     bool     ec_halted;  // the program asked to stop, or faulted
     int32_t  ec_status;  // the status it stopped with
-    const Elf_LoadImage *ec_img;
+    const Load_x86_64_Image *ec_img;
 };
 
 // Running
-void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img);
+void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Load_x86_64_Image *img);
 void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, const char *what, uint64_t addr);
 uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, Emu_x86_64_Reg reg, Emu_x86_64_OperandWidth width);
 void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, Emu_x86_64_Reg reg, uint64_t value, Emu_x86_64_OperandWidth width);
@@ -167,7 +167,7 @@ void Emu_x86_64_FlagsSub(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, Emu_x86_64
 void Emu_x86_64_FlagsAdd(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, Emu_x86_64_OperandWidth width);
 void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu);
 void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace);
-int32_t Emu_x86_64_Run(const Elf_LoadImage *img, Emu_x86_64_Trace trace);
+int32_t Emu_x86_64_Run(const Load_x86_64_Image *img, Emu_x86_64_Trace trace);
 
 // Decoding
 int64_t Emu_x86_64_ReadImm(const uint8_t *p, size_t n);

@@ -16,6 +16,13 @@
 // Target machine (e_machine).
 #define ELF_EM_X86_64 62
 
+// x86-64 relocation types, stored opaquely as an Elf_Rela's rel_type.
+#define R_X86_64_64    1
+#define R_X86_64_PC32  2
+#define R_X86_64_PLT32 4
+#define R_X86_64_32    10
+#define R_X86_64_32S   11
+
 // Section header types (sec_type).
 #define ELF_SHT_PROGBITS 1
 #define ELF_SHT_SYMTAB   2
@@ -197,33 +204,6 @@ struct Elf {
     const char *elf_err;     // why the last read failed, or NULL
 };
 
-// One -place request: load the named section at a fixed address.
-typedef struct Elf_LinkPlace Elf_LinkPlace;
-struct Elf_LinkPlace {
-    const char *lp_name;
-    uint64_t    lp_addr;
-};
-
-// Options controlling a link.
-typedef struct Elf_LinkOptions Elf_LinkOptions;
-struct Elf_LinkOptions {
-    const char     *lo_entry;        // entry symbol (NULL selects _start)
-    bool            lo_relocatable;  // -r: merge into an ET_REL object, keep relocs
-    Elf_LinkPlace  *lo_places;       // -place requests, in the order given
-    size_t          lo_nplaces;      // requests lo_places holds
-};
-
-// A loaded program: one flat buffer holding every PT_LOAD and a stack.
-typedef struct Elf_LoadImage Elf_LoadImage;
-struct Elf_LoadImage {
-    uint8_t  *li_mem;      // li_size bytes, zeroed and then filled
-    uint64_t  li_base;     // virtual address li_mem[0] stands for
-    uint64_t  li_size;     // bytes li_mem holds
-    uint64_t  li_entry;    // e_entry
-    uint64_t  li_stack;    // initial %rsp, 16-byte aligned
-    uint16_t  li_machine;  // e_machine, for the caller to accept or reject
-};
-
 // Buffers
 void   Elf_Buffer_Init(Elf_Buffer *buf);
 void   Elf_Buffer_Free(Elf_Buffer *buf);
@@ -283,25 +263,5 @@ uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr);
 bool     Elf_Write_Exec(const Elf *elf, FILE *out);
 bool     Elf_Write_File(const Elf *elf, FILE *out);
 bool     Elf_Write_Path(const Elf *elf, const char *path);
-
-// Linking
-int64_t  Elf_Link_SectionIndex(const Elf *elf, const Elf_Sec *target);
-int64_t  Elf_Link_SymbolIndex(const Elf *elf, const Elf_Sym *target);
-Elf_Sym *Elf_Link_FindGlobal(Elf *elf, const char *name);
-void     Elf_Link_Merge(Elf *out, Elf *in);
-void     Elf_Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths);
-void     Elf_Link_AddPlace(Elf_LinkOptions *opts, const char *name, uint64_t addr);
-uint64_t Elf_Link_PlacedAddr(const Elf_LinkOptions *opts, const char *name, bool *placed);
-void     Elf_Link_PlaceSections(Elf *elf, const Elf_LinkOptions *opts);
-void     Elf_Link_CheckDefined(Elf *elf);
-void     Elf_Link_Exec(Elf *elf, const Elf_LinkOptions *opts);
-Elf     *Elf_Link_Run(const char *const *paths, size_t npaths, const Elf_LinkOptions *opts);
-
-// Loading
-uint64_t Elf_Load_AlignDown(uint64_t addr, uint64_t align);
-uint64_t Elf_Load_AlignUp(uint64_t addr, uint64_t align);
-bool     Elf_Load_ReadExec(const char *path, Elf_LoadImage *img);
-void    *Elf_Load_At(const Elf_LoadImage *img, uint64_t vaddr, uint64_t size);
-void     Elf_Load_Free(Elf_LoadImage *img);
 
 #endif // ELF_H
