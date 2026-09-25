@@ -591,7 +591,7 @@ Elf *Enc_x86_64_GetObject(void)
 }
 
 // Write the encoded object to out.
-bool Enc_x86_64_Write(File_Stream *out)
+bool Enc_x86_64_Write(FILE *out)
 {
     return Elf_Write_File(Enc_x86_64_Out, out);
 }

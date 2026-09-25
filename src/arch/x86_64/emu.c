@@ -5,7 +5,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "util/file.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/emu.h"
 
@@ -45,7 +44,7 @@ void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img)
 // Report a fault against the instruction that caused it and stop the program.
 void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, const char *what, uint64_t addr)
 {
-    File_Print(File_Err(), "ivanemu: %s at 0x%llx from %%rip = 0x%llx\n", what, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+    fprintf(stderr, "ivanemu: %s at 0x%llx from %%rip = 0x%llx\n", what, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
     cpu->ec_halted = true;
     cpu->ec_status = EMU_X86_64_STATUS_FAULT;
 }
@@ -231,7 +230,7 @@ void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
             cpu->ec_status = cpu->ec_reg[EMU_X86_64_REG_RDI] & EMU_X86_64_MASK_8;
         } break;
         default: {
-            File_Print(File_Err(), "ivanemu: unimplemented syscall %llu from %%rip = 0x%llx\n", (Emu_TypeULLong) nr, (Emu_TypeULLong) cpu->ec_rip);
+            fprintf(stderr, "ivanemu: unimplemented syscall %llu from %%rip = 0x%llx\n", (Emu_TypeULLong) nr, (Emu_TypeULLong) cpu->ec_rip);
             cpu->ec_halted = true;
             cpu->ec_status = EMU_X86_64_STATUS_FAULT;
         }
@@ -253,7 +252,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
     if (trace == EMU_X86_64_TRACE) {
         char text[128];
         Emu_x86_64_Format(&insn, rip, text, sizeof(text));
-        File_Print(File_Err(), "%016llx: %s\n", (Emu_TypeULLong) rip, text);
+        fprintf(stderr, "%016llx: %s\n", (Emu_TypeULLong) rip, text);
     }
 
     uint64_t next = rip + insn.ei_len;
