@@ -3,23 +3,24 @@
 ## Naming
 
 - Every module must pick one short `PascalCase` prefix, roughly one per `.c`/`.h` pair.
-- Every name a module exports must carry that prefix: `Elf_`, `Link_`, `Str_`, `Ast_`.
-- Every public function must be named `Prefix_VerbNoun`: `Elf_BufReserve`, `Link_PlaceSections`.
-- Every type must be named `Prefix_Noun`: `Link_Options`, `Ast_Node`.
+- Every name a module exports must carry that prefix: `Elf_`, `Str_`, `Ast_`, `Gen_x86_64_`.
+- Every module under `arch/` must follow its prefix with the architecture, as `Gen_x86_64_` does.
+- Every public function must be named `Prefix_VerbNoun`: `Elf_SetEntry`, `Link_x86_64_PlaceSections`.
+- Every type must be named `Prefix_Noun`: `Link_x86_64_Options`, `Ast_Node`.
 - Every struct tag must match its typedef name.
 - Every struct and union field must carry a short lowercase tag derived from the type name.
 - Every field tag must be followed by an underscore, then the field name.
-- Every `Link_Options` field must start `lo_`, and every `Ast_Node` field must start `an_`.
+- Every `Link_x86_64_Options` field must start `lo_`, and every `Ast_Node` field must start `an_`.
 - Every field must stay unambiguous out of context: in a debugger, a grep, an error message.
 - Every macro constant and enum constant must be `SCREAMING_SNAKE_CASE`.
 - Every macro constant and enum constant must be prefixed with its module or type.
-- Every macro constant and enum constant must read like `ELF_LINK_MAX_PLACE`.
+- Every macro constant and enum constant must read like `GEN_X86_64_WORD_SIZE`.
 - Every enum that numbers a set must end with a `_COUNT` member, as `AST_TYPE_KIND_COUNT` does.
 - Every `_COUNT` member must take the value the enum gives it, never `= <the last member>`.
 - Every bound on such an enum must read `i < PREFIX_COUNT`, never `i <= PREFIX_LAST` or `+ 1`.
 - Every named sub-range must be marked by a `_FIRST_<name>` and a `_LAST_<name>` member.
 - Do not give a `_COUNT` to an enum of flag bits, of sizes or of values an external spec fixes.
-- Every function-like macro must be named as a function, as `Log_ShowErrorAt` is.
+- Every function-like macro must be named as a function, as `Err_AssertAt` is.
 - Every name fixed by an external spec must keep that spec's spelling, as `R_X86_64_PC32` does.
 - Every magic number must be named by a `#define` or an enum constant.
 - Every 0, 1 and NULL that stands for a quantity must be named too, as `AST_TYPE_SIZE_CHAR` is.
@@ -83,6 +84,9 @@
 - Every file-scope variable must be `static` and kept out of the header.
 - Every project include must carry its module path: `#include "syntax/ast.h"`.
 - Every `.c` file must include system headers first, then a blank line, then project headers.
+- Use only the standard C library and standard POSIX interfaces.
+- Do not use a GNU or other vendor extension, as `getopt_long_only` is.
+- Use `getopt_long` for command lines until the tools parse their own.
 - Do not make a function `static`.
 - Do not export a file-scope variable unless another module needs it, as with `Ast_Program`.
 
@@ -198,9 +202,9 @@ Voice:
   - Every stage guide must name its parts in the third sentence of that paragraph.
   - Every module a stage changed must have a part file, named `Guide<N>.<M>_<Module>.md`.
   - Every part must be numbered in the order the toolchain is built:
-    - Log, File, Str.
-    - Lexer, Parser, Ast, Sem, Elf.
-    - Asm, Gen, Rel, Enc, Txt, Emu.
+    - Log, Err, Fs, Str.
+    - Pp, Lexer, Parser, Ast, Sem, Elf.
+    - Asm, Gen, Enc, Txt, Link, Load, Emu.
     - Cc, As, Ld, Emu.
   - Do not give a part file to a module the stage did not touch.
 - Structure:
