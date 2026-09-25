@@ -620,7 +620,7 @@ void Sem_Node(Ast_Node *node)
 
         case AST_NODE_KIND_STR: {
             Ast_Str *str = Ast_StringAt(node->an_str_idx);
-            Ast_Type *elem = str->as_width > STR_NARROW_WIDTH ? &Ast_TypeInt : &Ast_TypeChar;
+            Ast_Type *elem = str->as_width > AST_TYPE_SIZE_CHAR ? &Ast_TypeInt : &Ast_TypeChar;
             node->an_type = Ast_NewArray(elem, (int32_t) (str->as_len / str->as_width + 1));
         } break;
 

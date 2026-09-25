@@ -20,7 +20,7 @@ ALNUM   [A-Za-z_0-9]
 <INITIAL,PP_HEADER>[ \t\f\v\r]+                 return PP_TOKEN_SPACE;
 <INITIAL,PP_HEADER>"//"[^\n]*                   return PP_TOKEN_SPACE;
 <INITIAL,PP_HEADER>"/*"([^*]|\*+[^*/])*\*+"/"   return PP_TOKEN_SPACE;
-<INITIAL,PP_HEADER>"/*"                         { Err_RaiseAt((Ast_Line) pplineno, ERR_PP_COMMENT_UNTERMINATED); }
+<INITIAL,PP_HEADER>"/*"                         return PP_TOKEN_OPEN_COMMENT;
 
 <PP_HEADER>\"[^"\n]*\"|"<"[^>\n]*">"           { BEGIN(INITIAL); return PP_TOKEN_HEADER_NAME; }
 <PP_HEADER>.|\n                                 { yyless(0); BEGIN(INITIAL); }
@@ -51,9 +51,11 @@ void Pp_Tokenize(Pp_File *file)
     YY_BUFFER_STATE buf = pp_scan_buffer(file->pf_text, file->pf_len + PP_SCAN_PADDING);
 
     pplineno = PP_LINE_FIRST;
+    BEGIN(INITIAL);
     for (;;) {
         Pp_TokenKind kind = (Pp_TokenKind) pplex();
 
+        Err_AssertAt((Ast_Line) pplineno, kind != PP_TOKEN_OPEN_COMMENT, ERR_PP_COMMENT_UNTERMINATED);
         if (kind == PP_TOKEN_SPACE) {
             flags |= PP_FLAG_SPACE;
             continue;
@@ -91,4 +93,17 @@ void Pp_Tokenize(Pp_File *file)
         flags = PP_FLAG_NONE;
     }
     pp_delete_buffer(buf);
+}
+
+// Lex text as exactly one token.
+bool Pp_LexOne(const char *text, size_t len, Pp_TokenKind *kind)
+{
+    bool whole = false;
+    YY_BUFFER_STATE buf = pp_scan_bytes(text, (int) len);
+
+    BEGIN(INITIAL);
+    *kind = (Pp_TokenKind) pplex();
+    whole = (size_t) ppleng == len;
+    pp_delete_buffer(buf);
+    return whole && *kind != PP_TOKEN_SPACE && *kind != PP_TOKEN_OPEN_COMMENT;
 }

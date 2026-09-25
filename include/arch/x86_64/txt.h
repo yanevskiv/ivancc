@@ -5,15 +5,28 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 
+#include "util/str.h"
 #include "arch/x86_64/asm.h"
+
+// Most digits an octal escape takes.
+#define TXT_X86_64_ESCAPE_OCTAL_DIGITS 3
 
 // Whether a string directive appends a terminating NUL.
 typedef enum Txt_x86_64_Terminate Txt_x86_64_Terminate;
 enum Txt_x86_64_Terminate {
     TXT_X86_64_BARE,      // .ascii
     TXT_X86_64_TERMINATED // .string and .asciz
+};
+
+// The bases a string escape is written in.
+typedef enum Txt_x86_64_Base Txt_x86_64_Base;
+enum Txt_x86_64_Base {
+    TXT_X86_64_BASE_OCTAL   = 8,
+    TXT_X86_64_BASE_DECIMAL = 10,
+    TXT_X86_64_BASE_HEX     = 16
 };
 
 // AT&T syntax writer
@@ -37,6 +50,8 @@ bool Txt_x86_64_Att_IsTarget(const char *text);
 bool Txt_x86_64_Att_IsAddress(const char *text);
 const char *Txt_x86_64_Att_ScanReg(const char *p);
 const char *Txt_x86_64_Att_ScanNumber(const char *p, int64_t *out);
+int32_t Txt_x86_64_Att_DigitValue(char c, Txt_x86_64_Base base);
+const char *Txt_x86_64_Att_ScanString(const char *p, Str_Buf *out);
 
 // AT&T syntax parser
 bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op);

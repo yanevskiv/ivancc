@@ -52,6 +52,9 @@
 // Name of the file that -D and -U turn into.
 #define PP_CMDLINE_NAME "<command line>"
 
+// Name a variadic macro's body gives its extra arguments.
+#define PP_VA_ARGS "__VA_ARGS__"
+
 // Forward declaration: a token's hide set is a list of these.
 typedef struct Pp_HideSet Pp_HideSet;
 
@@ -68,9 +71,11 @@ enum Pp_TokenKind {
     PP_TOKEN_STRING,
     PP_TOKEN_HEADER_NAME,
     PP_TOKEN_PUNCT,
-    PP_TOKEN_OTHER,      // a character no other kind takes
-    PP_TOKEN_SPACE,      // whitespace or a comment
+    PP_TOKEN_OTHER,        // a character no other kind takes
+    PP_TOKEN_SPACE,        // whitespace or a comment
     PP_TOKEN_NEWLINE,
+    PP_TOKEN_OPEN_COMMENT, // a comment with no end
+    PP_TOKEN_PLACEMARKER,  // an empty argument next to ##
     PP_TOKEN_KIND_COUNT
 };
 
@@ -80,6 +85,14 @@ enum Pp_Flags {
     PP_FLAG_NONE  = 0,
     PP_FLAG_BOL   = 1 << 0, // first token on its line
     PP_FLAG_SPACE = 1 << 1  // whitespace before it
+};
+
+// Kinds of macro.
+typedef enum Pp_MacroKind Pp_MacroKind;
+enum Pp_MacroKind {
+    PP_MACRO_OBJECT,
+    PP_MACRO_FUNCTION,
+    PP_MACRO_KIND_COUNT
 };
 
 // Which directive an include came from.
@@ -134,10 +147,22 @@ struct Pp_HideSet {
 
 // One macro definition.
 struct Pp_Macro {
-    char           *ma_name;
-    const Pp_Token *ma_body;  // replacement list, inside its file's tokens
-    size_t          ma_nbody;
-    Pp_Macro       *ma_next;  // next macro in its bucket
+    char            *ma_name;
+    Pp_MacroKind     ma_kind;
+    const Pp_Token **ma_params;   // names, then ... if variadic
+    size_t           ma_nparams;
+    bool             ma_variadic;
+    const Pp_Token  *ma_body;     // replacement list, inside its file's tokens
+    size_t           ma_nbody;
+    Pp_Macro        *ma_next;     // next macro in its bucket
+};
+
+// One argument of a macro call.
+typedef struct Pp_Arg Pp_Arg;
+struct Pp_Arg {
+    Pp_Token *pa_raw;      // tokens as written
+    Pp_Token *pa_full;     // tokens fully expanded
+    bool      pa_expanded; // pa_full is set
 };
 
 // One source file, read and tokenized.
@@ -193,17 +218,23 @@ void     Pp_Tokenize(Pp_File *file);
 
 // Tokens
 Pp_Token *Pp_CopyToken(const Pp_Token *tok);
+Pp_Token *Pp_CopyList(const Pp_Token *list);
 bool      Pp_TokenEquals(const Pp_Token *tok, const char *text);
+bool      Pp_SameSpelling(const Pp_Token *a, const Pp_Token *b);
+bool      Pp_IsHash(const Pp_Token *tok);
+bool      Pp_IsHashHash(const Pp_Token *tok);
 bool      Pp_ExpectsHeaderName(const Pp_File *file);
 bool      Pp_IsPunctPrefix(const char *text, size_t len);
 bool      Pp_NeedsSpace(const Pp_Token *prev, const Pp_Token *next);
+bool      Pp_LexOne(const char *text, size_t len, Pp_TokenKind *kind);
 
 // Macros
 bool      Pp_IsMacroName(const Pp_Token *tok);
 uint32_t  Pp_HashName(const char *text, size_t len);
 Pp_Macro *Pp_FindMacro(const char *text, size_t len);
-bool      Pp_SameBody(const Pp_Macro *macro, const Pp_Token *body, size_t nbody);
-void      Pp_DefineMacro(const Pp_Token *name, const Pp_Token *body, size_t nbody);
+bool      Pp_FindParam(const Pp_Macro *macro, const Pp_Token *tok, size_t *index);
+bool      Pp_SameMacro(const Pp_Macro *macro, const Pp_Macro *def);
+void      Pp_DefineMacro(const Pp_Token *name, const Pp_Macro *def);
 void      Pp_UndefMacro(const Pp_Token *name);
 void      Pp_PutDefine(Str_Buf *cmdline, const char *arg);
 void      Pp_PutUndef(Str_Buf *cmdline, const char *name);
@@ -211,10 +242,19 @@ void      Pp_PutUndef(Str_Buf *cmdline, const char *name);
 // Hide sets
 bool        Pp_HideSetHas(const Pp_HideSet *set, const Pp_Macro *macro);
 Pp_HideSet *Pp_HideSetAdd(Pp_HideSet *set, const Pp_Macro *macro);
+Pp_HideSet *Pp_HideSetIntersect(const Pp_HideSet *a, const Pp_HideSet *b);
+Pp_HideSet *Pp_HideSetUnion(Pp_HideSet *a, const Pp_HideSet *b);
 
 // Expansion
+const Pp_Token *Pp_PeekToken(const Pp_Reader *rd);
 const Pp_Token *Pp_ReadToken(Pp_Reader *rd);
+Pp_Arg         *Pp_ReadArgs(Pp_Reader *rd, const Pp_Macro *macro, const Pp_Token *name, const Pp_Token **close);
+Pp_Token       *Pp_ExpandArg(Pp_Arg *arg);
+Pp_Token       *Pp_Stringize(const Pp_Token *list, const Pp_Token *hash);
+void            Pp_PasteTokens(Pp_Token *left, const Pp_Token *right, Ast_Line line);
+Pp_Token       *Pp_Substitute(const Pp_Macro *macro, Pp_Arg *args, const Pp_Token *name);
 bool            Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok);
+Pp_Token       *Pp_ExpandAll(Pp_Reader *rd);
 Pp_Token       *Pp_ExpandRange(const Pp_File *file, size_t start, size_t end);
 
 // Include search
@@ -241,6 +281,8 @@ size_t Pp_SkipLine(const Pp_File *file, size_t pos);
 size_t Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos);
 void   Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include kind);
 void   Pp_RunDefine(const Pp_File *file, size_t pos);
+size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def);
+void   Pp_CheckBody(const Pp_Macro *def, Ast_Line line);
 void   Pp_RunUndef(const Pp_File *file, size_t pos);
 
 // Running

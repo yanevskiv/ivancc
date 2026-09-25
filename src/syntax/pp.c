@@ -162,12 +162,43 @@ Pp_Token *Pp_CopyToken(const Pp_Token *tok)
     return copy;
 }
 
+// Return a heap copy of a token list.
+Pp_Token *Pp_CopyList(const Pp_Token *list)
+{
+    Pp_Token *head = NULL;
+    Pp_Token **tail = &head;
+
+    for (; list; list = list->pt_next) {
+        *tail = Pp_CopyToken(list);
+        tail = &(*tail)->pt_next;
+    }
+    return head;
+}
+
 // True if a token is spelled text.
 bool Pp_TokenEquals(const Pp_Token *tok, const char *text)
 {
     size_t len = strlen(text);
 
     return tok->pt_len == len && memcmp(tok->pt_text, text, len) == 0;
+}
+
+// True if two tokens are spelled alike.
+bool Pp_SameSpelling(const Pp_Token *a, const Pp_Token *b)
+{
+    return a->pt_len == b->pt_len && memcmp(a->pt_text, b->pt_text, a->pt_len) == 0;
+}
+
+// True if a token is the # punctuator.
+bool Pp_IsHash(const Pp_Token *tok)
+{
+    return tok->pt_kind == PP_TOKEN_PUNCT && (Pp_TokenEquals(tok, "#") || Pp_TokenEquals(tok, "%:"));
+}
+
+// True if a token is the ## punctuator.
+bool Pp_IsHashHash(const Pp_Token *tok)
+{
+    return tok->pt_kind == PP_TOKEN_PUNCT && (Pp_TokenEquals(tok, "##") || Pp_TokenEquals(tok, "%:%:"));
 }
 
 // True if a file's next token is an include's operand.
@@ -269,20 +300,42 @@ Pp_Macro *Pp_FindMacro(const char *text, size_t len)
     return NULL;
 }
 
-// True if a replacement list matches a macro's.
-bool Pp_SameBody(const Pp_Macro *macro, const Pp_Token *body, size_t nbody)
+// Find the parameter a token names.
+bool Pp_FindParam(const Pp_Macro *macro, const Pp_Token *tok, size_t *index)
 {
-    if (macro->ma_nbody != nbody) {
+    if (tok->pt_kind != PP_TOKEN_IDENT) {
         return false;
     }
-    for (size_t i = 0; i < nbody; i++) {
-        const Pp_Token *old = &macro->ma_body[i];
-        bool spaced = (old->pt_flags & PP_FLAG_SPACE) == (body[i].pt_flags & PP_FLAG_SPACE);
+    for (size_t i = 0; i < macro->ma_nparams; i++) {
+        bool rest = macro->ma_variadic && i + 1 == macro->ma_nparams;
 
-        if (old->pt_len != body[i].pt_len || memcmp(old->pt_text, body[i].pt_text, old->pt_len) != 0) {
+        if (rest ? Pp_TokenEquals(tok, PP_VA_ARGS) : Pp_SameSpelling(tok, macro->ma_params[i])) {
+            *index = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+// True if a definition matches a macro's.
+bool Pp_SameMacro(const Pp_Macro *macro, const Pp_Macro *def)
+{
+    bool shape = macro->ma_kind == def->ma_kind && macro->ma_variadic == def->ma_variadic;
+
+    if (! shape || macro->ma_nparams != def->ma_nparams || macro->ma_nbody != def->ma_nbody) {
+        return false;
+    }
+    for (size_t i = 0; i < def->ma_nparams; i++) {
+        if (! Pp_SameSpelling(macro->ma_params[i], def->ma_params[i])) {
             return false;
         }
-        if (i > 0 && ! spaced) {
+    }
+    for (size_t i = 0; i < def->ma_nbody; i++) {
+        const Pp_Token *old = &macro->ma_body[i];
+        const Pp_Token *fresh = &def->ma_body[i];
+        bool spaced = (old->pt_flags & PP_FLAG_SPACE) == (fresh->pt_flags & PP_FLAG_SPACE);
+
+        if (! Pp_SameSpelling(old, fresh) || (i > 0 && ! spaced)) {
             return false;
         }
     }
@@ -290,27 +343,26 @@ bool Pp_SameBody(const Pp_Macro *macro, const Pp_Token *body, size_t nbody)
 }
 
 // Define the macro a token names.
-void Pp_DefineMacro(const Pp_Token *name, const Pp_Token *body, size_t nbody)
+void Pp_DefineMacro(const Pp_Token *name, const Pp_Macro *def)
 {
+    uint32_t bucket = Pp_HashName(name->pt_text, name->pt_len) % PP_MACRO_BUCKETS;
     Pp_Macro *macro = Pp_FindMacro(name->pt_text, name->pt_len);
 
-    if (macro) {
-        if (! Pp_SameBody(macro, body, nbody)) {
-            Err_WarnAt(name->pt_line, ERR_PP_MACRO_REDEFINED, (int) name->pt_len, name->pt_text);
-        }
-        macro->ma_body = body;
-        macro->ma_nbody = nbody;
-        return;
+    if (macro && ! Pp_SameMacro(macro, def)) {
+        Err_WarnAt(name->pt_line, ERR_PP_MACRO_REDEFINED, (int) name->pt_len, name->pt_text);
     }
-
-    uint32_t bucket = Pp_HashName(name->pt_text, name->pt_len) % PP_MACRO_BUCKETS;
-
-    macro = calloc(1, sizeof(*macro));
-    macro->ma_name = Str_Format("%.*s", (int) name->pt_len, name->pt_text);
-    macro->ma_body = body;
-    macro->ma_nbody = nbody;
-    macro->ma_next = Pp_Macros[bucket];
-    Pp_Macros[bucket] = macro;
+    if (! macro) {
+        macro = calloc(1, sizeof(*macro));
+        macro->ma_name = Str_Format("%.*s", (int) name->pt_len, name->pt_text);
+        macro->ma_next = Pp_Macros[bucket];
+        Pp_Macros[bucket] = macro;
+    }
+    macro->ma_kind = def->ma_kind;
+    macro->ma_params = def->ma_params;
+    macro->ma_nparams = def->ma_nparams;
+    macro->ma_variadic = def->ma_variadic;
+    macro->ma_body = def->ma_body;
+    macro->ma_nbody = def->ma_nbody;
 }
 
 // Forget the macro a token names.
@@ -367,6 +419,44 @@ Pp_HideSet *Pp_HideSetAdd(Pp_HideSet *set, const Pp_Macro *macro)
     return more;
 }
 
+// Return the macros two hide sets share.
+Pp_HideSet *Pp_HideSetIntersect(const Pp_HideSet *a, const Pp_HideSet *b)
+{
+    Pp_HideSet *set = NULL;
+
+    for (; a; a = a->ph_next) {
+        if (Pp_HideSetHas(b, a->ph_macro)) {
+            set = Pp_HideSetAdd(set, a->ph_macro);
+        }
+    }
+    return set;
+}
+
+// Return the macros either hide set holds.
+Pp_HideSet *Pp_HideSetUnion(Pp_HideSet *a, const Pp_HideSet *b)
+{
+    Pp_HideSet *set = a;
+
+    for (; b; b = b->ph_next) {
+        if (! Pp_HideSetHas(a, b->ph_macro)) {
+            set = Pp_HideSetAdd(set, b->ph_macro);
+        }
+    }
+    return set;
+}
+
+// Return the next token without reading it.
+const Pp_Token *Pp_PeekToken(const Pp_Reader *rd)
+{
+    if (rd->rd_pending) {
+        return rd->rd_pending;
+    }
+    if (rd->rd_pos < rd->rd_end) {
+        return &rd->rd_file->pf_tokens[rd->rd_pos];
+    }
+    return NULL;
+}
+
 // Read the next token.
 const Pp_Token *Pp_ReadToken(Pp_Reader *rd)
 {
@@ -390,6 +480,187 @@ const Pp_Token *Pp_ReadToken(Pp_Reader *rd)
     return carried;
 }
 
+// Read a call's arguments up to its closing parenthesis.
+Pp_Arg *Pp_ReadArgs(Pp_Reader *rd, const Pp_Macro *macro, const Pp_Token *name, const Pp_Token **close)
+{
+    size_t n = 0;
+    size_t given = 0;
+    size_t depth = 0;
+    size_t required = macro->ma_variadic ? macro->ma_nparams - 1 : macro->ma_nparams;
+    Pp_Arg *args = calloc(macro->ma_nparams + 1, sizeof(*args));
+    Pp_Token **tail = &args[0].pa_raw;
+
+    for (;;) {
+        const Pp_Token *tok = Pp_ReadToken(rd);
+
+        Err_AssertAt(name->pt_line, tok, ERR_PP_MACRO_UNTERMINATED, macro->ma_name);
+        if (depth == 0 && Pp_TokenEquals(tok, ")")) {
+            *close = tok;
+            break;
+        }
+        if (depth == 0 && Pp_TokenEquals(tok, ",") && ! (macro->ma_variadic && n + 1 == macro->ma_nparams)) {
+            n++;
+            tail = n <= macro->ma_nparams ? &args[n].pa_raw : NULL;
+            continue;
+        }
+        if (Pp_TokenEquals(tok, "(")) {
+            depth++;
+        } else if (Pp_TokenEquals(tok, ")")) {
+            depth--;
+        }
+        if (tail) {
+            *tail = Pp_CopyToken(tok);
+            tail = &(*tail)->pt_next;
+        }
+    }
+
+    given = n + 1;
+    if (macro->ma_nparams == 0 && n == 0 && ! args[0].pa_raw) {
+        given = 0;
+    }
+    Err_AssertAt(name->pt_line, macro->ma_variadic ? given >= required : given == required, ERR_PP_MACRO_ARGS_COUNT, macro->ma_name, required, given);
+    return args;
+}
+
+// Return an argument fully expanded.
+Pp_Token *Pp_ExpandArg(Pp_Arg *arg)
+{
+    Pp_Reader rd = {
+        .rd_file    = NULL,
+        .rd_pos     = 0,
+        .rd_end     = 0,
+        .rd_pending = arg->pa_raw,
+        .rd_carry   = PP_FLAG_NONE
+    };
+
+    if (! arg->pa_expanded) {
+        arg->pa_full = Pp_ExpandAll(&rd);
+        arg->pa_expanded = true;
+    }
+    return arg->pa_full;
+}
+
+// Spell an argument as a string literal.
+Pp_Token *Pp_Stringize(const Pp_Token *list, const Pp_Token *hash)
+{
+    Str_Buf *text = Str_BufNew();
+    Pp_Token *str = Pp_CopyToken(hash);
+
+    Str_BufPutByte(text, '"');
+    for (const Pp_Token *tok = list; tok; tok = tok->pt_next) {
+        bool quoted = tok->pt_kind == PP_TOKEN_STRING || tok->pt_kind == PP_TOKEN_CHAR;
+
+        if (tok != list && (tok->pt_flags & (PP_FLAG_BOL | PP_FLAG_SPACE))) {
+            Str_BufPutByte(text, ' ');
+        }
+        for (size_t i = 0; i < tok->pt_len; i++) {
+            if (quoted && (tok->pt_text[i] == '"' || tok->pt_text[i] == '\\')) {
+                Str_BufPutByte(text, '\\');
+            }
+            Str_BufPutByte(text, tok->pt_text[i]);
+        }
+    }
+    Str_BufPutByte(text, '"');
+
+    str->pt_kind = PP_TOKEN_STRING;
+    str->pt_len = Str_BufLen(text);
+    str->pt_text = Str_BufTake(text);
+    return str;
+}
+
+// Paste a token onto the end of another.
+void Pp_PasteTokens(Pp_Token *left, const Pp_Token *right, Ast_Line line)
+{
+    if (right->pt_kind == PP_TOKEN_PLACEMARKER) {
+        return;
+    }
+    if (left->pt_kind == PP_TOKEN_PLACEMARKER) {
+        left->pt_kind = right->pt_kind;
+        left->pt_text = right->pt_text;
+        left->pt_len = right->pt_len;
+        left->pt_hide = right->pt_hide;
+        return;
+    }
+
+    Pp_TokenKind kind = PP_TOKEN_EOF;
+    size_t len = left->pt_len + right->pt_len;
+    char *text = Str_Format("%.*s%.*s", (int) left->pt_len, left->pt_text, (int) right->pt_len, right->pt_text);
+
+    Err_AssertAt(line, Pp_LexOne(text, len, &kind), ERR_PP_PASTE_INVALID, (int) left->pt_len, left->pt_text, (int) right->pt_len, right->pt_text);
+    left->pt_kind = kind;
+    left->pt_text = text;
+    left->pt_len = len;
+    left->pt_hide = Pp_HideSetIntersect(left->pt_hide, right->pt_hide);
+}
+
+// Build a macro's replacement list with its arguments in place.
+Pp_Token *Pp_Substitute(const Pp_Macro *macro, Pp_Arg *args, const Pp_Token *name)
+{
+    bool paste = false;
+    Pp_Token *head = NULL;
+    Pp_Token *last = NULL;
+    Pp_Token **link = &head;
+
+    // Phase: substitute
+    for (size_t i = 0; i < macro->ma_nbody; i++) {
+        size_t param = 0;
+        Pp_Token *list = NULL;
+        const Pp_Token *tok = &macro->ma_body[i];
+        const Pp_Token *next = i + 1 < macro->ma_nbody ? &macro->ma_body[i + 1] : NULL;
+
+        if (Pp_IsHashHash(tok)) {
+            paste = true;
+            continue;
+        }
+        if (macro->ma_kind == PP_MACRO_FUNCTION && Pp_IsHash(tok) && Pp_FindParam(macro, next, &param)) {
+            list = Pp_Stringize(args[param].pa_raw, tok);
+            i++;
+        } else if (Pp_FindParam(macro, tok, &param)) {
+            bool raw = paste || (next && Pp_IsHashHash(next));
+
+            list = Pp_CopyList(raw ? args[param].pa_raw : Pp_ExpandArg(&args[param]));
+            if (raw && ! list) {
+                list = Pp_CopyToken(tok);
+                list->pt_kind = PP_TOKEN_PLACEMARKER;
+                list->pt_len = 0;
+            }
+            if (list) {
+                list->pt_flags = tok->pt_flags;
+            }
+        } else {
+            list = Pp_CopyToken(tok);
+        }
+
+        if (paste) {
+            Pp_PasteTokens(last, list, name->pt_line);
+            list = list->pt_next;
+        }
+        paste = false;
+        if (! list) {
+            continue;
+        }
+        if (last) {
+            last->pt_next = list;
+        } else {
+            head = list;
+        }
+        last = list;
+        while (last->pt_next) {
+            last = last->pt_next;
+        }
+    }
+
+    // Phase: drop placemarkers
+    while (*link) {
+        if ((*link)->pt_kind == PP_TOKEN_PLACEMARKER) {
+            *link = (*link)->pt_next;
+        } else {
+            link = &(*link)->pt_next;
+        }
+    }
+    return head;
+}
+
 // Push the expansion of a macro name back onto the reader.
 bool Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok)
 {
@@ -403,34 +674,61 @@ bool Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok)
         return false;
     }
 
-    Pp_Token *head = rd->rd_pending;
-    Pp_HideSet *hide = Pp_HideSetAdd(tok->pt_hide, macro);
+    Pp_Arg *args = NULL;
+    Pp_HideSet *hide = tok->pt_hide;
 
-    for (size_t i = macro->ma_nbody; i > 0; i--) {
-        Pp_Token *copy = Pp_CopyToken(&macro->ma_body[i - 1]);
+    if (macro->ma_kind == PP_MACRO_FUNCTION) {
+        const Pp_Token *open = Pp_PeekToken(rd);
+        const Pp_Token *close = NULL;
 
-        copy->pt_flags &= PP_FLAG_SPACE;
+        if (! open || ! Pp_TokenEquals(open, "(")) {
+            return false;
+        }
+        Pp_ReadToken(rd);
+        args = Pp_ReadArgs(rd, macro, tok, &close);
+        hide = Pp_HideSetIntersect(hide, close->pt_hide);
+    }
+    hide = Pp_HideSetAdd(hide, macro);
+
+    Pp_Token *last = NULL;
+    Pp_Token *head = Pp_Substitute(macro, args, tok);
+
+    for (Pp_Token *copy = head; copy; copy = copy->pt_next) {
+        copy->pt_flags = (copy->pt_flags & (PP_FLAG_BOL | PP_FLAG_SPACE)) ? PP_FLAG_SPACE : PP_FLAG_NONE;
         copy->pt_file = tok->pt_file;
         copy->pt_line = tok->pt_line;
-        copy->pt_hide = hide;
-        copy->pt_next = head;
-        head = copy;
+        copy->pt_hide = Pp_HideSetUnion(hide, copy->pt_hide);
+        last = copy;
     }
-    if (macro->ma_nbody == 0) {
+    if (! head) {
         rd->rd_carry |= tok->pt_flags;
-    } else {
-        head->pt_flags = tok->pt_flags;
+        return true;
     }
+    head->pt_flags = tok->pt_flags;
+    last->pt_next = rd->rd_pending;
     rd->rd_pending = head;
     return true;
+}
+
+// Expand every token a reader holds into a list.
+Pp_Token *Pp_ExpandAll(Pp_Reader *rd)
+{
+    Pp_Token *head = NULL;
+    Pp_Token **tail = &head;
+    const Pp_Token *tok = NULL;
+
+    while ((tok = Pp_ReadToken(rd)) != NULL) {
+        if (! Pp_ExpandMacro(rd, tok)) {
+            *tail = Pp_CopyToken(tok);
+            tail = &(*tail)->pt_next;
+        }
+    }
+    return head;
 }
 
 // Expand a range of a file's tokens into a list.
 Pp_Token *Pp_ExpandRange(const Pp_File *file, size_t start, size_t end)
 {
-    Pp_Token *head = NULL;
-    Pp_Token **tail = &head;
-    const Pp_Token *tok = NULL;
     Pp_Reader rd = {
         .rd_file    = file,
         .rd_pos     = start,
@@ -439,13 +737,7 @@ Pp_Token *Pp_ExpandRange(const Pp_File *file, size_t start, size_t end)
         .rd_carry   = PP_FLAG_NONE
     };
 
-    while ((tok = Pp_ReadToken(&rd)) != NULL) {
-        if (! Pp_ExpandMacro(&rd, tok)) {
-            *tail = Pp_CopyToken(tok);
-            tail = &(*tail)->pt_next;
-        }
-    }
-    return head;
+    return Pp_ExpandAll(&rd);
 }
 
 // Build the include search list.
@@ -639,7 +931,9 @@ void Pp_SyncLine(Pp_Printer *pr, const Pp_Token *tok)
 // Print one token.
 void Pp_PrintToken(Pp_Printer *pr, const Pp_Token *tok)
 {
-    if (tok->pt_flags & PP_FLAG_BOL) {
+    bool later = tok->pt_file == pr->pr_file && tok->pt_line > pr->pr_source;
+
+    if ((tok->pt_flags & PP_FLAG_BOL) || later) {
         Pp_SyncLine(pr, tok);
     }
     if (pr->pr_prev && ((tok->pt_flags & PP_FLAG_SPACE) || Pp_NeedsSpace(pr->pr_prev, tok))) {
@@ -678,7 +972,7 @@ void Pp_Write(FILE *out, const Str_Buf *text, Pp_Markers markers)
 // True if a token opens a directive.
 bool Pp_IsDirective(const Pp_Token *tok)
 {
-    return (tok->pt_flags & PP_FLAG_BOL) && (Pp_TokenEquals(tok, "#") || Pp_TokenEquals(tok, "%:"));
+    return (tok->pt_flags & PP_FLAG_BOL) && Pp_IsHash(tok);
 }
 
 // Return the position of the first token on the next line.
@@ -745,11 +1039,78 @@ void Pp_RunDefine(const Pp_File *file, size_t pos)
 
     Err_AssertAt(hash->pt_line, Pp_IsMacroName(name), ERR_PP_MACRO_NAME_MISSING);
 
-    const Pp_Token *body = &file->pf_tokens[pos + 3];
-    bool function = Pp_TokenEquals(body, "(") && ! (body->pt_flags & (PP_FLAG_BOL | PP_FLAG_SPACE));
+    size_t start = pos + 3;
+    size_t end = Pp_SkipLine(file, pos);
+    const Pp_Token *paren = &file->pf_tokens[start];
+    Pp_Macro def = {
+        .ma_name     = NULL,
+        .ma_kind     = PP_MACRO_OBJECT,
+        .ma_params   = NULL,
+        .ma_nparams  = 0,
+        .ma_variadic = false,
+        .ma_body     = NULL,
+        .ma_nbody    = 0,
+        .ma_next     = NULL
+    };
 
-    Err_AssertAt(hash->pt_line, ! function, ERR_PP_MACRO_FUNCTION_UNSUPPORTED);
-    Pp_DefineMacro(name, body, Pp_SkipLine(file, pos) - (pos + 3));
+    if (Pp_TokenEquals(paren, "(") && ! (paren->pt_flags & (PP_FLAG_BOL | PP_FLAG_SPACE))) {
+        def.ma_kind = PP_MACRO_FUNCTION;
+        start = Pp_ReadParams(file, start + 1, end, &def);
+    }
+    def.ma_body = &file->pf_tokens[start];
+    def.ma_nbody = end - start;
+    Pp_CheckBody(&def, hash->pt_line);
+    Pp_DefineMacro(name, &def);
+}
+
+// Read a macro's parameter list.
+size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
+{
+    const Pp_Token *tokens = file->pf_tokens;
+    Ast_Line line = tokens[pos - 1].pt_line;
+
+    if (pos < end && Pp_TokenEquals(&tokens[pos], ")")) {
+        return pos + 1;
+    }
+    for (;;) {
+        size_t dup = 0;
+        const Pp_Token *param = &tokens[pos];
+
+        Err_AssertAt(line, pos + 1 < end, ERR_PP_MACRO_PARAMS_MALFORMED);
+        if (Pp_TokenEquals(param, "...")) {
+            def->ma_variadic = true;
+        } else {
+            Err_AssertAt(line, param->pt_kind == PP_TOKEN_IDENT, ERR_PP_MACRO_PARAMS_MALFORMED);
+            Err_AssertAt(line, ! Pp_TokenEquals(param, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
+            Err_AssertAt(line, ! Pp_FindParam(def, param, &dup), ERR_PP_MACRO_PARAM_DUPLICATE, (int) param->pt_len, param->pt_text);
+        }
+        def->ma_params = realloc(def->ma_params, (def->ma_nparams + 1) * sizeof(*def->ma_params));
+        def->ma_params[def->ma_nparams++] = param;
+        pos += 2;
+        if (Pp_TokenEquals(&tokens[pos - 1], ")")) {
+            return pos;
+        }
+        Err_AssertAt(line, ! def->ma_variadic && Pp_TokenEquals(&tokens[pos - 1], ","), ERR_PP_MACRO_PARAMS_MALFORMED);
+    }
+}
+
+// Check a replacement list against the constraints of 6.10.3.
+void Pp_CheckBody(const Pp_Macro *def, Ast_Line line)
+{
+    size_t param = 0;
+    size_t n = def->ma_nbody;
+
+    if (n > 0) {
+        Err_AssertAt(line, ! Pp_IsHashHash(&def->ma_body[0]) && ! Pp_IsHashHash(&def->ma_body[n - 1]), ERR_PP_PASTE_AT_EDGE);
+    }
+    for (size_t i = 0; i < n; i++) {
+        const Pp_Token *tok = &def->ma_body[i];
+
+        Err_AssertAt(line, def->ma_variadic || ! Pp_TokenEquals(tok, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
+        if (def->ma_kind == PP_MACRO_FUNCTION && Pp_IsHash(tok)) {
+            Err_AssertAt(line, i + 1 < n && Pp_FindParam(def, &def->ma_body[i + 1], &param), ERR_PP_STRINGIZE_NOT_PARAM);
+        }
+    }
 }
 
 // Run the #undef directive at pos.
