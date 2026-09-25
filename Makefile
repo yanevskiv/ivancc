@@ -23,7 +23,7 @@ LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
 GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/c.tab.o
 
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
-ELF_OBJS := $(OUT)/object/elf.o $(OUT)/util/file.o $(OUT)/util/str.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
+ELF_OBJS := $(OUT)/object/elf.o $(OUT)/util/err.o $(OUT)/util/log.o $(OUT)/util/str.o $(OUT)/arch/$(TARGET_ARCH)/rel.o
 
 AS_OBJS := $(OUT)/as.o $(ELF_OBJS) \
 	$(OUT)/arch/$(TARGET_ARCH)/txt.o $(OUT)/arch/$(TARGET_ARCH)/asm.o \

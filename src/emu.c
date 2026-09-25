@@ -1,10 +1,12 @@
 // C source file for the ivanemu emulator.
 
+#include <errno.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/file.h"
+#include "util/err.h"
 #include "util/log.h"
 #include "util/str.h"
 #include "object/elf.h"
@@ -19,7 +21,7 @@
 // Show usage information and exit.
 static void Emu_Usage(const char *prog)
 {
-    File_Print(File_Err(),
+    fprintf(stderr,
         "Usage: %s [options] PROGRAM\n"
         "  -d          disassemble instead of running\n"
         "  -i          print what the loader made of the file and stop\n"
@@ -32,10 +34,10 @@ static void Emu_Usage(const char *prog)
 // Print what the loader made of an executable.
 static void Emu_ShowImage(const Elf_LoadImage *img)
 {
-    File_Print(File_Out(), "entry  0x%llx\n", (Emu_TypeULLong) img->li_entry);
-    File_Print(File_Out(), "base   0x%llx\n", (Emu_TypeULLong) img->li_base);
-    File_Print(File_Out(), "size   0x%llx\n", (Emu_TypeULLong) img->li_size);
-    File_Print(File_Out(), "stack  0x%llx\n", (Emu_TypeULLong) img->li_stack);
+    fprintf(stdout, "entry  0x%llx\n", (Emu_TypeULLong) img->li_entry);
+    fprintf(stdout, "base   0x%llx\n", (Emu_TypeULLong) img->li_base);
+    fprintf(stdout, "size   0x%llx\n", (Emu_TypeULLong) img->li_size);
+    fprintf(stdout, "stack  0x%llx\n", (Emu_TypeULLong) img->li_stack);
 }
 
 // Disassemble forward from the image's base until the bytes stop decoding.
@@ -49,11 +51,11 @@ static void Emu_Disassemble(const Elf_LoadImage *img)
         char text[128];
 
         if (! code || ! Emu_x86_64_Decode(code, avail, &insn)) {
-            File_Print(File_Out(), "%016llx: (bad)\n", (Emu_TypeULLong) rip);
+            fprintf(stdout, "%016llx: (bad)\n", (Emu_TypeULLong) rip);
             return;
         }
         Emu_x86_64_Format(&insn, rip, text, sizeof(text));
-        File_Print(File_Out(), "%016llx: %s\n", (Emu_TypeULLong) rip, text);
+        fprintf(stdout, "%016llx: %s\n", (Emu_TypeULLong) rip, text);
         rip += insn.ei_len;
     }
 }
@@ -66,6 +68,8 @@ int main(int argc, char **argv)
     bool disasm = false;
     bool info = false;
     Emu_x86_64_Trace trace = EMU_X86_64_QUIET;
+
+    Log_SetProgramName(argv[0]);
 
     for (int32_t i = 1; i < argc; i++) {
         const char *arg = argv[i];
@@ -87,18 +91,11 @@ int main(int argc, char **argv)
     if (! program) {
         Emu_Usage(argv[0]);
     }
-    if (! Str_Equals(arch, DEFAULT_ARCH)) {
-        Log_ShowError("unsupported architecture '%s' (only " DEFAULT_ARCH " is supported)", arch);
-    }
+    Err_Assert(Str_Equals(arch, DEFAULT_ARCH), ERR_EMU_ARCH_UNSUPPORTED, arch, DEFAULT_ARCH);
 
     Elf_LoadImage img = {0};
-    if (! Elf_Load_ReadExec(program, &img)) {
-        File_ShowError(program);
-        return 1;
-    }
-    if (img.li_machine != ELF_EM_X86_64) {
-        Log_ShowError("'%s' is not an x86_64 executable", program);
-    }
+    Err_Assert(Elf_Load_ReadExec(program, &img), ERR_FILE_ACCESS, program, strerror(errno));
+    Err_Assert(img.li_machine == ELF_EM_X86_64, ERR_EMU_NOT_X86_64, program);
 
     int32_t status = 0;
     if (info) {
