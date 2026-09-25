@@ -1,6 +1,6 @@
 // C source file for the C preprocessor.
 
-// Take every include from the module's header.
+// Module header.
 #include "lang/pp.h"
 
 // Every punctuator spelling of 6.4.6.

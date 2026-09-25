@@ -1,6 +1,6 @@
 // C source file for user-facing diagnostics.
 
-// Take every include from the module's header.
+// Module header.
 #include "util/console/err.h"
 
 // Every diagnostic's name and message format.

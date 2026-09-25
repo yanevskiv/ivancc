@@ -1,6 +1,6 @@
 // C source file for string utilities.
 
-// Take every include from the module's header.
+// Module header.
 #include "util/str.h"
 
 // The storage behind a Str_Buf.

@@ -1,6 +1,6 @@
 // C source file for the abstract syntax tree.
 
-// Take every include from the module's header.
+// Module header.
 #include "lang/ast.h"
 
 // The finished program, filled in by the parser.

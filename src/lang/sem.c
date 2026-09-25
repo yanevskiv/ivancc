@@ -1,6 +1,6 @@
 // C source file for semantic analysis.
 
-// Take every include from the module's header.
+// Module header.
 #include "lang/sem.h"
 
 // The program being analysed.
