@@ -1460,7 +1460,10 @@ suite green.
 
 `test73_trigraphs` and `test74_digraphs` exercise code from step 0. They are
 numbered after `test72` because they use directives, and a test may not use
-syntax a higher-numbered one introduces.
+syntax a higher-numbered one introduces. **Done.** Neither needed new code.
+Trigraphs are always replaced, since ISO C99 requires them and `--std=c99` is
+the only standard. So no `--trigraphs` option is needed. Both tests pass under
+`gcc -std=c99`, and their `-E` output matches it modulo whitespace.
 
 ### Tests
 
