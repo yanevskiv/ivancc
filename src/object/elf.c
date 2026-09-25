@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/err.h"
-#include "util/str.h"
 #include "object/elf.h"
 
 // Initialize an empty byte buffer.
@@ -155,7 +153,7 @@ void Elf_Free(Elf *elf)
     }
     free(elf->elf_syms);
     for (size_t i = 0; i < elf->elf_npool; i++) {
-        Str_Free(elf->elf_pool[i]);
+        free(elf->elf_pool[i]);
     }
     free(elf->elf_pool);
     free(elf);
@@ -618,7 +616,9 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
         if (! relaidx[i]) {
             continue;
         }
-        char *name = Str_Format(".rela%s", elf->elf_secs[i]->sec_name);
+        char *name = malloc(strlen(".rela") + strlen(elf->elf_secs[i]->sec_name) + 1);
+        strcpy(name, ".rela");
+        strcat(name, elf->elf_secs[i]->sec_name);
         shdrs[relaidx[i]] = (Elf64_Shdr) {
             .sh_name      = Elf_Write_Str(&shstr, name),
             .sh_type      = ELF_SHT_RELA,
@@ -628,7 +628,7 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
             .sh_addralign = 8,
             .sh_entsize   = sizeof(Elf64_Rela)
         };
-        Str_Free(name);
+        free(name);
         bodies[relaidx[i]] = relas[i].eb_data;
         sizes[relaidx[i]]  = relas[i].eb_len;
     }
