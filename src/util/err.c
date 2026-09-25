@@ -17,9 +17,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_STR_ESCAPE_UCN_INCOMPLETE]     = { "ERR_STR_ESCAPE_UCN_INCOMPLETE",     "incomplete universal character name" },
     [ERR_STR_ESCAPE_UNKNOWN]            = { "ERR_STR_ESCAPE_UNKNOWN",            "unknown escape sequence '\\%c'" },
 
+    [ERR_PP_COMMENT_UNTERMINATED]       = { "ERR_PP_COMMENT_UNTERMINATED",       "unterminated comment" },
+    [ERR_PP_DIRECTIVE_UNKNOWN]          = { "ERR_PP_DIRECTIVE_UNKNOWN",          "invalid preprocessing directive #%.*s" },
+
     [ERR_LEX_UNEXPECTED_CHAR]           = { "ERR_LEX_UNEXPECTED_CHAR",           "unexpected character '%s'" },
 
     [ERR_PAR_SYNTAX]                    = { "ERR_PAR_SYNTAX",                    "%s" },
+    [ERR_PAR_TEXT_TOO_LONG]             = { "ERR_PAR_TEXT_TOO_LONG",             "preprocessed text of %zu bytes is too long for the lexer" },
     [ERR_PAR_DECL_UNNAMED]              = { "ERR_PAR_DECL_UNNAMED",              "this declaration needs a name" },
     [ERR_PAR_ARRAY_OF_FUNCTIONS]        = { "ERR_PAR_ARRAY_OF_FUNCTIONS",        "an array of functions is not a type" },
     [ERR_PAR_ARRAY_LEN_NOT_CONSTANT]    = { "ERR_PAR_ARRAY_LEN_NOT_CONSTANT",    "an array length is not a constant" },
@@ -122,6 +126,8 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
 
     [ERR_CC_ARCH_UNSUPPORTED]           = { "ERR_CC_ARCH_UNSUPPORTED",           "unsupported architecture '%s' (only %s is supported)" },
     [ERR_CC_RUNTIME_NOT_FOUND]          = { "ERR_CC_RUNTIME_NOT_FOUND",          "cannot locate the runtime directory; pass -B DIR" },
+    [ERR_CC_OPTION_UNSUPPORTED]         = { "ERR_CC_OPTION_UNSUPPORTED",         "option '%s' is not supported yet" },
+    [ERR_CC_STD_UNSUPPORTED]            = { "ERR_CC_STD_UNSUPPORTED",            "unsupported standard '%s' (only %s is supported)" },
 
     [ERR_LD_PLACE_MALFORMED]            = { "ERR_LD_PLACE_MALFORMED",            "malformed -place (expected SEC@ADDR): '%s'" },
 
