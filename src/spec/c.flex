@@ -74,10 +74,10 @@ ISUFFIX ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
 [1-9]{DIGIT}*{ISUFFIX}?      { yylval.num = Par_NumLiteral(yytext); return NUM; }
 
 L?\"([^"\\\n]|\\.)*\"   { bool wide = yytext[0] == 'L';
-                          yylval.str = Par_StringLiteral(yytext + wide + 1, yyleng - wide - 2, wide ? AST_TYPE_SIZE_INT : AST_TYPE_SIZE_CHAR);
+                          yylval.str = Par_StringLiteral(yytext + wide + 1, yyleng - wide - 2, wide ? AST_TYPE_SIZE_INT : AST_TYPE_SIZE_CHAR, (Ast_Line) yylineno);
                           return STR; }
 L?'([^'\\\n]|\\.)+'     { bool wide = yytext[0] == 'L';
-                          yylval.num = Par_CharLiteral(yytext + wide + 1, yyleng - wide - 2, wide ? AST_TYPE_SIZE_INT : AST_TYPE_SIZE_CHAR);
+                          yylval.num = Par_CharLiteral(yytext + wide + 1, yyleng - wide - 2, wide ? AST_TYPE_SIZE_INT : AST_TYPE_SIZE_CHAR, (Ast_Line) yylineno);
                           return NUM; }
 
 "=="                    return EQ;
