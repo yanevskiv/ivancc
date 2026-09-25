@@ -379,6 +379,92 @@ const char *Txt_x86_64_Att_ScanNumber(const char *p, int64_t *out)
     return p;
 }
 
+// Return the value of a digit in base, or -1 when it is not one.
+int32_t Txt_x86_64_Att_DigitValue(char c, Txt_x86_64_Base base)
+{
+    int32_t value = -1;
+
+    if (isdigit((uint8_t) c)) {
+        value = c - '0';
+    } else if (isxdigit((uint8_t) c)) {
+        value = tolower((uint8_t) c) - 'a' + TXT_X86_64_BASE_DECIMAL;
+    }
+    return value < (int32_t) base ? value : -1;
+}
+
+// Decode the quoted string at p.
+const char *Txt_x86_64_Att_ScanString(const char *p, Str_Buf *out)
+{
+    const char *start = p;
+
+    for (p++; *p != '"'; p++) {
+        Err_Assert(*p != '\0', ERR_TXT_STRING_UNTERMINATED, start);
+        if (*p != '\\') {
+            Str_BufPutByte(out, *p);
+            continue;
+        }
+        p++;
+        Err_Assert(*p != '\0', ERR_TXT_STRING_UNTERMINATED, start);
+        switch (*p) {
+            case 'b': {
+                Str_BufPutByte(out, '\b');
+            } break;
+            case 'f': {
+                Str_BufPutByte(out, '\f');
+            } break;
+            case 'n': {
+                Str_BufPutByte(out, '\n');
+            } break;
+            case 'r': {
+                Str_BufPutByte(out, '\r');
+            } break;
+            case 't': {
+                Str_BufPutByte(out, '\t');
+            } break;
+            case '\\':
+            case '"': {
+                Str_BufPutByte(out, *p);
+            } break;
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7': {
+                uint32_t value = 0;
+
+                for (size_t n = 0; n < TXT_X86_64_ESCAPE_OCTAL_DIGITS; n++) {
+                    int32_t digit = Txt_x86_64_Att_DigitValue(*p, TXT_X86_64_BASE_OCTAL);
+
+                    if (digit < 0) {
+                        break;
+                    }
+                    value = value * TXT_X86_64_BASE_OCTAL + (uint32_t) digit;
+                    p++;
+                }
+                p--;
+                Str_BufPutByte(out, (char) value);
+            } break;
+            case 'x':
+            case 'X': {
+                uint32_t value = 0;
+
+                while (Txt_x86_64_Att_DigitValue(p[1], TXT_X86_64_BASE_HEX) >= 0) {
+                    p++;
+                    value = value * TXT_X86_64_BASE_HEX + (uint32_t) Txt_x86_64_Att_DigitValue(*p, TXT_X86_64_BASE_HEX);
+                }
+                Str_BufPutByte(out, (char) value);
+            } break;
+            default: {
+                Err_Raise(ERR_TXT_ESCAPE_UNKNOWN, *p);
+            } break;
+        }
+    }
+    return p + 1;
+}
+
 // Parse one AT&T operand into op.
 bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
 {
@@ -476,17 +562,16 @@ bool Txt_x86_64_Att_EmitAddress(const char *text, size_t width)
 // Emit the bytes of a quoted string.
 void Txt_x86_64_Att_EmitString(const char *args, Txt_x86_64_Terminate terminate)
 {
+    Str_Buf *bytes = NULL;
     const char *p = strchr(args, '"');
+
     if (! p) {
         return;
     }
-    p++;
-
-    size_t len = 0;
-    char *buf = Str_Unescape(p, strlen(p), STR_NARROW_WIDTH, &len);
-
-    Asm_x86_64_EmitBytes(buf, len + (terminate == TXT_X86_64_TERMINATED ? 1 : 0));
-    Str_Free(buf);
+    bytes = Str_BufNew();
+    Txt_x86_64_Att_ScanString(p, bytes);
+    Asm_x86_64_EmitBytes(Str_BufData(bytes), Str_BufLen(bytes) + (terminate == TXT_X86_64_TERMINATED ? 1 : 0));
+    Str_BufFree(bytes);
 }
 
 // Parse one instruction line ("mnemonic [op[, op]]") into an instruction item.
