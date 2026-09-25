@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Integer literals. A leading zero makes a constant octal, and a suffix fixes
 // its signedness and its least width. Where no suffix says otherwise the value
 // itself picks the first type of the list that can hold it.

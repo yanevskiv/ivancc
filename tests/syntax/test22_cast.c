@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A cast converts its operand to the named type, narrowing where that is smaller.
 
 int main()

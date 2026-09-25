@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // File-scope variables: zeroed ones in .bss, initialized ones in .data, both
 // addressed off %rip rather than off the frame. An initializer here is folded
 // whole, so any constant expression serves and not only a literal, and an

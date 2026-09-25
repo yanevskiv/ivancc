@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A real va_list: the four-field record the SysV ABI defines, holding how far
 // into the register save area a walk has come and where the overflow area
 // carries on. The walk lives in that object, so it can be handed to a callee.

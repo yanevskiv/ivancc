@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Struct declaration, member access and whole-struct assignment. The layout is
 // what sizeof has to agree with gcc about: padding between members and after
 // the last one. A member may be named in an initializer, and a `?:`, an

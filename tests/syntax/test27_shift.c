@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Shifts, including the arithmetic right shift a signed operand requires and
 // the count travelling through %cl.
 

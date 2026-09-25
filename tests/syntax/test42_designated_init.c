@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Designated initializers for arrays: [i] = v places an element, and the
 // elements after it carry on from that index.
 

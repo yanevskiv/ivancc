@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Subscripting reads and writes elements, an array's name is its address, and
 // an array parameter is really a pointer. A dimension may be any constant
 // expression, since only a variable one would make the array a VLA.

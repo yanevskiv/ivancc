@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Signed and unsigned types. The bits are the same; what differs is how a
 // division, a shift, a comparison and a widening read them. Where operands of
 // both kinds meet, the usual arithmetic conversions decide which one wins.

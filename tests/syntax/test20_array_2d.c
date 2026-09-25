@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A two-dimensional array is an array of arrays, indexed row then column.
 
 int main()

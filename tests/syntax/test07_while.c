@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A while loop that runs, and one whose condition is false on entry.
 
 int main()

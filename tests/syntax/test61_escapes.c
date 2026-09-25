@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // The full escape set. A backslash either names a control character, spells a
 // byte in octal or hex, or spells a code point as a universal character name.
 // A narrow literal holds that code point as its UTF-8 bytes rather than whole.

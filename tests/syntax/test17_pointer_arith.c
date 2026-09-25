@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Pointer arithmetic steps whole elements, and a difference counts them.
 
 int main()

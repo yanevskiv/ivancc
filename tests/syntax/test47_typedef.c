@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // typedef binds a name to a type, which the lexer has to know about: `Point`
 // below is a type specifier everywhere after its declaration, and an ordinary
 // identifier in the declaration that introduces it.

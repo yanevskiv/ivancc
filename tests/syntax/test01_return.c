@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // The smallest program that can succeed at all.
 
 int main()

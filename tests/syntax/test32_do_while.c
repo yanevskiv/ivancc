@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // do-while runs its body before testing, so a false condition still runs once.
 
 int main()

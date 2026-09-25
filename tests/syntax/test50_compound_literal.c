@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Compound literals: `(T){...}` names an unnamed object of type T, filled the
 // way a declaration's initializer fills a variable. Inside a function the
 // object has automatic storage and is refilled on each evaluation; outside one

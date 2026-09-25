@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // char is one byte and signed, and packs beside an int without disturbing it.
 
 int main()

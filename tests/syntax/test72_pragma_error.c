@@ -1,4 +1,4 @@
-// (Test) Compiler error: ERR_PP_ERROR_DIRECTIVE
+// (Test) Compiler error: [ERR_PP_ERROR_DIRECTIVE]
 // Pragmas and diagnostics. A header that runs #pragma once is never read again.
 // _Pragma runs a string as a #pragma, even from inside a macro. Every other
 // pragma is dropped. #warning prints its message and carries on, and #error

@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Array initializers, at file scope and inside a function. What a list leaves
 // out is zero, which for a local means the code has to write those zeros.
 
