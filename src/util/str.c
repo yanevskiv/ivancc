@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/log.h"
+#include "util/err.h"
 #include "util/str.h"
 
 // Return an owned copy of str.
@@ -19,9 +19,7 @@ char *Str_Slice(const char *str, size_t start, size_t end)
 {
     size_t len = strlen(str);
 
-    if (start > end || end > len) {
-        Log_ShowError("slice [%zu, %zu) of a string of %zu bytes", start, end, len);
-    }
+    Err_Assert(start <= end && end <= len, ERR_STR_SLICE_OUT_OF_RANGE, start, end, len);
 
     size_t want = end - start;
     char *out = malloc(want + 1);
@@ -193,9 +191,7 @@ void Str_PutEscape(char *buf, size_t *len, size_t width, uint64_t value)
 {
     uint64_t room = ~(uint64_t) 0 >> (STR_VALUE_BITS - width * STR_BITS_PER_BYTE);
 
-    if (value > room) {
-        Log_ShowError("escape sequence out of range for a %zu-byte character", width);
-    }
+    Err_Assert(value <= room, ERR_STR_ESCAPE_OUT_OF_RANGE, width);
     Str_PutValue(buf, len, width, value);
 }
 
@@ -288,9 +284,7 @@ char *Str_Unescape(const char *p, size_t len, size_t width, size_t *out_len)
             case 'x': {
                 size_t start = pos;
                 uint64_t value = Str_ScanDigits(p, len, &pos, STR_BASE_HEX, STR_MAX_HEX_DIGITS);
-                if (pos == start) {
-                    Log_ShowError("\\x used with no following hex digits");
-                }
+                Err_Assert(pos != start, ERR_STR_ESCAPE_HEX_EMPTY);
                 Str_PutEscape(buf, &n, width, value);
             } break;
             case 'u':
@@ -298,9 +292,7 @@ char *Str_Unescape(const char *p, size_t len, size_t width, size_t *out_len)
                 size_t count = p[i + 1] == 'u' ? STR_UCN_SHORT_DIGITS : STR_UCN_LONG_DIGITS;
                 size_t start = pos;
                 uint64_t value = Str_ScanDigits(p, len, &pos, STR_BASE_HEX, count);
-                if (pos - start != count) {
-                    Log_ShowError("incomplete universal character name");
-                }
+                Err_Assert(pos - start == count, ERR_STR_ESCAPE_UCN_INCOMPLETE);
                 if (width > STR_NARROW_WIDTH) {
                     Str_PutEscape(buf, &n, width, value);
                 } else {
@@ -308,7 +300,7 @@ char *Str_Unescape(const char *p, size_t len, size_t width, size_t *out_len)
                 }
             } break;
             default: {
-                Log_ShowError("unknown escape sequence '\\%c'", p[i + 1]);
+                Err_Raise(ERR_STR_ESCAPE_UNKNOWN, p[i + 1]);
             } break;
         }
         i = pos - 1;
