@@ -88,6 +88,12 @@
 // Name of the operator that asks whether a macro is defined.
 #define PP_DEFINED "defined"
 
+// Name of the operator that runs a string as a pragma.
+#define PP_PRAGMA_OPERATOR "_Pragma"
+
+// Text a _Pragma operand is run after.
+#define PP_PRAGMA_DIRECTIVE "#pragma "
+
 // Spellings of the answers defined gives.
 #define PP_TEXT_TRUE  "1"
 #define PP_TEXT_FALSE "0"
@@ -225,7 +231,7 @@ struct Pp_Options {
     const char *const *po_dirs;    // -I directories, in the order given
     size_t             po_ndirs;
     const char        *po_sysdir;  // system include directory
-    const char        *po_cmdline; // -D and -U as directives
+    const char        *po_cmdline; // -D, -U and --include as directives
 };
 
 // One preprocessing token.
@@ -280,6 +286,7 @@ struct Pp_File {
     Pp_Token       *pf_tokens;  // ending in a PP_TOKEN_EOF
     size_t          pf_ntokens;
     const Pp_Token *pf_guard;   // macro whose definition empties the file
+    bool            pf_once;    // ran #pragma once
 };
 
 // A token stream over a range of a file, with expansions pushed in front.
@@ -346,10 +353,12 @@ struct Pp_Expr {
 Pp_File        *Pp_FindFile(const char *path);
 Pp_File        *Pp_OpenFile(const char *path, uint32_t dir);
 Pp_File        *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir);
+Pp_File        *Pp_OpenPragma(const Pp_Token *str, Ast_Line line);
 const Pp_Token *Pp_FindGuard(const Pp_File *file);
 void            Pp_ReplaceTrigraphs(Buf *out, const char *text, size_t len);
 void            Pp_DeleteSplices(Buf *out, const char *text, size_t len);
 void            Pp_Tokenize(Pp_File *file);
+void            Pp_CloseFile(Pp_File *file);
 
 // Tokens
 Pp_Token *Pp_CopyToken(const Pp_Token *tok);
@@ -374,6 +383,7 @@ void      Pp_DefineMacro(const Pp_Token *name, const Pp_Macro *def);
 void      Pp_UndefMacro(const Pp_Token *name);
 void      Pp_PutDefine(Buf *cmdline, const char *arg);
 void      Pp_PutUndef(Buf *cmdline, const char *name);
+void      Pp_PutInclude(Buf *cmdline, const char *path);
 void      Pp_PutPredefined(Buf *out);
 void      Pp_DefineBuiltins(void);
 
@@ -393,6 +403,7 @@ void            Pp_PasteTokens(Pp_Token *left, const Pp_Token *right, Ast_Line l
 Pp_Token       *Pp_Substitute(const Pp_Macro *macro, Pp_Arg *args, const Pp_Token *name);
 Pp_Token       *Pp_ExpandBuiltin(const Pp_Macro *macro, const Pp_Token *name);
 bool            Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok);
+const Pp_Token *Pp_ReadExpanded(Pp_Reader *rd);
 Pp_Token       *Pp_ExpandAll(Pp_Reader *rd);
 Pp_Token       *Pp_ExpandRange(const Pp_File *file, size_t start, size_t end);
 
@@ -427,6 +438,11 @@ void     Pp_CheckBody(const Pp_Macro *def, Ast_Line line);
 void     Pp_RunUndef(const Pp_File *file, size_t pos);
 void     Pp_RunLine(Pp_Printer *pr, const Pp_File *file, size_t pos);
 Ast_Line Pp_ReadLineNumber(const Pp_Token *tok, Ast_Line line);
+void     Pp_RunPragma(const Pp_File *file, const Pp_File *text, size_t pos);
+void     Pp_RunPragmaOperator(Pp_Reader *rd, const Pp_Token *op);
+void     Pp_RunError(const Pp_File *file, size_t pos);
+void     Pp_RunWarning(const Pp_File *file, size_t pos);
+char    *Pp_LineText(const Pp_File *file, size_t pos);
 
 // Conditionals
 bool      Pp_OpensCond(const Pp_Token *name);

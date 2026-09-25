@@ -44,6 +44,10 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PP_LINE_NUMBER_INVALID]        = { "ERR_PP_LINE_NUMBER_INVALID",        "\"%.*s\" after #line is not a positive integer" },
     [ERR_PP_LINE_OUT_OF_RANGE]          = { "ERR_PP_LINE_OUT_OF_RANGE",          "line number out of range" },
     [ERR_PP_LINE_NAME_INVALID]          = { "ERR_PP_LINE_NAME_INVALID",          "\"%.*s\" is not a valid filename" },
+    [ERR_PP_PRAGMA_MALFORMED]           = { "ERR_PP_PRAGMA_MALFORMED",           "_Pragma takes a parenthesized string literal" },
+    [ERR_PP_ONCE_IN_MAIN_FILE]          = { "ERR_PP_ONCE_IN_MAIN_FILE",          "#pragma once in main file" },
+    [ERR_PP_ERROR_DIRECTIVE]            = { "ERR_PP_ERROR_DIRECTIVE",            "#error %s" },
+    [ERR_PP_WARNING_DIRECTIVE]          = { "ERR_PP_WARNING_DIRECTIVE",          "#warning %s" },
 
     [ERR_LEX_UNEXPECTED_CHAR]           = { "ERR_LEX_UNEXPECTED_CHAR",           "unexpected character '%s'" },
 
