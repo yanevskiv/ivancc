@@ -200,7 +200,7 @@ Voice:
   - Every part must be numbered in the order the toolchain is built:
     - Log, File, Str.
     - Lexer, Parser, Ast, Sem, Elf.
-    - Abi, Asm, Gen, Rel, Enc, Txt, Emu.
+    - Asm, Gen, Rel, Enc, Txt, Emu.
     - Cc, As, Ld, Emu.
   - Do not give a part file to a module the stage did not touch.
 - Structure:
@@ -208,11 +208,11 @@ Voice:
   - Every piece of the work must be a `###` heading naming the code it covers.
   - Every heading must spell that name the way the source spells it, in backticks.
   - Write a function as `Par_AddFunction()`, keeping its parentheses.
-  - Write a type as `Abi_x86_64_SysV_Class` and one field of it as `Ast_Node.an_tmp`.
+  - Write a type as `Gen_x86_64_SysV_Class` and one field of it as `Ast_Node.an_tmp`.
   - Write a switch arm as `case AST_NODE_KIND_CALL`, keeping the `case` keyword.
   - Write a grammar rule as `decl_tail`, under the name the grammar gives it.
   - Every heading must open with the action the stage took on that code.
-  - Write `Add:` for code the stage introduces, as in ``### Add: `Abi_x86_64_SysV_Class` ``.
+  - Write `Add:` for code the stage introduces, as in ``### Add: `Gen_x86_64_SysV_Class` ``.
   - Write `Extend:` where a whole rule, case or block joins something that already existed.
   - Write `Modify:` where existing code changes in a way no addition describes.
   - Write `Delete:` for code the stage removes.
