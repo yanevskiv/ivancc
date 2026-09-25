@@ -3,8 +3,12 @@
 #ifndef LOG_H
 #define LOG_H
 
+// Standard headers.
 #include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // Program name a message carries before Log_SetProgramName.
 #define LOG_PROGRAM_DEFAULT "ivancc"

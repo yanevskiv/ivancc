@@ -1,11 +1,6 @@
 // C source file for the x86-64 instruction-set emulator.
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "arch/x86_64/enc.h"
+// Take every include from the module's header.
 #include "arch/x86_64/emu.h"
 
 // 64-bit register names, numbered as ModRM and REX number them.

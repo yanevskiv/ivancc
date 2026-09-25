@@ -1,13 +1,7 @@
 // C source file for the parser's declarator and parameter helpers.
 
-#include <stdlib.h>
-#include <string.h>
-
-#include "util/err.h"
-#include "util/str.h"
-#include "syntax/ast.h"
-#include "syntax/sem.h"
-#include "syntax/par.h"
+// Take every include from the module's header.
+#include "lang/par.h"
 
 // State for the function definition currently being parsed.
 static char            *Par_CurFuncName;

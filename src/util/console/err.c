@@ -1,11 +1,7 @@
 // C source file for user-facing diagnostics.
 
-#include <stdarg.h>
-#include <stdlib.h>
-
-#include "util/err.h"
-#include "util/log.h"
-#include "util/str.h"
+// Take every include from the module's header.
+#include "util/console/err.h"
 
 // Every diagnostic's name and message format.
 static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
@@ -210,10 +206,15 @@ void Err_ShowVa(Log_Severity severity, uint32_t line, Err_Code code, va_list ap)
         Log_ShowError("diagnostic code %d has no entry", (int) code);
     }
 
-    char *message = Str_FormatVa(Err_Table[code].ee_format, ap);
+    va_list copy;
+    va_copy(copy, ap);
+    size_t len = (size_t) vsnprintf(NULL, 0, Err_Table[code].ee_format, copy);
+    va_end(copy);
 
+    char *message = malloc(len + 1);
+    vsnprintf(message, len + 1, Err_Table[code].ee_format, ap);
     Log_Show(severity, line, "%s [%s]", message, Err_Table[code].ee_name);
-    Str_Free(message);
+    free(message);
 }
 
 // Return the code of the last error raised.

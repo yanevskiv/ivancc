@@ -1,5 +1,6 @@
 // C source file for the ivanld linker.
 
+// Standard headers.
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,10 +8,11 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "util/err.h"
-#include "util/log.h"
+// Project headers.
+#include "util/console/err.h"
+#include "util/console/log.h"
+#include "util/object/elf.h"
 #include "util/str.h"
-#include "object/elf.h"
 #include "arch/x86_64/link.h"
 
 // Permission bits for the executable ld writes (rwxr-xr-x).

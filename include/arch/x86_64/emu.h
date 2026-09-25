@@ -3,10 +3,16 @@
 #ifndef EMU_X86_64_H
 #define EMU_X86_64_H
 
+// Standard headers.
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
+// Project headers.
+#include "arch/x86_64/enc.h"
 #include "arch/x86_64/load.h"
 
 // Bits in a byte, for turning an operand width into a count of bytes.

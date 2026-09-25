@@ -3,10 +3,14 @@
 #ifndef ERR_H
 #define ERR_H
 
+// Standard headers.
 #include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "util/log.h"
+// Project headers.
+#include "util/console/log.h"
 
 // Raise an error unless a condition holds.
 #define Err_Assert(cond, ...)                     \

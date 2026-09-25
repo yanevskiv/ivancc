@@ -1,11 +1,6 @@
 // C source file for the x86-64 instruction list.
 
-#include <stdarg.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "util/str.h"
+// Take every include from the module's header.
 #include "arch/x86_64/asm.h"
 
 // Head and tail of the instruction list being built.

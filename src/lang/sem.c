@@ -1,10 +1,7 @@
 // C source file for semantic analysis.
 
-#include <string.h>
-
-#include "util/err.h"
-#include "util/str.h"
-#include "syntax/sem.h"
+// Take every include from the module's header.
+#include "lang/sem.h"
 
 // The program being analysed.
 static Ast_Func *Sem_Prog;

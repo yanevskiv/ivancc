@@ -1,12 +1,14 @@
 // C source file for the ivanas assembler.
 
+// Standard headers.
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/err.h"
-#include "util/log.h"
+// Project headers.
+#include "util/console/err.h"
+#include "util/console/log.h"
 #include "util/str.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/txt.h"

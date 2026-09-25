@@ -1,11 +1,7 @@
 // C source file for ELF objects and executables.
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "object/elf.h"
+// Take every include from the module's header.
+#include "util/object/elf.h"
 
 // Initialize an empty byte buffer.
 void Elf_Buffer_Init(Elf_Buffer *buf)

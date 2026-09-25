@@ -7,8 +7,8 @@
 
 %{
 #include <stdlib.h>
-#include "util/err.h"
-#include "syntax/pp.h"
+#include "util/console/err.h"
+#include "lang/pp.h"
 %}
 
 DIGIT   [0-9]

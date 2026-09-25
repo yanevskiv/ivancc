@@ -3,11 +3,16 @@
 #ifndef LINK_X86_64_H
 #define LINK_X86_64_H
 
+// Standard headers.
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "object/elf.h"
+// Project headers.
+#include "util/console/err.h"
+#include "util/object/elf.h"
 
 // One -place request: load the named section at a fixed address.
 typedef struct Link_x86_64_Place Link_x86_64_Place;
