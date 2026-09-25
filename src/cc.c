@@ -14,6 +14,8 @@
 #include "util/log.h"
 #include "util/str.h"
 #include "syntax/ast.h"
+#include "syntax/par.h"
+#include "syntax/pp.h"
 #include "syntax/sem.h"
 #include "object/elf.h"
 #include "arch/x86_64/gen.h"
@@ -30,6 +32,9 @@
 // Output name that means standard output rather than a file.
 #define STDOUT_NAME "-"
 
+// The one language standard --std accepts.
+#define DEFAULT_STD "c99"
+
 // Target architecture selected when no -march= is given.
 #define DEFAULT_ARCH "x86_64"
 
@@ -44,20 +49,18 @@
 #define RUNTIME_DIR "/../lib/"
 
 
-// Input stream read by the generated lexer.
-extern FILE *yyin;
+// Values getopt_long returns for the options with no short form.
+typedef enum Cc_Option Cc_Option;
+enum Cc_Option {
+    CC_OPTION_STD = UCHAR_MAX + 1,
+    CC_OPTION_INCLUDE
+};
 
 // Runtime objects the default (linked) output is always merged with.
 static const char *const Cc_RuntimeNames[] = { "crt0.o", "libc.o" };
 
-// The source file being compiled.
-static const char *Cc_InputPath;
-
 // The output file this run created.
 static const char *Cc_OutputPath;
-
-// Entry point of the generated parser.
-int yyparse(void);
 
 // Show usage information and exit.
 static void Cc_ShowUsage(const char *prog)
@@ -67,18 +70,14 @@ static void Cc_ShowUsage(const char *prog)
         "  -o OUTPUT   write output to OUTPUT (default: " DEFAULT_OUTPUT ", " STDOUT_NAME " is stdout)\n"
         "  -S          write assembly text instead of an executable\n"
         "  -c          write a relocatable object (.o) instead of an executable\n"
+        "  -E          write the preprocessed text instead of an executable\n"
+        "  -P          leave line markers out of -E's output\n"
+        "  --std=STD   language standard (only " DEFAULT_STD ")\n"
         "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n"
         "  -mtarget=T  runtime to link against (default: " DEFAULT_TARGET ")\n"
         "  -B DIR      read the runtime objects from DIR\n",
         prog);
     exit(1);
-}
-
-// Map a line of the input to its file and source line.
-static const char *Cc_Locate(uint32_t line, uint32_t *source)
-{
-    *source = line;
-    return Cc_InputPath;
 }
 
 // Remove the output file after an error.
@@ -198,8 +197,12 @@ int main(int argc, char **argv)
     const char *prefix = NULL;
     bool emit_text = false;
     bool emit_obj = false;
+    bool emit_pp = false;
+    Pp_Markers markers = PP_MARKERS_EMIT;
 
     static struct option longopts[] = {
+        { "std",     required_argument, NULL, CC_OPTION_STD },
+        { "include", required_argument, NULL, CC_OPTION_INCLUDE },
         { 0, 0, 0, 0 }
     };
 
@@ -207,7 +210,7 @@ int main(int argc, char **argv)
     atexit(Cc_RemoveOutput);
 
     int32_t opt;
-    while ((opt = getopt_long(argc, argv, "o:cESgB:I:D:U:l:L:W:f:m:O::", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "o:cEPSgB:I:D:U:M::l:L:W:f:m:O::", longopts, NULL)) != -1) {
         switch (opt) {
             case 'o': {
                 output = optarg;
@@ -217,6 +220,12 @@ int main(int argc, char **argv)
             } break;
             case 'c': {
                 emit_obj = true;
+            } break;
+            case 'E': {
+                emit_pp = true;
+            } break;
+            case 'P': {
+                markers = PP_MARKERS_OMIT;
             } break;
             case 'B': {
                 prefix = optarg;
@@ -228,17 +237,29 @@ int main(int argc, char **argv)
                     target = optarg + strlen(MTARGET_PREFIX);
                 }
             } break;
-            case 'E':
-            case 'g':
             case 'I':
             case 'D':
             case 'U':
+            case 'M': {
+                char flag[] = { '-', (char) opt, '\0' };
+                Err_Raise(ERR_CC_OPTION_UNSUPPORTED, flag);
+            } break;
+            case CC_OPTION_STD: {
+                Err_Assert(Str_Equals(optarg, DEFAULT_STD), ERR_CC_STD_UNSUPPORTED, optarg, DEFAULT_STD);
+            } break;
+            case CC_OPTION_INCLUDE: {
+                Err_Raise(ERR_CC_OPTION_UNSUPPORTED, "--include");
+            } break;
+            case 'g':
             case 'l':
             case 'L':
             case 'W':
             case 'f':
             case 'O': {
                 // empty
+            } break;
+            default: {
+                Cc_ShowUsage(argv[0]);
             } break;
         }
     }
@@ -250,12 +271,11 @@ int main(int argc, char **argv)
     }
     const char *input = argv[optind];
 
-    Cc_InputPath = input;
-    Log_SetLineLocator(Cc_Locate);
-
     char *outbuf = NULL;
     if (! output) {
-        if (emit_text) {
+        if (emit_pp) {
+            output = STDOUT_NAME;
+        } else if (emit_text) {
             output = outbuf = Str_ChangeOrAppendExt(input, ".s");
         } else if (emit_obj) {
             output = outbuf = Str_ChangeOrAppendExt(input, ".o");
@@ -265,11 +285,21 @@ int main(int argc, char **argv)
     }
 
     // Front end: build the AST
-    yyin = fopen(input, "r");
-    Err_Assert(yyin, ERR_FILE_ACCESS, input, strerror(errno));
-    yyparse();
+    Str_Buf *text = Str_BufNew();
+
+    Pp_Run(input, text);
+    Log_SetLineLocator(Pp_Locate);
+    if (emit_pp) {
+        FILE *out = Cc_OpenOutput(output, "w");
+        Pp_Write(out, text, markers);
+        Cc_CloseOutput(out);
+        Str_BufFree(text);
+        Str_Free(outbuf);
+        return 0;
+    }
+    Par_ParseText(Str_BufData(text), Str_BufLen(text));
+    Str_BufFree(text);
     Sem_Analyze(Ast_Program);
-    fclose(yyin);
 
     // Back end: emit assembly text or a freestanding executable
     FILE *out = Cc_OpenOutput(output, emit_text ? "w" : "wb");

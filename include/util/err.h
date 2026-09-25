@@ -37,9 +37,13 @@ enum Err_Code {
     ERR_STR_ESCAPE_UCN_INCOMPLETE,
     ERR_STR_ESCAPE_UNKNOWN,            // character
 
+    ERR_PP_COMMENT_UNTERMINATED,
+    ERR_PP_DIRECTIVE_UNKNOWN,          // name length, name
+
     ERR_LEX_UNEXPECTED_CHAR,           // character
 
     ERR_PAR_SYNTAX,                    // parser message
+    ERR_PAR_TEXT_TOO_LONG,             // length
     ERR_PAR_DECL_UNNAMED,
     ERR_PAR_ARRAY_OF_FUNCTIONS,
     ERR_PAR_ARRAY_LEN_NOT_CONSTANT,
@@ -142,6 +146,8 @@ enum Err_Code {
 
     ERR_CC_ARCH_UNSUPPORTED,           // architecture, supported architecture
     ERR_CC_RUNTIME_NOT_FOUND,
+    ERR_CC_OPTION_UNSUPPORTED,         // option
+    ERR_CC_STD_UNSUPPORTED,            // standard, supported standard
 
     ERR_LD_PLACE_MALFORMED,            // placement
 

@@ -3,6 +3,7 @@
 %option yylineno
 
 %{
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include "util/err.h"
@@ -130,6 +131,23 @@ L?'([^'\\\n]|\\.)+'     { bool wide = yytext[0] == 'L';
 ","                     return COMMA;
 "."                     return DOT;
 
+"<:"                    return LSQUARE;
+":>"                    return RSQUARE;
+"<%"                    return LBRACE;
+"%>"                    return RBRACE;
+
 .                       { Err_RaiseAt((Ast_Line) yylineno, ERR_LEX_UNEXPECTED_CHAR, yytext); }
 
 %%
+
+// Parse preprocessed text into the program.
+void Par_ParseText(const char *text, size_t len)
+{
+    Err_Assert(len <= INT_MAX, ERR_PAR_TEXT_TOO_LONG, len);
+
+    YY_BUFFER_STATE buf = yy_scan_bytes(text, (int) len);
+
+    yylineno = 1;
+    yyparse();
+    yy_delete_buffer(buf);
+}
