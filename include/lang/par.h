@@ -199,11 +199,14 @@ Ast_Node *Par_InitStore(Ast_Var *var, int32_t off, Ast_Type *type, Ast_Member *b
 Ast_Node *Par_InitAt(int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line);
 void      Par_Designate(Ast_Type *type, Ast_Node *desig, int32_t *index, Ast_Member **member, Ast_Line line);
 void      Par_Step(Ast_Type **type, int32_t *off, Ast_Node *desig, int32_t index, Ast_Member *member);
+void      Par_Reach(const Ast_Type *type, int32_t len);
 Ast_Type *Par_ExprType(Ast_Node *node);
+bool      Par_IsStringInit(const Ast_Type *type, const Ast_Node *init);
+void      Par_FlattenString(Ast_Type *type, int32_t base, Ast_Node *init, Ast_Node **tail, Ast_Line line);
 void      Par_FlattenSlot(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, Ast_Line line);
 void      Par_FlattenList(Ast_Type *type, int32_t base, Ast_Node **item, Ast_Node **tail, Par_List braced, Ast_Line line);
 void      Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init, Ast_Node **tail, Ast_Line line);
-Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, Ast_Line line);
+Ast_Node *Par_FlattenInit(Ast_Type **type, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, Ast_Line line);
 Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line);
@@ -213,6 +216,7 @@ void      Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line);
 void      Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_Line line);
 Ast_Var  *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line);
+void      Par_CompleteTentatives(void);
 
 // Functions
 Ast_Func *Par_FindFunction(const char *name);
@@ -228,6 +232,7 @@ void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 // Expressions
 Ast_Node *Par_Designator(char *name, Ast_Line line);
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line);
+Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line);
 
 // Parsing
 void Par_ParseText(const char *text, size_t len);
