@@ -109,12 +109,12 @@ Checklist toward ISO C99.
 
 ## Preprocessor
 
-- [ ] `#include`
-- [ ] `#define` (object-like)
-- [ ] `#define` (function-like, incl. variadic macros)
-- [ ] `#undef`
-- [ ] `#if` / `#ifdef` / `#ifndef` / `#elif` / `#else` / `#endif`, `defined()`
-- [ ] `#pragma`
-- [ ] `#error` / `#warning`
-- [ ] token pasting (`##`) and stringizing (`#`)
-- [ ] predefined macros (`__FILE__`, `__LINE__`, `__func__`, ...)
+- [x] `#include`
+- [x] `#define` (object-like)
+- [x] `#define` (function-like, incl. variadic macros)
+- [x] `#undef`
+- [x] `#if` / `#ifdef` / `#ifndef` / `#elif` / `#else` / `#endif`, `defined()`
+- [x] `#pragma`
+- [x] `#error` / `#warning`
+- [x] token pasting (`##`) and stringizing (`#`)
+- [x] predefined macros (`__FILE__`, `__LINE__`, `__func__`, ...)
