@@ -3,13 +3,6 @@
 // Module header.
 #include "util/str.h"
 
-// The storage behind a Str_Buf.
-struct Str_Buf {
-    char  *sb_data;
-    size_t sb_len;
-    size_t sb_cap;
-};
-
 // Return an owned copy of str.
 char *Str_Clone(const char *str)
 {
@@ -136,101 +129,4 @@ void Str_ListFree(Str_List *list)
     free(list->sl_items);
     list->sl_items = NULL;
     list->sl_count = 0;
-}
-
-// Start an empty buffer.
-Str_Buf *Str_BufNew(void)
-{
-    Str_Buf *buf = malloc(sizeof(*buf));
-
-    buf->sb_data = malloc(STR_BUF_MIN_CAP);
-    buf->sb_data[0] = '\0';
-    buf->sb_len = 0;
-    buf->sb_cap = STR_BUF_MIN_CAP;
-    return buf;
-}
-
-// Return the text a buffer holds.
-const char *Str_BufData(const Str_Buf *buf)
-{
-    return buf->sb_data;
-}
-
-// Return the length of the text a buffer holds.
-size_t Str_BufLen(const Str_Buf *buf)
-{
-    return buf->sb_len;
-}
-
-// Make room for n more bytes.
-void Str_BufReserve(Str_Buf *buf, size_t n)
-{
-    size_t want = buf->sb_len + n + 1;
-
-    if (want <= buf->sb_cap) {
-        return;
-    }
-    while (buf->sb_cap < want) {
-        buf->sb_cap *= 2;
-    }
-    buf->sb_data = realloc(buf->sb_data, buf->sb_cap);
-}
-
-// Append one byte.
-void Str_BufPutByte(Str_Buf *buf, char byte)
-{
-    Str_BufReserve(buf, 1);
-    buf->sb_data[buf->sb_len++] = byte;
-    buf->sb_data[buf->sb_len] = '\0';
-}
-
-// Append len bytes.
-void Str_BufPutBytes(Str_Buf *buf, const char *data, size_t len)
-{
-    Str_BufReserve(buf, len);
-    memcpy(buf->sb_data + buf->sb_len, data, len);
-    buf->sb_len += len;
-    buf->sb_data[buf->sb_len] = '\0';
-}
-
-// Append a NUL-terminated string.
-void Str_BufPutText(Str_Buf *buf, const char *text)
-{
-    Str_BufPutBytes(buf, text, strlen(text));
-}
-
-// Append text formatted like printf(3).
-void Str_BufPrint(Str_Buf *buf, const char *fmt, ...)
-{
-    va_list ap;
-    va_list ap2;
-
-    va_start(ap, fmt);
-    va_copy(ap2, ap);
-
-    size_t len = (size_t) vsnprintf(NULL, 0, fmt, ap);
-
-    Str_BufReserve(buf, len);
-    vsnprintf(buf->sb_data + buf->sb_len, len + 1, fmt, ap2);
-    buf->sb_len += len;
-    va_end(ap2);
-    va_end(ap);
-}
-
-// Turn a buffer into its text.
-char *Str_BufTake(Str_Buf *buf)
-{
-    char *data = buf->sb_data;
-
-    free(buf);
-    return data;
-}
-
-// Free a buffer and its text.
-void Str_BufFree(Str_Buf *buf)
-{
-    if (buf) {
-        free(buf->sb_data);
-        free(buf);
-    }
 }

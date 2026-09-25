@@ -18,6 +18,7 @@
 // Project headers.
 #include "util/console/err.h"
 #include "util/console/log.h"
+#include "util/buf.h"
 #include "util/fs.h"
 #include "util/str.h"
 #include "lang/ast.h"
@@ -310,7 +311,7 @@ struct Pp_Place {
 // Where the printer has got to.
 typedef struct Pp_Printer Pp_Printer;
 struct Pp_Printer {
-    Str_Buf        *pr_out;
+    Buf            *pr_out;
     Ast_Line        pr_line;   // output line being printed
     uint32_t        pr_file;   // file the output line comes from
     Ast_Line        pr_source; // source line the output line comes from
@@ -346,8 +347,8 @@ Pp_File        *Pp_FindFile(const char *path);
 Pp_File        *Pp_OpenFile(const char *path, uint32_t dir);
 Pp_File        *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir);
 const Pp_Token *Pp_FindGuard(const Pp_File *file);
-void            Pp_ReplaceTrigraphs(Str_Buf *out, const char *text, size_t len);
-void            Pp_DeleteSplices(Str_Buf *out, const char *text, size_t len);
+void            Pp_ReplaceTrigraphs(Buf *out, const char *text, size_t len);
+void            Pp_DeleteSplices(Buf *out, const char *text, size_t len);
 void            Pp_Tokenize(Pp_File *file);
 
 // Tokens
@@ -371,9 +372,9 @@ bool      Pp_FindParam(const Pp_Macro *macro, const Pp_Token *tok, size_t *index
 bool      Pp_SameMacro(const Pp_Macro *macro, const Pp_Macro *def);
 void      Pp_DefineMacro(const Pp_Token *name, const Pp_Macro *def);
 void      Pp_UndefMacro(const Pp_Token *name);
-void      Pp_PutDefine(Str_Buf *cmdline, const char *arg);
-void      Pp_PutUndef(Str_Buf *cmdline, const char *name);
-void      Pp_PutPredefined(Str_Buf *out);
+void      Pp_PutDefine(Buf *cmdline, const char *arg);
+void      Pp_PutUndef(Buf *cmdline, const char *name);
+void      Pp_PutPredefined(Buf *out);
 void      Pp_DefineBuiltins(void);
 
 // Hide sets
@@ -413,7 +414,7 @@ void Pp_BreakLine(Pp_Printer *pr);
 void Pp_SyncLine(Pp_Printer *pr, const Pp_Token *tok);
 void Pp_Unsync(Pp_Printer *pr);
 void Pp_PrintToken(Pp_Printer *pr, const Pp_Token *tok);
-void Pp_Write(FILE *out, const Str_Buf *text, Pp_Markers markers);
+void Pp_Write(FILE *out, const Buf *text, Pp_Markers markers);
 
 // Directives
 bool     Pp_IsDirective(const Pp_Token *tok);
@@ -458,6 +459,6 @@ bool     Pp_IsTrue(Pp_Value val);
 
 // Running
 void Pp_RunFile(Pp_Printer *pr, const Pp_File *file);
-void Pp_Run(const char *path, const Pp_Options *opts, Str_Buf *out);
+void Pp_Run(const char *path, const Pp_Options *opts, Buf *out);
 
 #endif // PP_H

@@ -25,7 +25,7 @@ GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/c.tab.o $(OUT)/pp.yy.o
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
 ELF_OBJS := $(OUT)/util/object/elf.o $(OUT)/util/console/err.o $(OUT)/util/console/log.o $(OUT)/util/str.o
 
-AS_OBJS := $(OUT)/as.o $(ELF_OBJS) \
+AS_OBJS := $(OUT)/as.o $(ELF_OBJS) $(OUT)/util/buf.o \
 	$(OUT)/arch/$(TARGET_ARCH)/txt.o $(OUT)/arch/$(TARGET_ARCH)/asm.o \
 	$(OUT)/arch/$(TARGET_ARCH)/enc.o
 EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/load.o $(OUT)/arch/$(TARGET_ARCH)/emu.o

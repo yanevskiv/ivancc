@@ -141,12 +141,12 @@ Pp_File *Pp_OpenFile(const char *path, uint32_t dir)
 // Pre-pass and tokenize text as the file at path.
 Pp_File *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir)
 {
-    Str_Buf *plain = Str_BufNew();
-    Str_Buf *text = Str_BufNew();
+    Buf *plain = Buf_New();
+    Buf *text = Buf_New();
 
     Pp_ReplaceTrigraphs(plain, raw, len);
-    Pp_DeleteSplices(text, Str_BufData(plain), Str_BufLen(plain));
-    Str_BufPutByte(text, '\0');
+    Pp_DeleteSplices(text, Buf_Data(plain), Buf_Len(plain));
+    Buf_PutByte(text, '\0');
 
     Pp_File *file = calloc(1, sizeof(*file));
 
@@ -154,8 +154,8 @@ Pp_File *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir
     file->pf_index = Pp_NumFiles;
     file->pf_dir = dir;
     file->pf_system = dir != PP_DIR_NONE && dir == Pp_SysDir;
-    file->pf_len = Str_BufLen(text) - 1;
-    file->pf_text = Str_BufTake(text);
+    file->pf_len = Buf_Len(text) - 1;
+    file->pf_text = Buf_Take(text);
 
     Pp_Files = realloc(Pp_Files, (Pp_NumFiles + 1) * sizeof(*Pp_Files));
     Pp_Files[Pp_NumFiles++] = file;
@@ -167,7 +167,7 @@ Pp_File *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir
     Pp_CurPlace = reader;
     file->pf_guard = Pp_FindGuard(file);
 
-    Str_BufFree(plain);
+    Buf_Free(plain);
     return file;
 }
 
@@ -195,7 +195,7 @@ const Pp_Token *Pp_FindGuard(const Pp_File *file)
 }
 
 // Replace every trigraph with the character it stands for.
-void Pp_ReplaceTrigraphs(Str_Buf *out, const char *text, size_t len)
+void Pp_ReplaceTrigraphs(Buf *out, const char *text, size_t len)
 {
     for (size_t i = 0; i < len; i++) {
         const char *key = NULL;
@@ -204,16 +204,16 @@ void Pp_ReplaceTrigraphs(Str_Buf *out, const char *text, size_t len)
             key = strchr(PP_TRIGRAPH_KEYS, text[i + 2]);
         }
         if (key) {
-            Str_BufPutByte(out, PP_TRIGRAPH_VALUES[key - PP_TRIGRAPH_KEYS]);
+            Buf_PutByte(out, PP_TRIGRAPH_VALUES[key - PP_TRIGRAPH_KEYS]);
             i += 2;
         } else {
-            Str_BufPutByte(out, text[i]);
+            Buf_PutByte(out, text[i]);
         }
     }
 }
 
 // Delete every backslash-newline.
-void Pp_DeleteSplices(Str_Buf *out, const char *text, size_t len)
+void Pp_DeleteSplices(Buf *out, const char *text, size_t len)
 {
     size_t owed = 0;
 
@@ -223,15 +223,15 @@ void Pp_DeleteSplices(Str_Buf *out, const char *text, size_t len)
             i++;
             continue;
         }
-        Str_BufPutByte(out, text[i]);
+        Buf_PutByte(out, text[i]);
         if (text[i] == '\n') {
             for (; owed > 0; owed--) {
-                Str_BufPutByte(out, '\n');
+                Buf_PutByte(out, '\n');
             }
         }
     }
     for (; owed > 0; owed--) {
-        Str_BufPutByte(out, '\n');
+        Buf_PutByte(out, '\n');
     }
 }
 
@@ -356,17 +356,17 @@ bool Pp_NeedsSpace(const Pp_Token *prev, const Pp_Token *next)
 // Spell a file name as a string literal.
 char *Pp_QuoteName(const char *name)
 {
-    Str_Buf *text = Str_BufNew();
+    Buf *text = Buf_New();
 
-    Str_BufPutByte(text, '"');
+    Buf_PutByte(text, '"');
     for (; *name; name++) {
         if (*name == '"' || *name == '\\') {
-            Str_BufPutByte(text, '\\');
+            Buf_PutByte(text, '\\');
         }
-        Str_BufPutByte(text, *name);
+        Buf_PutByte(text, *name);
     }
-    Str_BufPutByte(text, '"');
-    return Str_BufTake(text);
+    Buf_PutByte(text, '"');
+    return Buf_Take(text);
 }
 
 // True if a directive's token can name a macro.
@@ -481,25 +481,25 @@ void Pp_UndefMacro(const Pp_Token *name)
 }
 
 // Append the directive -D arg stands for.
-void Pp_PutDefine(Str_Buf *cmdline, const char *arg)
+void Pp_PutDefine(Buf *cmdline, const char *arg)
 {
     const char *eq = strchr(arg, '=');
 
     if (eq) {
-        Str_BufPrint(cmdline, "#define %.*s %s\n", (int) (eq - arg), arg, eq + 1);
+        Buf_Print(cmdline, "#define %.*s %s\n", (int) (eq - arg), arg, eq + 1);
     } else {
-        Str_BufPrint(cmdline, "#define %s 1\n", arg);
+        Buf_Print(cmdline, "#define %s 1\n", arg);
     }
 }
 
 // Append the directive -U name stands for.
-void Pp_PutUndef(Str_Buf *cmdline, const char *name)
+void Pp_PutUndef(Buf *cmdline, const char *name)
 {
-    Str_BufPrint(cmdline, "#undef %s\n", name);
+    Buf_Print(cmdline, "#undef %s\n", name);
 }
 
 // Append the directives that define the predefined macros.
-void Pp_PutPredefined(Str_Buf *out)
+void Pp_PutPredefined(Buf *out)
 {
     char date[PP_STAMP_SIZE];
     char clock[PP_STAMP_SIZE];
@@ -694,28 +694,28 @@ Pp_Token *Pp_ExpandArg(Pp_Arg *arg)
 // Spell an argument as a string literal.
 Pp_Token *Pp_Stringize(const Pp_Token *list, const Pp_Token *hash)
 {
-    Str_Buf *text = Str_BufNew();
+    Buf *text = Buf_New();
     Pp_Token *str = Pp_CopyToken(hash);
 
-    Str_BufPutByte(text, '"');
+    Buf_PutByte(text, '"');
     for (const Pp_Token *tok = list; tok; tok = tok->pt_next) {
         bool quoted = tok->pt_kind == PP_TOKEN_STRING || tok->pt_kind == PP_TOKEN_CHAR;
 
         if (tok != list && (tok->pt_flags & (PP_FLAG_BOL | PP_FLAG_SPACE))) {
-            Str_BufPutByte(text, ' ');
+            Buf_PutByte(text, ' ');
         }
         for (size_t i = 0; i < tok->pt_len; i++) {
             if (quoted && (tok->pt_text[i] == '"' || tok->pt_text[i] == '\\')) {
-                Str_BufPutByte(text, '\\');
+                Buf_PutByte(text, '\\');
             }
-            Str_BufPutByte(text, tok->pt_text[i]);
+            Buf_PutByte(text, tok->pt_text[i]);
         }
     }
-    Str_BufPutByte(text, '"');
+    Buf_PutByte(text, '"');
 
     str->pt_kind = PP_TOKEN_STRING;
-    str->pt_len = Str_BufLen(text);
-    str->pt_text = Str_BufTake(text);
+    str->pt_len = Buf_Len(text);
+    str->pt_text = Buf_Take(text);
     return str;
 }
 
@@ -970,20 +970,20 @@ Pp_Token *Pp_HeaderFromTokens(const Pp_Token *list, Ast_Line line)
         return operand;
     }
 
-    Str_Buf *name = Str_BufNew();
+    Buf *name = Buf_New();
     const Pp_Token *tok = list->pt_next;
 
-    Str_BufPutByte(name, '<');
+    Buf_PutByte(name, '<');
     for (; tok && ! Pp_TokenEquals(tok, ">"); tok = tok->pt_next) {
         if (tok != list->pt_next && (tok->pt_flags & PP_FLAG_SPACE)) {
-            Str_BufPutByte(name, ' ');
+            Buf_PutByte(name, ' ');
         }
-        Str_BufPutBytes(name, tok->pt_text, tok->pt_len);
+        Buf_PutBytes(name, tok->pt_text, tok->pt_len);
     }
     Err_AssertAt(line, tok, ERR_PP_INCLUDE_MALFORMED);
-    Str_BufPutByte(name, '>');
-    operand->pt_len = Str_BufLen(name);
-    operand->pt_text = Str_BufTake(name);
+    Buf_PutByte(name, '>');
+    operand->pt_len = Buf_Len(name);
+    operand->pt_text = Buf_Take(name);
     return operand;
 }
 
@@ -1090,7 +1090,7 @@ const char *Pp_LocateSource(Ast_Line line, Ast_Line *source)
 // End the output line.
 void Pp_BreakLine(Pp_Printer *pr)
 {
-    Str_BufPutByte(pr->pr_out, '\n');
+    Buf_PutByte(pr->pr_out, '\n');
     pr->pr_line++;
     pr->pr_prev = NULL;
 }
@@ -1131,19 +1131,19 @@ void Pp_PrintToken(Pp_Printer *pr, const Pp_Token *tok)
         Pp_SyncLine(pr, tok);
     }
     if (pr->pr_prev && ((tok->pt_flags & PP_FLAG_SPACE) || Pp_NeedsSpace(pr->pr_prev, tok))) {
-        Str_BufPutByte(pr->pr_out, ' ');
+        Buf_PutByte(pr->pr_out, ' ');
     }
-    Str_BufPutBytes(pr->pr_out, tok->pt_text, tok->pt_len);
+    Buf_PutBytes(pr->pr_out, tok->pt_text, tok->pt_len);
     pr->pr_prev = tok;
 }
 
 // Write preprocessed text.
-void Pp_Write(FILE *out, const Str_Buf *text, Pp_Markers markers)
+void Pp_Write(FILE *out, const Buf *text, Pp_Markers markers)
 {
     size_t next = 0;
-    size_t len = Str_BufLen(text);
+    size_t len = Buf_Len(text);
     Ast_Line line = PP_LINE_FIRST;
-    const char *data = Str_BufData(text);
+    const char *data = Buf_Data(text);
 
     for (size_t pos = 0; pos < len; line++) {
         const char *end = memchr(data + pos, '\n', len - pos);
@@ -1916,9 +1916,9 @@ void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
 }
 
 // Preprocess the file at path into out.
-void Pp_Run(const char *path, const Pp_Options *opts, Str_Buf *out)
+void Pp_Run(const char *path, const Pp_Options *opts, Buf *out)
 {
-    Str_Buf *predefined = Str_BufNew();
+    Buf *predefined = Buf_New();
     Pp_Printer pr = {
         .pr_out    = out,
         .pr_line   = PP_LINE_FIRST,
@@ -1932,8 +1932,8 @@ void Pp_Run(const char *path, const Pp_Options *opts, Str_Buf *out)
     Pp_SetDirs(opts);
     Pp_DefineBuiltins();
     Pp_PutPredefined(predefined);
-    Pp_RunFile(&pr, Pp_OpenText(PP_BUILTIN_NAME, Str_BufData(predefined), Str_BufLen(predefined), PP_DIR_NONE));
-    Str_BufFree(predefined);
+    Pp_RunFile(&pr, Pp_OpenText(PP_BUILTIN_NAME, Buf_Data(predefined), Buf_Len(predefined), PP_DIR_NONE));
+    Buf_Free(predefined);
     if (opts->po_cmdline) {
         Pp_RunFile(&pr, Pp_OpenText(PP_CMDLINE_NAME, opts->po_cmdline, strlen(opts->po_cmdline), PP_DIR_NONE));
     }

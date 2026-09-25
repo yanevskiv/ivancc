@@ -15,6 +15,7 @@
 #include "util/console/err.h"
 #include "util/console/log.h"
 #include "util/object/elf.h"
+#include "util/buf.h"
 #include "util/str.h"
 #include "lang/ast.h"
 #include "lang/par.h"
@@ -220,7 +221,7 @@ int main(int argc, char **argv)
     const char *prefix = NULL;
     const char **incdirs = NULL;
     size_t nincdirs = 0;
-    Str_Buf *cmdline = Str_BufNew();
+    Buf *cmdline = Buf_New();
     bool emit_text = false;
     bool emit_obj = false;
     bool emit_pp = false;
@@ -318,17 +319,17 @@ int main(int argc, char **argv)
     }
 
     // Front end: build the AST
-    Str_Buf *text = Str_BufNew();
+    Buf *text = Buf_New();
     char *sysdir = Cc_GetIncludeDir();
     Pp_Options pp_opts = {
         .po_dirs    = incdirs,
         .po_ndirs   = nincdirs,
         .po_sysdir  = sysdir,
-        .po_cmdline = Str_BufData(cmdline)
+        .po_cmdline = Buf_Data(cmdline)
     };
 
     Pp_Run(input, &pp_opts, text);
-    Str_BufFree(cmdline);
+    Buf_Free(cmdline);
     Str_Free(sysdir);
     free(incdirs);
     Log_SetLineLocator(Pp_Locate);
@@ -336,12 +337,12 @@ int main(int argc, char **argv)
         FILE *out = Cc_OpenOutput(output, "w");
         Pp_Write(out, text, markers);
         Cc_CloseOutput(out);
-        Str_BufFree(text);
+        Buf_Free(text);
         Str_Free(outbuf);
         return 0;
     }
-    Par_ParseText(Str_BufData(text), Str_BufLen(text));
-    Str_BufFree(text);
+    Par_ParseText(Buf_Data(text), Buf_Len(text));
+    Buf_Free(text);
     Sem_Analyze(Ast_Program);
 
     // Back end: emit assembly text or a freestanding executable
