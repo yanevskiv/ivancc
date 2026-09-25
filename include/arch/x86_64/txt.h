@@ -15,6 +15,7 @@
 // Project headers.
 #include "util/console/err.h"
 #include "util/object/elf.h"
+#include "util/buf.h"
 #include "util/str.h"
 #include "arch/x86_64/asm.h"
 
@@ -58,7 +59,7 @@ bool Txt_x86_64_Att_IsAddress(const char *text);
 const char *Txt_x86_64_Att_ScanReg(const char *p);
 const char *Txt_x86_64_Att_ScanNumber(const char *p, int64_t *out);
 int32_t Txt_x86_64_Att_DigitValue(char c, Txt_x86_64_Base base);
-const char *Txt_x86_64_Att_ScanString(const char *p, Str_Buf *out);
+const char *Txt_x86_64_Att_ScanString(const char *p, Buf *out);
 
 // AT&T syntax parser
 bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op);

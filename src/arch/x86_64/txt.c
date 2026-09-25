@@ -385,37 +385,37 @@ int32_t Txt_x86_64_Att_DigitValue(char c, Txt_x86_64_Base base)
 }
 
 // Decode the quoted string at p.
-const char *Txt_x86_64_Att_ScanString(const char *p, Str_Buf *out)
+const char *Txt_x86_64_Att_ScanString(const char *p, Buf *out)
 {
     const char *start = p;
 
     for (p++; *p != '"'; p++) {
         Err_Assert(*p != '\0', ERR_TXT_STRING_UNTERMINATED, start);
         if (*p != '\\') {
-            Str_BufPutByte(out, *p);
+            Buf_PutByte(out, *p);
             continue;
         }
         p++;
         Err_Assert(*p != '\0', ERR_TXT_STRING_UNTERMINATED, start);
         switch (*p) {
             case 'b': {
-                Str_BufPutByte(out, '\b');
+                Buf_PutByte(out, '\b');
             } break;
             case 'f': {
-                Str_BufPutByte(out, '\f');
+                Buf_PutByte(out, '\f');
             } break;
             case 'n': {
-                Str_BufPutByte(out, '\n');
+                Buf_PutByte(out, '\n');
             } break;
             case 'r': {
-                Str_BufPutByte(out, '\r');
+                Buf_PutByte(out, '\r');
             } break;
             case 't': {
-                Str_BufPutByte(out, '\t');
+                Buf_PutByte(out, '\t');
             } break;
             case '\\':
             case '"': {
-                Str_BufPutByte(out, *p);
+                Buf_PutByte(out, *p);
             } break;
             case '0':
             case '1':
@@ -437,7 +437,7 @@ const char *Txt_x86_64_Att_ScanString(const char *p, Str_Buf *out)
                     p++;
                 }
                 p--;
-                Str_BufPutByte(out, (char) value);
+                Buf_PutByte(out, (char) value);
             } break;
             case 'x':
             case 'X': {
@@ -447,7 +447,7 @@ const char *Txt_x86_64_Att_ScanString(const char *p, Str_Buf *out)
                     p++;
                     value = value * TXT_X86_64_BASE_HEX + (uint32_t) Txt_x86_64_Att_DigitValue(*p, TXT_X86_64_BASE_HEX);
                 }
-                Str_BufPutByte(out, (char) value);
+                Buf_PutByte(out, (char) value);
             } break;
             default: {
                 Err_Raise(ERR_TXT_ESCAPE_UNKNOWN, *p);
@@ -554,16 +554,16 @@ bool Txt_x86_64_Att_EmitAddress(const char *text, size_t width)
 // Emit the bytes of a quoted string.
 void Txt_x86_64_Att_EmitString(const char *args, Txt_x86_64_Terminate terminate)
 {
-    Str_Buf *bytes = NULL;
+    Buf *bytes = NULL;
     const char *p = strchr(args, '"');
 
     if (! p) {
         return;
     }
-    bytes = Str_BufNew();
+    bytes = Buf_New();
     Txt_x86_64_Att_ScanString(p, bytes);
-    Asm_x86_64_EmitBytes(Str_BufData(bytes), Str_BufLen(bytes) + (terminate == TXT_X86_64_TERMINATED ? 1 : 0));
-    Str_BufFree(bytes);
+    Asm_x86_64_EmitBytes(Buf_Data(bytes), Buf_Len(bytes) + (terminate == TXT_X86_64_TERMINATED ? 1 : 0));
+    Buf_Free(bytes);
 }
 
 // Parse one instruction line ("mnemonic [op[, op]]") into an instruction item.
