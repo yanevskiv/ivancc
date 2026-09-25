@@ -16,6 +16,9 @@
 // Bits in the value a literal is read into.
 #define PAR_VALUE_BITS 64
 
+// Name of the array that holds a function's own name.
+#define PAR_FUNC_NAME "__func__"
+
 // All bits of one byte set.
 #define PAR_BYTE_MASK 0xFF
 
@@ -219,6 +222,7 @@ Ast_Func *Par_MakeFunction(Ast_Node *body);
 void      Par_BeginExternal(Par_Decl *decl, Ast_Line line);
 void      Par_EndExternal(Ast_Node *init, Ast_Line line);
 void      Par_EndFunction(Ast_Node *body);
+Ast_Var  *Par_FindFuncName(const char *name, Ast_Line line);
 void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 
 // Expressions

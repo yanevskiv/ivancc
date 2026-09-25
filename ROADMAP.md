@@ -1241,9 +1241,10 @@ and it would need a second start symbol.
   `-include` as the letters `-i -n -c ...`.
 
 Re-inclusion is correct by construction. Two fast paths are optional. A header
-whose whole body sits in `#ifndef X` / `#define X` / `#endif` is skipped while
-`X` is defined. `#pragma once` is keyed by the path string as resolved, because
-`realpath` is not C99.
+whose whole body sits in `#ifndef X` / `#endif` is skipped while `X` is defined.
+Its guard need not be defined inside. A skipped group runs nothing, so such a
+header gives nothing while `X` is defined. `#pragma once` is keyed by the path
+string as resolved, because `realpath` is not C99.
 
 ### The line map
 
@@ -1288,8 +1289,8 @@ int main(void) { return one() + 2; }
 - Errors raised after the parse need the map too, so it lives until the process
   exits.
 - `Pp_Run` raises its own errors before the map exists. It sets
-  `Pp_LocateSource` for that, which names the file being read and passes its
-  line through.
+  `Pp_LocateSource` for that, which names the file being read and its line, as
+  `#line` presents them.
 - The preprocessor's own errors are `ERR_PP_*` codes. `#error` raises
   `ERR_PP_ERROR_DIRECTIVE`, with the directive's text as its argument.
   `#warning` goes through `Err_WarnAt` in the same way.
@@ -1308,9 +1309,13 @@ int main(void) { return one() + 2; }
 - `__FILE__`, `__LINE__` and `__COUNTER__` are builtin macros.
 - `__DATE__`, `__TIME__`, `__STDC__` (`1`), `__STDC_VERSION__` (`199901L`),
   `__STDC_HOSTED__` (`0`, until libc makes us hosted), `__x86_64__` and
-  `__LP64__` are defined before the source is read.
-- `__func__` is not a macro (6.4.2.2). `Sem` declares it as a `static const
-  char[]` at the top of each function body.
+  `__LP64__` are defined before the source is read. They are `#define` lines in
+  a `<built-in>` buffer, run before the `<command line>` one.
+- `__func__` is not a macro (6.4.2.2). The parser declares it the first time a
+  function body names it, as a `static const char` array. Its initializer is a
+  braced list of characters, because a string literal cannot initialize an
+  array until [the fix after this
+  stage](#between-stages-12-and-13--arrays-sized-by-their-initializer).
 - `-D name`, `-D name=value` and `-U name` become `#define` and `#undef` lines in
   a `<command line>` buffer, processed in order before the source.
 
@@ -1394,8 +1399,20 @@ suite green.
    warning. A bad escape in a character constant reports no line, as it does in
    `c.flex`.
 5. **Re-inclusion** (`test69_include_guard`). Add the guard fast path.
+   **Done.** `Pp_FindGuard` looks for the guard once, when the file is read, and
+   `Pp_RunInclude` skips the file while its guard is defined. A skipped include
+   leaves no line marker. Entering or leaving a file now always starts a new
+   map entry. Before, a header included twice in a row printed its second copy
+   on the first copy's line.
 6. **Predefined macros** (`test70_predefined`). Add the builtins, the predefined
-   set, `#line` and `__func__`.
+   set, `#line` and `__func__`. **Done.** `__FILE__`, `__LINE__` and
+   `__COUNTER__` are `PP_MACRO_BUILTIN` macros. `#line` shifts the line numbers
+   and renames the file for the rest of the file it is in. Returning from an
+   include restores the includer's. The map, the `-E` markers and the
+   diagnostics all use those names and lines. A line number of zero or above
+   2147483647 is an error, where gcc accepts it unless `-pedantic` is given. A
+   header whose first line is `#line` shows its entry marker under the new name.
+   The printer now starts a new map entry after `#line`.
 7. **Pragmas and errors** (`test71_pragma_error`). Add `#pragma once`,
    `_Pragma`, `#error`, `#warning` and `--include`. Stop refusing `--include`.
 8. **Dependency generation** (`test74_depend`). Add the `-M` family, and stop
@@ -1464,7 +1481,8 @@ The fix:
    rebuilt with that length.
 3. A string literal initializes a `char` or `wchar_t` array, braced or not. An
    unsized array takes the literal's length plus one. A sized one drops the NUL
-   when the characters fill it exactly (6.7.8p14).
+   when the characters fill it exactly (6.7.8p14). `__func__` then takes a
+   string literal instead of its list of characters.
 4. A file-scope `T x[];` with no later definition becomes `T x[1]`, with a
    warning, as gcc does.
 

@@ -58,6 +58,22 @@ static const Pp_Prec Pp_OpPrec[PP_OP_COUNT] = {
     [PP_OP_OR]      = PP_PREC_OR
 };
 
+// Name of each builtin macro.
+static const char *const Pp_BuiltinNames[PP_BUILTIN_COUNT] = {
+    [PP_BUILTIN_FILE]    = "__FILE__",
+    [PP_BUILTIN_LINE]    = "__LINE__",
+    [PP_BUILTIN_COUNTER] = "__COUNTER__"
+};
+
+// The predefined macros that never change, as -D arguments.
+static const char *const Pp_Predefined[] = {
+    "__STDC__=1",
+    "__STDC_VERSION__=199901L",
+    "__STDC_HOSTED__=0",
+    "__x86_64__=1",
+    "__LP64__=1"
+};
+
 // The files opened so far, in the order they were opened.
 static Pp_File **Pp_Files;
 static uint32_t  Pp_NumFiles;
@@ -67,7 +83,7 @@ static Pp_MapEntry *Pp_Map;
 static size_t       Pp_MapLen;
 
 // The file whose tokens are being read.
-static uint32_t Pp_CurFile = PP_FILE_NONE;
+static Pp_Place Pp_CurPlace = { NULL, 0 };
 
 // The include search list.
 static const char **Pp_Dirs;
@@ -87,6 +103,9 @@ static Pp_Macro *Pp_Macros[PP_MACRO_BUCKETS];
 
 // The conditionals open in the file being run, innermost first.
 static Pp_Cond *Pp_Conds;
+
+// Value the next __COUNTER__ gives.
+static uint32_t Pp_Counter;
 
 // Return the opened file with this path.
 Pp_File *Pp_FindFile(const char *path)
@@ -141,14 +160,38 @@ Pp_File *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir
     Pp_Files = realloc(Pp_Files, (Pp_NumFiles + 1) * sizeof(*Pp_Files));
     Pp_Files[Pp_NumFiles++] = file;
 
-    uint32_t reader = Pp_CurFile;
+    Pp_Place reader = Pp_CurPlace;
 
-    Pp_CurFile = file->pf_index;
+    Pp_CurPlace = Pp_FilePlace(file);
     Pp_Tokenize(file);
-    Pp_CurFile = reader;
+    Pp_CurPlace = reader;
+    file->pf_guard = Pp_FindGuard(file);
 
     Str_BufFree(plain);
     return file;
+}
+
+// Return the macro whose #ifndef wraps a whole file.
+const Pp_Token *Pp_FindGuard(const Pp_File *file)
+{
+    const Pp_Token *tokens = file->pf_tokens;
+
+    if (! Pp_IsDirective(&tokens[0]) || (tokens[1].pt_flags & PP_FLAG_BOL) || ! Pp_TokenEquals(&tokens[1], "ifndef")) {
+        return NULL;
+    }
+    if (! Pp_IsMacroName(&tokens[2])) {
+        return NULL;
+    }
+
+    size_t end = Pp_SkipGroup(file, 0);
+
+    if (tokens[end].pt_kind == PP_TOKEN_EOF || ! Pp_TokenEquals(&tokens[end + 1], "endif")) {
+        return NULL;
+    }
+    if (tokens[Pp_SkipLine(file, end)].pt_kind != PP_TOKEN_EOF) {
+        return NULL;
+    }
+    return &tokens[2];
 }
 
 // Replace every trigraph with the character it stands for.
@@ -310,6 +353,22 @@ bool Pp_NeedsSpace(const Pp_Token *prev, const Pp_Token *next)
     }
 }
 
+// Spell a file name as a string literal.
+char *Pp_QuoteName(const char *name)
+{
+    Str_Buf *text = Str_BufNew();
+
+    Str_BufPutByte(text, '"');
+    for (; *name; name++) {
+        if (*name == '"' || *name == '\\') {
+            Str_BufPutByte(text, '\\');
+        }
+        Str_BufPutByte(text, *name);
+    }
+    Str_BufPutByte(text, '"');
+    return Str_BufTake(text);
+}
+
 // True if a directive's token can name a macro.
 bool Pp_IsMacroName(const Pp_Token *tok)
 {
@@ -403,6 +462,7 @@ void Pp_DefineMacro(const Pp_Token *name, const Pp_Macro *def)
     macro->ma_variadic = def->ma_variadic;
     macro->ma_body = def->ma_body;
     macro->ma_nbody = def->ma_nbody;
+    macro->ma_builtin = def->ma_builtin;
 }
 
 // Forget the macro a token names.
@@ -436,6 +496,57 @@ void Pp_PutDefine(Str_Buf *cmdline, const char *arg)
 void Pp_PutUndef(Str_Buf *cmdline, const char *name)
 {
     Str_BufPrint(cmdline, "#undef %s\n", name);
+}
+
+// Append the directives that define the predefined macros.
+void Pp_PutPredefined(Str_Buf *out)
+{
+    char date[PP_STAMP_SIZE];
+    char clock[PP_STAMP_SIZE];
+    time_t now = time(NULL);
+    const struct tm *local = localtime(&now);
+    size_t count = sizeof(Pp_Predefined) / sizeof(Pp_Predefined[0]);
+
+    for (size_t i = 0; i < count; i++) {
+        Pp_PutDefine(out, Pp_Predefined[i]);
+    }
+    if (! local || ! strftime(date, sizeof(date), PP_DATE_FORMAT, local) || ! strftime(clock, sizeof(clock), PP_TIME_FORMAT, local)) {
+        Pp_PutDefine(out, PP_DATE_UNKNOWN);
+        Pp_PutDefine(out, PP_TIME_UNKNOWN);
+        return;
+    }
+    Pp_PutDefine(out, date);
+    Pp_PutDefine(out, clock);
+}
+
+// Define the macros the preprocessor expands itself.
+void Pp_DefineBuiltins(void)
+{
+    for (Pp_Builtin i = PP_BUILTIN_FILE; i < PP_BUILTIN_COUNT; i++) {
+        Pp_Token name = {
+            .pt_kind  = PP_TOKEN_IDENT,
+            .pt_text  = Pp_BuiltinNames[i],
+            .pt_len   = strlen(Pp_BuiltinNames[i]),
+            .pt_flags = PP_FLAG_NONE,
+            .pt_file  = PP_FILE_NONE,
+            .pt_line  = PP_LINE_FIRST,
+            .pt_hide  = NULL,
+            .pt_next  = NULL
+        };
+        Pp_Macro def = {
+            .ma_name     = NULL,
+            .ma_kind     = PP_MACRO_BUILTIN,
+            .ma_params   = NULL,
+            .ma_nparams  = 0,
+            .ma_variadic = false,
+            .ma_body     = NULL,
+            .ma_nbody    = 0,
+            .ma_builtin  = i,
+            .ma_next     = NULL
+        };
+
+        Pp_DefineMacro(&name, &def);
+    }
 }
 
 // True if a hide set holds a macro.
@@ -701,6 +812,32 @@ Pp_Token *Pp_Substitute(const Pp_Macro *macro, Pp_Arg *args, const Pp_Token *nam
     return head;
 }
 
+// Build the token a builtin macro expands to.
+Pp_Token *Pp_ExpandBuiltin(const Pp_Macro *macro, const Pp_Token *name)
+{
+    Pp_Token *tok = Pp_CopyToken(name);
+
+    tok->pt_kind = PP_TOKEN_NUMBER;
+    switch (macro->ma_builtin) {
+        case PP_BUILTIN_FILE: {
+            tok->pt_kind = PP_TOKEN_STRING;
+            tok->pt_text = Pp_QuoteName(Pp_CurPlace.pl_name);
+        } break;
+        case PP_BUILTIN_LINE: {
+            tok->pt_text = Str_Format("%" PRIu32, name->pt_line + Pp_CurPlace.pl_shift);
+        } break;
+        case PP_BUILTIN_COUNTER: {
+            tok->pt_text = Str_Format("%" PRIu32, Pp_Counter++);
+        } break;
+        case PP_BUILTIN_NONE:
+        case PP_BUILTIN_COUNT: {
+            // empty
+        } break;
+    }
+    tok->pt_len = strlen(tok->pt_text);
+    return tok;
+}
+
 // Push the expansion of a macro name back onto the reader.
 bool Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok)
 {
@@ -731,7 +868,7 @@ bool Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok)
     hide = Pp_HideSetAdd(hide, macro);
 
     Pp_Token *last = NULL;
-    Pp_Token *head = Pp_Substitute(macro, args, tok);
+    Pp_Token *head = macro->ma_kind == PP_MACRO_BUILTIN ? Pp_ExpandBuiltin(macro, tok) : Pp_Substitute(macro, args, tok);
 
     for (Pp_Token *copy = head; copy; copy = copy->pt_next) {
         copy->pt_flags = (copy->pt_flags & (PP_FLAG_BOL | PP_FLAG_SPACE)) ? PP_FLAG_SPACE : PP_FLAG_NONE;
@@ -890,8 +1027,19 @@ char *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Include ki
     return NULL;
 }
 
+// Return where a file's lines are before any #line.
+Pp_Place Pp_FilePlace(const Pp_File *file)
+{
+    Pp_Place place = {
+        .pl_name  = file->pf_path,
+        .pl_shift = 0
+    };
+
+    return place;
+}
+
 // Record where a stretch of output lines comes from.
-void Pp_AddMapEntry(Ast_Line output, uint32_t file, Ast_Line source, Pp_Move move)
+void Pp_AddMapEntry(Ast_Line output, const char *name, Ast_Line source, Pp_Move move)
 {
     if (Pp_MapLen == 0 || Pp_Map[Pp_MapLen - 1].pm_output != output) {
         Pp_Map = realloc(Pp_Map, (Pp_MapLen + 1) * sizeof(*Pp_Map));
@@ -901,7 +1049,7 @@ void Pp_AddMapEntry(Ast_Line output, uint32_t file, Ast_Line source, Pp_Move mov
     Pp_MapEntry *entry = &Pp_Map[Pp_MapLen - 1];
 
     entry->pm_output = output;
-    entry->pm_file = file;
+    entry->pm_name = name;
     entry->pm_source = source;
     entry->pm_move = move;
 }
@@ -929,14 +1077,14 @@ const char *Pp_Locate(Ast_Line line, Ast_Line *source)
     const Pp_MapEntry *entry = &Pp_Map[lo];
 
     *source = entry->pm_source + (line - entry->pm_output);
-    return Pp_Files[entry->pm_file]->pf_path;
+    return entry->pm_name;
 }
 
-// Map a line of the file being read to its path.
+// Map a line of the file being read to its name.
 const char *Pp_LocateSource(Ast_Line line, Ast_Line *source)
 {
-    *source = line;
-    return Pp_Files[Pp_CurFile]->pf_path;
+    *source = line + Pp_CurPlace.pl_shift;
+    return Pp_CurPlace.pl_name;
 }
 
 // End the output line.
@@ -950,7 +1098,7 @@ void Pp_BreakLine(Pp_Printer *pr)
 // Move the printer to the line a token starts on.
 void Pp_SyncLine(Pp_Printer *pr, const Pp_Token *tok)
 {
-    bool ahead = tok->pt_file == pr->pr_file && tok->pt_line >= pr->pr_source;
+    bool ahead = pr->pr_move == PP_MOVE_NONE && tok->pt_file == pr->pr_file && tok->pt_line >= pr->pr_source;
 
     if (ahead && tok->pt_line - pr->pr_source <= PP_PAD_MAX) {
         for (; pr->pr_source < tok->pt_line; pr->pr_source++) {
@@ -964,8 +1112,14 @@ void Pp_SyncLine(Pp_Printer *pr, const Pp_Token *tok)
     }
     pr->pr_file = tok->pt_file;
     pr->pr_source = tok->pt_line;
-    Pp_AddMapEntry(pr->pr_line, pr->pr_file, pr->pr_source, pr->pr_move);
+    Pp_AddMapEntry(pr->pr_line, Pp_CurPlace.pl_name, pr->pr_source + Pp_CurPlace.pl_shift, pr->pr_move);
     pr->pr_move = PP_MOVE_NONE;
+}
+
+// Make the next token start a new map entry.
+void Pp_Unsync(Pp_Printer *pr)
+{
+    pr->pr_file = PP_FILE_NONE;
 }
 
 // Print one token.
@@ -997,12 +1151,14 @@ void Pp_Write(FILE *out, const Str_Buf *text, Pp_Markers markers)
 
         if (markers == PP_MARKERS_EMIT && next < Pp_MapLen && Pp_Map[next].pm_output == line) {
             const Pp_MapEntry *entry = &Pp_Map[next++];
+            char *name = Pp_QuoteName(entry->pm_name);
 
-            fprintf(out, "# %u \"%s\"", entry->pm_source, Pp_Files[entry->pm_file]->pf_path);
+            fprintf(out, "# %" PRIu32 " %s", entry->pm_source, name);
             if (entry->pm_move != PP_MOVE_NONE) {
                 fprintf(out, " %d", (int) entry->pm_move);
             }
             fputc('\n', out);
+            Str_Free(name);
         }
         fwrite(data + pos, 1, n, out);
         pos += n;
@@ -1054,6 +1210,8 @@ size_t Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos)
         Pp_RunDefine(file, pos);
     } else if (Pp_TokenEquals(name, "undef")) {
         Pp_RunUndef(file, pos);
+    } else if (Pp_TokenEquals(name, "line")) {
+        Pp_RunLine(pr, file, pos);
     } else {
         Err_RaiseAt(hash->pt_line, ERR_PP_DIRECTIVE_UNKNOWN, (int) name->pt_len, name->pt_text);
     }
@@ -1076,6 +1234,9 @@ void Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include k
     Pp_File *file = Pp_OpenFile(path, dir);
 
     Str_Free(path);
+    if (file->pf_guard && Pp_FindMacro(file->pf_guard->pt_text, file->pf_guard->pt_len)) {
+        return;
+    }
     Pp_Depth++;
     pr->pr_move = PP_MOVE_ENTER;
     Pp_RunFile(pr, file);
@@ -1102,6 +1263,7 @@ void Pp_RunDefine(const Pp_File *file, size_t pos)
         .ma_variadic = false,
         .ma_body     = NULL,
         .ma_nbody    = 0,
+        .ma_builtin  = PP_BUILTIN_NONE,
         .ma_next     = NULL
     };
 
@@ -1173,6 +1335,45 @@ void Pp_RunUndef(const Pp_File *file, size_t pos)
 
     Err_AssertAt(hash->pt_line, Pp_IsMacroName(name), ERR_PP_MACRO_NAME_MISSING);
     Pp_UndefMacro(name);
+}
+
+// Run the #line directive at pos.
+void Pp_RunLine(Pp_Printer *pr, const Pp_File *file, size_t pos)
+{
+    size_t len = 0;
+    const Pp_Token *name = &file->pf_tokens[pos + 1];
+    const Pp_Token *number = Pp_ExpandRange(file, pos + 2, Pp_SkipLine(file, pos));
+
+    Err_AssertAt(name->pt_line, number, ERR_PP_LINE_NUMBER_MISSING);
+
+    const Pp_Token *path = number->pt_next;
+    Ast_Line line = Pp_ReadLineNumber(number, name->pt_line);
+
+    if (path) {
+        Err_AssertAt(name->pt_line, path->pt_kind == PP_TOKEN_STRING && path->pt_text[0] == '"', ERR_PP_LINE_NAME_INVALID, (int) path->pt_len, path->pt_text);
+        if (path->pt_next) {
+            Err_WarnAt(name->pt_line, ERR_PP_EXTRA_TOKENS, (int) name->pt_len, name->pt_text);
+        }
+        Pp_CurPlace.pl_name = Par_UnescapeLiteral(path->pt_text + 1, path->pt_len - 2, AST_TYPE_SIZE_CHAR, &len, name->pt_line);
+    }
+    Pp_CurPlace.pl_shift = line - (name->pt_line + 1);
+    Pp_Unsync(pr);
+}
+
+// Read the line number a #line directive gives.
+Ast_Line Pp_ReadLineNumber(const Pp_Token *tok, Ast_Line line)
+{
+    uintmax_t value = 0;
+
+    for (size_t i = 0; i < tok->pt_len; i++) {
+        int32_t digit = Par_DigitValue(tok->pt_text[i]);
+
+        Err_AssertAt(line, digit >= 0 && digit < PAR_BASE_DECIMAL, ERR_PP_LINE_NUMBER_INVALID, (int) tok->pt_len, tok->pt_text);
+        value = value * PAR_BASE_DECIMAL + (uintmax_t) digit;
+        Err_AssertAt(line, value <= PP_LINE_MAX, ERR_PP_LINE_OUT_OF_RANGE);
+    }
+    Err_AssertAt(line, value > 0, ERR_PP_LINE_OUT_OF_RANGE);
+    return (Ast_Line) value;
 }
 
 // True if a directive name opens a conditional.
@@ -1253,7 +1454,7 @@ void Pp_CheckCond(const Pp_Token *name)
 void Pp_CheckLineEnd(const Pp_File *file, size_t pos, const Pp_Token *name)
 {
     if (! (file->pf_tokens[pos].pt_flags & PP_FLAG_BOL)) {
-        Err_WarnAt(name->pt_line, ERR_PP_COND_EXTRA_TOKENS, (int) name->pt_len, name->pt_text);
+        Err_WarnAt(name->pt_line, ERR_PP_EXTRA_TOKENS, (int) name->pt_len, name->pt_text);
     }
 }
 
@@ -1681,7 +1882,7 @@ bool Pp_IsTrue(Pp_Value val)
 void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
 {
     Pp_Cond *outer = Pp_Conds;
-    uint32_t includer = Pp_CurFile;
+    Pp_Place includer = Pp_CurPlace;
     Pp_Reader rd = {
         .rd_file    = file,
         .rd_pos     = 0,
@@ -1690,7 +1891,7 @@ void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
         .rd_carry   = PP_FLAG_NONE
     };
 
-    Pp_CurFile = file->pf_index;
+    Pp_CurPlace = Pp_FilePlace(file);
     Pp_Conds = NULL;
     for (;;) {
         if (! rd.rd_pending && Pp_IsDirective(&file->pf_tokens[rd.rd_pos])) {
@@ -1711,12 +1912,13 @@ void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
         Err_RaiseAt(Pp_Conds->pc_name->pt_line, ERR_PP_COND_UNTERMINATED, (int) Pp_Conds->pc_name->pt_len, Pp_Conds->pc_name->pt_text);
     }
     Pp_Conds = outer;
-    Pp_CurFile = includer;
+    Pp_CurPlace = includer;
 }
 
 // Preprocess the file at path into out.
 void Pp_Run(const char *path, const Pp_Options *opts, Str_Buf *out)
 {
+    Str_Buf *predefined = Str_BufNew();
     Pp_Printer pr = {
         .pr_out    = out,
         .pr_line   = PP_LINE_FIRST,
@@ -1728,6 +1930,10 @@ void Pp_Run(const char *path, const Pp_Options *opts, Str_Buf *out)
 
     Log_SetLineLocator(Pp_LocateSource);
     Pp_SetDirs(opts);
+    Pp_DefineBuiltins();
+    Pp_PutPredefined(predefined);
+    Pp_RunFile(&pr, Pp_OpenText(PP_BUILTIN_NAME, Str_BufData(predefined), Str_BufLen(predefined), PP_DIR_NONE));
+    Str_BufFree(predefined);
     if (opts->po_cmdline) {
         Pp_RunFile(&pr, Pp_OpenText(PP_CMDLINE_NAME, opts->po_cmdline, strlen(opts->po_cmdline), PP_DIR_NONE));
     }

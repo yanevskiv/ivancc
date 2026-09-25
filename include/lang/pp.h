@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 // Project headers.
 #include "util/console/err.h"
@@ -62,6 +63,23 @@
 
 // Name of the file that -D and -U turn into.
 #define PP_CMDLINE_NAME "<command line>"
+
+// Name of the file that defines the predefined macros.
+#define PP_BUILTIN_NAME "<built-in>"
+
+// strftime formats of the -D arguments that define __DATE__ and __TIME__.
+#define PP_DATE_FORMAT "__DATE__=\"%b %e %Y\""
+#define PP_TIME_FORMAT "__TIME__=\"%H:%M:%S\""
+
+// -D arguments for __DATE__ and __TIME__ when the time is unknown.
+#define PP_DATE_UNKNOWN "__DATE__=\"??? ?? ????\""
+#define PP_TIME_UNKNOWN "__TIME__=\"??:??:??\""
+
+// Room for a -D argument strftime writes.
+#define PP_STAMP_SIZE 32
+
+// Largest line number #line may give.
+#define PP_LINE_MAX 2147483647
 
 // Name a variadic macro's body gives its extra arguments.
 #define PP_VA_ARGS "__VA_ARGS__"
@@ -117,7 +135,18 @@ typedef enum Pp_MacroKind Pp_MacroKind;
 enum Pp_MacroKind {
     PP_MACRO_OBJECT,
     PP_MACRO_FUNCTION,
+    PP_MACRO_BUILTIN,  // expanded by the preprocessor itself
     PP_MACRO_KIND_COUNT
+};
+
+// Macros whose expansion the preprocessor computes.
+typedef enum Pp_Builtin Pp_Builtin;
+enum Pp_Builtin {
+    PP_BUILTIN_NONE,
+    PP_BUILTIN_FILE,
+    PP_BUILTIN_LINE,
+    PP_BUILTIN_COUNTER,
+    PP_BUILTIN_COUNT
 };
 
 // Which directive an include came from.
@@ -226,6 +255,7 @@ struct Pp_Macro {
     bool             ma_variadic;
     const Pp_Token  *ma_body;     // replacement list, inside its file's tokens
     size_t           ma_nbody;
+    Pp_Builtin       ma_builtin;  // which builtin a PP_MACRO_BUILTIN is
     Pp_Macro        *ma_next;     // next macro in its bucket
 };
 
@@ -240,14 +270,15 @@ struct Pp_Arg {
 // One source file, read and tokenized.
 typedef struct Pp_File Pp_File;
 struct Pp_File {
-    char     *pf_path;
-    uint32_t  pf_index;   // position in the opened-file list
-    uint32_t  pf_dir;     // search-list index it was found under
-    bool      pf_system;  // found in the system include directory
-    char     *pf_text;    // text after the pre-pass
-    size_t    pf_len;
-    Pp_Token *pf_tokens;  // ending in a PP_TOKEN_EOF
-    size_t    pf_ntokens;
+    char           *pf_path;
+    uint32_t        pf_index;   // position in the opened-file list
+    uint32_t        pf_dir;     // search-list index it was found under
+    bool            pf_system;  // found in the system include directory
+    char           *pf_text;    // text after the pre-pass
+    size_t          pf_len;
+    Pp_Token       *pf_tokens;  // ending in a PP_TOKEN_EOF
+    size_t          pf_ntokens;
+    const Pp_Token *pf_guard;   // macro whose definition empties the file
 };
 
 // A token stream over a range of a file, with expansions pushed in front.
@@ -263,10 +294,17 @@ struct Pp_Reader {
 // Origin of a stretch of output lines.
 typedef struct Pp_MapEntry Pp_MapEntry;
 struct Pp_MapEntry {
-    Ast_Line pm_output; // first output line of the stretch
-    uint32_t pm_file;
-    Ast_Line pm_source; // source line of its first line
-    Pp_Move  pm_move;
+    Ast_Line    pm_output; // first output line of the stretch
+    const char *pm_name;   // file name, as #line gives it
+    Ast_Line    pm_source; // source line of its first line
+    Pp_Move     pm_move;
+};
+
+// Where the file being read is, as #line presents it.
+typedef struct Pp_Place Pp_Place;
+struct Pp_Place {
+    const char *pl_name;  // its path, or the name #line gave it
+    Ast_Line    pl_shift; // what #line added to its line numbers
 };
 
 // Where the printer has got to.
@@ -304,12 +342,13 @@ struct Pp_Expr {
 };
 
 // Files
-Pp_File *Pp_FindFile(const char *path);
-Pp_File *Pp_OpenFile(const char *path, uint32_t dir);
-Pp_File *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir);
-void     Pp_ReplaceTrigraphs(Str_Buf *out, const char *text, size_t len);
-void     Pp_DeleteSplices(Str_Buf *out, const char *text, size_t len);
-void     Pp_Tokenize(Pp_File *file);
+Pp_File        *Pp_FindFile(const char *path);
+Pp_File        *Pp_OpenFile(const char *path, uint32_t dir);
+Pp_File        *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir);
+const Pp_Token *Pp_FindGuard(const Pp_File *file);
+void            Pp_ReplaceTrigraphs(Str_Buf *out, const char *text, size_t len);
+void            Pp_DeleteSplices(Str_Buf *out, const char *text, size_t len);
+void            Pp_Tokenize(Pp_File *file);
 
 // Tokens
 Pp_Token *Pp_CopyToken(const Pp_Token *tok);
@@ -322,6 +361,7 @@ bool      Pp_ExpectsHeaderName(const Pp_File *file);
 bool      Pp_IsPunctPrefix(const char *text, size_t len);
 bool      Pp_NeedsSpace(const Pp_Token *prev, const Pp_Token *next);
 bool      Pp_LexOne(const char *text, size_t len, Pp_TokenKind *kind);
+char     *Pp_QuoteName(const char *name);
 
 // Macros
 bool      Pp_IsMacroName(const Pp_Token *tok);
@@ -333,6 +373,8 @@ void      Pp_DefineMacro(const Pp_Token *name, const Pp_Macro *def);
 void      Pp_UndefMacro(const Pp_Token *name);
 void      Pp_PutDefine(Str_Buf *cmdline, const char *arg);
 void      Pp_PutUndef(Str_Buf *cmdline, const char *name);
+void      Pp_PutPredefined(Str_Buf *out);
+void      Pp_DefineBuiltins(void);
 
 // Hide sets
 bool        Pp_HideSetHas(const Pp_HideSet *set, const Pp_Macro *macro);
@@ -348,6 +390,7 @@ Pp_Token       *Pp_ExpandArg(Pp_Arg *arg);
 Pp_Token       *Pp_Stringize(const Pp_Token *list, const Pp_Token *hash);
 void            Pp_PasteTokens(Pp_Token *left, const Pp_Token *right, Ast_Line line);
 Pp_Token       *Pp_Substitute(const Pp_Macro *macro, Pp_Arg *args, const Pp_Token *name);
+Pp_Token       *Pp_ExpandBuiltin(const Pp_Macro *macro, const Pp_Token *name);
 bool            Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok);
 Pp_Token       *Pp_ExpandAll(Pp_Reader *rd);
 Pp_Token       *Pp_ExpandRange(const Pp_File *file, size_t start, size_t end);
@@ -360,25 +403,29 @@ Pp_Token *Pp_HeaderFromTokens(const Pp_Token *list, Ast_Line line);
 char     *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Include kind, uint32_t *dir);
 
 // Line map
-void        Pp_AddMapEntry(Ast_Line output, uint32_t file, Ast_Line source, Pp_Move move);
+Pp_Place    Pp_FilePlace(const Pp_File *file);
+void        Pp_AddMapEntry(Ast_Line output, const char *name, Ast_Line source, Pp_Move move);
 const char *Pp_Locate(Ast_Line line, Ast_Line *source);
 const char *Pp_LocateSource(Ast_Line line, Ast_Line *source);
 
 // Printing
 void Pp_BreakLine(Pp_Printer *pr);
 void Pp_SyncLine(Pp_Printer *pr, const Pp_Token *tok);
+void Pp_Unsync(Pp_Printer *pr);
 void Pp_PrintToken(Pp_Printer *pr, const Pp_Token *tok);
 void Pp_Write(FILE *out, const Str_Buf *text, Pp_Markers markers);
 
 // Directives
-bool   Pp_IsDirective(const Pp_Token *tok);
-size_t Pp_SkipLine(const Pp_File *file, size_t pos);
-size_t Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos);
-void   Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include kind);
-void   Pp_RunDefine(const Pp_File *file, size_t pos);
-size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def);
-void   Pp_CheckBody(const Pp_Macro *def, Ast_Line line);
-void   Pp_RunUndef(const Pp_File *file, size_t pos);
+bool     Pp_IsDirective(const Pp_Token *tok);
+size_t   Pp_SkipLine(const Pp_File *file, size_t pos);
+size_t   Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos);
+void     Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include kind);
+void     Pp_RunDefine(const Pp_File *file, size_t pos);
+size_t   Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def);
+void     Pp_CheckBody(const Pp_Macro *def, Ast_Line line);
+void     Pp_RunUndef(const Pp_File *file, size_t pos);
+void     Pp_RunLine(Pp_Printer *pr, const Pp_File *file, size_t pos);
+Ast_Line Pp_ReadLineNumber(const Pp_Token *tok, Ast_Line line);
 
 // Conditionals
 bool      Pp_OpensCond(const Pp_Token *name);

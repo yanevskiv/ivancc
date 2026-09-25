@@ -39,6 +39,7 @@ enum Err_Code {
 
     ERR_PP_COMMENT_UNTERMINATED,
     ERR_PP_DIRECTIVE_UNKNOWN,          // name length, name
+    ERR_PP_EXTRA_TOKENS,               // directive length, directive
     ERR_PP_INCLUDE_MALFORMED,
     ERR_PP_INCLUDE_NOT_FOUND,          // name
     ERR_PP_INCLUDE_TOO_DEEP,           // limit
@@ -55,7 +56,6 @@ enum Err_Code {
     ERR_PP_COND_UNTERMINATED,          // directive length, directive
     ERR_PP_COND_WITHOUT_IF,            // directive length, directive
     ERR_PP_COND_AFTER_ELSE,            // directive length, directive
-    ERR_PP_COND_EXTRA_TOKENS,          // directive length, directive
     ERR_PP_DEFINED_NAME_MISSING,
     ERR_PP_DEFINED_PAREN_MISSING,
     ERR_PP_EXPR_EMPTY,                 // directive length, directive
@@ -68,6 +68,10 @@ enum Err_Code {
     ERR_PP_EXPR_FLOAT,
     ERR_PP_EXPR_SUFFIX_INVALID,        // suffix
     ERR_PP_EXPR_TOO_LARGE,
+    ERR_PP_LINE_NUMBER_MISSING,
+    ERR_PP_LINE_NUMBER_INVALID,        // token length, token
+    ERR_PP_LINE_OUT_OF_RANGE,
+    ERR_PP_LINE_NAME_INVALID,          // token length, token
 
     ERR_LEX_UNEXPECTED_CHAR,           // character
 
