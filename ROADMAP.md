@@ -1385,7 +1385,14 @@ suite green.
    the text after a call that spans lines keeps its own line. A variadic macro
    accepts a call that leaves out `...` entirely, as gcc does.
 4. **Conditionals** (`test68_conditionals`). Add the directives, `defined` and
-   the evaluator.
+   the evaluator. **Done.** Each `Pp_RunFile` keeps its own stack of open
+   conditionals, so a conditional cannot span files. A false group is skipped
+   by walking directive lines to the matching `#elif`, `#else` or `#endif`. An
+   `#elif` after a kept group is never evaluated. `defined` is answered while
+   the line expands, so one a macro produces also works, as in gcc. The comma
+   operator is accepted. Extra tokens after `#ifdef`, `#else` or `#endif` are a
+   warning. A bad escape in a character constant reports no line, as it does in
+   `c.flex`.
 5. **Re-inclusion** (`test69_include_guard`). Add the guard fast path.
 6. **Predefined macros** (`test70_predefined`). Add the builtins, the predefined
    set, `#line` and `__func__`.
