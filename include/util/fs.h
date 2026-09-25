@@ -10,4 +10,7 @@
 char *Fs_FileGetContents(const char *path, size_t *len);
 bool  Fs_FilePutContents(const char *path, const void *data, size_t len);
 
+// Queries
+bool Fs_FileExists(const char *path);
+
 #endif // FS_H
