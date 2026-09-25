@@ -25,7 +25,7 @@ void        Buf_PutByte(Buf *buf, char byte);
 void        Buf_PutBytes(Buf *buf, const char *data, size_t len);
 void        Buf_PutText(Buf *buf, const char *text);
 void        Buf_Print(Buf *buf, const char *fmt, ...);
-char       *Buf_Take(Buf *buf);
+char       *Buf_Release(Buf *buf);
 void        Buf_Free(Buf *buf);
 
 #endif // BUF_H
