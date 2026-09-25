@@ -42,6 +42,9 @@ enum Err_Code {
     ERR_PP_INCLUDE_MALFORMED,
     ERR_PP_INCLUDE_NOT_FOUND,          // name
     ERR_PP_INCLUDE_TOO_DEEP,           // limit
+    ERR_PP_MACRO_NAME_MISSING,
+    ERR_PP_MACRO_REDEFINED,            // name length, name
+    ERR_PP_MACRO_FUNCTION_UNSUPPORTED,
 
     ERR_LEX_UNEXPECTED_CHAR,           // character
 

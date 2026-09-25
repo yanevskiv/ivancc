@@ -76,6 +76,8 @@ static void Cc_ShowUsage(const char *prog)
         "  -E          write the preprocessed text instead of an executable\n"
         "  -P          leave line markers out of -E's output\n"
         "  -I DIR      search DIR for included files\n"
+        "  -D NAME[=V] define NAME as V (default 1)\n"
+        "  -U NAME     undefine NAME\n"
         "  --std=STD   language standard (only " DEFAULT_STD ")\n"
         "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n"
         "  -mtarget=T  runtime to link against (default: " DEFAULT_TARGET ")\n"
@@ -216,6 +218,7 @@ int main(int argc, char **argv)
     const char *prefix = NULL;
     const char **incdirs = NULL;
     size_t nincdirs = 0;
+    Str_Buf *cmdline = Str_BufNew();
     bool emit_text = false;
     bool emit_obj = false;
     bool emit_pp = false;
@@ -262,8 +265,12 @@ int main(int argc, char **argv)
                 incdirs = realloc(incdirs, (nincdirs + 1) * sizeof(*incdirs));
                 incdirs[nincdirs++] = optarg;
             } break;
-            case 'D':
-            case 'U':
+            case 'D': {
+                Pp_PutDefine(cmdline, optarg);
+            } break;
+            case 'U': {
+                Pp_PutUndef(cmdline, optarg);
+            } break;
             case 'M': {
                 char flag[] = { '-', (char) opt, '\0' };
                 Err_Raise(ERR_CC_OPTION_UNSUPPORTED, flag);
@@ -312,20 +319,22 @@ int main(int argc, char **argv)
     Str_Buf *text = Str_BufNew();
     char *sysdir = Cc_GetIncludeDir();
     Pp_Options pp_opts = {
-        .po_dirs   = incdirs,
-        .po_ndirs  = nincdirs,
-        .po_sysdir = sysdir
+        .po_dirs    = incdirs,
+        .po_ndirs   = nincdirs,
+        .po_sysdir  = sysdir,
+        .po_cmdline = Str_BufData(cmdline)
     };
 
     Pp_Run(input, &pp_opts, text);
+    Str_BufFree(cmdline);
+    Str_Free(sysdir);
+    free(incdirs);
     Log_SetLineLocator(Pp_Locate);
     if (emit_pp) {
         FILE *out = Cc_OpenOutput(output, "w");
         Pp_Write(out, text, markers);
         Cc_CloseOutput(out);
         Str_BufFree(text);
-        Str_Free(sysdir);
-        free(incdirs);
         Str_Free(outbuf);
         return 0;
     }
@@ -348,8 +357,6 @@ int main(int argc, char **argv)
         chmod(output, ELF_MODE);
     }
 
-    Str_Free(sysdir);
-    free(incdirs);
     Str_Free(outbuf);
     return 0;
 }
