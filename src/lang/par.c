@@ -17,6 +17,10 @@ static Ast_Var         *Par_CurFuncVar;
 // Serial number of the next compound literal's object.
 static int32_t Par_CompoundCount;
 
+// The unsized array an initializer is sizing, and the length it has reached.
+static Ast_Type *Par_OpenArray;
+static int32_t   Par_OpenLen;
+
 // The type and storage class one declaration's declarators share.
 static Ast_Type   *Par_DeclType;
 static Ast_Storage Par_DeclStorage;
@@ -117,6 +121,9 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
         case PAR_DERIV_ARRAY: {
             Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC, ERR_PAR_ARRAY_OF_FUNCTIONS);
             Err_AssertAt(deriv->pd_line, ! deriv->pd_decor, ERR_PAR_ARRAY_DECOR_NOT_PARAM);
+            if (deriv->pd_empty) {
+                return Ast_NewUnsizedArray(inner);
+            }
             return Ast_NewArray(inner, (int32_t) deriv->pd_len);
         }
         case PAR_DERIV_FUNCTION: {
@@ -751,7 +758,7 @@ void Par_Designate(Ast_Type *type, Ast_Node *desig, int32_t *index, Ast_Member *
     }
 
     Err_AssertAt(line, type->at_kind == AST_TYPE_KIND_ARRAY, ERR_PAR_DESIG_NOT_ARRAY);
-    Err_AssertAt(line, desig->an_val >= 0 && desig->an_val < type->at_len, ERR_PAR_DESIG_OUT_OF_RANGE, (long) desig->an_val);
+    Err_AssertAt(line, desig->an_val >= 0 && (desig->an_val < type->at_len || type == Par_OpenArray), ERR_PAR_DESIG_OUT_OF_RANGE, (long) desig->an_val);
     *index = (int32_t) desig->an_val;
 }
 
@@ -765,6 +772,14 @@ void Par_Step(Ast_Type **type, int32_t *off, Ast_Node *desig, int32_t index, Ast
     }
     *off += index * (*type)->at_base->at_size;
     *type = (*type)->at_base;
+}
+
+// Stretch the array being sized to hold len elements.
+void Par_Reach(const Ast_Type *type, int32_t len)
+{
+    if (type == Par_OpenArray && len > Par_OpenLen) {
+        Par_OpenLen = len;
+    }
 }
 
 // The type an expression already has.
@@ -806,13 +821,44 @@ Ast_Type *Par_ExprType(Ast_Node *node)
     return type;
 }
 
+// Return whether init is a string literal filling an array of characters.
+bool Par_IsStringInit(const Ast_Type *type, const Ast_Node *init)
+{
+    if (type->at_kind != AST_TYPE_KIND_ARRAY || init->an_kind != AST_NODE_KIND_STR) {
+        return false;
+    }
+    return Ast_IsInteger(type->at_base) && type->at_base->at_kind != AST_TYPE_KIND_BOOL;
+}
+
+// Flatten a string literal into the characters of an array.
+void Par_FlattenString(Ast_Type *type, int32_t base, Ast_Node *init, Ast_Node **tail, Ast_Line line)
+{
+    Ast_Type *elem = type->at_base;
+    Ast_Str *str = Ast_StringAt(init->an_str_idx);
+    int32_t width = (int32_t) str->as_width;
+    int32_t len = (int32_t) (str->as_len / str->as_width);
+    int32_t count = len + 1;
+
+    Err_AssertAt(line, elem->at_size == width, ERR_PAR_INIT_STRING_WIDTH, elem->at_size, width);
+    Par_Reach(type, count);
+    if (type != Par_OpenArray && count > type->at_len) {
+        Err_AssertAt(line, len <= type->at_len, ERR_PAR_INIT_STRING_TOO_LONG, type->at_len);
+        count = len;
+    }
+    for (int32_t i = 0; i < count; i++) {
+        Ast_Node *value = Ast_NewNum((int64_t) Par_GetElement(str->as_data + i * width, str->as_width), line);
+        (*tail)->an_next = Par_InitAt(base + i * width, elem, NULL, value, line);
+        *tail = (*tail)->an_next;
+    }
+}
+
 // Fill one slot from the cursor.
 void Par_FlattenSlot(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node **item, Ast_Node **tail, Ast_Line line)
 {
     Ast_Node *iter = *item;
     Ast_Node *value = iter->an_lhs;
 
-    if (value->an_kind == AST_NODE_KIND_INITLIST) {
+    if (value->an_kind == AST_NODE_KIND_INITLIST || Par_IsStringInit(type, value)) {
         Par_Flatten(type, base, bits, value, tail, line);
         *item = iter->an_next;
         return;
@@ -866,7 +912,7 @@ void Par_FlattenList(Ast_Type *type, int32_t base, Ast_Node **item, Ast_Node **t
             if (desig->an_memname) {
                 member = type->at_kind == AST_TYPE_KIND_UNION ? NULL : member->am_next;
             } else {
-                index++;
+                Par_Reach(type, ++index);
             }
             continue;
         }
@@ -875,9 +921,9 @@ void Par_FlattenList(Ast_Type *type, int32_t base, Ast_Node **item, Ast_Node **t
             if (index >= type->at_len && braced == PAR_LIST_UNBRACED) {
                 return;
             }
-            Err_AssertAt(line, index < type->at_len, ERR_PAR_INIT_TOO_MANY_ELEMENTS, type->at_len);
+            Err_AssertAt(line, index < type->at_len || type == Par_OpenArray, ERR_PAR_INIT_TOO_MANY_ELEMENTS, type->at_len);
             Par_FlattenSlot(type->at_base, base + index * type->at_base->at_size, NULL, item, tail, line);
-            index++;
+            Par_Reach(type, ++index);
             continue;
         }
 
@@ -901,6 +947,10 @@ void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init,
         return;
     }
 
+    if (Par_IsStringInit(type, init)) {
+        Par_FlattenString(type, base, init, tail, line);
+        return;
+    }
     if (init->an_kind != AST_NODE_KIND_INITLIST) {
         Err_AssertAt(line, type->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_INIT_ARRAY_UNBRACED);
         (*tail)->an_next = Par_InitAt(base, type, bits, init, line);
@@ -914,16 +964,26 @@ void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init,
         Par_Flatten(type, base, bits, item->an_lhs, tail, line);
         return;
     }
+    if (item && ! item->an_cond && ! item->an_next && Par_IsStringInit(type, item->an_lhs)) {
+        Par_FlattenString(type, base, item->an_lhs, tail, line);
+        return;
+    }
     Par_FlattenList(type, base, &item, tail, PAR_LIST_BRACED, line);
 }
 
-// Flatten an initializer to the scalar writes that fill the object.
-Ast_Node *Par_FlattenInit(Ast_Type *type, Ast_Node *init, Ast_Line line)
+// Flatten an initializer, sizing an array of unknown length from it.
+Ast_Node *Par_FlattenInit(Ast_Type **type, Ast_Node *init, Ast_Line line)
 {
     Ast_Node head = {0};
     Ast_Node *tail = &head;
 
-    Par_Flatten(type, 0, NULL, init, &tail, line);
+    Par_OpenArray = Ast_IsUnsized(*type) ? *type : NULL;
+    Par_OpenLen = 0;
+    Par_Flatten(*type, 0, NULL, init, &tail, line);
+    if (Par_OpenArray) {
+        *type = Ast_SizeArray(Par_OpenArray, Par_OpenLen);
+        Par_OpenArray = NULL;
+    }
     return head.an_next;
 }
 
@@ -948,21 +1008,21 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line)
         Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(var, line), init, line);
         return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
     }
-    return Par_InitFlat(var, Par_FlattenInit(var->av_type, init, line), line);
+    return Par_InitFlat(var, Par_FlattenInit(&var->av_type, init, line), line);
 }
 
 // Build the unnamed object a compound literal names.
 Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line)
 {
-    Err_AssertAt(line, type->at_complete, ERR_PAR_LITERAL_INCOMPLETE);
+    Err_AssertAt(line, type->at_complete || Ast_IsUnsized(type), ERR_PAR_LITERAL_INCOMPLETE);
 
     Ast_Node *list = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
     list->an_body = items;
 
     char *name = Str_Format(".compound.%d", Par_CompoundCount++);
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_COMPOUND, line);
+    node->an_items = Par_FlattenInit(&type, list, line);
     node->an_type  = type;
-    node->an_items = Par_FlattenInit(type, list, line);
 
     if (! Par_InFunction) {
         node->an_var = Ast_DeclareGlobal(name, type, line);
@@ -993,10 +1053,15 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
         Par_DeclarePrototype(name, type);
         return;
     }
-    Par_CheckComplete(name, type, line);
+    if (! Ast_IsUnsized(type)) {
+        Par_CheckComplete(name, type, line);
+    }
     Ast_Var *var = Ast_DeclareGlobal(name, type, line);
+    if (Ast_IsUnsized(var->av_type)) {
+        var->av_type = type;
+    }
     var->av_storage = Par_DeclStorage;
-    var->av_init = init ? Par_FlattenInit(var->av_type, init, line) : NULL;
+    var->av_init = init ? Par_FlattenInit(&var->av_type, init, line) : NULL;
 }
 
 // Declare a variable inside a function.
@@ -1006,7 +1071,9 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
         Ast_DeclareTypedef(name, type);
         return NULL;
     }
-    Par_CheckComplete(name, type, line);
+    if (! Ast_IsUnsized(type)) {
+        Par_CheckComplete(name, type, line);
+    }
     if (Par_DeclStorage != AST_STORAGE_STATIC) {
         return Ast_DeclareVar(name, type, line);
     }
@@ -1023,14 +1090,28 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
     Ast_Var *var = Par_DeclareLocal(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), line);
 
     if (! init) {
+        if (var) {
+            Par_CheckComplete(decl->pc_name, var->av_type, line);
+        }
         return Ast_NewNode(AST_NODE_KIND_NOP, line);
     }
     Err_AssertAt(line, var, ERR_PAR_TYPEDEF_INITIALIZED);
     if (var->av_global) {
-        var->av_init = Par_FlattenInit(var->av_type, init, line);
+        var->av_init = Par_FlattenInit(&var->av_type, init, line);
         return Ast_NewNode(AST_NODE_KIND_NOP, line);
     }
     return Par_InitLocal(var, init, line);
+}
+
+// Give each file-scope array still missing its length one element.
+void Par_CompleteTentatives(void)
+{
+    for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
+        if (Ast_IsUnsized(var->av_type) && var->av_storage != AST_STORAGE_EXTERN) {
+            Err_WarnAt(var->av_line, ERR_PAR_ARRAY_ASSUMED_ONE, var->av_name);
+            var->av_type = Ast_SizeArray(var->av_type, 1);
+        }
+    }
 }
 
 // Find a function already declared or defined under name.
@@ -1168,19 +1249,14 @@ Ast_Var *Par_FindFuncName(const char *name, Ast_Line line)
         return Par_CurFuncVar;
     }
 
-    size_t len = strlen(Par_CurFuncName);
-    Ast_Node *chars = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
-    Ast_Node **tail = &chars->an_body;
+    Ast_Node *str = Ast_NewNode(AST_NODE_KIND_STR, line);
     char *symbol = Str_Format("%s.%s", Par_CurFuncName, PAR_FUNC_NAME);
-    Ast_Type *type = Ast_NewArray(Ast_Qualify(&Ast_TypeChar, AST_QUAL_CONST), (int32_t) len + 1);
+    Ast_Type *type = Ast_NewUnsizedArray(Ast_Qualify(&Ast_TypeChar, AST_QUAL_CONST));
 
-    for (size_t i = 0; i <= len; i++) {
-        *tail = Ast_NewUnary(AST_NODE_KIND_INIT, Ast_NewNum(Par_CurFuncName[i], line), line);
-        tail = &(*tail)->an_next;
-    }
+    str->an_str_idx = Ast_AddString(Str_Clone(Par_CurFuncName), strlen(Par_CurFuncName), AST_TYPE_SIZE_CHAR);
     Par_CurFuncVar = Ast_DeclareGlobal(symbol, type, line);
     Par_CurFuncVar->av_storage = AST_STORAGE_STATIC;
-    Par_CurFuncVar->av_init = Par_FlattenInit(type, chars, line);
+    Par_CurFuncVar->av_init = Par_FlattenInit(&Par_CurFuncVar->av_type, str, line);
     return Par_CurFuncVar;
 }
 
@@ -1221,4 +1297,11 @@ Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line)
         node->an_lhs = callee;
     }
     return node;
+}
+
+// Fold a sizeof of a type name to its size.
+Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
+{
+    Err_AssertAt(line, type->at_complete, ERR_PAR_SIZEOF_INCOMPLETE);
+    return Ast_NewNum(type->at_size, line);
 }

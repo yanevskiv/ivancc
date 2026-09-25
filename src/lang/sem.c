@@ -638,7 +638,7 @@ void Sem_Node(Ast_Node *node)
             }
             Err_AssertAt(node->an_line, Sem_IsPointer(node->an_lhs->an_type), ERR_SEM_DEREF_NOT_POINTER);
             Err_AssertAt(node->an_line, node->an_lhs->an_type->at_base->at_kind != AST_TYPE_KIND_VOID, ERR_SEM_DEREF_VOID);
-            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_base->at_complete, ERR_SEM_DEREF_INCOMPLETE);
+            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_base->at_complete || Ast_IsUnsized(node->an_lhs->an_type->at_base), ERR_SEM_DEREF_INCOMPLETE);
             node->an_type = node->an_lhs->an_type->at_base;
         } break;
 
@@ -656,6 +656,7 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_SIZEOF: {
+            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_complete, ERR_SEM_SIZEOF_INCOMPLETE);
             node->an_kind = AST_NODE_KIND_NUM;
             node->an_val  = node->an_lhs->an_type->at_size;
             node->an_lhs  = NULL;

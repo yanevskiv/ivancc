@@ -148,4 +148,5 @@ void Par_ParseText(const char *text, size_t len)
     yylineno = 1;
     yyparse();
     yy_delete_buffer(buf);
+    Par_CompleteTentatives();
 }

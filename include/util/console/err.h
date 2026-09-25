@@ -87,6 +87,7 @@ enum Err_Code {
     ERR_PAR_ARRAY_DECOR_NOT_PARAM,
     ERR_PAR_ARRAY_DECOR_NOT_OUTERMOST,
     ERR_PAR_ARRAY_STATIC_NO_LEN,
+    ERR_PAR_ARRAY_ASSUMED_ONE,         // name
     ERR_PAR_FUNCTION_BAD_RETURN,
     ERR_PAR_KNR_NOT_PARAM,             // parameter
     ERR_PAR_KNR_UNDECLARED,            // parameter
@@ -114,8 +115,11 @@ enum Err_Code {
     ERR_PAR_INIT_TOO_MANY_MEMBERS,     // type name
     ERR_PAR_INIT_ARRAY_UNBRACED,
     ERR_PAR_INIT_EMPTY,
+    ERR_PAR_INIT_STRING_WIDTH,         // element size, character size
+    ERR_PAR_INIT_STRING_TOO_LONG,      // array length
     ERR_PAR_LITERAL_INCOMPLETE,
     ERR_PAR_OBJECT_INCOMPLETE,         // name
+    ERR_PAR_SIZEOF_INCOMPLETE,
     ERR_PAR_TYPEDEF_INITIALIZED,
     ERR_PAR_UNDECLARED,                // identifier
 
@@ -141,6 +145,7 @@ enum Err_Code {
     ERR_SEM_DEREF_NOT_POINTER,
     ERR_SEM_DEREF_VOID,
     ERR_SEM_DEREF_INCOMPLETE,
+    ERR_SEM_SIZEOF_INCOMPLETE,
     ERR_SEM_MEMBER_NOT_AGGREGATE,      // member
     ERR_SEM_MEMBER_INCOMPLETE,         // type name
     ERR_SEM_MEMBER_UNKNOWN,            // member, type name

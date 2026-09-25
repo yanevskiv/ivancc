@@ -282,7 +282,7 @@ until there are enough emulator tests to be worth a harness.
 
 **Stage 11 — errors.** No numbered tests. Every diagnostic moves into one table,
 and the corpus must stay green through the move. `run_test` gains the
-compile-failure path here, ready for stage 12's `test71_pragma_error`.
+compile-failure path here, ready for stage 12's `test72_pragma_error`.
 
 **Stage 12 — the preprocessor.**
 
@@ -292,31 +292,32 @@ compile-failure path here, ready for stage 12's `test71_pragma_error`.
 - `test68_conditionals`
 - `test69_include_guard`
 - `test70_predefined`
-- `test71_pragma_error`
-- `test72_trigraphs`
-- `test73_digraphs`
-- `test74_depend`
+- `test71_array_init`, the [array fix](#between-stages-12-and-13--arrays-sized-by-their-initializer)
+- `test72_pragma_error`
+- `test73_trigraphs`
+- `test74_digraphs`
+- `test75_depend`
 
 **Stage 13 — floating point.**
 
-- `test75_float_basic`
-- `test76_float_literals`
-- `test77_float_abi`
+- `test76_float_basic`
+- `test77_float_literals`
+- `test78_float_abi`
 
 **Stage 14 — the conformance tail.**
 
-- `test78_vla`
-- `test79_vla_sizeof`
-- `test80_vla_param`
+- `test79_vla`
+- `test80_vla_sizeof`
+- `test81_vla_param`
 
-80 tests, closing every box in SYNTAX.md. That is the end of the C99 language,
+81 tests, closing every box in SYNTAX.md. That is the end of the C99 language,
 and the end of this roadmap's obligations.
 
 **Stage 15 — libc**, which opens the next roadmap rather than closing this one.
 
-- `test81_putchar`
-- `test82_printf_int`
-- `test83_printf_str`
+- `test82_putchar`
+- `test83_printf_int`
+- `test84_printf_str`
 
 ### What the harness needs
 
@@ -1021,7 +1022,7 @@ Three alternatives were weighed and dropped:
    `exp.cret.txt`, over `Compiler return`.
 
 **Tests:** no numbered tests, like stage 3. The corpus stays green through the
-move, and stage 12's `test71_pragma_error` is the first test to expect a failure.
+move, and stage 12's `test72_pragma_error` is the first test to expect a failure.
 
 ## Stage 12 — Preprocessor
 
@@ -1312,10 +1313,8 @@ int main(void) { return one() + 2; }
   `__LP64__` are defined before the source is read. They are `#define` lines in
   a `<built-in>` buffer, run before the `<command line>` one.
 - `__func__` is not a macro (6.4.2.2). The parser declares it the first time a
-  function body names it, as a `static const char` array. Its initializer is a
-  braced list of characters, because a string literal cannot initialize an
-  array until [the fix after this
-  stage](#between-stages-12-and-13--arrays-sized-by-their-initializer).
+  function body names it, as a `static const char` array initialized from a
+  string literal.
 - `-D name`, `-D name=value` and `-U name` become `#define` and `#undef` lines in
   a `<command line>` buffer, processed in order before the source.
 
@@ -1413,13 +1412,13 @@ suite green.
    2147483647 is an error, where gcc accepts it unless `-pedantic` is given. A
    header whose first line is `#line` shows its entry marker under the new name.
    The printer now starts a new map entry after `#line`.
-7. **Pragmas and errors** (`test71_pragma_error`). Add `#pragma once`,
+7. **Pragmas and errors** (`test72_pragma_error`). Add `#pragma once`,
    `_Pragma`, `#error`, `#warning` and `--include`. Stop refusing `--include`.
-8. **Dependency generation** (`test74_depend`). Add the `-M` family, and stop
+8. **Dependency generation** (`test75_depend`). Add the `-M` family, and stop
    refusing it.
 
-`test72_trigraphs` and `test73_digraphs` exercise code from step 0. They are
-numbered after `test71` because they use directives, and a test may not use
+`test73_trigraphs` and `test74_digraphs` exercise code from step 0. They are
+numbered after `test72` because they use directives, and a test may not use
 syntax a higher-numbered one introduces.
 
 ### Tests
@@ -1430,10 +1429,10 @@ syntax a higher-numbered one introduces.
 - No syntax test includes or calls the standard library. So `<...>` and the
   system directory go untested here, and a later suite outside `syntax` covers
   them.
-- `test71_pragma_error` expects its compile to fail with
+- `test72_pragma_error` expects its compile to fail with
   `ERR_PP_ERROR_DIRECTIVE`, through stage 11's compile-failure path. The pragmas
   and the `#warning` before the `#error` must get that far.
-- `test74_depend` runs `-M` and checks the printed rule. It never runs a binary.
+- `test75_depend` runs `-M` and checks the printed rule. It never runs a binary.
 - `run_test` needs three more changes before step 8:
   - A `// (Test) Flags:` key, passed to `ivancc`.
   - A check of `// (Test) Compiler output:`, which is read into `exp.cout.txt`
@@ -1444,21 +1443,22 @@ syntax a higher-numbered one introduces.
   because gcc's spacing differs from ours. gcc ignores trigraphs by default, which
   is why `-std=c99` matters.
 
-**Tests:** `test65_include` through `test74_depend`, plus `-E` output matching
+**Tests:** `test65_include` through `test75_depend`, plus `-E` output matching
 `gcc -std=c99 -E -P` modulo whitespace.
 
 ## Between stages 12 and 13 — Arrays sized by their initializer
 
-A critical bug, found while writing `test67_macro_func`. It comes straight after
-the preprocessor, unless it blocks the preprocessor first.
+A critical bug, found while writing `test67_macro_func`. It was planned for
+straight after the preprocessor, and was fixed during stage 12, between steps 6
+and 7.
 
-`[]` builds a complete array of length 0. The grammar sets `pd_empty` and leaves
-`pd_len` at 0, and `Par_ApplyDerivs` calls `Ast_NewArray(inner, 0)`. That array
-has size 0 and takes `at_complete` from its element type. `pd_empty` is read
+`[]` built a complete array of length 0. The grammar set `pd_empty` and left
+`pd_len` at 0, and `Par_ApplyDerivs` called `Ast_NewArray(inner, 0)`. That array
+had size 0 and took `at_complete` from its element type. `pd_empty` was read
 only for flexible array members and for `static` without a length. So nothing
-treats `T x[]` as incomplete, and nothing completes it from an initializer.
+treated `T x[]` as incomplete, and nothing completed it from an initializer.
 
-| Code | Today | C99 |
+| Code | Before | C99 |
 |---|---|---|
 | `int r[] = {1, 2, 3};` | too many initializers for an array of 0 | length 3 (6.7.8p22) |
 | `int r[][2] = {1, 2, 3};` | the same error | `int[2][2]` |
@@ -1466,16 +1466,16 @@ treats `T x[]` as incomplete, and nothing completes it from an initializer.
 | `extern int e[]; sizeof(e)` | 0 | error: `sizeof` of an incomplete type |
 | `int t[];` at file scope | a 0-byte object | tentative, `int t[1]` at the end of the unit (6.9.2p5) |
 
-A second gap sits next to it. A string literal cannot initialize an array.
-`char s[4] = "abc"` fails with `ERR_PAR_INIT_ARRAY_UNBRACED`, and
-`char s[4] = { "abc" }` reaches gen and fails with `ERR_GEN_INIT_ADDRESS_WIDTH`.
+A second gap sat next to it. A string literal could not initialize an array.
+`char s[4] = "abc"` failed with `ERR_PAR_INIT_ARRAY_UNBRACED`, and
+`char s[4] = { "abc" }` reached gen and failed with `ERR_GEN_INIT_ADDRESS_WIDTH`.
 
 The fix:
 
-1. `[]` builds an incomplete array. `Par_CheckComplete`, `sizeof`, dereference
-   and member access already read `at_complete`, so they start rejecting the
-   bad cases.
-2. A declaration with an initializer counts its top-level elements before it
+1. `[]` builds an incomplete array. `Par_CheckComplete`, dereference and member
+   access already read `at_complete`, so they start rejecting the bad cases.
+   `sizeof` did not, and now does.
+2. A declaration with an initializer counts its top-level elements as it
    flattens. The count is the highest index reached plus one, so it follows
    `Par_Designate`'s cursor, not the number of items. The declaration's type is
    rebuilt with that length.
@@ -1486,9 +1486,26 @@ The fix:
 4. A file-scope `T x[];` with no later definition becomes `T x[1]`, with a
    warning, as gcc does.
 
-It is parser work, plus writing string data in gen. No existing test covers
-it, because every test so far gives its arrays a length. Its tests take the next
-free numbers after `test74_depend`, and stage 13's tests move up to make room.
+**Done** (`test71_array_init`). It is parser and sem work. Gen is untouched.
+
+- `Ast_NewUnsizedArray` builds the type `[]` names. `Ast_IsUnsized` answers for
+  an incomplete array whose element type is complete, which only `[]` makes.
+- `Par_FlattenInit` takes the type by address. For an unsized array it lifts the
+  bound while it flattens, then swaps in the sized type. `(T){...}` with an
+  unsized `T` is sized the same way.
+- A string literal flattens to one write per character, so gen needs nothing
+  new. The literal itself still lands in `.rodata`, unused.
+- A string too long for its array is an error, where gcc warns and truncates. A
+  string whose character width differs from the element size is an error, as in
+  gcc.
+- `sizeof` of an incomplete type is an error in both forms, where it answered 0.
+  That includes a flexible array member, as in gcc.
+- A pointer to an unsized array can be dereferenced, so `(*p)[i]` works.
+- A later declaration completes an unsized one, as in `extern int e[];` followed
+  by `int e[] = {1, 2};`.
+- Tentative arrays are completed when the parse ends, before sem runs. So
+  `sizeof` of one after its declaration answers one element's size, where gcc
+  rejects it.
 
 ## Stage 13 — Floating point
 
@@ -1513,7 +1530,7 @@ Last because it touches every layer and nothing else depends on it.
   register file it otherwise would not need. Decide here, record it in
   SYNTAX.md, and keep stage 7's classification enum honest either way.
 
-**Tests:** `test75_float_basic` through `test77_float_abi`.
+**Tests:** `test76_float_basic` through `test78_float_abi`.
 
 ## Stage 14 — The conformance tail: variable-length arrays
 
@@ -1546,7 +1563,7 @@ not for never — C99 is the target and C99 requires them.
 Closing this stage closes SYNTAX.md. Everything after it is library, not
 language.
 
-**Tests:** `test78_vla`, `test79_vla_sizeof`, `test80_vla_param`.
+**Tests:** `test79_vla`, `test80_vla_sizeof`, `test81_vla_param`.
 
 ## Stage 15 — `stdio.c`, `printf()`, and libc
 
@@ -1596,7 +1613,7 @@ libc/include/stdio.h                   the prototypes #include <stdio.h> pulls i
   `memset`, `isdigit` and friends. `memcpy` and `memset` stop being optional at
   stage 7, where struct assignment starts generating calls to them.
 
-**Tests:** `test81_putchar`, `test82_printf_int`, `test83_printf_str`, then a
+**Tests:** `test82_putchar`, `test83_printf_int`, `test84_printf_str`, then a
 Hello World program compiling as written and printing `Hello world!` through our
 own `printf` — on the host and under `ivanemu`, from one binary. Those three are
 the seed of a libc suite beside `tests/syntax/`, not the tail of it.
@@ -1620,6 +1637,21 @@ at the end of stage 15 is that plus a freestanding library — not a hosted
 implementation, which is what the next roadmap is for.
 
 ---
+
+## Known bugs
+
+Real bugs, but none blocks a stage. Each is worth fixing when its area is next
+open.
+
+- **A file-scope redeclaration overwrites the first one.** `Ast_DeclareGlobal`
+  hands back the existing `Ast_Var`, and `Par_AddDeclaredType` then writes the
+  new declaration's storage class and initializer over it.
+  - `int x = 5; int x;` reads `x` as 0. The second line clears the initializer.
+  - `int y = 5; extern int y;` fails to link with `y` undefined. The second line
+    marks `y` extern, so gen never emits it.
+  - The fix keeps what an earlier declaration settled. A later `extern` or a
+    later declaration with no initializer changes nothing, and a second
+    initializer is a redefinition error.
 
 ## Infrastructure debts
 
@@ -1795,7 +1827,7 @@ Every box in SYNTAX.md, and the stage that closes it.
 | Types | flexible array members | 7 |
 | Declarations | multiple declarators, array and designated initializers | 6 |
 | Declarations | designated initializers, nested | 7 |
-| Declarations | array length from its initializer, string initializers | between 12 and 13 |
+| Declarations | array length from its initializer, string initializers | 12 |
 | Declarations | storage classes, `inline`, global variables | 6 |
 | Expressions | unary `+`, bitwise, compound assignment, `++`/`--`, `?:`, comma | 4 |
 | Expressions | address-of `&`, dereference `*`, subscript, `sizeof`, casts | 1 |

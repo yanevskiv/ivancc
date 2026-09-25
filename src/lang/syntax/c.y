@@ -588,7 +588,7 @@ unary
     | DEC unary            { $$ = Ast_NewOpAssign(AST_NODE_KIND_SUB, $2, Ast_NewNum(1, @1), @1); }
     | SIZEOF unary         { $$ = Ast_NewUnary(AST_NODE_KIND_SIZEOF, $2, @1); }
     | SIZEOF LPAREN type_name RPAREN
-        { $$ = Ast_NewNum($3->at_size, @1); }
+        { $$ = Par_SizeOfType($3, @1); }
     ;
 
 /* A postfix operator applied to an expression. */

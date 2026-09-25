@@ -199,7 +199,7 @@ struct Ast_Type {
     int32_t          at_len;      // element count for ARRAY
     char            *at_tag;      // tag a STRUCT or UNION was declared with, or NULL
     Ast_Member      *at_members;  // members of a STRUCT or UNION
-    Ast_TypeComplete at_complete; // incomplete until the member list has been seen
+    Ast_TypeComplete at_complete; // incomplete until the member list or the length is known
     Ast_Type        *at_ret;      // return type of a FUNC
     Ast_Var         *at_params;   // parameters of a FUNC
     int32_t          at_nparams;  // number of parameters a FUNC declares
@@ -351,6 +351,9 @@ Ast_Type *Ast_Qualify(Ast_Type *type, Ast_Qual qual);
 bool      Ast_IsInteger(const Ast_Type *type);
 Ast_Type *Ast_NewPointer(Ast_Type *base);
 Ast_Type *Ast_NewArray(Ast_Type *base, int32_t len);
+Ast_Type *Ast_NewUnsizedArray(Ast_Type *base);
+bool      Ast_IsUnsized(const Ast_Type *type);
+Ast_Type *Ast_SizeArray(const Ast_Type *type, int32_t len);
 Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto);
 Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, Ast_Line line);
