@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Compound statements nest, and an empty one is legal.
 
 int main()

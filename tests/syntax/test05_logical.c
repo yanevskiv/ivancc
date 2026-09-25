@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // && and ||, including the short circuit: the guarded division by zero
 // raises SIGFPE if either operator evaluates its right side needlessly.
 

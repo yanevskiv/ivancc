@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A pointer to a pointer gives up one level of indirection at a time.
 
 int main()

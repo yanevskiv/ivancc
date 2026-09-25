@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Bitfields, which pack several members into one storage unit of their declared
 // type. The unit is what a load and a store reach, so reading a field shifts it
 // out and sign-extends it, and writing one has to leave its neighbours alone.

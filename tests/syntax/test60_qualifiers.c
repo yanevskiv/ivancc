@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Type qualifiers. All three parse wherever a specifier may stand, in any
 // order beside the type they qualify, and are recorded on the type they build.
 // None of them changes the code generated for a read or a write.

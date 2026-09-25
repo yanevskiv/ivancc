@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Includes. A quoted include looks first in the directory of the file that
 // names it, and the header's text stands where the directive stood. Everything
 // the header declares is in scope below the directive, and the file can define

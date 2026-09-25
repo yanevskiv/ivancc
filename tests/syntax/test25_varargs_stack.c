@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Ten arguments, so the last four sit in the overflow area above the return
 // address rather than in the register save area.
 

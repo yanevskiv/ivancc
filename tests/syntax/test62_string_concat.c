@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Adjacent string literals. Two literals written next to each other are one
 // literal, spliced before anything reads a type or counts a length. Each side
 // decodes its own escapes first, so a numeric escape cannot run into the next.

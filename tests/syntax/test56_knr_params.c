@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // The parameter list C had before prototypes: names in the parentheses, types
 // in a declaration list between the `)` and the `{`. C90 gave any name the list
 // left out the type int; C99 dropped that default, so every name needs a

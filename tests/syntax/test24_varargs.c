@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // The anonymous arguments of a variadic function, walked with a va_list that
 // starts in the register save area. Every argument here still fits in a register.
 

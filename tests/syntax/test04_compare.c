@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Every relational and equality operator, each weighted so that a wrong
 // answer names itself in the return value.
 

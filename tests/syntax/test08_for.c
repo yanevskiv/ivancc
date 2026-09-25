@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A for loop and a nested one.
 
 int main()

@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Arrays sized by their initializer. An array declared with [] takes its length
 // from the highest index its initializer reaches. A string literal initializes
 // an array of characters, braced or not, and sizes it with its terminator. A

@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // A union is its widest member, and every member starts at offset zero. Writing
 // one and reading another is how that overlap is visible.
 

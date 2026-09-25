@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // The comma operator: it evaluates both sides and yields the right one, and it
 // stays out of the way of the commas that separate arguments.
 

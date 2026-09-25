@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Multi-character constants. Several characters inside one pair of quotes pack
 // into an int, the leftmost highest, which the standard leaves to each
 // implementation. Only the last four survive, and a wide constant keeps one.

@@ -1,4 +1,4 @@
-// (Test) Return: 200
+// (Test) Status: 200
 // Several locals coexisting, reassignment, and a chained assignment.
 
 int main()
