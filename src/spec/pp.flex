@@ -72,7 +72,9 @@ void Pp_Tokenize(Pp_File *file)
             .pt_len   = (size_t) ppleng,
             .pt_flags = flags,
             .pt_file  = file->pf_index,
-            .pt_line  = (Ast_Line) pplineno
+            .pt_line  = (Ast_Line) pplineno,
+            .pt_hide  = NULL,
+            .pt_next  = NULL
         };
 
         if (kind == PP_TOKEN_EOF) {

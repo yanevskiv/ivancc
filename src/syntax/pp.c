@@ -42,6 +42,12 @@ static uint32_t Pp_SysDir = PP_DIR_NONE;
 // Includes open around the file being run.
 static uint32_t Pp_Depth;
 
+// File index of the source file named on the command line.
+static uint32_t Pp_MainFile = PP_FILE_NONE;
+
+// Every defined macro, hashed by name.
+static Pp_Macro *Pp_Macros[PP_MACRO_BUCKETS];
+
 // Return the opened file with this path.
 Pp_File *Pp_FindFile(const char *path)
 {
@@ -67,6 +73,15 @@ Pp_File *Pp_OpenFile(const char *path, uint32_t dir)
 
     Err_Assert(raw, ERR_FILE_ACCESS, path, strerror(errno));
 
+    Pp_File *file = Pp_OpenText(path, raw, len, dir);
+
+    free(raw);
+    return file;
+}
+
+// Pre-pass and tokenize text as the file at path.
+Pp_File *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir)
+{
     Str_Buf *plain = Str_BufNew();
     Str_Buf *text = Str_BufNew();
 
@@ -93,7 +108,6 @@ Pp_File *Pp_OpenFile(const char *path, uint32_t dir)
     Pp_CurFile = reader;
 
     Str_BufFree(plain);
-    free(raw);
     return file;
 }
 
@@ -136,6 +150,16 @@ void Pp_DeleteSplices(Str_Buf *out, const char *text, size_t len)
     for (; owed > 0; owed--) {
         Str_BufPutByte(out, '\n');
     }
+}
+
+// Return a heap copy of a token.
+Pp_Token *Pp_CopyToken(const Pp_Token *tok)
+{
+    Pp_Token *copy = malloc(sizeof(*copy));
+
+    *copy = *tok;
+    copy->pt_next = NULL;
+    return copy;
 }
 
 // True if a token is spelled text.
@@ -215,16 +239,225 @@ bool Pp_NeedsSpace(const Pp_Token *prev, const Pp_Token *next)
     }
 }
 
+// True if a directive's token can name a macro.
+bool Pp_IsMacroName(const Pp_Token *tok)
+{
+    return tok->pt_kind == PP_TOKEN_IDENT && ! (tok->pt_flags & PP_FLAG_BOL);
+}
+
+// Hash a macro name.
+uint32_t Pp_HashName(const char *text, size_t len)
+{
+    uint32_t hash = PP_HASH_OFFSET;
+
+    for (size_t i = 0; i < len; i++) {
+        hash = (hash ^ (uint8_t) text[i]) * PP_HASH_PRIME;
+    }
+    return hash;
+}
+
+// Return the macro text names.
+Pp_Macro *Pp_FindMacro(const char *text, size_t len)
+{
+    Pp_Macro *macro = Pp_Macros[Pp_HashName(text, len) % PP_MACRO_BUCKETS];
+
+    for (; macro; macro = macro->ma_next) {
+        if (strncmp(macro->ma_name, text, len) == 0 && macro->ma_name[len] == '\0') {
+            return macro;
+        }
+    }
+    return NULL;
+}
+
+// True if a replacement list matches a macro's.
+bool Pp_SameBody(const Pp_Macro *macro, const Pp_Token *body, size_t nbody)
+{
+    if (macro->ma_nbody != nbody) {
+        return false;
+    }
+    for (size_t i = 0; i < nbody; i++) {
+        const Pp_Token *old = &macro->ma_body[i];
+        bool spaced = (old->pt_flags & PP_FLAG_SPACE) == (body[i].pt_flags & PP_FLAG_SPACE);
+
+        if (old->pt_len != body[i].pt_len || memcmp(old->pt_text, body[i].pt_text, old->pt_len) != 0) {
+            return false;
+        }
+        if (i > 0 && ! spaced) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Define the macro a token names.
+void Pp_DefineMacro(const Pp_Token *name, const Pp_Token *body, size_t nbody)
+{
+    Pp_Macro *macro = Pp_FindMacro(name->pt_text, name->pt_len);
+
+    if (macro) {
+        if (! Pp_SameBody(macro, body, nbody)) {
+            Err_WarnAt(name->pt_line, ERR_PP_MACRO_REDEFINED, (int) name->pt_len, name->pt_text);
+        }
+        macro->ma_body = body;
+        macro->ma_nbody = nbody;
+        return;
+    }
+
+    uint32_t bucket = Pp_HashName(name->pt_text, name->pt_len) % PP_MACRO_BUCKETS;
+
+    macro = calloc(1, sizeof(*macro));
+    macro->ma_name = Str_Format("%.*s", (int) name->pt_len, name->pt_text);
+    macro->ma_body = body;
+    macro->ma_nbody = nbody;
+    macro->ma_next = Pp_Macros[bucket];
+    Pp_Macros[bucket] = macro;
+}
+
+// Forget the macro a token names.
+void Pp_UndefMacro(const Pp_Token *name)
+{
+    Pp_Macro *macro = Pp_FindMacro(name->pt_text, name->pt_len);
+    Pp_Macro **link = &Pp_Macros[Pp_HashName(name->pt_text, name->pt_len) % PP_MACRO_BUCKETS];
+
+    if (! macro) {
+        return;
+    }
+    while (*link != macro) {
+        link = &(*link)->ma_next;
+    }
+    *link = macro->ma_next;
+}
+
+// Append the directive -D arg stands for.
+void Pp_PutDefine(Str_Buf *cmdline, const char *arg)
+{
+    const char *eq = strchr(arg, '=');
+
+    if (eq) {
+        Str_BufPrint(cmdline, "#define %.*s %s\n", (int) (eq - arg), arg, eq + 1);
+    } else {
+        Str_BufPrint(cmdline, "#define %s 1\n", arg);
+    }
+}
+
+// Append the directive -U name stands for.
+void Pp_PutUndef(Str_Buf *cmdline, const char *name)
+{
+    Str_BufPrint(cmdline, "#undef %s\n", name);
+}
+
+// True if a hide set holds a macro.
+bool Pp_HideSetHas(const Pp_HideSet *set, const Pp_Macro *macro)
+{
+    for (; set; set = set->ph_next) {
+        if (set->ph_macro == macro) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Return a hide set with one more macro.
+Pp_HideSet *Pp_HideSetAdd(Pp_HideSet *set, const Pp_Macro *macro)
+{
+    Pp_HideSet *more = malloc(sizeof(*more));
+
+    more->ph_macro = macro;
+    more->ph_next = set;
+    return more;
+}
+
+// Read the next token.
+const Pp_Token *Pp_ReadToken(Pp_Reader *rd)
+{
+    const Pp_Token *tok = rd->rd_pending;
+
+    if (tok) {
+        rd->rd_pending = tok->pt_next;
+    } else if (rd->rd_pos < rd->rd_end) {
+        tok = &rd->rd_file->pf_tokens[rd->rd_pos++];
+    } else {
+        return NULL;
+    }
+    if (rd->rd_carry == PP_FLAG_NONE) {
+        return tok;
+    }
+
+    Pp_Token *carried = Pp_CopyToken(tok);
+
+    carried->pt_flags |= rd->rd_carry;
+    rd->rd_carry = PP_FLAG_NONE;
+    return carried;
+}
+
+// Push the expansion of a macro name back onto the reader.
+bool Pp_ExpandMacro(Pp_Reader *rd, const Pp_Token *tok)
+{
+    if (tok->pt_kind != PP_TOKEN_IDENT) {
+        return false;
+    }
+
+    Pp_Macro *macro = Pp_FindMacro(tok->pt_text, tok->pt_len);
+
+    if (! macro || Pp_HideSetHas(tok->pt_hide, macro)) {
+        return false;
+    }
+
+    Pp_Token *head = rd->rd_pending;
+    Pp_HideSet *hide = Pp_HideSetAdd(tok->pt_hide, macro);
+
+    for (size_t i = macro->ma_nbody; i > 0; i--) {
+        Pp_Token *copy = Pp_CopyToken(&macro->ma_body[i - 1]);
+
+        copy->pt_flags &= PP_FLAG_SPACE;
+        copy->pt_file = tok->pt_file;
+        copy->pt_line = tok->pt_line;
+        copy->pt_hide = hide;
+        copy->pt_next = head;
+        head = copy;
+    }
+    if (macro->ma_nbody == 0) {
+        rd->rd_carry |= tok->pt_flags;
+    } else {
+        head->pt_flags = tok->pt_flags;
+    }
+    rd->rd_pending = head;
+    return true;
+}
+
+// Expand a range of a file's tokens into a list.
+Pp_Token *Pp_ExpandRange(const Pp_File *file, size_t start, size_t end)
+{
+    Pp_Token *head = NULL;
+    Pp_Token **tail = &head;
+    const Pp_Token *tok = NULL;
+    Pp_Reader rd = {
+        .rd_file    = file,
+        .rd_pos     = start,
+        .rd_end     = end,
+        .rd_pending = NULL,
+        .rd_carry   = PP_FLAG_NONE
+    };
+
+    while ((tok = Pp_ReadToken(&rd)) != NULL) {
+        if (! Pp_ExpandMacro(&rd, tok)) {
+            *tail = Pp_CopyToken(tok);
+            tail = &(*tail)->pt_next;
+        }
+    }
+    return head;
+}
+
 // Build the include search list.
 void Pp_SetDirs(const Pp_Options *opts)
 {
     Pp_Dirs = malloc((opts->po_ndirs + 1) * sizeof(*Pp_Dirs));
     for (size_t i = 0; i < opts->po_ndirs; i++) {
-        Pp_Dirs[Pp_NumDirs++] = opts->po_dirs[i];
+        Pp_Dirs[Pp_NumDirs++] = Str_Clone(opts->po_dirs[i]);
     }
     if (opts->po_sysdir) {
         Pp_SysDir = Pp_NumDirs;
-        Pp_Dirs[Pp_NumDirs++] = opts->po_sysdir;
+        Pp_Dirs[Pp_NumDirs++] = Str_Clone(opts->po_sysdir);
     }
 }
 
@@ -251,6 +484,38 @@ char *Pp_JoinPath(const char *dir, const char *name)
         return Str_Format("%s%s", dir, name);
     }
     return Str_Format("%s/%s", dir, name);
+}
+
+// Build an include's operand from expanded tokens.
+Pp_Token *Pp_HeaderFromTokens(const Pp_Token *list, Ast_Line line)
+{
+    bool quoted = list && list->pt_kind == PP_TOKEN_STRING && list->pt_text[0] == '"';
+    bool angled = list && Pp_TokenEquals(list, "<");
+
+    Err_AssertAt(line, quoted || angled, ERR_PP_INCLUDE_MALFORMED);
+
+    Pp_Token *operand = Pp_CopyToken(list);
+
+    operand->pt_kind = PP_TOKEN_HEADER_NAME;
+    if (quoted) {
+        return operand;
+    }
+
+    Str_Buf *name = Str_BufNew();
+    const Pp_Token *tok = list->pt_next;
+
+    Str_BufPutByte(name, '<');
+    for (; tok && ! Pp_TokenEquals(tok, ">"); tok = tok->pt_next) {
+        if (tok != list->pt_next && (tok->pt_flags & PP_FLAG_SPACE)) {
+            Str_BufPutByte(name, ' ');
+        }
+        Str_BufPutBytes(name, tok->pt_text, tok->pt_len);
+    }
+    Err_AssertAt(line, tok, ERR_PP_INCLUDE_MALFORMED);
+    Str_BufPutByte(name, '>');
+    operand->pt_len = Str_BufLen(name);
+    operand->pt_text = Str_BufTake(name);
+    return operand;
 }
 
 // Find the file an include names.
@@ -317,7 +582,7 @@ const char *Pp_Locate(Ast_Line line, Ast_Line *source)
 
     if (Pp_MapLen == 0 || line < Pp_Map[0].pm_output) {
         *source = line;
-        return Pp_Files[0]->pf_path;
+        return Pp_Files[Pp_MainFile]->pf_path;
     }
     while (hi - lo > 1) {
         size_t mid = lo + (hi - lo) / 2;
@@ -439,6 +704,10 @@ size_t Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos)
         Pp_RunInclude(pr, file, pos, PP_INCLUDE_PLAIN);
     } else if (Pp_TokenEquals(name, "include_next")) {
         Pp_RunInclude(pr, file, pos, PP_INCLUDE_NEXT);
+    } else if (Pp_TokenEquals(name, "define")) {
+        Pp_RunDefine(file, pos);
+    } else if (Pp_TokenEquals(name, "undef")) {
+        Pp_RunUndef(file, pos);
     } else {
         Err_RaiseAt(hash->pt_line, ERR_PP_DIRECTIVE_UNKNOWN, (int) name->pt_len, name->pt_text);
     }
@@ -452,7 +721,9 @@ void Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include k
     const Pp_Token *hash = &from->pf_tokens[pos];
     const Pp_Token *operand = &from->pf_tokens[pos + 2];
 
-    Err_AssertAt(hash->pt_line, operand->pt_kind == PP_TOKEN_HEADER_NAME, ERR_PP_INCLUDE_MALFORMED);
+    if (operand->pt_kind != PP_TOKEN_HEADER_NAME) {
+        operand = Pp_HeaderFromTokens(Pp_ExpandRange(from, pos + 2, Pp_SkipLine(from, pos)), hash->pt_line);
+    }
     Err_AssertAt(hash->pt_line, Pp_Depth < PP_INCLUDE_DEPTH_MAX, ERR_PP_INCLUDE_TOO_DEEP, PP_INCLUDE_DEPTH_MAX);
 
     char *path = Pp_FindInclude(from, operand, kind, &dir);
@@ -466,19 +737,57 @@ void Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include k
     Pp_Depth--;
 }
 
+// Run the #define directive at pos.
+void Pp_RunDefine(const Pp_File *file, size_t pos)
+{
+    const Pp_Token *hash = &file->pf_tokens[pos];
+    const Pp_Token *name = &file->pf_tokens[pos + 2];
+
+    Err_AssertAt(hash->pt_line, Pp_IsMacroName(name), ERR_PP_MACRO_NAME_MISSING);
+
+    const Pp_Token *body = &file->pf_tokens[pos + 3];
+    bool function = Pp_TokenEquals(body, "(") && ! (body->pt_flags & (PP_FLAG_BOL | PP_FLAG_SPACE));
+
+    Err_AssertAt(hash->pt_line, ! function, ERR_PP_MACRO_FUNCTION_UNSUPPORTED);
+    Pp_DefineMacro(name, body, Pp_SkipLine(file, pos) - (pos + 3));
+}
+
+// Run the #undef directive at pos.
+void Pp_RunUndef(const Pp_File *file, size_t pos)
+{
+    const Pp_Token *hash = &file->pf_tokens[pos];
+    const Pp_Token *name = &file->pf_tokens[pos + 2];
+
+    Err_AssertAt(hash->pt_line, Pp_IsMacroName(name), ERR_PP_MACRO_NAME_MISSING);
+    Pp_UndefMacro(name);
+}
+
 // Preprocess one file into the printer.
 void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
 {
-    size_t pos = 0;
     uint32_t includer = Pp_CurFile;
+    Pp_Reader rd = {
+        .rd_file    = file,
+        .rd_pos     = 0,
+        .rd_end     = file->pf_ntokens - 1,
+        .rd_pending = NULL,
+        .rd_carry   = PP_FLAG_NONE
+    };
 
     Pp_CurFile = file->pf_index;
-    while (file->pf_tokens[pos].pt_kind != PP_TOKEN_EOF) {
-        if (Pp_IsDirective(&file->pf_tokens[pos])) {
-            pos = Pp_RunDirective(pr, file, pos);
-        } else {
-            Pp_PrintToken(pr, &file->pf_tokens[pos]);
-            pos++;
+    for (;;) {
+        if (! rd.rd_pending && Pp_IsDirective(&file->pf_tokens[rd.rd_pos])) {
+            rd.rd_pos = Pp_RunDirective(pr, file, rd.rd_pos);
+            continue;
+        }
+
+        const Pp_Token *tok = Pp_ReadToken(&rd);
+
+        if (! tok) {
+            break;
+        }
+        if (! Pp_ExpandMacro(&rd, tok)) {
+            Pp_PrintToken(pr, tok);
         }
     }
     Pp_CurFile = includer;
@@ -498,7 +807,14 @@ void Pp_Run(const char *path, const Pp_Options *opts, Str_Buf *out)
 
     Log_SetLineLocator(Pp_LocateSource);
     Pp_SetDirs(opts);
-    Pp_RunFile(&pr, Pp_OpenFile(path, PP_DIR_NONE));
+    if (opts->po_cmdline) {
+        Pp_RunFile(&pr, Pp_OpenText(PP_CMDLINE_NAME, opts->po_cmdline, strlen(opts->po_cmdline), PP_DIR_NONE));
+    }
+
+    Pp_File *source = Pp_OpenFile(path, PP_DIR_NONE);
+
+    Pp_MainFile = source->pf_index;
+    Pp_RunFile(&pr, source);
     if (pr.pr_prev) {
         Pp_BreakLine(&pr);
     }
