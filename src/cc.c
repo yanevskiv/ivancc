@@ -1,5 +1,6 @@
 // C source file for the ivancc compiler driver.
 
+#include <errno.h>
 #include <getopt.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -9,7 +10,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "util/file.h"
+#include "util/err.h"
 #include "util/log.h"
 #include "util/str.h"
 #include "syntax/ast.h"
@@ -48,13 +49,19 @@ extern FILE *yyin;
 // Runtime objects the default (linked) output is always merged with.
 static const char *const Cc_RuntimeNames[] = { "crt0.o", "libc.o" };
 
+// The source file being compiled.
+static const char *Cc_InputPath;
+
+// The output file this run created.
+static const char *Cc_OutputPath;
+
 // Entry point of the generated parser.
 int yyparse(void);
 
 // Show usage information and exit.
 static void Cc_ShowUsage(const char *prog)
 {
-    File_Print(File_Err(),
+    fprintf(stderr,
         "Usage: %s [options] INPUT.c\n"
         "  -o OUTPUT   write output to OUTPUT (default: " DEFAULT_OUTPUT ", " STDOUT_NAME " is stdout)\n"
         "  -S          write assembly text instead of an executable\n"
@@ -64,6 +71,21 @@ static void Cc_ShowUsage(const char *prog)
         "  -B DIR      read the runtime objects from DIR\n",
         prog);
     exit(1);
+}
+
+// Map a line of the input to its file and source line.
+static const char *Cc_Locate(uint32_t line, uint32_t *source)
+{
+    *source = line;
+    return Cc_InputPath;
+}
+
+// Remove the output file after an error.
+static void Cc_RemoveOutput(void)
+{
+    if (Err_Status() != ERR_SUCCESS && Cc_OutputPath) {
+        remove(Cc_OutputPath);
+    }
 }
 
 // Return the directory holding this executable.
@@ -92,38 +114,46 @@ static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
     }
 
     char *exedir = Cc_GetExeDir();
-    if (! exedir) {
-        Log_ShowError("cannot locate the runtime directory; pass -B DIR");
-    }
+    Err_Assert(exedir, ERR_CC_RUNTIME_NOT_FOUND);
     char *dir = Str_Format("%s" RUNTIME_DIR "%s", exedir, target);
     Str_Free(exedir);
     return dir;
 }
 
 // Open the output stream.
-static File_Stream *Cc_OpenOutput(const char *output, const char *mode)
+static FILE *Cc_OpenOutput(const char *output, const char *mode)
 {
     if (Str_Equals(output, STDOUT_NAME)) {
-        return File_Out();
+        return stdout;
     }
-    return File_Open(output, mode);
+
+    FILE *out = fopen(output, mode);
+
+    Err_Assert(out, ERR_FILE_ACCESS, output, strerror(errno));
+    Cc_OutputPath = output;
+    return out;
 }
 
 // Close the output stream.
-static void Cc_CloseOutput(File_Stream *out)
+static void Cc_CloseOutput(FILE *out)
 {
-    File_Close(out);
+    if (out == stdout) {
+        fflush(out);
+    } else {
+        fclose(out);
+    }
+    Cc_OutputPath = NULL;
 }
 
 // Write the program as AT&T assembly text.
-static void Cc_x86_64_WriteText(File_Stream *out, Ast_Func *prog)
+static void Cc_x86_64_WriteText(FILE *out, Ast_Func *prog)
 {
     Gen_x86_64_BuildProgram(prog);
     Txt_x86_64_Att_Write(out);
 }
 
 // Write the program as a relocatable object, references left undefined.
-static void Cc_x86_64_WriteObject(File_Stream *out, Ast_Func *prog)
+static void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();
@@ -131,7 +161,7 @@ static void Cc_x86_64_WriteObject(File_Stream *out, Ast_Func *prog)
 }
 
 // Write the program linked against the runtime as a static executable.
-static void Cc_x86_64_WriteExec(File_Stream *out, Ast_Func *prog, const char *prefix, const char *target)
+static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *target)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();
@@ -172,6 +202,9 @@ int main(int argc, char **argv)
         { 0, 0, 0, 0 }
     };
 
+    Log_SetProgramName(argv[0]);
+    atexit(Cc_RemoveOutput);
+
     int32_t opt;
     while ((opt = getopt_long(argc, argv, "o:cESgB:I:D:U:l:L:W:f:m:O::", longopts, NULL)) != -1) {
         switch (opt) {
@@ -209,14 +242,15 @@ int main(int argc, char **argv)
         }
     }
 
-    if (! Str_Equals(arch, DEFAULT_ARCH)) {
-        Log_ShowError("unsupported architecture '%s' (only " DEFAULT_ARCH " is supported)", arch);
-    }
+    Err_Assert(Str_Equals(arch, DEFAULT_ARCH), ERR_CC_ARCH_UNSUPPORTED, arch, DEFAULT_ARCH);
 
     if (optind >= argc) {
         Cc_ShowUsage(argv[0]);
     }
     const char *input = argv[optind];
+
+    Cc_InputPath = input;
+    Log_SetLineLocator(Cc_Locate);
 
     char *outbuf = NULL;
     if (! output) {
@@ -229,26 +263,15 @@ int main(int argc, char **argv)
         }
     }
 
-    int32_t result = 0;
-
     // Front end: build the AST
     yyin = fopen(input, "r");
-    if (! yyin) {
-        File_ShowError(input);
-        result = 1;
-        goto cleanup;
-    }
+    Err_Assert(yyin, ERR_FILE_ACCESS, input, strerror(errno));
     yyparse();
     Sem_Analyze(Ast_Program);
     fclose(yyin);
 
     // Back end: emit assembly text or a freestanding executable
-    File_Stream *out = Cc_OpenOutput(output, emit_text ? "w" : "wb");
-    if (! out) {
-        File_ShowError(output);
-        result = 1;
-        goto cleanup;
-    }
+    FILE *out = Cc_OpenOutput(output, emit_text ? "w" : "wb");
     if (emit_text) {
         Cc_x86_64_WriteText(out, Ast_Program);
     } else if (emit_obj) {
@@ -262,7 +285,6 @@ int main(int argc, char **argv)
         chmod(output, ELF_MODE);
     }
 
-cleanup:
     Str_Free(outbuf);
-    return result;
+    return 0;
 }
