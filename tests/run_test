@@ -63,17 +63,32 @@ setup()
 
     get_value "${SOURCE}" '(Test) Compiler output' > "${TMP}/exp.cout.txt"
     get_value "${SOURCE}" '(Test) Compiler return' > "${TMP}/exp.cret.txt"
-    get_value "${SOURCE}" '(Test) Compiler error' > "${TMP}/exp.cret.txt"
+    get_value "${SOURCE}" '(Test) Compiler error' > "${TMP}/exp.cerr.txt"
     get_value "${SOURCE}" '(Test) Return' > "${TMP}/exp.ret.txt"
     get_text "${SOURCE}" '(Test) Output' > "${TMP}/exp.out.txt"
 
     "${BIN}/ivancc" "$SOURCE" -o "${TMP}/a.out" >"${TMP}/got.cout.txt" 2>"${TMP}/got.cerr.txt"
     echo $? > "${TMP}/got.cret.txt"
 
+    [ -s "${TMP}/exp.cerr.txt" ] && return
     grep -qx 0 "${TMP}/got.cret.txt" || fail '%s' "$(cat "${TMP}/got.cerr.txt")"
 
     timeout "$TIMEOUT" "${TMP}/a.out" >"${TMP}/got.out.txt" 2>&1
     echo $? > "${TMP}/got.ret.txt"
+}
+
+# Check the compile failure against `// (Test) Compiler error:`.
+test_compiler_error()
+{
+    EXP="$(cat "${TMP}/exp.cerr.txt")"
+    GOT="$(cat "${TMP}/got.cerr.txt")"
+
+    [ -n "$EXP" ] || return 0
+
+    grep -qx 0 "${TMP}/got.cret.txt" && fail 'Compiled but expected %s' "$EXP"
+    grep -qF "[$EXP]" "${TMP}/got.cerr.txt" || fail 'Failed with:\n%s\nbut expected %s' "$GOT" "$EXP"
+
+    pass
 }
 
 # Check the exit status against `// (Test) Return:`.
@@ -115,6 +130,7 @@ test_declared()
 }
 
 setup
+test_compiler_error
 test_return
 test_output
 test_declared
