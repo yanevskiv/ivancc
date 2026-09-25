@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "util/file.h"
+#include <stdio.h>
 
 // Format
 // Object file types (e_type).
@@ -269,6 +269,7 @@ Elf_Rela *Elf_Rela_At(const Elf_Sec *target, size_t i);
 // Reading
 const Elf64_Ehdr *Elf_Read_Ehdr(const uint8_t *data, size_t n);
 Elf              *Elf_Read_Mem(const void *buf, size_t n);
+uint8_t          *Elf_Read_Bytes(const char *path, size_t *len);
 Elf              *Elf_Read_Path(const char *path);
 
 // Writing
@@ -276,11 +277,11 @@ uint32_t Elf_Write_Str(Elf_Buffer *strtab, const char *name);
 uint32_t Elf_Write_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *secidx);
 void     Elf_Write_Symtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab, Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global);
 void     Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Elf_Buffer *out);
-bool     Elf_Write_Rel(const Elf *elf, File_Stream *out);
+bool     Elf_Write_Rel(const Elf *elf, FILE *out);
 uint32_t Elf_Write_SegFlags(const Elf_Sec *sec);
 uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr);
-bool     Elf_Write_Exec(const Elf *elf, File_Stream *out);
-bool     Elf_Write_File(const Elf *elf, File_Stream *out);
+bool     Elf_Write_Exec(const Elf *elf, FILE *out);
+bool     Elf_Write_File(const Elf *elf, FILE *out);
 bool     Elf_Write_Path(const Elf *elf, const char *path);
 
 // Linking

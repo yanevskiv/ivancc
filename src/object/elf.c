@@ -1,11 +1,11 @@
 // C source file for ELF objects and executables.
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/file.h"
-#include "util/log.h"
+#include "util/err.h"
 #include "util/str.h"
 #include "object/elf.h"
 #include "arch/x86_64/rel.h"
@@ -418,19 +418,48 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
     return elf;
 }
 
+// Read the whole file at path.
+uint8_t *Elf_Read_Bytes(const char *path, size_t *len)
+{
+    FILE *file = fopen(path, "rb");
+    if (! file) {
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    if (size < 0) {
+        fclose(file);
+        return NULL;
+    }
+
+    uint8_t *buf = malloc((size_t) size);
+
+    if (fread(buf, 1, (size_t) size, file) != (size_t) size) {
+        free(buf);
+        fclose(file);
+        return NULL;
+    }
+    fclose(file);
+
+    *len = (size_t) size;
+    return buf;
+}
+
 // Parse an ELF file into a new object.
 Elf *Elf_Read_Path(const char *path)
 {
     size_t size = 0;
-    char *buf = File_GetContents(path, &size);
+    uint8_t *buf = Elf_Read_Bytes(path, &size);
 
     if (! buf) {
         return NULL;
     }
 
-    Elf *elf = Elf_Read_Mem((const uint8_t *) buf, size);
+    Elf *elf = Elf_Read_Mem(buf, size);
 
-    Str_Free(buf);
+    free(buf);
     return elf;
 }
 
@@ -513,7 +542,7 @@ void Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, E
 }
 
 // Serialize a relocatable object (ET_REL).
-bool Elf_Write_Rel(const Elf *elf, File_Stream *out)
+bool Elf_Write_Rel(const Elf *elf, FILE *out)
 {
     size_t nuser = elf->elf_nsecs;
 
@@ -644,23 +673,23 @@ bool Elf_Write_Rel(const Elf *elf, File_Stream *out)
     };
 
     uint64_t pos = 0;
-    File_PutBytes(out, &ehdr, sizeof(ehdr));
+    fwrite(&ehdr, 1, sizeof(ehdr), out);
     pos += sizeof(ehdr);
     for (uint32_t i = 1; i < shnum; i++) {
         while (pos < shdrs[i].sh_offset) {
-            File_PutByte(out, 0);
+            fputc(0, out);
             pos++;
         }
         if (sizes[i]) {
-            File_PutBytes(out, bodies[i], sizes[i]);
+            fwrite(bodies[i], 1, sizes[i], out);
         }
         pos += sizes[i];
     }
     while (pos < shoff) {
-        File_PutByte(out, 0);
+        fputc(0, out);
         pos++;
     }
-    File_PutBytes(out, shdrs, sizeof(Elf64_Shdr) * shnum);
+    fwrite(shdrs, 1, sizeof(Elf64_Shdr) * shnum, out);
 
     Elf_Buffer_Free(&symtab);
     Elf_Buffer_Free(&strtab);
@@ -698,7 +727,7 @@ uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr)
 }
 
 // Serialize a static executable, one PT_LOAD per placed section.
-bool Elf_Write_Exec(const Elf *elf, File_Stream *out)
+bool Elf_Write_Exec(const Elf *elf, FILE *out)
 {
     // Phase: select the loadable sections.
     Elf_Sec **segs = calloc(elf->elf_nsecs ? elf->elf_nsecs : 1, sizeof(*segs));
@@ -731,7 +760,7 @@ bool Elf_Write_Exec(const Elf *elf, File_Stream *out)
         .e_phentsize = sizeof(Elf64_Phdr),
         .e_phnum     = (uint16_t) nseg
     };
-    File_PutBytes(out, &ehdr, sizeof(ehdr));
+    fwrite(&ehdr, 1, sizeof(ehdr), out);
     for (size_t i = 0; i < nseg; i++) {
         bool nobits = segs[i]->sec_type == ELF_SHT_NOBITS;
         Elf64_Phdr phdr = {
@@ -744,7 +773,7 @@ bool Elf_Write_Exec(const Elf *elf, File_Stream *out)
             .p_memsz  = segs[i]->sec_data.eb_len,
             .p_align  = ELF_PAGE
         };
-        File_PutBytes(out, &phdr, sizeof(phdr));
+        fwrite(&phdr, 1, sizeof(phdr), out);
     }
     uint64_t pos2 = sizeof(Elf64_Ehdr) + (uint64_t) nseg * sizeof(Elf64_Phdr);
     for (size_t i = 0; i < nseg; i++) {
@@ -752,10 +781,10 @@ bool Elf_Write_Exec(const Elf *elf, File_Stream *out)
             continue;
         }
         while (pos2 < offs[i]) {
-            File_PutByte(out, 0);
+            fputc(0, out);
             pos2++;
         }
-        File_PutBytes(out, segs[i]->sec_data.eb_data, segs[i]->sec_data.eb_len);
+        fwrite(segs[i]->sec_data.eb_data, 1, segs[i]->sec_data.eb_len, out);
         pos2 += segs[i]->sec_data.eb_len;
     }
 
@@ -765,7 +794,7 @@ bool Elf_Write_Exec(const Elf *elf, File_Stream *out)
 }
 
 // Serialize an object to an open stream.
-bool Elf_Write_File(const Elf *elf, File_Stream *out)
+bool Elf_Write_File(const Elf *elf, FILE *out)
 {
     if (elf->elf_type == ELF_ET_EXEC) {
         return Elf_Write_Exec(elf, out);
@@ -776,7 +805,7 @@ bool Elf_Write_File(const Elf *elf, File_Stream *out)
 // Serialize an object to a file.
 bool Elf_Write_Path(const Elf *elf, const char *path)
 {
-    File_Stream *out = File_Open(path, "wb");
+    FILE *out = fopen(path, "wb");
 
     if (! out) {
         return false;
@@ -784,8 +813,7 @@ bool Elf_Write_Path(const Elf *elf, const char *path)
 
     bool ok = Elf_Write_File(elf, out);
 
-    File_Close(out);
-    return ok;
+    return fclose(out) == 0 && ok;
 }
 
 // Index of a section within an object.
@@ -868,9 +896,7 @@ void Elf_Link_Merge(Elf *out, Elf *in)
             continue;
         }
         if (dsec) {
-            if (existing->sym_sec) {
-                Log_ShowError("multiple definition of '%s'", sym->sym_name);
-            }
+            Err_Assert(! existing->sym_sec, ERR_ELF_MULTIPLE_DEFINITION, sym->sym_name);
             existing->sym_sec   = dsec;
             existing->sym_value = value;
             existing->sym_type  = sym->sym_type;
@@ -901,9 +927,7 @@ void Elf_Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths)
 {
     for (size_t i = 0; i < npaths; i++) {
         Elf *in = Elf_Read_Path(paths[i]);
-        if (! in) {
-            Log_ShowError("cannot read object '%s'", paths[i]);
-        }
+        Err_Assert(in, ERR_ELF_OBJECT_UNREADABLE, paths[i]);
         Elf_Link_Merge(out, in);
         Elf_Free(in);
     }
@@ -960,9 +984,7 @@ void Elf_Link_CheckDefined(Elf *elf)
         Elf_Sec *sec = Elf_Section_At(elf, i);
         for (size_t r = 0; r < Elf_Rela_Count(sec); r++) {
             Elf_Sym *sym = Elf_Rela_At(sec, r)->rel_sym;
-            if (! sym || ! sym->sym_sec) {
-                Log_ShowError("undefined symbol '%s'", sym ? sym->sym_name : "?");
-            }
+            Err_Assert(sym && sym->sym_sec, ERR_ELF_UNDEFINED_SYMBOL, sym ? sym->sym_name : "?");
         }
     }
 }
@@ -976,9 +998,7 @@ void Elf_Link_Exec(Elf *elf, const Elf_LinkOptions *opts)
     Elf_Link_CheckDefined(elf);
 
     Elf_Sym *sym = Elf_Symbol_Find(elf, entry);
-    if (! sym || ! sym->sym_sec) {
-        Log_ShowError("undefined entry symbol '%s'", entry);
-    }
+    Err_Assert(sym && sym->sym_sec, ERR_ELF_UNDEFINED_ENTRY, entry);
     Elf_SetEntry(elf, sym->sym_sec->sec_addr + sym->sym_value);
 
     Rel_x86_64_Apply(elf);
@@ -1013,25 +1033,16 @@ uint64_t Elf_Load_AlignUp(uint64_t addr, uint64_t align)
 bool Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
 {
     size_t len = 0;
-    char *file = File_GetContents(path, &len);
+    uint8_t *file = Elf_Read_Bytes(path, &len);
     if (! file) {
         return false;
     }
 
-    const uint8_t *data = (const uint8_t *) file;
+    const uint8_t *data = file;
     const Elf64_Ehdr *eh = Elf_Read_Ehdr(data, len);
-    if (! eh) {
-        Str_Free(file);
-        Log_ShowError("not an ELF file: '%s'", path);
-    }
-    if (eh->e_ident[4] != ELF_CLASS64 || eh->e_ident[5] != ELF_DATA2LSB) {
-        Str_Free(file);
-        Log_ShowError("not a 64-bit little-endian ELF file: '%s'", path);
-    }
-    if (eh->e_type != ELF_ET_EXEC) {
-        Str_Free(file);
-        Log_ShowError("not an executable: '%s'", path);
-    }
+    Err_Assert(eh, ERR_ELF_NOT_ELF, path);
+    Err_Assert(eh->e_ident[4] == ELF_CLASS64 && eh->e_ident[5] == ELF_DATA2LSB, ERR_ELF_NOT_ELF64_LSB, path);
+    Err_Assert(eh->e_type == ELF_ET_EXEC, ERR_ELF_NOT_EXECUTABLE, path);
 
     // Phase: the extent of every PT_LOAD.
     uint64_t lo = UINT64_MAX;
@@ -1048,10 +1059,7 @@ bool Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
             hi = ph->p_vaddr + ph->p_memsz;
         }
     }
-    if (lo > hi) {
-        Str_Free(file);
-        Log_ShowError("no loadable segments in '%s'", path);
-    }
+    Err_Assert(lo <= hi, ERR_ELF_NO_LOAD_SEGMENTS, path);
 
     img->li_base    = Elf_Load_AlignDown(lo, ELF_PAGE);
     img->li_size    = Elf_Load_AlignUp(hi, ELF_PAGE) - img->li_base + LOAD_STACK_SIZE;
@@ -1066,14 +1074,11 @@ bool Elf_Load_ReadExec(const char *path, Elf_LoadImage *img)
         if (ph->p_type != ELF_PT_LOAD || ph->p_filesz == 0) {
             continue;
         }
-        if (ph->p_offset + ph->p_filesz > len) {
-            Str_Free(file);
-            Log_ShowError("segment runs past the end of '%s'", path);
-        }
+        Err_Assert(ph->p_offset + ph->p_filesz <= len, ERR_ELF_SEGMENT_TRUNCATED, path);
         memcpy(img->li_mem + (ph->p_vaddr - img->li_base), data + ph->p_offset, ph->p_filesz);
     }
 
-    Str_Free(file);
+    free(file);
     return true;
 }
 

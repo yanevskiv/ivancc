@@ -5,8 +5,8 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
-#include "util/file.h"
 #include "arch/x86_64/asm.h"
 
 // Whether a string directive appends a terminating NUL.
@@ -17,9 +17,9 @@ enum Txt_x86_64_Terminate {
 };
 
 // AT&T syntax writer
-void Txt_x86_64_Att_WriteOperand(File_Stream *out, const Asm_x86_64_Operand *op);
-void Txt_x86_64_Att_WriteInstr(File_Stream *out, const Asm_x86_64_Item *item);
-void Txt_x86_64_Att_Write(File_Stream *out);
+void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
+void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
+void Txt_x86_64_Att_Write(FILE *out);
 
 // Name-to-value lookups
 char    Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width);

@@ -1,11 +1,11 @@
 // C source file for x86-64 assembly text in AT&T syntax.
 
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/file.h"
-#include "util/log.h"
+#include "util/err.h"
 #include "util/str.h"
 #include "object/elf.h"
 #include "arch/x86_64/asm.h"
@@ -102,7 +102,7 @@ static const char *Txt_x86_64_OpName[ASM_X86_64_OP_COUNT] = {
 };
 
 // Write one operand in AT&T syntax.
-void Txt_x86_64_Att_WriteOperand(File_Stream *out, const Asm_x86_64_Operand *op)
+void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
 {
     switch (op->ao_kind) {
         case ASM_X86_64_OPERAND_REG: {
@@ -114,23 +114,23 @@ void Txt_x86_64_Att_WriteOperand(File_Stream *out, const Asm_x86_64_Operand *op)
             } else if (op->ao_width == ASM_X86_64_WIDTH_32) {
                 name = Txt_x86_64_Reg32Name[op->ao_reg];
             }
-            File_Print(out, "%%%s", name);
+            fprintf(out, "%%%s", name);
         } break;
         case ASM_X86_64_OPERAND_IMM: {
-            File_Print(out, "$%ld", op->ao_imm);
+            fprintf(out, "$%ld", op->ao_imm);
         } break;
         case ASM_X86_64_OPERAND_MEM: {
             if (op->ao_disp) {
-                File_Print(out, "%d(%%%s)", op->ao_disp, Txt_x86_64_Reg64Name[op->ao_reg]);
+                fprintf(out, "%d(%%%s)", op->ao_disp, Txt_x86_64_Reg64Name[op->ao_reg]);
             } else {
-                File_Print(out, "(%%%s)", Txt_x86_64_Reg64Name[op->ao_reg]);
+                fprintf(out, "(%%%s)", Txt_x86_64_Reg64Name[op->ao_reg]);
             }
         } break;
         case ASM_X86_64_OPERAND_RIP: {
-            File_Print(out, "%s(%%rip)", op->ao_label);
+            fprintf(out, "%s(%%rip)", op->ao_label);
         } break;
         case ASM_X86_64_OPERAND_LABEL: {
-            File_Print(out, "%s", op->ao_label);
+            fprintf(out, "%s", op->ao_label);
         } break;
         case ASM_X86_64_OPERAND_NONE:
         case ASM_X86_64_OPERAND_COUNT: {
@@ -140,34 +140,34 @@ void Txt_x86_64_Att_WriteOperand(File_Stream *out, const Asm_x86_64_Operand *op)
 }
 
 // Write one instruction: mnemonic plus operands in AT&T order.
-void Txt_x86_64_Att_WriteInstr(File_Stream *out, const Asm_x86_64_Item *item)
+void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
 {
     if (item->ai_op == ASM_X86_64_OP_MOVSX || item->ai_op == ASM_X86_64_OP_MOVZX) {
         const char *stem = item->ai_op == ASM_X86_64_OP_MOVSX ? "movs" : "movz";
-        File_Print(out, "  %s%cq", stem, Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
+        fprintf(out, "  %s%cq", stem, Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
     } else {
-        File_Print(out, "  %s", Txt_x86_64_OpName[item->ai_op]);
+        fprintf(out, "  %s", Txt_x86_64_OpName[item->ai_op]);
     }
 
     bool have_src = item->ai_src.ao_kind != ASM_X86_64_OPERAND_NONE;
     bool have_dst = item->ai_dst.ao_kind != ASM_X86_64_OPERAND_NONE;
 
     if (have_src) {
-        File_PutByte(out, ' ');
+        fputc(' ', out);
         Txt_x86_64_Att_WriteOperand(out, &item->ai_src);
     }
     if (have_dst) {
-        File_PutText(out, have_src ? ", " : " ");
+        fputs(have_src ? ", " : " ", out);
         if (item->ai_op == ASM_X86_64_OP_CALL_REG) {
-            File_PutByte(out, '*');
+            fputc('*', out);
         }
         Txt_x86_64_Att_WriteOperand(out, &item->ai_dst);
     }
-    File_PutByte(out, '\n');
+    fputc('\n', out);
 }
 
 // Walk the instruction list and write AT&T-syntax assembly to out.
-void Txt_x86_64_Att_Write(File_Stream *out)
+void Txt_x86_64_Att_Write(FILE *out)
 {
     for (Asm_x86_64_Item *item = Asm_x86_64_Items(); item; item = item->ai_next) {
         switch (item->ai_kind) {
@@ -175,28 +175,28 @@ void Txt_x86_64_Att_Write(File_Stream *out)
                 Txt_x86_64_Att_WriteInstr(out, item);
             } break;
             case ASM_X86_64_ITEM_LABEL: {
-                File_Print(out, "%s:\n", item->ai_label);
+                fprintf(out, "%s:\n", item->ai_label);
             } break;
             case ASM_X86_64_ITEM_GLOBL: {
-                File_Print(out, "  .globl %s\n", item->ai_label);
+                fprintf(out, "  .globl %s\n", item->ai_label);
             } break;
             case ASM_X86_64_ITEM_SECTION: {
                 if (strcmp(item->ai_secname, ".text") == 0) {
-                    File_Print(out, "  .text\n");
+                    fprintf(out, "  .text\n");
                 } else {
-                    File_Print(out, "  .section %s\n", item->ai_secname);
+                    fprintf(out, "  .section %s\n", item->ai_secname);
                 }
             } break;
             case ASM_X86_64_ITEM_BYTES: {
                 for (size_t i = 0; i < item->ai_nbytes; i++) {
-                    File_Print(out, "  .byte %d\n", item->ai_bytes[i]);
+                    fprintf(out, "  .byte %d\n", item->ai_bytes[i]);
                 }
             } break;
             case ASM_X86_64_ITEM_ADDR: {
-                File_Print(out, "  .quad %s\n", item->ai_label);
+                fprintf(out, "  .quad %s\n", item->ai_label);
             } break;
             case ASM_X86_64_ITEM_DIRECTIVE: {
-                File_Print(out, "  %s\n", item->ai_text);
+                fprintf(out, "  %s\n", item->ai_text);
             } break;
             case ASM_X86_64_ITEM_COUNT: {
                 // empty
@@ -468,9 +468,7 @@ bool Txt_x86_64_Att_EmitAddress(const char *text, size_t width)
     if (! Txt_x86_64_Att_IsNameStart(text[0])) {
         return false;
     }
-    if (width != 8 || ! Txt_x86_64_Att_IsAddress(text)) {
-        Log_ShowError("as: '%s' is not an address a .quad can hold", text);
-    }
+    Err_Assert(width == 8 && Txt_x86_64_Att_IsAddress(text), ERR_TXT_QUAD_NOT_ADDRESS, text);
     Asm_x86_64_EmitAddress(text);
     return true;
 }
@@ -495,9 +493,7 @@ void Txt_x86_64_Att_EmitString(const char *args, Txt_x86_64_Terminate terminate)
 void Txt_x86_64_Att_ParseInstr(const char *line)
 {
     size_t mlen = strcspn(line, " \t");
-    if (mlen == 0 || mlen >= 32) {
-        Log_ShowError("as: bad mnemonic in '%s'", line);
-    }
+    Err_Assert(mlen > 0 && mlen < 32, ERR_TXT_MNEMONIC_MALFORMED, line);
     char mnem[32];
     memcpy(mnem, line, mlen);
     mnem[mlen] = '\0';
@@ -510,11 +506,9 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
         mnem[mlen - 1] = '\0';
         opcode = Txt_x86_64_OpByName(mnem);
     }
-    if (opcode < 0) {
-        Log_ShowError("as: unknown mnemonic '%.*s'", (int) mlen, line);
-    }
+    Err_Assert(opcode >= 0, ERR_TXT_MNEMONIC_UNKNOWN, (int) mlen, line);
 
-    Asm_x86_64_Operand ops[2];
+    Asm_x86_64_Operand ops[2] = {0};
     int32_t n_ops = 0;
     const char *rest = line + mlen;
     while (*rest == ' ' || *rest == '\t') {
@@ -527,32 +521,22 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
             if (! *text) {
                 continue;
             }
-            if (n_ops >= 2) {
-                Log_ShowError("as: too many operands in '%s'", line);
-            }
+            Err_Assert(n_ops < 2, ERR_TXT_OPERANDS_TOO_MANY, line);
             const char *op_name = text;
             if (*op_name == '*') {
                 opcode = Txt_x86_64_Att_IndirectOp(opcode);
-                if (opcode < 0) {
-                    Log_ShowError("as: '%s' takes no indirect operand", line);
-                }
+                Err_Assert(opcode >= 0, ERR_TXT_OPERAND_NOT_INDIRECT, line);
                 op_name++;
             }
-            if (! Txt_x86_64_Att_ParseOperand(op_name, &ops[n_ops])) {
-                Log_ShowError("as: bad operand '%s'", text);
-            }
+            Err_Assert(Txt_x86_64_Att_ParseOperand(op_name, &ops[n_ops]), ERR_TXT_OPERAND_MALFORMED, text);
             n_ops++;
         }
         Str_ListFree(&parts);
     }
 
     if (Txt_x86_64_Att_IsDirectBranch(opcode)) {
-        if (n_ops != 1) {
-            Log_ShowError("as: '%s' takes one operand", line);
-        }
-        if (ops[0].ao_kind != ASM_X86_64_OPERAND_LABEL) {
-            Log_ShowError("as: '%s' needs a label", line);
-        }
+        Err_Assert(n_ops == 1, ERR_TXT_BRANCH_OPERAND_COUNT, line);
+        Err_Assert(ops[0].ao_kind == ASM_X86_64_OPERAND_LABEL, ERR_TXT_BRANCH_NOT_LABEL, line);
     }
 
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
