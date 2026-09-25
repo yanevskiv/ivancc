@@ -175,4 +175,7 @@ void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_Designator(char *name, Ast_Line line);
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line);
 
+// Parsing
+void Par_ParseText(const char *text, size_t len);
+
 #endif // PAR_H

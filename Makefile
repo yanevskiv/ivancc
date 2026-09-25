@@ -20,7 +20,7 @@ MAIN_SRCS := src/cc.c src/ld.c src/as.c src/emu.c
 ALL_SRCS  := $(shell find src -name '*.c')
 LIB_SRCS  := $(filter-out $(MAIN_SRCS),$(ALL_SRCS))
 LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
-GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/c.tab.o
+GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/c.tab.o $(OUT)/pp.yy.o
 
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
 ELF_OBJS := $(OUT)/object/elf.o $(OUT)/util/err.o $(OUT)/util/log.o $(OUT)/util/str.o
@@ -72,10 +72,16 @@ $(OUT)/c.tab.c $(OUT)/c.tab.h: src/spec/c.y | $(OUT)
 $(OUT)/lex.yy.c: src/spec/c.flex $(OUT)/c.tab.h | $(OUT)
 	$(LEX) -o $@ $<
 
+$(OUT)/pp.yy.c: src/spec/pp.flex | $(OUT)
+	$(LEX) -o $@ $<
+
 $(OUT)/lex.yy.o: $(OUT)/lex.yy.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OUT)/c.tab.o: $(OUT)/c.tab.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(OUT)/pp.yy.o: $(OUT)/pp.yy.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 # --- objects ---
