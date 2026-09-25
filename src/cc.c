@@ -59,7 +59,34 @@
 typedef enum Cc_Option Cc_Option;
 enum Cc_Option {
     CC_OPTION_STD = UCHAR_MAX + 1,
-    CC_OPTION_INCLUDE
+    CC_OPTION_INCLUDE,
+    CC_OPTION_M,
+    CC_OPTION_MM,
+    CC_OPTION_MD,
+    CC_OPTION_MMD,
+    CC_OPTION_MP,
+    CC_OPTION_MF,
+    CC_OPTION_MT,
+    CC_OPTION_MQ
+};
+
+// What a run does with its dependency rule.
+typedef enum Cc_DependMode Cc_DependMode;
+enum Cc_DependMode {
+    CC_DEPEND_NONE,
+    CC_DEPEND_INSTEAD, // write the rule instead of compiling
+    CC_DEPEND_BESIDE   // write the rule and compile
+};
+
+// How a run writes its dependency rule.
+typedef struct Cc_Depend Cc_Depend;
+struct Cc_Depend {
+    Cc_DependMode cd_mode;
+    const char   *cd_file;     // --MF or --MD file
+    char        **cd_targets;  // escaped for make
+    size_t        cd_ntargets;
+    Pp_Headers    cd_headers;
+    Pp_Phony      cd_phony;
 };
 
 // Runtime objects the default (linked) output is always merged with.
@@ -82,6 +109,14 @@ static void Cc_ShowUsage(const char *prog)
         "  -D NAME[=V] define NAME as V (default 1)\n"
         "  -U NAME     undefine NAME\n"
         "  --include=F read F before INPUT.c\n"
+        "  --M         write a make rule for INPUT.c instead of compiling\n"
+        "  --MM        --M without the system headers\n"
+        "  --MD[=F]    write the rule to F (default: OUTPUT with .d) and compile\n"
+        "  --MMD[=F]   --MD without the system headers\n"
+        "  --MP        add an empty rule for each header\n"
+        "  --MF=F      write the rule to F\n"
+        "  --MT=T      name the rule's target T\n"
+        "  --MQ=T      name the rule's target T, escaped for make\n"
         "  --std=STD   language standard (only " DEFAULT_STD ")\n"
         "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n"
         "  -mtarget=T  runtime to link against (default: " DEFAULT_TARGET ")\n"
@@ -170,6 +205,61 @@ static void Cc_CloseOutput(FILE *out)
     Cc_OutputPath = NULL;
 }
 
+// Add a target to the dependency rule.
+static void Cc_AddTarget(Cc_Depend *dep, char *target)
+{
+    dep->cd_targets = realloc(dep->cd_targets, (dep->cd_ntargets + 1) * sizeof(*dep->cd_targets));
+    dep->cd_targets[dep->cd_ntargets++] = target;
+}
+
+// Return the target a rule gets when no --MT or --MQ names one.
+static char *Cc_DefaultTarget(const char *input, const char *output, Cc_DependMode mode)
+{
+    if (mode == CC_DEPEND_BESIDE && ! Str_Equals(output, STDOUT_NAME)) {
+        return Pp_EscapeMake(output);
+    }
+
+    const char *slash = strrchr(input, '/');
+    char *object = Str_ChangeOrAppendExt(slash ? slash + 1 : input, ".o");
+    char *target = Pp_EscapeMake(object);
+
+    Str_Free(object);
+    return target;
+}
+
+// Return where the rule goes when no --MF names a file.
+static char *Cc_DefaultDependFile(const char *input, const char *output, Cc_DependMode mode)
+{
+    if (mode == CC_DEPEND_INSTEAD) {
+        return Str_Clone(output);
+    }
+    return Str_ChangeOrAppendExt(Str_Equals(output, STDOUT_NAME) ? input : output, ".d");
+}
+
+// Write the dependency rule.
+static void Cc_WriteDepend(Cc_Depend *dep, const char *input, const char *output)
+{
+    if (dep->cd_ntargets == 0) {
+        Cc_AddTarget(dep, Cc_DefaultTarget(input, output, dep->cd_mode));
+    }
+
+    char *path = dep->cd_file ? Str_Clone(dep->cd_file) : Cc_DefaultDependFile(input, output, dep->cd_mode);
+    FILE *out = Cc_OpenOutput(path, "w");
+
+    Pp_WriteDepend(out, (const char *const *) dep->cd_targets, dep->cd_ntargets, dep->cd_headers, dep->cd_phony);
+    Cc_CloseOutput(out);
+    Str_Free(path);
+}
+
+// Free the dependency rule's targets.
+static void Cc_FreeDepend(Cc_Depend *dep)
+{
+    for (size_t i = 0; i < dep->cd_ntargets; i++) {
+        Str_Free(dep->cd_targets[i]);
+    }
+    free(dep->cd_targets);
+}
+
 // Write the program as AT&T assembly text.
 static void Cc_x86_64_WriteText(FILE *out, Ast_Func *prog)
 {
@@ -228,10 +318,26 @@ int main(int argc, char **argv)
     bool emit_obj = false;
     bool emit_pp = false;
     Pp_Markers markers = PP_MARKERS_EMIT;
+    Cc_Depend dep = {
+        .cd_mode     = CC_DEPEND_NONE,
+        .cd_file     = NULL,
+        .cd_targets  = NULL,
+        .cd_ntargets = 0,
+        .cd_headers  = PP_HEADERS_ALL,
+        .cd_phony    = PP_PHONY_OMIT
+    };
 
     static struct option longopts[] = {
         { "std",     required_argument, NULL, CC_OPTION_STD },
         { "include", required_argument, NULL, CC_OPTION_INCLUDE },
+        { "M",       no_argument,       NULL, CC_OPTION_M },
+        { "MM",      no_argument,       NULL, CC_OPTION_MM },
+        { "MD",      optional_argument, NULL, CC_OPTION_MD },
+        { "MMD",     optional_argument, NULL, CC_OPTION_MMD },
+        { "MP",      no_argument,       NULL, CC_OPTION_MP },
+        { "MF",      required_argument, NULL, CC_OPTION_MF },
+        { "MT",      required_argument, NULL, CC_OPTION_MT },
+        { "MQ",      required_argument, NULL, CC_OPTION_MQ },
         { 0, 0, 0, 0 }
     };
 
@@ -239,7 +345,7 @@ int main(int argc, char **argv)
     atexit(Cc_RemoveOutput);
 
     int32_t opt;
-    while ((opt = getopt_long(argc, argv, "o:cEPSgB:I:D:U:M::l:L:W:f:m:O::", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "o:cEPSgB:I:D:U:l:L:W:f:m:O::", longopts, NULL)) != -1) {
         switch (opt) {
             case 'o': {
                 output = optarg;
@@ -276,15 +382,49 @@ int main(int argc, char **argv)
             case 'U': {
                 Pp_PutUndef(cmdline, optarg);
             } break;
-            case 'M': {
-                char flag[] = { '-', (char) opt, '\0' };
-                Err_Raise(ERR_CC_OPTION_UNSUPPORTED, flag);
-            } break;
             case CC_OPTION_STD: {
                 Err_Assert(Str_Equals(optarg, DEFAULT_STD), ERR_CC_STD_UNSUPPORTED, optarg, DEFAULT_STD);
             } break;
             case CC_OPTION_INCLUDE: {
                 Pp_PutInclude(forced, optarg);
+            } break;
+            case CC_OPTION_M: {
+                dep.cd_mode = CC_DEPEND_INSTEAD;
+                dep.cd_headers = PP_HEADERS_ALL;
+            } break;
+            case CC_OPTION_MM: {
+                dep.cd_mode = CC_DEPEND_INSTEAD;
+                dep.cd_headers = PP_HEADERS_USER;
+            } break;
+            case CC_OPTION_MD: {
+                if (dep.cd_mode == CC_DEPEND_NONE) {
+                    dep.cd_mode = CC_DEPEND_BESIDE;
+                }
+                dep.cd_headers = PP_HEADERS_ALL;
+                if (optarg) {
+                    dep.cd_file = optarg;
+                }
+            } break;
+            case CC_OPTION_MMD: {
+                if (dep.cd_mode == CC_DEPEND_NONE) {
+                    dep.cd_mode = CC_DEPEND_BESIDE;
+                }
+                dep.cd_headers = PP_HEADERS_USER;
+                if (optarg) {
+                    dep.cd_file = optarg;
+                }
+            } break;
+            case CC_OPTION_MP: {
+                dep.cd_phony = PP_PHONY_EMIT;
+            } break;
+            case CC_OPTION_MF: {
+                dep.cd_file = optarg;
+            } break;
+            case CC_OPTION_MT: {
+                Cc_AddTarget(&dep, Str_Clone(optarg));
+            } break;
+            case CC_OPTION_MQ: {
+                Cc_AddTarget(&dep, Pp_EscapeMake(optarg));
             } break;
             case 'g':
             case 'l':
@@ -311,7 +451,7 @@ int main(int argc, char **argv)
 
     char *outbuf = NULL;
     if (! output) {
-        if (emit_pp) {
+        if (emit_pp || dep.cd_mode == CC_DEPEND_INSTEAD) {
             output = STDOUT_NAME;
         } else if (emit_text) {
             output = outbuf = Str_ChangeOrAppendExt(input, ".s");
@@ -337,6 +477,15 @@ int main(int argc, char **argv)
     Str_Free(sysdir);
     free(incdirs);
     Log_SetLineLocator(Pp_Locate);
+    if (dep.cd_mode != CC_DEPEND_NONE) {
+        Cc_WriteDepend(&dep, input, output);
+    }
+    Cc_FreeDepend(&dep);
+    if (dep.cd_mode == CC_DEPEND_INSTEAD) {
+        Buf_Free(text);
+        Str_Free(outbuf);
+        return 0;
+    }
     if (emit_pp) {
         FILE *out = Cc_OpenOutput(output, "w");
         Pp_Write(out, text, markers);

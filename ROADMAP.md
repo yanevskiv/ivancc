@@ -1331,7 +1331,10 @@ int main(void) { return one() + 2; }
 
 The Makefile passes `-MMD -MP` on every compile, so that editing a header
 rebuilds the objects that include it. These flags are on the short list of
-things `ivancc` must accept before it can build this project.
+things `ivancc` must accept before it can build this project. `ivancc` spells
+them with two dashes, as `--MMD --MP`, because `getopt_long` cannot parse a
+multi-letter option behind one dash. The Makefile keeps gcc's spelling until
+`ivancc` builds this project.
 
 - **What the family does.** `-M` writes a make rule naming every header the
   translation unit opened; `-MM` drops the system ones. `-MD` and `-MMD` write
@@ -1339,6 +1342,16 @@ things `ivancc` must accept before it can build this project.
   normally at the same time, which is the form a build actually wants. `-MP`
   adds an empty phony target for each header, so deleting or renaming one does
   not leave make refusing to build with "No rule to make target".
+- **Where the rule goes.** `--M` and `--MM` write it to the output, which is
+  stdout unless `-o` names a file. `--MD` and `--MMD` write it to the output
+  with its extension changed to `.d`, or to the file given as `--MD=file`.
+  `--MF` overrides both, and `--MF=-` is stdout.
+- **What the rule names.** The target is the input's base name with `.o` for
+  `--M`, and the output for `--MD`. The source comes first, then every other
+  file in the order it was opened, so a `--include` file follows the source.
+  Each file is named once, however often it was included. The line breaks with
+  a backslash before a name that would take it past 72 columns, and names are
+  escaped for make, as gcc does both.
 - **Why it is not optional.** Without it, `make` compares a `.o` against its
   `.c` alone, leaves the object alone when only a header moved, and links
   objects built from disagreeing views of the same struct. Every symbol still
@@ -1353,13 +1366,13 @@ things `ivancc` must accept before it can build this project.
   - `-MT` sets the rule's target.
   - `-MQ` sets the target, escaped for make, with `$` as `$$` and a space as
     `\ `.
-- **The trap.** `cc.c` silently ignores an option it does not recognise, so
-  `ivancc -MMD` today writes no `.d` and says nothing. That quietly restores the
-  stale-object bug. Until step 8 lands, `cc.c` refuses every `-M` flag with an
-  error. `-I`, `-D` and `-U` are ignored the same way today, so step 0 refuses
-  them too, until steps 1 and 2 give them meaning. `--include` was refused the
-  same way until step 7. Any option `cc.c` does not know now prints the usage
-  and fails.
+- **The trap.** `cc.c` used to ignore an option it did not recognise, so
+  `ivancc -MMD` wrote no `.d` and said nothing. That quietly restores the
+  stale-object bug. Until step 8, `cc.c` refused every `-M` flag with an error.
+  `-I`, `-D` and `-U` were ignored the same way, so step 0 refused them too,
+  until steps 1 and 2 gave them meaning. `--include` was refused the same way
+  until step 7. Any option `cc.c` does not know now prints the usage and fails,
+  and that includes gcc's one-dash `-MMD`.
 - **`-include` is two different things.** GNU make's `-include` directive pulls
   the generated `.d` files into the Makefile, and asks nothing of us. gcc's
   `-include <file>` flag is the preprocessor feature described under
@@ -1435,7 +1448,15 @@ suite green.
    directive, so a broken `once` fails with the wrong error. `run_test` cannot
    pass flags yet, so `--include` is checked by hand until step 8.
 8. **Dependency generation** (`test75_depend`). Add the `-M` family, and stop
-   refusing it.
+   refusing it. **Done.** The family is spelled `--M`, `--MM`, `--MD`, `--MMD`,
+   `--MP`, `--MF`, `--MT` and `--MQ`. `Pp_WriteDepend` prints the rule from the
+   opened-file list, after `Pp_Run`. It skips `<built-in>` and
+   `<command line>`, and the system files for `--MM` and `--MMD`. A quoted
+   include from a system header counts as system too. The rule matches gcc's
+   byte for byte, with two differences. gcc names a header twice when two
+   includes reach it from different directories, and its driver reorders mixed
+   `-MT` and `-MQ` targets. `ERR_CC_OPTION_UNSUPPORTED` is gone, since nothing
+   raises it now.
 
 `test73_trigraphs` and `test74_digraphs` exercise code from step 0. They are
 numbered after `test72` because they use directives, and a test may not use
@@ -1452,7 +1473,10 @@ syntax a higher-numbered one introduces.
 - `test72_pragma_error` expects its compile to fail with
   `ERR_PP_ERROR_DIRECTIVE`, through stage 11's compile-failure path. The pragmas
   and the `#warning` before the `#error` must get that far.
-- `test75_depend` runs `-M` and checks the printed rule. It never runs a binary.
+- `test75_depend` compiles with `--MMD --MP --MF=-`, so the rule goes to
+  stdout and `Compiler output` checks it. It also passes `--MT`, `--MQ` and
+  `--include`, and runs the binary as usual. `--M` and `--MM` are checked by
+  hand, since no syntax test reaches a system header.
 - `run_test` got three more changes before step 8:
   - A `// (Test) Compiler flags:` key, passed to `ivancc`.
   - A check of `// (Test) Compiler output:`, which was read before but never
@@ -1717,9 +1741,10 @@ Cross-cutting work that no single stage owns, but which several stages need.
   only Linux has. The Makefile builds with `-std=gnu99`. All three wait until the
   preprocessor is finished.
 - **Command-line names follow gcc's where `getopt_long` can parse them.** A
-  single letter with an argument stays a short option, as `-MMD` and `-fno-x`
-  do. A multi-letter single-dash option of gcc's takes two dashes, as `--std`
-  and `--include` do.
+  single letter with an argument stays a short option, as `-fno-x` does. A
+  multi-letter single-dash option of gcc's takes two dashes, as `--std`,
+  `--include` and `--MMD` do. The Makefile passes gcc's `-MMD -MP`, which
+  becomes `--MMD --MP` the day `ivancc` builds this project.
 
 ## Future roads
 
