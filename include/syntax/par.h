@@ -8,6 +8,30 @@
 // Bits in the value a literal is read into.
 #define PAR_VALUE_BITS 64
 
+// All bits of one byte set.
+#define PAR_BYTE_MASK 0xFF
+
+// Digits an escape sequence may carry.
+#define PAR_MAX_OCTAL_DIGITS 3
+#define PAR_MAX_HEX_DIGITS   8
+#define PAR_UCN_SHORT_DIGITS 4
+#define PAR_UCN_LONG_DIGITS  8
+
+// The first code point UTF-8 spends two, three and four bytes on.
+#define PAR_UTF8_MAX_ONE   0x80
+#define PAR_UTF8_MAX_TWO   0x800
+#define PAR_UTF8_MAX_THREE 0x10000
+
+// The byte counts those ranges take.
+#define PAR_UTF8_LEN_TWO   2
+#define PAR_UTF8_LEN_THREE 3
+#define PAR_UTF8_LEN_FOUR  4
+
+// The tag, payload mask and shift of one UTF-8 continuation byte.
+#define PAR_UTF8_CONT  0x80
+#define PAR_UTF8_MASK  0x3F
+#define PAR_UTF8_SHIFT 6
+
 // What an array declarator's brackets carry besides a length.
 typedef enum Par_ArrayDecor Par_ArrayDecor;
 enum Par_ArrayDecor {
@@ -45,6 +69,14 @@ typedef enum Par_List Par_List;
 enum Par_List {
     PAR_LIST_UNBRACED,
     PAR_LIST_BRACED
+};
+
+// The bases an escape sequence is written in.
+typedef enum Par_Base Par_Base;
+enum Par_Base {
+    PAR_BASE_OCTAL   = 8,
+    PAR_BASE_DECIMAL = 10,
+    PAR_BASE_HEX     = 16
 };
 
 // An integer literal.
@@ -120,8 +152,18 @@ Ast_Var   *Par_MakeAnonParam(Ast_Type *type, Ast_Line line);
 // Literals
 Par_Num Par_NumLiteral(const char *text);
 Par_Num Par_CharLiteral(const char *body, size_t len, size_t width);
+Ast_Str Par_StringLiteral(const char *body, size_t len, size_t width);
 Ast_Str Par_WidenString(Ast_Str str, size_t width);
 Ast_Str Par_ConcatStrings(Ast_Str left, Ast_Str right);
+
+// Escape sequences
+int32_t  Par_DigitValue(char c);
+uint64_t Par_ScanDigits(const char *p, size_t len, size_t *pos, Par_Base base, size_t count);
+uint64_t Par_GetValue(const char *p, size_t width);
+void     Par_PutValue(char *buf, size_t *len, size_t width, uint64_t value);
+void     Par_PutEscape(char *buf, size_t *len, size_t width, uint64_t value);
+void     Par_PutUtf8(char *buf, size_t *len, uint64_t value);
+char    *Par_Unescape(const char *body, size_t len, size_t width, size_t *out_len);
 
 // Types
 void      Par_ClearSpecs(Par_Specs *specs);

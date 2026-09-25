@@ -32,10 +32,6 @@ enum Err_Code {
     ERR_FILE_ACCESS,                   // path, reason
 
     ERR_STR_SLICE_OUT_OF_RANGE,        // start, end, length
-    ERR_STR_ESCAPE_OUT_OF_RANGE,       // element size
-    ERR_STR_ESCAPE_HEX_EMPTY,
-    ERR_STR_ESCAPE_UCN_INCOMPLETE,
-    ERR_STR_ESCAPE_UNKNOWN,            // character
 
     ERR_PP_COMMENT_UNTERMINATED,
     ERR_PP_DIRECTIVE_UNKNOWN,          // name length, name
@@ -44,12 +40,23 @@ enum Err_Code {
     ERR_PP_INCLUDE_TOO_DEEP,           // limit
     ERR_PP_MACRO_NAME_MISSING,
     ERR_PP_MACRO_REDEFINED,            // name length, name
-    ERR_PP_MACRO_FUNCTION_UNSUPPORTED,
+    ERR_PP_MACRO_PARAMS_MALFORMED,
+    ERR_PP_MACRO_PARAM_DUPLICATE,      // name length, name
+    ERR_PP_MACRO_UNTERMINATED,         // name
+    ERR_PP_MACRO_ARGS_COUNT,           // name, required, given
+    ERR_PP_VA_ARGS_MISPLACED,
+    ERR_PP_STRINGIZE_NOT_PARAM,
+    ERR_PP_PASTE_AT_EDGE,
+    ERR_PP_PASTE_INVALID,              // left length, left, right length, right
 
     ERR_LEX_UNEXPECTED_CHAR,           // character
 
     ERR_PAR_SYNTAX,                    // parser message
     ERR_PAR_TEXT_TOO_LONG,             // length
+    ERR_PAR_ESCAPE_OUT_OF_RANGE,       // element size
+    ERR_PAR_ESCAPE_HEX_EMPTY,
+    ERR_PAR_ESCAPE_UCN_INCOMPLETE,
+    ERR_PAR_ESCAPE_UNKNOWN,            // character
     ERR_PAR_DECL_UNNAMED,
     ERR_PAR_ARRAY_OF_FUNCTIONS,
     ERR_PAR_ARRAY_LEN_NOT_CONSTANT,
@@ -149,6 +156,8 @@ enum Err_Code {
     ERR_TXT_OPERAND_MALFORMED,         // operand
     ERR_TXT_BRANCH_OPERAND_COUNT,      // line
     ERR_TXT_BRANCH_NOT_LABEL,          // line
+    ERR_TXT_STRING_UNTERMINATED,       // string
+    ERR_TXT_ESCAPE_UNKNOWN,            // character
 
     ERR_CC_ARCH_UNSUPPORTED,           // architecture, supported architecture
     ERR_CC_RUNTIME_NOT_FOUND,

@@ -48,6 +48,8 @@ Checklist toward ISO C99.
 - [x] single declarator with optional initializer
 - [x] multiple declarators per statement (`int a, b, c;`)
 - [x] array initializers (`{1, 2, 3}`)
+- [ ] array length taken from its initializer (`int a[] = {1, 2, 3}`)
+- [ ] char and `wchar_t` arrays initialized from a string literal (`char s[] = "abc"`)
 - [x] designated initializers (`[i] = v` and `.field = v`)
 - [x] designated initializers, nested (`[1].f[2] = v`, and brace elision around them)
 - [x] storage classes: `static`, `extern`, `register`, `auto`
