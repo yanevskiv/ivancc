@@ -48,6 +48,22 @@ enum Err_Code {
     ERR_PP_STRINGIZE_NOT_PARAM,
     ERR_PP_PASTE_AT_EDGE,
     ERR_PP_PASTE_INVALID,              // left length, left, right length, right
+    ERR_PP_COND_UNTERMINATED,          // directive length, directive
+    ERR_PP_COND_WITHOUT_IF,            // directive length, directive
+    ERR_PP_COND_AFTER_ELSE,            // directive length, directive
+    ERR_PP_COND_EXTRA_TOKENS,          // directive length, directive
+    ERR_PP_DEFINED_NAME_MISSING,
+    ERR_PP_DEFINED_PAREN_MISSING,
+    ERR_PP_EXPR_EMPTY,                 // directive length, directive
+    ERR_PP_EXPR_VALUE_MISSING,
+    ERR_PP_EXPR_TOKEN_INVALID,         // token length, token
+    ERR_PP_EXPR_OPERATOR_MISSING,      // token length, token
+    ERR_PP_EXPR_PAREN_MISSING,
+    ERR_PP_EXPR_COLON_MISSING,
+    ERR_PP_EXPR_DIVISION_BY_ZERO,
+    ERR_PP_EXPR_FLOAT,
+    ERR_PP_EXPR_SUFFIX_INVALID,        // suffix
+    ERR_PP_EXPR_TOO_LARGE,
 
     ERR_LEX_UNEXPECTED_CHAR,           // character
 
