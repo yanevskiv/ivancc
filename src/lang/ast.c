@@ -206,6 +206,26 @@ Ast_Type *Ast_NewArray(Ast_Type *base, int32_t len)
     return type;
 }
 
+// Build the type of an array of base whose length is not yet known.
+Ast_Type *Ast_NewUnsizedArray(Ast_Type *base)
+{
+    Ast_Type *type = Ast_NewArray(base, 0);
+    type->at_complete = AST_TYPE_INCOMPLETE;
+    return type;
+}
+
+// Return whether this type is an array still waiting for its length.
+bool Ast_IsUnsized(const Ast_Type *type)
+{
+    return type->at_kind == AST_TYPE_KIND_ARRAY && ! type->at_complete && type->at_base->at_complete;
+}
+
+// Return an unsized array's type with len elements.
+Ast_Type *Ast_SizeArray(const Ast_Type *type, int32_t len)
+{
+    return Ast_Qualify(Ast_NewArray(type->at_base, len), type->at_qual);
+}
+
 // Build a function type.
 Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto)
 {
