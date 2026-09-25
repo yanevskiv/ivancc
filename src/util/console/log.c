@@ -1,6 +1,6 @@
 // C source file for diagnostic messages.
 
-// Take every include from the module's header.
+// Module header.
 #include "util/console/log.h"
 
 // The word each severity prints as.

@@ -1,6 +1,6 @@
 // C source file for the x86-64 static linker.
 
-// Take every include from the module's header.
+// Module header.
 #include "arch/x86_64/link.h"
 
 // Virtual address a symbol resolves to.

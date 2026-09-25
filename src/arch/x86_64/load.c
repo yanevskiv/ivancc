@@ -1,6 +1,6 @@
 // C source file for loading x86-64 executables.
 
-// Take every include from the module's header.
+// Module header.
 #include "arch/x86_64/load.h"
 
 // Bytes of stack reserved above the image.

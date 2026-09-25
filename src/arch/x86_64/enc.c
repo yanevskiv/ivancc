@@ -1,6 +1,6 @@
 // C source file for x86-64 machine code encoding.
 
-// Take every include from the module's header.
+// Module header.
 #include "arch/x86_64/enc.h"
 
 // The object being encoded.
