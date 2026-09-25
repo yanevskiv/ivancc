@@ -68,6 +68,9 @@
 // Name of the file that defines the predefined macros.
 #define PP_BUILTIN_NAME "<built-in>"
 
+// Column a dependency rule breaks its line after.
+#define PP_DEPEND_COLUMNS 72
+
 // strftime formats of the -D arguments that define __DATE__ and __TIME__.
 #define PP_DATE_FORMAT "__DATE__=\"%b %e %Y\""
 #define PP_TIME_FORMAT "__TIME__=\"%H:%M:%S\""
@@ -176,6 +179,20 @@ typedef enum Pp_Markers Pp_Markers;
 enum Pp_Markers {
     PP_MARKERS_OMIT,
     PP_MARKERS_EMIT
+};
+
+// Which headers a dependency rule names.
+typedef enum Pp_Headers Pp_Headers;
+enum Pp_Headers {
+    PP_HEADERS_ALL,
+    PP_HEADERS_USER  // system headers left out
+};
+
+// Whether a dependency rule is followed by an empty rule for each header.
+typedef enum Pp_Phony Pp_Phony;
+enum Pp_Phony {
+    PP_PHONY_OMIT,
+    PP_PHONY_EMIT
 };
 
 // Whether an operand of an #if expression is computed.
@@ -476,5 +493,11 @@ bool     Pp_IsTrue(Pp_Value val);
 // Running
 void Pp_RunFile(Pp_Printer *pr, const Pp_File *file);
 void Pp_Run(const char *path, const Pp_Options *opts, Buf *out);
+
+// Dependencies
+char  *Pp_EscapeMake(const char *name);
+bool   Pp_IsDependency(const Pp_File *file, Pp_Headers headers);
+size_t Pp_WriteName(FILE *out, const char *name, size_t col);
+void   Pp_WriteDepend(FILE *out, const char *const *targets, size_t ntargets, Pp_Headers headers, Pp_Phony phony);
 
 #endif // PP_H

@@ -2087,3 +2087,87 @@ void Pp_Run(const char *path, const Pp_Options *opts, Buf *out)
         Pp_BreakLine(&pr);
     }
 }
+
+// Escape a name for make.
+char *Pp_EscapeMake(const char *name)
+{
+    Buf *text = Buf_New();
+
+    for (const char *p = name; *p; p++) {
+        if (*p == ' ' || *p == '\t') {
+            for (const char *q = p; q > name && q[-1] == '\\'; q--) {
+                Buf_PutByte(text, '\\');
+            }
+            Buf_PutByte(text, '\\');
+        } else if (*p == '$') {
+            Buf_PutByte(text, '$');
+        } else if (*p == '#') {
+            Buf_PutByte(text, '\\');
+        }
+        Buf_PutByte(text, *p);
+    }
+    return Buf_Release(text);
+}
+
+// Return whether a rule names a file after the main file.
+bool Pp_IsDependency(const Pp_File *file, Pp_Headers headers)
+{
+    if (file->pf_index == Pp_MainFile) {
+        return false;
+    }
+    if (Str_Equals(file->pf_path, PP_BUILTIN_NAME) || Str_Equals(file->pf_path, PP_CMDLINE_NAME)) {
+        return false;
+    }
+    return ! (headers == PP_HEADERS_USER && file->pf_system);
+}
+
+// Write one name of a rule and return the column it ends at.
+size_t Pp_WriteName(FILE *out, const char *name, size_t col)
+{
+    size_t len = strlen(name);
+
+    if (col > 0) {
+        if (col + len > PP_DEPEND_COLUMNS) {
+            fputs(" \\\n", out);
+            col = 0;
+        }
+        fputc(' ', out);
+        col++;
+    }
+    fputs(name, out);
+    return col + len;
+}
+
+// Write a make rule naming every file the run opened.
+void Pp_WriteDepend(FILE *out, const char *const *targets, size_t ntargets, Pp_Headers headers, Pp_Phony phony)
+{
+    size_t col = 0;
+    char *source = Pp_EscapeMake(Pp_Files[Pp_MainFile]->pf_path);
+
+    for (size_t i = 0; i < ntargets; i++) {
+        col = Pp_WriteName(out, targets[i], col);
+    }
+    fputc(':', out);
+    col = Pp_WriteName(out, source, col + 1);
+    for (uint32_t i = 0; i < Pp_NumFiles; i++) {
+        if (Pp_IsDependency(Pp_Files[i], headers)) {
+            char *name = Pp_EscapeMake(Pp_Files[i]->pf_path);
+
+            col = Pp_WriteName(out, name, col);
+            Str_Free(name);
+        }
+    }
+    fputc('\n', out);
+    Str_Free(source);
+    if (phony == PP_PHONY_OMIT) {
+        return;
+    }
+    for (uint32_t i = 0; i < Pp_NumFiles; i++) {
+        if (Pp_IsDependency(Pp_Files[i], headers)) {
+            char *name = Pp_EscapeMake(Pp_Files[i]->pf_path);
+
+            fprintf(out, "%s:\n", name);
+            Str_Free(name);
+        }
+    }
+}

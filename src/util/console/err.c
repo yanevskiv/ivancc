@@ -166,7 +166,6 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
 
     [ERR_CC_ARCH_UNSUPPORTED]           = { "ERR_CC_ARCH_UNSUPPORTED",           "unsupported architecture '%s' (only %s is supported)" },
     [ERR_CC_RUNTIME_NOT_FOUND]          = { "ERR_CC_RUNTIME_NOT_FOUND",          "cannot locate the runtime directory; pass -B DIR" },
-    [ERR_CC_OPTION_UNSUPPORTED]         = { "ERR_CC_OPTION_UNSUPPORTED",         "option '%s' is not supported yet" },
     [ERR_CC_STD_UNSUPPORTED]            = { "ERR_CC_STD_UNSUPPORTED",            "unsupported standard '%s' (only %s is supported)" },
 
     [ERR_LD_PLACE_MALFORMED]            = { "ERR_LD_PLACE_MALFORMED",            "malformed -place (expected SEC@ADDR): '%s'" },

@@ -194,7 +194,6 @@ enum Err_Code {
 
     ERR_CC_ARCH_UNSUPPORTED,           // architecture, supported architecture
     ERR_CC_RUNTIME_NOT_FOUND,
-    ERR_CC_OPTION_UNSUPPORTED,         // option
     ERR_CC_STD_UNSUPPORTED,            // standard, supported standard
 
     ERR_LD_PLACE_MALFORMED,            // placement
