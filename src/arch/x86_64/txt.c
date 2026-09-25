@@ -1,6 +1,6 @@
 // C source file for x86-64 assembly text in AT&T syntax.
 
-// Take every include from the module's header.
+// Module header.
 #include "arch/x86_64/txt.h"
 
 // 64-bit register names.

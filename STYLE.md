@@ -84,7 +84,7 @@
 - Every file-scope variable must be `static` and kept out of the header.
 - Every project include must carry its module path: `#include "lang/ast.h"`.
 - Every `.c` file must include its own header and nothing else.
-- Every `.c` file must mark that include with `// Take every include from the module's header.`
+- Every `.c` file must mark that include with `// Module header.`
 - Every header and every tool's `main` file must include system headers first, then a blank line, then project headers.
 - Every header and every tool's `main` file must mark its system includes with `// Standard headers.`
 - Every header and every tool's `main` file must mark its project includes with `// Project headers.`

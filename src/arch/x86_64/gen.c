@@ -1,6 +1,6 @@
 // C source file for x86-64 code generation.
 
-// Take every include from the module's header.
+// Module header.
 #include "arch/x86_64/gen.h"
 
 // Number of integer arguments the ABI passes in registers.

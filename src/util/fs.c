@@ -1,6 +1,6 @@
 // C source file for filesystem access.
 
-// Take every include from the module's header.
+// Module header.
 #include "util/fs.h"
 
 // Read the whole file at path.

@@ -1,6 +1,6 @@
 // C source file for the parser's declarator and parameter helpers.
 
-// Take every include from the module's header.
+// Module header.
 #include "lang/par.h"
 
 // State for the function definition currently being parsed.

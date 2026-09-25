@@ -1,6 +1,6 @@
 // C source file for ELF objects and executables.
 
-// Take every include from the module's header.
+// Module header.
 #include "util/object/elf.h"
 
 // Initialize an empty byte buffer.
