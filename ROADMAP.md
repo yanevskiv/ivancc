@@ -1037,8 +1037,8 @@ written.
 include/lang/pp.h
 src/lang/pp.c             directives, macros, #if, includes, the line map
 src/lang/syntax/pp.flex   pp-tokens, scanned under the prefix pp
-include/util/str.h        Str_Buf, a growable string
-src/util/str.c
+include/util/buf.h        Buf, a growable string
+src/util/buf.c
 libc/include/             the system include directory, new here
 ```
 
@@ -1056,17 +1056,17 @@ libc/include/             the system include directory, new here
    never re-enters the scanner.
 4. `Pp_Run` walks the tokens. A directive runs its handler. An `#include` goes
    back to step 1 for the header. A macro name expands. Every other token is
-   printed into a `Str_Buf`.
+   printed into a `Buf`.
 5. `Par_ParseText` hands that buffer to `c.flex` through `yy_scan_bytes`, runs
    `yyparse` and deletes the flex buffer.
 6. `Sem_Analyze`, code generation and linking run as today. None of them learns
    that a preprocessor ran.
 
 ```c
-    Str_Buf *text = Str_BufNew();
+    Buf *text = Buf_New();
     Pp_Run(input, text);
-    Par_ParseText(Str_BufData(text), Str_BufLen(text));
-    Str_BufFree(text);
+    Par_ParseText(Buf_Data(text), Buf_Len(text));
+    Buf_Free(text);
     Sem_Analyze(Ast_Program);
 ```
 
@@ -1087,32 +1087,32 @@ parser.
 With `-E`, steps 1 to 4 run and the compile stops. The buffer goes to stdout, or
 to `-o`, with line markers rebuilt from the [line map](#the-line-map).
 
-### `Str_Buf` in `util/str`
+### `Buf` in `util/buf`
 
 The output's size is unknown until the pass ends. Includes splice in whole files,
 macros grow or shrink the text, and skipped groups vanish. So the text is appended
 to a buffer that grows. The pre-pass and the `-E` writer use the same buffer.
 
 ```c
-// A growable string, kept NUL-terminated.
-typedef struct Str_Buf Str_Buf;
+// A growable NUL-terminated string.
+typedef struct Buf Buf;
 
-Str_Buf    *Str_BufNew(void);
-void        Str_BufFree(Str_Buf *buf);
-const char *Str_BufData(const Str_Buf *buf);
-size_t      Str_BufLen(const Str_Buf *buf);
-void        Str_BufReserve(Str_Buf *buf, size_t n);
-void        Str_BufPutByte(Str_Buf *buf, char byte);
-void        Str_BufPutBytes(Str_Buf *buf, const char *data, size_t len);
-void        Str_BufPutText(Str_Buf *buf, const char *text);
-void        Str_BufPrint(Str_Buf *buf, const char *fmt, ...);
-char       *Str_BufTake(Str_Buf *buf);
+Buf        *Buf_New(void);
+const char *Buf_Data(const Buf *buf);
+size_t      Buf_Len(const Buf *buf);
+void        Buf_Reserve(Buf *buf, size_t n);
+void        Buf_PutByte(Buf *buf, char byte);
+void        Buf_PutBytes(Buf *buf, const char *data, size_t len);
+void        Buf_PutText(Buf *buf, const char *text);
+void        Buf_Print(Buf *buf, const char *fmt, ...);
+char       *Buf_Take(Buf *buf);
+void        Buf_Free(Buf *buf);
 ```
 
-- The struct is opaque. Its fields live in `str.c`, and callers go through
-  `Str_BufData` and `Str_BufLen`.
-- `Str_BufPrint` calls `vsnprintf` twice, once to measure and once to write.
-- `Str_BufTake` frees the buffer and hands its data to the caller.
+- The struct is opaque. Its fields live in `buf.c`, and callers go through
+  `Buf_Data` and `Buf_Len`.
+- `Buf_Print` calls `vsnprintf` twice, once to measure and once to write.
+- `Buf_Take` frees the buffer and hands its data to the caller.
 - `Elf_Buffer` stays in `elf.c`. The ELF code is kept independent of the rest of
   the tree, and `Elf_Buffer` is a binary writer, not a string.
 
@@ -1362,7 +1362,7 @@ The steps follow the test numbering. Each step closes its test and leaves the
 suite green.
 
 0. **Skeleton.** Add `pp.h`, `pp.c`, `pp.flex` and the second Makefile flex rule.
-   Add `Str_Buf`, the pre-pass with trigraphs, the line map, `Pp_NeedsSpace` and
+   Add `Buf`, the pre-pass with trigraphs, the line map, `Pp_NeedsSpace` and
    the digraph rules in `c.flex`. Switch `cc.c` to `Par_ParseText`. Add `-E` and
    `-P`. Refuse `-I`, `-D`, `-U` and the `-M` flags. The whole corpus must pass
    through the new path unchanged. **Done.** Every `-E` output in the corpus
