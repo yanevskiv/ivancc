@@ -151,19 +151,19 @@ Ast_Var   *Par_MakeAnonParam(Ast_Type *type, Ast_Line line);
 
 // Literals
 Par_Num Par_NumLiteral(const char *text);
-Par_Num Par_CharLiteral(const char *body, size_t len, size_t width);
-Ast_Str Par_StringLiteral(const char *body, size_t len, size_t width);
+Par_Num Par_CharLiteral(const char *body, size_t len, size_t width, Ast_Line line);
+Ast_Str Par_StringLiteral(const char *body, size_t len, size_t width, Ast_Line line);
 Ast_Str Par_WidenString(Ast_Str str, size_t width);
 Ast_Str Par_ConcatStrings(Ast_Str left, Ast_Str right);
 
 // Escape sequences
 int32_t  Par_DigitValue(char c);
 uint64_t Par_ScanDigits(const char *p, size_t len, size_t *pos, Par_Base base, size_t count);
-uint64_t Par_GetValue(const char *p, size_t width);
-void     Par_PutValue(char *buf, size_t *len, size_t width, uint64_t value);
-void     Par_PutEscape(char *buf, size_t *len, size_t width, uint64_t value);
+uint64_t Par_GetElement(const char *p, size_t width);
+void     Par_PutElement(char *buf, size_t *len, size_t width, uint64_t value);
+void     Par_PutEscape(char *buf, size_t *len, size_t width, uint64_t value, Ast_Line line);
 void     Par_PutUtf8(char *buf, size_t *len, uint64_t value);
-char    *Par_Unescape(const char *body, size_t len, size_t width, size_t *out_len);
+char    *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *out_len, Ast_Line line);
 
 // Types
 void      Par_ClearSpecs(Par_Specs *specs);
