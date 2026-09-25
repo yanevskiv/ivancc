@@ -1,6 +1,7 @@
 // C source file for the C preprocessor.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -8,6 +9,7 @@
 #include "util/fs.h"
 #include "util/log.h"
 #include "util/str.h"
+#include "syntax/par.h"
 #include "syntax/pp.h"
 
 // Every punctuator spelling of 6.4.6.
@@ -19,6 +21,50 @@ static const char *const Pp_Punctuators[] = {
     "=", "*=", "/=", "%=", "+=", "-=", "<<=", ">>=", "&=", "^=", "|=",
     ",", "#", "##",
     "<:", ":>", "<%", "%>", "%:", "%:%:"
+};
+
+// Spelling of each binary operator of #if.
+static const char *const Pp_OpText[PP_OP_COUNT] = {
+    [PP_OP_MUL]     = "*",
+    [PP_OP_DIV]     = "/",
+    [PP_OP_MOD]     = "%",
+    [PP_OP_ADD]     = "+",
+    [PP_OP_SUB]     = "-",
+    [PP_OP_SHL]     = "<<",
+    [PP_OP_SHR]     = ">>",
+    [PP_OP_LT]      = "<",
+    [PP_OP_GT]      = ">",
+    [PP_OP_LE]      = "<=",
+    [PP_OP_GE]      = ">=",
+    [PP_OP_EQ]      = "==",
+    [PP_OP_NE]      = "!=",
+    [PP_OP_BIT_AND] = "&",
+    [PP_OP_BIT_XOR] = "^",
+    [PP_OP_BIT_OR]  = "|",
+    [PP_OP_AND]     = "&&",
+    [PP_OP_OR]      = "||"
+};
+
+// Precedence of each binary operator of #if.
+static const Pp_Prec Pp_OpPrec[PP_OP_COUNT] = {
+    [PP_OP_MUL]     = PP_PREC_MULTIPLICATIVE,
+    [PP_OP_DIV]     = PP_PREC_MULTIPLICATIVE,
+    [PP_OP_MOD]     = PP_PREC_MULTIPLICATIVE,
+    [PP_OP_ADD]     = PP_PREC_ADDITIVE,
+    [PP_OP_SUB]     = PP_PREC_ADDITIVE,
+    [PP_OP_SHL]     = PP_PREC_SHIFT,
+    [PP_OP_SHR]     = PP_PREC_SHIFT,
+    [PP_OP_LT]      = PP_PREC_RELATIONAL,
+    [PP_OP_GT]      = PP_PREC_RELATIONAL,
+    [PP_OP_LE]      = PP_PREC_RELATIONAL,
+    [PP_OP_GE]      = PP_PREC_RELATIONAL,
+    [PP_OP_EQ]      = PP_PREC_EQUALITY,
+    [PP_OP_NE]      = PP_PREC_EQUALITY,
+    [PP_OP_BIT_AND] = PP_PREC_BIT_AND,
+    [PP_OP_BIT_XOR] = PP_PREC_BIT_XOR,
+    [PP_OP_BIT_OR]  = PP_PREC_BIT_OR,
+    [PP_OP_AND]     = PP_PREC_AND,
+    [PP_OP_OR]      = PP_PREC_OR
 };
 
 // The files opened so far, in the order they were opened.
@@ -47,6 +93,9 @@ static uint32_t Pp_MainFile = PP_FILE_NONE;
 
 // Every defined macro, hashed by name.
 static Pp_Macro *Pp_Macros[PP_MACRO_BUCKETS];
+
+// The conditionals open in the file being run, innermost first.
+static Pp_Cond *Pp_Conds;
 
 // Return the opened file with this path.
 Pp_File *Pp_FindFile(const char *path)
@@ -993,6 +1042,18 @@ size_t Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos)
     if (name->pt_flags & PP_FLAG_BOL) {
         return pos + 1;
     }
+    if (Pp_OpensCond(name)) {
+        return Pp_RunIf(file, pos);
+    }
+    if (Pp_TokenEquals(name, "elif")) {
+        return Pp_RunElif(file, pos);
+    }
+    if (Pp_TokenEquals(name, "else")) {
+        return Pp_RunElse(file, pos);
+    }
+    if (Pp_TokenEquals(name, "endif")) {
+        return Pp_RunEndif(file, pos);
+    }
 
     if (Pp_TokenEquals(name, "include")) {
         Pp_RunInclude(pr, file, pos, PP_INCLUDE_PLAIN);
@@ -1123,9 +1184,512 @@ void Pp_RunUndef(const Pp_File *file, size_t pos)
     Pp_UndefMacro(name);
 }
 
+// True if a directive name opens a conditional.
+bool Pp_OpensCond(const Pp_Token *name)
+{
+    return Pp_TokenEquals(name, "if") || Pp_TokenEquals(name, "ifdef") || Pp_TokenEquals(name, "ifndef");
+}
+
+// Run the #if, #ifdef or #ifndef directive at pos.
+size_t Pp_RunIf(const Pp_File *file, size_t pos)
+{
+    bool keep = false;
+    Pp_Cond *cond = calloc(1, sizeof(*cond));
+    const Pp_Token *name = &file->pf_tokens[pos + 1];
+
+    cond->pc_name = name;
+    cond->pc_next = Pp_Conds;
+    Pp_Conds = cond;
+    if (Pp_TokenEquals(name, "if")) {
+        keep = Pp_EvalLine(file, pos);
+    } else {
+        keep = Pp_IsDefined(file, pos) == Pp_TokenEquals(name, "ifdef");
+    }
+    if (! keep) {
+        return Pp_SkipGroup(file, pos);
+    }
+    cond->pc_taken = true;
+    return Pp_SkipLine(file, pos);
+}
+
+// Run the #elif directive at pos.
+size_t Pp_RunElif(const Pp_File *file, size_t pos)
+{
+    Pp_CheckCond(&file->pf_tokens[pos + 1]);
+    if (Pp_Conds->pc_taken || ! Pp_EvalLine(file, pos)) {
+        return Pp_SkipGroup(file, pos);
+    }
+    Pp_Conds->pc_taken = true;
+    return Pp_SkipLine(file, pos);
+}
+
+// Run the #else directive at pos.
+size_t Pp_RunElse(const Pp_File *file, size_t pos)
+{
+    const Pp_Token *name = &file->pf_tokens[pos + 1];
+
+    Pp_CheckCond(name);
+    Pp_CheckLineEnd(file, pos + 2, name);
+    Pp_Conds->pc_else = true;
+    if (Pp_Conds->pc_taken) {
+        return Pp_SkipGroup(file, pos);
+    }
+    Pp_Conds->pc_taken = true;
+    return Pp_SkipLine(file, pos);
+}
+
+// Run the #endif directive at pos.
+size_t Pp_RunEndif(const Pp_File *file, size_t pos)
+{
+    Pp_Cond *cond = Pp_Conds;
+    const Pp_Token *name = &file->pf_tokens[pos + 1];
+
+    Err_AssertAt(name->pt_line, cond, ERR_PP_COND_WITHOUT_IF, (int) name->pt_len, name->pt_text);
+    Pp_CheckLineEnd(file, pos + 2, name);
+    Pp_Conds = cond->pc_next;
+    free(cond);
+    return Pp_SkipLine(file, pos);
+}
+
+// Check that a directive continues an open conditional.
+void Pp_CheckCond(const Pp_Token *name)
+{
+    Err_AssertAt(name->pt_line, Pp_Conds, ERR_PP_COND_WITHOUT_IF, (int) name->pt_len, name->pt_text);
+    Err_AssertAt(name->pt_line, ! Pp_Conds->pc_else, ERR_PP_COND_AFTER_ELSE, (int) name->pt_len, name->pt_text);
+}
+
+// Warn about tokens left on a directive's line.
+void Pp_CheckLineEnd(const Pp_File *file, size_t pos, const Pp_Token *name)
+{
+    if (! (file->pf_tokens[pos].pt_flags & PP_FLAG_BOL)) {
+        Err_WarnAt(name->pt_line, ERR_PP_COND_EXTRA_TOKENS, (int) name->pt_len, name->pt_text);
+    }
+}
+
+// True if the macro an #ifdef or #ifndef names is defined.
+bool Pp_IsDefined(const Pp_File *file, size_t pos)
+{
+    const Pp_Token *name = &file->pf_tokens[pos + 1];
+    const Pp_Token *macro = &file->pf_tokens[pos + 2];
+
+    Err_AssertAt(name->pt_line, Pp_IsMacroName(macro), ERR_PP_MACRO_NAME_MISSING);
+    Pp_CheckLineEnd(file, pos + 3, name);
+    return Pp_FindMacro(macro->pt_text, macro->pt_len) != NULL;
+}
+
+// Return the position of the directive that ends a skipped group.
+size_t Pp_SkipGroup(const Pp_File *file, size_t pos)
+{
+    size_t depth = 0;
+
+    for (pos = Pp_SkipLine(file, pos); file->pf_tokens[pos].pt_kind != PP_TOKEN_EOF; pos = Pp_SkipLine(file, pos)) {
+        const Pp_Token *name = &file->pf_tokens[pos + 1];
+
+        if (! Pp_IsDirective(&file->pf_tokens[pos]) || (name->pt_flags & PP_FLAG_BOL)) {
+            continue;
+        }
+        if (Pp_OpensCond(name)) {
+            depth++;
+        } else if (depth == 0 && (Pp_TokenEquals(name, "elif") || Pp_TokenEquals(name, "else") || Pp_TokenEquals(name, "endif"))) {
+            return pos;
+        } else if (Pp_TokenEquals(name, "endif")) {
+            depth--;
+        }
+    }
+    return pos;
+}
+
+// Evaluate the expression of the #if or #elif directive at pos.
+bool Pp_EvalLine(const Pp_File *file, size_t pos)
+{
+    const Pp_Token *name = &file->pf_tokens[pos + 1];
+    Pp_Expr ex = {
+        .pe_tok  = Pp_ExpandCondition(file, pos + 2, Pp_SkipLine(file, pos)),
+        .pe_line = name->pt_line
+    };
+
+    Err_AssertAt(ex.pe_line, ex.pe_tok, ERR_PP_EXPR_EMPTY, (int) name->pt_len, name->pt_text);
+
+    Pp_Value val = Pp_EvalComma(&ex, PP_EVAL_COMPUTE);
+
+    Err_AssertAt(ex.pe_line, ! ex.pe_tok, ERR_PP_EXPR_OPERATOR_MISSING, (int) ex.pe_tok->pt_len, ex.pe_tok->pt_text);
+    return Pp_IsTrue(val);
+}
+
+// Expand a range of a file's tokens with each defined operator answered.
+Pp_Token *Pp_ExpandCondition(const Pp_File *file, size_t start, size_t end)
+{
+    Pp_Token *head = NULL;
+    Pp_Token **tail = &head;
+    const Pp_Token *tok = NULL;
+    Pp_Reader rd = {
+        .rd_file    = file,
+        .rd_pos     = start,
+        .rd_end     = end,
+        .rd_pending = NULL,
+        .rd_carry   = PP_FLAG_NONE
+    };
+
+    while ((tok = Pp_ReadToken(&rd)) != NULL) {
+        if (tok->pt_kind == PP_TOKEN_IDENT && Pp_TokenEquals(tok, PP_DEFINED)) {
+            *tail = Pp_ReadDefined(&rd, tok);
+        } else if (! Pp_ExpandMacro(&rd, tok)) {
+            *tail = Pp_CopyToken(tok);
+        } else {
+            continue;
+        }
+        tail = &(*tail)->pt_next;
+    }
+    return head;
+}
+
+// Read the operand of a defined operator into its answer.
+Pp_Token *Pp_ReadDefined(Pp_Reader *rd, const Pp_Token *op)
+{
+    const Pp_Token *name = Pp_ReadToken(rd);
+    bool paren = name && Pp_TokenEquals(name, "(");
+
+    if (paren) {
+        name = Pp_ReadToken(rd);
+    }
+    Err_AssertAt(op->pt_line, name && name->pt_kind == PP_TOKEN_IDENT, ERR_PP_DEFINED_NAME_MISSING);
+    if (paren) {
+        const Pp_Token *close = Pp_ReadToken(rd);
+
+        Err_AssertAt(op->pt_line, close && Pp_TokenEquals(close, ")"), ERR_PP_DEFINED_PAREN_MISSING);
+    }
+
+    Pp_Token *answer = Pp_CopyToken(op);
+
+    answer->pt_kind = PP_TOKEN_NUMBER;
+    answer->pt_text = Pp_FindMacro(name->pt_text, name->pt_len) ? PP_TEXT_TRUE : PP_TEXT_FALSE;
+    answer->pt_len = strlen(answer->pt_text);
+    return answer;
+}
+
+// Evaluate a comma expression.
+Pp_Value Pp_EvalComma(Pp_Expr *ex, Pp_Eval mode)
+{
+    Pp_Value val = Pp_EvalCond(ex, mode);
+
+    while (ex->pe_tok && Pp_TokenEquals(ex->pe_tok, ",")) {
+        ex->pe_tok = ex->pe_tok->pt_next;
+        val = Pp_EvalCond(ex, mode);
+    }
+    return val;
+}
+
+// Evaluate a conditional expression.
+Pp_Value Pp_EvalCond(Pp_Expr *ex, Pp_Eval mode)
+{
+    Pp_Value cond = Pp_EvalBinary(ex, PP_PREC_OR, mode);
+
+    if (! ex->pe_tok || ! Pp_TokenEquals(ex->pe_tok, "?")) {
+        return cond;
+    }
+    ex->pe_tok = ex->pe_tok->pt_next;
+
+    bool pick = Pp_IsTrue(cond);
+    Pp_Value yes = Pp_EvalComma(ex, pick ? mode : PP_EVAL_SKIP);
+
+    Err_AssertAt(ex->pe_line, ex->pe_tok && Pp_TokenEquals(ex->pe_tok, ":"), ERR_PP_EXPR_COLON_MISSING);
+    ex->pe_tok = ex->pe_tok->pt_next;
+
+    Pp_Value no = Pp_EvalCond(ex, pick ? PP_EVAL_SKIP : mode);
+    Pp_Value val = pick ? yes : no;
+
+    val.pv_unsigned = yes.pv_unsigned || no.pv_unsigned;
+    return val;
+}
+
+// Evaluate binary operators no looser than min.
+Pp_Value Pp_EvalBinary(Pp_Expr *ex, Pp_Prec min, Pp_Eval mode)
+{
+    Pp_Value lhs = Pp_EvalUnary(ex, mode);
+
+    for (;;) {
+        Pp_Op op = PP_OP_COUNT;
+        Pp_Eval right = mode;
+
+        if (! ex->pe_tok || ! Pp_FindOp(ex->pe_tok, &op) || Pp_OpPrec[op] < min) {
+            return lhs;
+        }
+        ex->pe_tok = ex->pe_tok->pt_next;
+        if ((op == PP_OP_AND && ! Pp_IsTrue(lhs)) || (op == PP_OP_OR && Pp_IsTrue(lhs))) {
+            right = PP_EVAL_SKIP;
+        }
+
+        Pp_Value rhs = Pp_EvalBinary(ex, (Pp_Prec) (Pp_OpPrec[op] + 1), right);
+
+        lhs = Pp_ApplyOp(op, lhs, rhs, mode, ex->pe_line);
+    }
+}
+
+// Evaluate a unary expression.
+Pp_Value Pp_EvalUnary(Pp_Expr *ex, Pp_Eval mode)
+{
+    const Pp_Token *tok = ex->pe_tok;
+    Pp_Value val = {
+        .pv_bits     = 0,
+        .pv_unsigned = false
+    };
+
+    Err_AssertAt(ex->pe_line, tok, ERR_PP_EXPR_VALUE_MISSING);
+    ex->pe_tok = tok->pt_next;
+    if (tok->pt_kind == PP_TOKEN_IDENT) {
+        return val;
+    }
+    if (tok->pt_kind == PP_TOKEN_NUMBER) {
+        return Pp_EvalNumber(tok, ex->pe_line);
+    }
+    if (tok->pt_kind == PP_TOKEN_CHAR) {
+        return Pp_EvalChar(tok);
+    }
+    if (Pp_TokenEquals(tok, "(")) {
+        val = Pp_EvalComma(ex, mode);
+        Err_AssertAt(ex->pe_line, ex->pe_tok && Pp_TokenEquals(ex->pe_tok, ")"), ERR_PP_EXPR_PAREN_MISSING);
+        ex->pe_tok = ex->pe_tok->pt_next;
+        return val;
+    }
+    if (Pp_TokenEquals(tok, "+")) {
+        return Pp_EvalUnary(ex, mode);
+    }
+    if (Pp_TokenEquals(tok, "-")) {
+        val = Pp_EvalUnary(ex, mode);
+        val.pv_bits = -val.pv_bits;
+        return val;
+    }
+    if (Pp_TokenEquals(tok, "~")) {
+        val = Pp_EvalUnary(ex, mode);
+        val.pv_bits = ~val.pv_bits;
+        return val;
+    }
+    if (Pp_TokenEquals(tok, "!")) {
+        val.pv_bits = Pp_IsTrue(Pp_EvalUnary(ex, mode)) ? PP_VALUE_FALSE : PP_VALUE_TRUE;
+        return val;
+    }
+    Err_RaiseAt(ex->pe_line, ERR_PP_EXPR_TOKEN_INVALID, (int) tok->pt_len, tok->pt_text);
+    return val;
+}
+
+// Read the value of an integer constant.
+Pp_Value Pp_EvalNumber(const Pp_Token *tok, Ast_Line line)
+{
+    char *end = NULL;
+    bool valid = false;
+    char *text = Str_Format("%.*s", (int) tok->pt_len, tok->pt_text);
+    Pp_Value val = {
+        .pv_bits     = 0,
+        .pv_unsigned = false
+    };
+
+    Err_AssertAt(line, ! Pp_IsFloat(tok), ERR_PP_EXPR_FLOAT);
+    errno = 0;
+    val.pv_bits = strtoumax(text, &end, 0);
+    Err_AssertAt(line, errno != ERANGE, ERR_PP_EXPR_TOO_LARGE);
+    valid = Pp_ReadSuffix(end, &val.pv_unsigned);
+    Err_AssertAt(line, valid, ERR_PP_EXPR_SUFFIX_INVALID, end);
+    val.pv_unsigned = val.pv_unsigned || val.pv_bits > INTMAX_MAX;
+    Str_Free(text);
+    return val;
+}
+
+// Read the value of a character constant.
+Pp_Value Pp_EvalChar(const Pp_Token *tok)
+{
+    bool wide = tok->pt_text[0] == 'L';
+    Par_Num num = Par_CharLiteral(tok->pt_text + wide + 1, tok->pt_len - wide - 2, wide ? AST_TYPE_SIZE_INT : AST_TYPE_SIZE_CHAR);
+    Pp_Value val = {
+        .pv_bits     = (uintmax_t) num.pn_val,
+        .pv_unsigned = false
+    };
+
+    return val;
+}
+
+// True if a pp-number is a floating constant.
+bool Pp_IsFloat(const Pp_Token *tok)
+{
+    bool hex = tok->pt_len > 1 && tok->pt_text[0] == '0' && (tok->pt_text[1] == 'x' || tok->pt_text[1] == 'X');
+
+    for (size_t i = 0; i < tok->pt_len; i++) {
+        char c = tok->pt_text[i];
+
+        if (c == '.' || (hex ? (c == 'p' || c == 'P') : (c == 'e' || c == 'E'))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Read the suffix of an integer constant.
+bool Pp_ReadSuffix(const char *suffix, bool *marked)
+{
+    const char *p = suffix;
+
+    *marked = false;
+    if (*p == 'u' || *p == 'U') {
+        *marked = true;
+        p++;
+    }
+    if ((p[0] == 'l' && p[1] == 'l') || (p[0] == 'L' && p[1] == 'L')) {
+        p += 2;
+    } else if (*p == 'l' || *p == 'L') {
+        p++;
+    }
+    if (! *marked && (*p == 'u' || *p == 'U')) {
+        *marked = true;
+        p++;
+    }
+    return *p == '\0';
+}
+
+// Find the binary operator a token spells.
+bool Pp_FindOp(const Pp_Token *tok, Pp_Op *op)
+{
+    if (tok->pt_kind != PP_TOKEN_PUNCT) {
+        return false;
+    }
+    for (Pp_Op i = 0; i < PP_OP_COUNT; i++) {
+        if (Pp_TokenEquals(tok, Pp_OpText[i])) {
+            *op = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Apply a binary operator to two values.
+Pp_Value Pp_ApplyOp(Pp_Op op, Pp_Value a, Pp_Value b, Pp_Eval mode, Ast_Line line)
+{
+    bool truth = false;
+    intmax_t x = (intmax_t) a.pv_bits;
+    intmax_t y = (intmax_t) b.pv_bits;
+    Pp_Value val = {
+        .pv_bits     = 0,
+        .pv_unsigned = a.pv_unsigned || b.pv_unsigned
+    };
+
+    switch (op) {
+        case PP_OP_MUL: {
+            val.pv_bits = a.pv_bits * b.pv_bits;
+            return val;
+        } break;
+        case PP_OP_DIV:
+        case PP_OP_MOD: {
+            return Pp_Divide(op, a, b, mode, line);
+        } break;
+        case PP_OP_ADD: {
+            val.pv_bits = a.pv_bits + b.pv_bits;
+            return val;
+        } break;
+        case PP_OP_SUB: {
+            val.pv_bits = a.pv_bits - b.pv_bits;
+            return val;
+        } break;
+        case PP_OP_SHL:
+        case PP_OP_SHR: {
+            return Pp_Shift(op, a, b);
+        } break;
+        case PP_OP_LT: {
+            truth = val.pv_unsigned ? a.pv_bits < b.pv_bits : x < y;
+        } break;
+        case PP_OP_GT: {
+            truth = val.pv_unsigned ? a.pv_bits > b.pv_bits : x > y;
+        } break;
+        case PP_OP_LE: {
+            truth = val.pv_unsigned ? a.pv_bits <= b.pv_bits : x <= y;
+        } break;
+        case PP_OP_GE: {
+            truth = val.pv_unsigned ? a.pv_bits >= b.pv_bits : x >= y;
+        } break;
+        case PP_OP_EQ: {
+            truth = a.pv_bits == b.pv_bits;
+        } break;
+        case PP_OP_NE: {
+            truth = a.pv_bits != b.pv_bits;
+        } break;
+        case PP_OP_BIT_AND: {
+            val.pv_bits = a.pv_bits & b.pv_bits;
+            return val;
+        } break;
+        case PP_OP_BIT_XOR: {
+            val.pv_bits = a.pv_bits ^ b.pv_bits;
+            return val;
+        } break;
+        case PP_OP_BIT_OR: {
+            val.pv_bits = a.pv_bits | b.pv_bits;
+            return val;
+        } break;
+        case PP_OP_AND: {
+            truth = Pp_IsTrue(a) && Pp_IsTrue(b);
+        } break;
+        case PP_OP_OR: {
+            truth = Pp_IsTrue(a) || Pp_IsTrue(b);
+        } break;
+        case PP_OP_COUNT: {
+            // empty
+        } break;
+    }
+    val.pv_bits = truth ? PP_VALUE_TRUE : PP_VALUE_FALSE;
+    val.pv_unsigned = false;
+    return val;
+}
+
+// Divide one value by another.
+Pp_Value Pp_Divide(Pp_Op op, Pp_Value a, Pp_Value b, Pp_Eval mode, Ast_Line line)
+{
+    intmax_t x = (intmax_t) a.pv_bits;
+    intmax_t y = (intmax_t) b.pv_bits;
+    Pp_Value val = {
+        .pv_bits     = 0,
+        .pv_unsigned = a.pv_unsigned || b.pv_unsigned
+    };
+
+    if (b.pv_bits == 0) {
+        Err_AssertAt(line, mode == PP_EVAL_SKIP, ERR_PP_EXPR_DIVISION_BY_ZERO);
+        return val;
+    }
+    if (val.pv_unsigned) {
+        val.pv_bits = op == PP_OP_DIV ? a.pv_bits / b.pv_bits : a.pv_bits % b.pv_bits;
+    } else if (x == INTMAX_MIN && y == -1) {
+        val.pv_bits = op == PP_OP_DIV ? a.pv_bits : 0;
+    } else {
+        val.pv_bits = (uintmax_t) (op == PP_OP_DIV ? x / y : x % y);
+    }
+    return val;
+}
+
+// Shift a value by a count of bits.
+Pp_Value Pp_Shift(Pp_Op op, Pp_Value val, Pp_Value count)
+{
+    bool back = ! count.pv_unsigned && (intmax_t) count.pv_bits < 0;
+    bool fill = ! val.pv_unsigned && (intmax_t) val.pv_bits < 0;
+    bool left = (op == PP_OP_SHL) != back;
+    uintmax_t n = back ? -count.pv_bits : count.pv_bits;
+
+    if (n >= PP_VALUE_BITS) {
+        val.pv_bits = (! left && fill) ? UINTMAX_MAX : 0;
+    } else if (left) {
+        val.pv_bits <<= n;
+    } else if (fill) {
+        val.pv_bits = ~(~val.pv_bits >> n);
+    } else {
+        val.pv_bits >>= n;
+    }
+    return val;
+}
+
+// True if a value is not zero.
+bool Pp_IsTrue(Pp_Value val)
+{
+    return val.pv_bits != 0;
+}
+
 // Preprocess one file into the printer.
 void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
 {
+    Pp_Cond *outer = Pp_Conds;
     uint32_t includer = Pp_CurFile;
     Pp_Reader rd = {
         .rd_file    = file,
@@ -1136,6 +1700,7 @@ void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
     };
 
     Pp_CurFile = file->pf_index;
+    Pp_Conds = NULL;
     for (;;) {
         if (! rd.rd_pending && Pp_IsDirective(&file->pf_tokens[rd.rd_pos])) {
             rd.rd_pos = Pp_RunDirective(pr, file, rd.rd_pos);
@@ -1151,6 +1716,10 @@ void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
             Pp_PrintToken(pr, tok);
         }
     }
+    if (Pp_Conds) {
+        Err_RaiseAt(Pp_Conds->pc_name->pt_line, ERR_PP_COND_UNTERMINATED, (int) Pp_Conds->pc_name->pt_len, Pp_Conds->pc_name->pt_text);
+    }
+    Pp_Conds = outer;
     Pp_CurFile = includer;
 }
 

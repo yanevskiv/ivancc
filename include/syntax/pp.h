@@ -3,6 +3,7 @@
 #ifndef PP_H
 #define PP_H
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -54,6 +55,20 @@
 
 // Name a variadic macro's body gives its extra arguments.
 #define PP_VA_ARGS "__VA_ARGS__"
+
+// Name of the operator that asks whether a macro is defined.
+#define PP_DEFINED "defined"
+
+// Spellings of the answers defined gives.
+#define PP_TEXT_TRUE  "1"
+#define PP_TEXT_FALSE "0"
+
+// Values of the answers a truth operator gives.
+#define PP_VALUE_TRUE  1
+#define PP_VALUE_FALSE 0
+
+// Bits in the value of an #if expression.
+#define PP_VALUE_BITS (sizeof(uintmax_t) * CHAR_BIT)
 
 // Forward declaration: a token's hide set is a list of these.
 typedef struct Pp_HideSet Pp_HideSet;
@@ -115,6 +130,53 @@ typedef enum Pp_Markers Pp_Markers;
 enum Pp_Markers {
     PP_MARKERS_OMIT,
     PP_MARKERS_EMIT
+};
+
+// Whether an operand of an #if expression is computed.
+typedef enum Pp_Eval Pp_Eval;
+enum Pp_Eval {
+    PP_EVAL_COMPUTE,
+    PP_EVAL_SKIP     // parsed for its type alone
+};
+
+// Binary operators of an #if expression.
+typedef enum Pp_Op Pp_Op;
+enum Pp_Op {
+    PP_OP_MUL,
+    PP_OP_DIV,
+    PP_OP_MOD,
+    PP_OP_ADD,
+    PP_OP_SUB,
+    PP_OP_SHL,
+    PP_OP_SHR,
+    PP_OP_LT,
+    PP_OP_GT,
+    PP_OP_LE,
+    PP_OP_GE,
+    PP_OP_EQ,
+    PP_OP_NE,
+    PP_OP_BIT_AND,
+    PP_OP_BIT_XOR,
+    PP_OP_BIT_OR,
+    PP_OP_AND,
+    PP_OP_OR,
+    PP_OP_COUNT
+};
+
+// Precedence levels of the binary operators.
+typedef enum Pp_Prec Pp_Prec;
+enum Pp_Prec {
+    PP_PREC_OR,
+    PP_PREC_AND,
+    PP_PREC_BIT_OR,
+    PP_PREC_BIT_XOR,
+    PP_PREC_BIT_AND,
+    PP_PREC_EQUALITY,
+    PP_PREC_RELATIONAL,
+    PP_PREC_SHIFT,
+    PP_PREC_ADDITIVE,
+    PP_PREC_MULTIPLICATIVE,
+    PP_PREC_COUNT
 };
 
 // Options controlling a preprocessor run.
@@ -208,6 +270,29 @@ struct Pp_Printer {
     Pp_Move         pr_move;   // flag the next map entry takes
 };
 
+// One open conditional.
+typedef struct Pp_Cond Pp_Cond;
+struct Pp_Cond {
+    const Pp_Token *pc_name;  // directive that opened it
+    bool            pc_taken; // one of its groups was kept
+    bool            pc_else;  // its #else was seen
+    Pp_Cond        *pc_next;  // enclosing conditional
+};
+
+// The value of an #if expression.
+typedef struct Pp_Value Pp_Value;
+struct Pp_Value {
+    uintmax_t pv_bits;
+    bool      pv_unsigned; // a uintmax_t rather than an intmax_t
+};
+
+// The tokens an #if expression is read from.
+typedef struct Pp_Expr Pp_Expr;
+struct Pp_Expr {
+    const Pp_Token *pe_tok;  // next token to read
+    Ast_Line        pe_line; // line of the directive
+};
+
 // Files
 Pp_File *Pp_FindFile(const char *path);
 Pp_File *Pp_OpenFile(const char *path, uint32_t dir);
@@ -284,6 +369,35 @@ void   Pp_RunDefine(const Pp_File *file, size_t pos);
 size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def);
 void   Pp_CheckBody(const Pp_Macro *def, Ast_Line line);
 void   Pp_RunUndef(const Pp_File *file, size_t pos);
+
+// Conditionals
+bool      Pp_OpensCond(const Pp_Token *name);
+size_t    Pp_RunIf(const Pp_File *file, size_t pos);
+size_t    Pp_RunElif(const Pp_File *file, size_t pos);
+size_t    Pp_RunElse(const Pp_File *file, size_t pos);
+size_t    Pp_RunEndif(const Pp_File *file, size_t pos);
+void      Pp_CheckCond(const Pp_Token *name);
+void      Pp_CheckLineEnd(const Pp_File *file, size_t pos, const Pp_Token *name);
+bool      Pp_IsDefined(const Pp_File *file, size_t pos);
+size_t    Pp_SkipGroup(const Pp_File *file, size_t pos);
+bool      Pp_EvalLine(const Pp_File *file, size_t pos);
+Pp_Token *Pp_ExpandCondition(const Pp_File *file, size_t start, size_t end);
+Pp_Token *Pp_ReadDefined(Pp_Reader *rd, const Pp_Token *op);
+
+// Expressions
+Pp_Value Pp_EvalComma(Pp_Expr *ex, Pp_Eval mode);
+Pp_Value Pp_EvalCond(Pp_Expr *ex, Pp_Eval mode);
+Pp_Value Pp_EvalBinary(Pp_Expr *ex, Pp_Prec min, Pp_Eval mode);
+Pp_Value Pp_EvalUnary(Pp_Expr *ex, Pp_Eval mode);
+Pp_Value Pp_EvalNumber(const Pp_Token *tok, Ast_Line line);
+Pp_Value Pp_EvalChar(const Pp_Token *tok);
+bool     Pp_IsFloat(const Pp_Token *tok);
+bool     Pp_ReadSuffix(const char *suffix, bool *marked);
+bool     Pp_FindOp(const Pp_Token *tok, Pp_Op *op);
+Pp_Value Pp_ApplyOp(Pp_Op op, Pp_Value a, Pp_Value b, Pp_Eval mode, Ast_Line line);
+Pp_Value Pp_Divide(Pp_Op op, Pp_Value a, Pp_Value b, Pp_Eval mode, Ast_Line line);
+Pp_Value Pp_Shift(Pp_Op op, Pp_Value val, Pp_Value count);
+bool     Pp_IsTrue(Pp_Value val);
 
 // Running
 void Pp_RunFile(Pp_Printer *pr, const Pp_File *file);
