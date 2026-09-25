@@ -3,6 +3,8 @@
 %option yylineno
 %option prefix="pp"
 
+%x PP_HEADER
+
 %{
 #include <stdlib.h>
 #include "util/err.h"
@@ -15,11 +17,15 @@ ALNUM   [A-Za-z_0-9]
 
 %%
 
-[ \t\f\v\r]+                            return PP_TOKEN_SPACE;
+<INITIAL,PP_HEADER>[ \t\f\v\r]+                 return PP_TOKEN_SPACE;
+<INITIAL,PP_HEADER>"//"[^\n]*                   return PP_TOKEN_SPACE;
+<INITIAL,PP_HEADER>"/*"([^*]|\*+[^*/])*\*+"/"   return PP_TOKEN_SPACE;
+<INITIAL,PP_HEADER>"/*"                         { Err_RaiseAt((Ast_Line) pplineno, ERR_PP_COMMENT_UNTERMINATED); }
+
+<PP_HEADER>\"[^"\n]*\"|"<"[^>\n]*">"           { BEGIN(INITIAL); return PP_TOKEN_HEADER_NAME; }
+<PP_HEADER>.|\n                                 { yyless(0); BEGIN(INITIAL); }
+
 \n                                      return PP_TOKEN_NEWLINE;
-"//"[^\n]*                              return PP_TOKEN_SPACE;
-"/*"([^*]|\*+[^*/])*\*+"/"              return PP_TOKEN_SPACE;
-"/*"                                    { Err_RaiseAt((Ast_Line) pplineno, ERR_PP_COMMENT_UNTERMINATED); }
 
 {ALPHA}{ALNUM}*                         return PP_TOKEN_IDENT;
 \.?{DIGIT}({ALNUM}|\.|[eEpP][+-])*      return PP_TOKEN_NUMBER;
@@ -76,6 +82,9 @@ void Pp_Tokenize(Pp_File *file)
         file->pf_tokens[file->pf_ntokens++] = tok;
         if (kind == PP_TOKEN_EOF) {
             break;
+        }
+        if (Pp_ExpectsHeaderName(file)) {
+            BEGIN(PP_HEADER);
         }
         flags = PP_FLAG_NONE;
     }

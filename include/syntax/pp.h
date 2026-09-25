@@ -33,6 +33,12 @@
 // File index of no file.
 #define PP_FILE_NONE UINT32_MAX
 
+// Search-list index of a file found outside the search list.
+#define PP_DIR_NONE UINT32_MAX
+
+// Deepest nesting of includes.
+#define PP_INCLUDE_DEPTH_MAX 200
+
 // Number of a file's first line.
 #define PP_LINE_FIRST 1
 
@@ -44,6 +50,7 @@ enum Pp_TokenKind {
     PP_TOKEN_NUMBER,
     PP_TOKEN_CHAR,
     PP_TOKEN_STRING,
+    PP_TOKEN_HEADER_NAME,
     PP_TOKEN_PUNCT,
     PP_TOKEN_OTHER,      // a character no other kind takes
     PP_TOKEN_SPACE,      // whitespace or a comment
@@ -59,11 +66,34 @@ enum Pp_Flags {
     PP_FLAG_SPACE = 1 << 1  // whitespace before it
 };
 
+// Which directive an include came from.
+typedef enum Pp_Include Pp_Include;
+enum Pp_Include {
+    PP_INCLUDE_PLAIN,
+    PP_INCLUDE_NEXT
+};
+
+// Flag a line marker carries.
+typedef enum Pp_Move Pp_Move;
+enum Pp_Move {
+    PP_MOVE_NONE   = 0,
+    PP_MOVE_ENTER  = 1, // entering a file
+    PP_MOVE_RETURN = 2  // returning to a file
+};
+
 // Whether written text carries line markers.
 typedef enum Pp_Markers Pp_Markers;
 enum Pp_Markers {
     PP_MARKERS_OMIT,
     PP_MARKERS_EMIT
+};
+
+// Options controlling a preprocessor run.
+typedef struct Pp_Options Pp_Options;
+struct Pp_Options {
+    const char *const *po_dirs;   // -I directories, in the order given
+    size_t             po_ndirs;
+    const char        *po_sysdir; // system include directory
 };
 
 // One preprocessing token.
@@ -82,6 +112,8 @@ typedef struct Pp_File Pp_File;
 struct Pp_File {
     char     *pf_path;
     uint32_t  pf_index;   // position in the opened-file list
+    uint32_t  pf_dir;     // search-list index it was found under
+    bool      pf_system;  // found in the system include directory
     char     *pf_text;    // text after the pre-pass
     size_t    pf_len;
     Pp_Token *pf_tokens;  // ending in a PP_TOKEN_EOF
@@ -94,6 +126,7 @@ struct Pp_MapEntry {
     Ast_Line pm_output; // first output line of the stretch
     uint32_t pm_file;
     Ast_Line pm_source; // source line of its first line
+    Pp_Move  pm_move;
 };
 
 // Where the printer has got to.
@@ -104,21 +137,30 @@ struct Pp_Printer {
     uint32_t        pr_file;   // file the output line comes from
     Ast_Line        pr_source; // source line the output line comes from
     const Pp_Token *pr_prev;   // last token printed on the output line
+    Pp_Move         pr_move;   // flag the next map entry takes
 };
 
 // Files
-Pp_File *Pp_OpenFile(const char *path);
+Pp_File *Pp_FindFile(const char *path);
+Pp_File *Pp_OpenFile(const char *path, uint32_t dir);
 void     Pp_ReplaceTrigraphs(Str_Buf *out, const char *text, size_t len);
 void     Pp_DeleteSplices(Str_Buf *out, const char *text, size_t len);
 void     Pp_Tokenize(Pp_File *file);
 
 // Tokens
 bool Pp_TokenEquals(const Pp_Token *tok, const char *text);
+bool Pp_ExpectsHeaderName(const Pp_File *file);
 bool Pp_IsPunctPrefix(const char *text, size_t len);
 bool Pp_NeedsSpace(const Pp_Token *prev, const Pp_Token *next);
 
+// Include search
+void  Pp_SetDirs(const Pp_Options *opts);
+char *Pp_DirName(const char *path);
+char *Pp_JoinPath(const char *dir, const char *name);
+char *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Include kind, uint32_t *dir);
+
 // Line map
-void        Pp_AddMapEntry(Ast_Line output, uint32_t file, Ast_Line source);
+void        Pp_AddMapEntry(Ast_Line output, uint32_t file, Ast_Line source, Pp_Move move);
 const char *Pp_Locate(Ast_Line line, Ast_Line *source);
 const char *Pp_LocateSource(Ast_Line line, Ast_Line *source);
 
@@ -130,10 +172,12 @@ void Pp_Write(FILE *out, const Str_Buf *text, Pp_Markers markers);
 
 // Directives
 bool   Pp_IsDirective(const Pp_Token *tok);
-size_t Pp_RunDirective(const Pp_File *file, size_t pos);
+size_t Pp_SkipLine(const Pp_File *file, size_t pos);
+size_t Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos);
+void   Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include kind);
 
 // Running
 void Pp_RunFile(Pp_Printer *pr, const Pp_File *file);
-void Pp_Run(const char *path, Str_Buf *out);
+void Pp_Run(const char *path, const Pp_Options *opts, Str_Buf *out);
 
 #endif // PP_H

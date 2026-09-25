@@ -48,6 +48,9 @@
 // Where the runtime objects sit relative to the directory holding this binary.
 #define RUNTIME_DIR "/../lib/"
 
+// Where the system headers sit relative to the directory holding this binary.
+#define INCLUDE_DIR "/../include"
+
 
 // Values getopt_long returns for the options with no short form.
 typedef enum Cc_Option Cc_Option;
@@ -72,6 +75,7 @@ static void Cc_ShowUsage(const char *prog)
         "  -c          write a relocatable object (.o) instead of an executable\n"
         "  -E          write the preprocessed text instead of an executable\n"
         "  -P          leave line markers out of -E's output\n"
+        "  -I DIR      search DIR for included files\n"
         "  --std=STD   language standard (only " DEFAULT_STD ")\n"
         "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n"
         "  -mtarget=T  runtime to link against (default: " DEFAULT_TARGET ")\n"
@@ -116,6 +120,21 @@ static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
     char *exedir = Cc_GetExeDir();
     Err_Assert(exedir, ERR_CC_RUNTIME_NOT_FOUND);
     char *dir = Str_Format("%s" RUNTIME_DIR "%s", exedir, target);
+    Str_Free(exedir);
+    return dir;
+}
+
+// Return the system include directory.
+static char *Cc_GetIncludeDir(void)
+{
+    char *exedir = Cc_GetExeDir();
+
+    if (! exedir) {
+        return NULL;
+    }
+
+    char *dir = Str_Format("%s" INCLUDE_DIR, exedir);
+
     Str_Free(exedir);
     return dir;
 }
@@ -195,6 +214,8 @@ int main(int argc, char **argv)
     const char *arch = DEFAULT_ARCH;
     const char *target = DEFAULT_TARGET;
     const char *prefix = NULL;
+    const char **incdirs = NULL;
+    size_t nincdirs = 0;
     bool emit_text = false;
     bool emit_obj = false;
     bool emit_pp = false;
@@ -237,7 +258,10 @@ int main(int argc, char **argv)
                     target = optarg + strlen(MTARGET_PREFIX);
                 }
             } break;
-            case 'I':
+            case 'I': {
+                incdirs = realloc(incdirs, (nincdirs + 1) * sizeof(*incdirs));
+                incdirs[nincdirs++] = optarg;
+            } break;
             case 'D':
             case 'U':
             case 'M': {
@@ -286,14 +310,22 @@ int main(int argc, char **argv)
 
     // Front end: build the AST
     Str_Buf *text = Str_BufNew();
+    char *sysdir = Cc_GetIncludeDir();
+    Pp_Options pp_opts = {
+        .po_dirs   = incdirs,
+        .po_ndirs  = nincdirs,
+        .po_sysdir = sysdir
+    };
 
-    Pp_Run(input, text);
+    Pp_Run(input, &pp_opts, text);
     Log_SetLineLocator(Pp_Locate);
     if (emit_pp) {
         FILE *out = Cc_OpenOutput(output, "w");
         Pp_Write(out, text, markers);
         Cc_CloseOutput(out);
         Str_BufFree(text);
+        Str_Free(sysdir);
+        free(incdirs);
         Str_Free(outbuf);
         return 0;
     }
@@ -316,6 +348,8 @@ int main(int argc, char **argv)
         chmod(output, ELF_MODE);
     }
 
+    Str_Free(sysdir);
+    free(incdirs);
     Str_Free(outbuf);
     return 0;
 }

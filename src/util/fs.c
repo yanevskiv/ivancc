@@ -49,3 +49,15 @@ bool Fs_FilePutContents(const char *path, const void *data, size_t len)
 
     return fclose(file) == 0 && ok;
 }
+
+// True if the file at path can be read.
+bool Fs_FileExists(const char *path)
+{
+    FILE *file = fopen(path, "rb");
+
+    if (! file) {
+        return false;
+    }
+    fclose(file);
+    return true;
+}
