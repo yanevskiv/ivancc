@@ -19,6 +19,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
 
     [ERR_PP_COMMENT_UNTERMINATED]       = { "ERR_PP_COMMENT_UNTERMINATED",       "unterminated comment" },
     [ERR_PP_DIRECTIVE_UNKNOWN]          = { "ERR_PP_DIRECTIVE_UNKNOWN",          "invalid preprocessing directive #%.*s" },
+    [ERR_PP_INCLUDE_MALFORMED]          = { "ERR_PP_INCLUDE_MALFORMED",          "#include expects \"FILENAME\" or <FILENAME>" },
+    [ERR_PP_INCLUDE_NOT_FOUND]          = { "ERR_PP_INCLUDE_NOT_FOUND",          "include file '%s' not found" },
+    [ERR_PP_INCLUDE_TOO_DEEP]           = { "ERR_PP_INCLUDE_TOO_DEEP",           "#include nested more than %d deep" },
 
     [ERR_LEX_UNEXPECTED_CHAR]           = { "ERR_LEX_UNEXPECTED_CHAR",           "unexpected character '%s'" },
 

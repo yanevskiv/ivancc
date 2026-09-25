@@ -31,6 +31,8 @@ AS_OBJS := $(OUT)/as.o $(ELF_OBJS) \
 EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/load.o $(OUT)/arch/$(TARGET_ARCH)/emu.o
 LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/link.o
 
+SYS_HEADERS := $(patsubst libc/include/%,$(BUILD)/include/%,$(shell find libc/include -name '*.h' 2>/dev/null))
+
 TEST_TOOL  := tests/run_test
 TEST_SRCS  := $(sort $(wildcard tests/syntax/test*.c))
 TEST_NAMES := $(patsubst tests/syntax/%.c,%,$(TEST_SRCS))
@@ -41,7 +43,7 @@ LD_BIN := $(BUILD)/bin/$(TARGET)ld
 EMU_BIN := $(BUILD)/bin/$(TARGET)emu
 
 # --- phony recipes ---
-all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME)
+all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
 
 clean:
 	rm -rf $(BUILD) $(OUT)
@@ -109,6 +111,11 @@ $(OUT)/libc/ivanemu/sys.o: $(TARGET_SRC)/ivanemu/sys.s $(AS_BIN)
 
 $(EMU_DIR)/libc.o: $(OUT)/libc/ivanemu/core.o $(OUT)/libc/ivanemu/sys.o $(LD_BIN) | $(EMU_DIR)
 	$(LD_BIN) -r $(OUT)/libc/ivanemu/core.o $(OUT)/libc/ivanemu/sys.o -o $@
+
+# --- system header recipes ---
+$(BUILD)/include/%.h: libc/include/%.h
+	@mkdir -p $(dir $@)
+	cp $< $@
 
 # --- build/ recipes ---
 $(OUT):
