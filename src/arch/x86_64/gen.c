@@ -13,11 +13,14 @@
 // Number of integer arguments the ABI passes in registers.
 #define GEN_X86_64_SYSV_MAX_REG_ARGS 6
 
-// Size in bytes of a stack slot and a general-purpose register.
-#define WORD_SIZE 8
-
 // Required %rsp alignment.
 #define GEN_X86_64_SYSV_STACK_ALIGN 16
+
+// Bytes a variadic function reserves to spill the argument registers into.
+#define GEN_X86_64_SYSV_VA_SAVE_SIZE (GEN_X86_64_SYSV_MAX_REG_ARGS * GEN_X86_64_SYSV_EIGHTBYTE)
+
+// Size in bytes of a stack slot and a general-purpose register.
+#define GEN_X86_64_WORD_SIZE 8
 
 // Largest global a single scalar initializer may fill.
 #define GEN_X86_64_MAX_INIT 8
@@ -31,9 +34,6 @@
 // Chunk sizes an aggregate copy moves, largest first.
 #define GEN_X86_64_COPY_QUAD (ASM_X86_64_WIDTH_64 / ASM_X86_64_BITS_PER_BYTE)
 #define GEN_X86_64_COPY_LONG (ASM_X86_64_WIDTH_32 / ASM_X86_64_BITS_PER_BYTE)
-
-// Bytes a variadic function reserves to spill the argument registers into.
-#define GEN_X86_64_SYSV_VA_SAVE_SIZE (GEN_X86_64_SYSV_MAX_REG_ARGS * GEN_X86_64_SYSV_EIGHTBYTE)
 
 // Number of values currently pushed with Gen_x86_64_EmitPush().
 static int32_t Gen_x86_64_Depth;
@@ -381,7 +381,7 @@ int32_t Gen_x86_64_SlotSize(const Ast_Type *type)
     if (! Sem_IsAggregate(type)) {
         return type->at_size;
     }
-    return Gen_x86_64_AlignTo(type->at_size, WORD_SIZE);
+    return Gen_x86_64_AlignTo(type->at_size, GEN_X86_64_WORD_SIZE);
 }
 
 // Return the operand width in bits used to load or store a value of type.
@@ -584,7 +584,7 @@ void Gen_x86_64_EmitBitfieldStore(const Ast_Member *member)
 // Bring a result in %rax back into its type.
 void Gen_x86_64_EmitNarrow(const Ast_Type *type)
 {
-    if (Ast_IsInteger(type) && type->at_sign == AST_TYPE_UNSIGNED && type->at_size < WORD_SIZE) {
+    if (Ast_IsInteger(type) && type->at_sign == AST_TYPE_UNSIGNED && type->at_size < GEN_X86_64_WORD_SIZE) {
         Gen_x86_64_EmitCast(type);
     }
 }
@@ -1047,7 +1047,7 @@ void Gen_x86_64_AssignCallTemps(Ast_Node *node, int32_t *offset)
         node->an_tmp = -*offset;
     }
     if (node->an_kind == AST_NODE_KIND_CALL && node->an_lhs) {
-        *offset = Gen_x86_64_AlignTo(*offset + WORD_SIZE, WORD_SIZE);
+        *offset = Gen_x86_64_AlignTo(*offset + GEN_X86_64_WORD_SIZE, GEN_X86_64_WORD_SIZE);
         node->an_calltmp = -*offset;
     }
 
@@ -1069,7 +1069,7 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
     int32_t offset = func->af_variadic == AST_TYPE_VARIADIC ? GEN_X86_64_SYSV_VA_SAVE_SIZE : 0;
 
     if (Gen_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
-        offset += WORD_SIZE;
+        offset += GEN_X86_64_WORD_SIZE;
         Gen_x86_64_SysV_RetPtrOffset = -offset;
     } else {
         Gen_x86_64_SysV_RetPtrOffset = 0;
@@ -1109,7 +1109,7 @@ void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var
 
     Err_AssertAt(var->av_line, offset + size <= var->av_type->at_size, ERR_GEN_INIT_TOO_LARGE, var->av_name);
     if (Sem_FoldAddr(item->an_lhs, &symbol)) {
-        Err_AssertAt(var->av_line, size == WORD_SIZE, ERR_GEN_INIT_ADDRESS_WIDTH, var->av_name);
+        Err_AssertAt(var->av_line, size == GEN_X86_64_WORD_SIZE, ERR_GEN_INIT_ADDRESS_WIDTH, var->av_name);
         Err_AssertAt(var->av_line, *naddrs < GEN_X86_64_MAX_ADDRS, ERR_GEN_INIT_TOO_MANY_ADDRESSES, var->av_name, GEN_X86_64_MAX_ADDRS);
         addrs[(*naddrs)++] = (Gen_x86_64_Addr) { offset, symbol };
         return;
@@ -1140,7 +1140,7 @@ void Gen_x86_64_EmitImage(const uint8_t *bytes, int32_t size, const Gen_x86_64_A
             Asm_x86_64_EmitBytes(bytes + at, addrs[i].ga_offset - at);
         }
         Asm_x86_64_EmitAddress(addrs[i].ga_symbol);
-        at = addrs[i].ga_offset + WORD_SIZE;
+        at = addrs[i].ga_offset + GEN_X86_64_WORD_SIZE;
     }
     if (size > at) {
         Asm_x86_64_EmitBytes(bytes + at, size - at);
