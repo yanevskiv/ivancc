@@ -3,14 +3,24 @@
 #ifndef PP_H
 #define PP_H
 
+// Standard headers.
+#include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+// Project headers.
+#include "util/console/err.h"
+#include "util/console/log.h"
+#include "util/fs.h"
 #include "util/str.h"
-#include "syntax/ast.h"
+#include "lang/ast.h"
+#include "lang/par.h"
 
 // Trigraph keys and the characters they stand for.
 #define PP_TRIGRAPH_KEYS   "=(/)'<!>-"

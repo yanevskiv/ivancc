@@ -3,7 +3,15 @@
 #ifndef PAR_H
 #define PAR_H
 
-#include "syntax/ast.h"
+// Standard headers.
+#include <stdlib.h>
+#include <string.h>
+
+// Project headers.
+#include "util/console/err.h"
+#include "util/str.h"
+#include "lang/ast.h"
+#include "lang/sem.h"
 
 // Bits in the value a literal is read into.
 #define PAR_VALUE_BITS 64

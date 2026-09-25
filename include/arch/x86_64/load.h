@@ -3,8 +3,15 @@
 #ifndef LOAD_X86_64_H
 #define LOAD_X86_64_H
 
+// Standard headers.
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Project headers.
+#include "util/console/err.h"
+#include "util/object/elf.h"
 
 // A loaded program: one flat buffer holding every PT_LOAD and a stack.
 typedef struct Load_x86_64_Image Load_x86_64_Image;

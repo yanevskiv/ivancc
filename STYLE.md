@@ -82,8 +82,13 @@
 - Every enum and struct must be typedef'd on the line above its definition.
 - Every define, enum and struct must live in the header wherever it can.
 - Every file-scope variable must be `static` and kept out of the header.
-- Every project include must carry its module path: `#include "syntax/ast.h"`.
-- Every `.c` file must include system headers first, then a blank line, then project headers.
+- Every project include must carry its module path: `#include "lang/ast.h"`.
+- Every `.c` file must include its own header and nothing else.
+- Every `.c` file must mark that include with `// Take every include from the module's header.`
+- Every header and every tool's `main` file must include system headers first, then a blank line, then project headers.
+- Every header and every tool's `main` file must mark its system includes with `// Standard headers.`
+- Every header and every tool's `main` file must mark its project includes with `// Project headers.`
+- Every list of project includes must run util, then lang, then arch, sorted by path within each layer.
 - Use only the standard C library and standard POSIX interfaces.
 - Do not use a GNU or other vendor extension, as `getopt_long_only` is.
 - Use `getopt_long` for command lines until the tools parse their own.

@@ -3,8 +3,11 @@
 #ifndef FS_H
 #define FS_H
 
+// Standard headers.
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // Whole-file read and write
 char *Fs_FileGetContents(const char *path, size_t *len);

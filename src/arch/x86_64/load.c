@@ -1,12 +1,6 @@
 // C source file for loading x86-64 executables.
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "util/err.h"
-#include "object/elf.h"
+// Take every include from the module's header.
 #include "arch/x86_64/load.h"
 
 // Bytes of stack reserved above the image.

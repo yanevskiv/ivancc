@@ -1,11 +1,7 @@
 // C source file for diagnostic messages.
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "util/log.h"
+// Take every include from the module's header.
+#include "util/console/log.h"
 
 // The word each severity prints as.
 static const char *const Log_SeverityNames[LOG_SEVERITY_COUNT] = {

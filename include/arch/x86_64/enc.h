@@ -3,11 +3,15 @@
 #ifndef ENC_X86_64_H
 #define ENC_X86_64_H
 
+// Standard headers.
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "object/elf.h"
+// Project headers.
+#include "util/object/elf.h"
 #include "arch/x86_64/asm.h"
 
 // A rel32 fixup targets its exact site.

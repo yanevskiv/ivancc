@@ -3,7 +3,13 @@
 #ifndef SEM_H
 #define SEM_H
 
-#include "syntax/ast.h"
+// Standard headers.
+#include <string.h>
+
+// Project headers.
+#include "util/console/err.h"
+#include "util/str.h"
+#include "lang/ast.h"
 
 // Lookups over the program being analysed
 Ast_Func *Sem_FindFunc(const char *name);

@@ -23,7 +23,7 @@ LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
 GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/c.tab.o $(OUT)/pp.yy.o
 
 CC_OBJS := $(OUT)/cc.o $(LIB_OBJS) $(GEN_OBJS)
-ELF_OBJS := $(OUT)/object/elf.o $(OUT)/util/err.o $(OUT)/util/log.o $(OUT)/util/str.o
+ELF_OBJS := $(OUT)/util/object/elf.o $(OUT)/util/console/err.o $(OUT)/util/console/log.o $(OUT)/util/str.o
 
 AS_OBJS := $(OUT)/as.o $(ELF_OBJS) \
 	$(OUT)/arch/$(TARGET_ARCH)/txt.o $(OUT)/arch/$(TARGET_ARCH)/asm.o \
@@ -68,13 +68,13 @@ $(TEST_NAMES): %: tests/syntax/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
 	@$(TEST_TOOL) $<
 
 # --- front-end generators ---
-$(OUT)/c.tab.c $(OUT)/c.tab.h: src/spec/c.y | $(OUT)
+$(OUT)/c.tab.c $(OUT)/c.tab.h: src/lang/syntax/c.y | $(OUT)
 	$(YACC) -d -o $(OUT)/c.tab.c $<
 
-$(OUT)/lex.yy.c: src/spec/c.flex $(OUT)/c.tab.h | $(OUT)
+$(OUT)/lex.yy.c: src/lang/syntax/c.flex $(OUT)/c.tab.h | $(OUT)
 	$(LEX) -o $@ $<
 
-$(OUT)/pp.yy.c: src/spec/pp.flex | $(OUT)
+$(OUT)/pp.yy.c: src/lang/syntax/pp.flex | $(OUT)
 	$(LEX) -o $@ $<
 
 $(OUT)/lex.yy.o: $(OUT)/lex.yy.c

@@ -1,17 +1,19 @@
 // C source file for the ivanemu emulator.
 
+// Standard headers.
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "util/err.h"
-#include "util/log.h"
+// Project headers.
+#include "util/console/err.h"
+#include "util/console/log.h"
+#include "util/object/elf.h"
 #include "util/str.h"
-#include "object/elf.h"
-#include "arch/x86_64/load.h"
 #include "arch/x86_64/emu.h"
+#include "arch/x86_64/load.h"
 
 // Target architecture selected when no -march= is given.
 #define DEFAULT_ARCH "x86_64"

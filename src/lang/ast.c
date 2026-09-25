@@ -1,11 +1,7 @@
 // C source file for the abstract syntax tree.
 
-#include <stdlib.h>
-#include <string.h>
-
-#include "util/err.h"
-#include "util/str.h"
-#include "syntax/ast.h"
+// Take every include from the module's header.
+#include "lang/ast.h"
 
 // The finished program, filled in by the parser.
 Ast_Func *Ast_Program;

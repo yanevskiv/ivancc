@@ -1,11 +1,6 @@
 // C source file for x86-64 machine code encoding.
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "object/elf.h"
-#include "arch/x86_64/asm.h"
+// Take every include from the module's header.
 #include "arch/x86_64/enc.h"
 
 // The object being encoded.

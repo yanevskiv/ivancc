@@ -3,7 +3,15 @@
 #ifndef GEN_X86_64_H
 #define GEN_X86_64_H
 
-#include "syntax/ast.h"
+// Standard headers.
+#include <stdlib.h>
+#include <string.h>
+
+// Project headers.
+#include "util/console/err.h"
+#include "util/object/elf.h"
+#include "lang/ast.h"
+#include "lang/sem.h"
 #include "arch/x86_64/asm.h"
 
 // Bytes in one eightbyte, the unit the SysV ABI classifies an argument in.

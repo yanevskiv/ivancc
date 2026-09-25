@@ -83,8 +83,8 @@ before anything reads a type, and an `L` prefix makes a literal's elements
 `wchar_t`, which is `int` here. A multi-character constant packs into an int the
 way the implementation is free to choose.
 
-Stage 11 moved every diagnostic into `util/err.h`. Each one has a code and an
-entry in one table, and prints in gcc's form with its code in brackets:
+Stage 11 moved every diagnostic into `util/console/err.h`. Each one has a code
+and an entry in one table, and prints in gcc's form with its code in brackets:
 `main.c:3: error: break outside a loop [ERR_GEN_BREAK_OUTSIDE_LOOP]`. A test can
 now expect a compile to fail with `// (Test) Compiler error:`.
 
@@ -418,7 +418,7 @@ Front end:
 - New node kinds `AST_NODE_KIND_DEREF` and `AST_NODE_KIND_ADDR`.
 
 New `Sem_*` pass, run from `cc.c` between `yyparse()` and code generation, in
-`include/syntax/sem.h` + `src/syntax/sem.c`:
+`include/lang/sem.h` + `src/lang/sem.c`:
 
 - annotate every expression node with its `an_type`, bottom-up;
 - array-to-pointer decay;
@@ -503,7 +503,7 @@ wants. A loader wants the segment view, and for an executable the program header
 table is the authoritative one; it is also the view that survives the existing
 debt where the reader discards non-PROGBITS sections. So the loader reads program
 headers straight out of the file bytes. `Elf64_Ehdr` and `Elf64_Phdr` are already
-declared in `object/elf.h`, so no new structures are needed — only a walk
+declared in `util/object/elf.h`, so no new structures are needed — only a walk
 `Elf_Read_Mem` never does. `Elf_Read_Ehdr` checks the size and the magic and nothing
 else, so class, type and machine are the loader's to reject.
 
@@ -798,8 +798,8 @@ against gcc's `.rodata`.
 Every diagnostic in one place. Today 104 calls to `Log_ShowError` and
 `Log_ShowErrorAt` carry their message text inline, spread over thirteen files,
 and most sit inside an `if` of their own. This stage moves them into
-`util/err.h` and `util/err.c`. Each diagnostic gets a code, one table holds every
-message, and an assertion folds the `if` into the call.
+`util/console/err.h` and `util/console/err.c`. Each diagnostic gets a code, one
+table holds every message, and an assertion folds the `if` into the call.
 
 It lands before the preprocessor, so that stage is written against it from the
 start.
@@ -810,10 +810,10 @@ predictable enough to test. `Log` prints any message in the form
 Developer output can say anything, so it calls `Log` directly.
 
 ```
-include/util/log.h        severities, the locator type, printing
-src/util/log.c            the program name, the locator, the severity words
-include/util/err.h        codes, the entry type, raising
-src/util/err.c            the table, the status
+include/util/console/log.h  severities, the locator type, printing
+src/util/console/log.c      the program name, the locator, the severity words
+include/util/console/err.h  codes, the entry type, raising
+src/util/console/err.c      the table, the status
 ```
 
 `log.c` writes with `fprintf(stderr, ...)`, so it depends on nothing else in the
@@ -1034,9 +1034,9 @@ that text unchanged. Nothing is bolted onto `c.flex`, and no temporary file is
 written.
 
 ```
-include/syntax/pp.h
-src/syntax/pp.c           directives, macros, #if, includes, the line map
-src/spec/pp.flex          pp-tokens, scanned under the prefix pp
+include/lang/pp.h
+src/lang/pp.c             directives, macros, #if, includes, the line map
+src/lang/syntax/pp.flex   pp-tokens, scanned under the prefix pp
 include/util/str.h        Str_Buf, a growable string
 src/util/str.c
 libc/include/             the system include directory, new here

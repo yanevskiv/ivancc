@@ -1,16 +1,7 @@
 // C source file for the C preprocessor.
 
-#include <errno.h>
-#include <inttypes.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "util/err.h"
-#include "util/fs.h"
-#include "util/log.h"
-#include "util/str.h"
-#include "syntax/par.h"
-#include "syntax/pp.h"
+// Take every include from the module's header.
+#include "lang/pp.h"
 
 // Every punctuator spelling of 6.4.6.
 static const char *const Pp_Punctuators[] = {
