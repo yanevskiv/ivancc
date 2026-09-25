@@ -18,6 +18,7 @@
 #include "object/elf.h"
 #include "arch/x86_64/gen.h"
 #include "arch/x86_64/enc.h"
+#include "arch/x86_64/link.h"
 #include "arch/x86_64/txt.h"
 
 // Permission bits for the executables cc writes (rwxr-xr-x).
@@ -174,11 +175,11 @@ static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, c
     }
 
     Elf *obj = Enc_x86_64_GetObject();
-    Elf_LinkOptions opts = {
+    Link_x86_64_Options opts = {
         .lo_entry = "_start"
     };
-    Elf_Link_MergeFiles(obj, (const char *const *) runtime, nruntime);
-    Elf_Link_Exec(obj, &opts);
+    Link_x86_64_MergeFiles(obj, (const char *const *) runtime, nruntime);
+    Link_x86_64_Exec(obj, &opts);
 
     Enc_x86_64_Write(out);
 

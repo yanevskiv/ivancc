@@ -33,7 +33,7 @@ static const char *Emu_x86_64_Name8[EMU_X86_64_REG_COUNT] = {
 };
 
 // Start a program.
-void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Elf_LoadImage *img)
+void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Load_x86_64_Image *img)
 {
     memset(cpu, 0, sizeof(*cpu));
     cpu->ec_img = img;
@@ -119,7 +119,7 @@ uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, Emu_x86_64_Opera
     }
 
     size_t n = width / EMU_X86_64_BITS_PER_BYTE;
-    const uint8_t *p = Elf_Load_At(cpu->ec_img, addr, n);
+    const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, n);
     if (! p) {
         Emu_x86_64_Fault(cpu, "read of unmapped memory", addr);
         return 0;
@@ -140,7 +140,7 @@ void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, Emu
     }
 
     size_t n = width / EMU_X86_64_BITS_PER_BYTE;
-    uint8_t *p = Elf_Load_At(cpu->ec_img, addr, n);
+    uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, n);
     if (! p) {
         Emu_x86_64_Fault(cpu, "write to unmapped memory", addr);
         return;
@@ -217,7 +217,7 @@ void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
             uint64_t fd = cpu->ec_reg[EMU_X86_64_REG_RDI];
             uint64_t buf = cpu->ec_reg[EMU_X86_64_REG_RSI];
             uint64_t len = cpu->ec_reg[EMU_X86_64_REG_RDX];
-            const uint8_t *p = Elf_Load_At(cpu->ec_img, buf, len);
+            const uint8_t *p = Load_x86_64_At(cpu->ec_img, buf, len);
             if (! p) {
                 Emu_x86_64_Fault(cpu, "write from unmapped memory", buf);
                 return;
@@ -242,7 +242,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
 {
     uint64_t rip = cpu->ec_rip;
     size_t avail = cpu->ec_img->li_base + cpu->ec_img->li_size - rip;
-    const uint8_t *code = Elf_Load_At(cpu->ec_img, rip, sizeof(*code));
+    const uint8_t *code = Load_x86_64_At(cpu->ec_img, rip, sizeof(*code));
     Emu_x86_64_Insn insn;
 
     if (! code || ! Emu_x86_64_Decode(code, avail, &insn)) {
@@ -498,7 +498,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
 }
 
 // Run a loaded program to completion and return the status it stopped with.
-int32_t Emu_x86_64_Run(const Elf_LoadImage *img, Emu_x86_64_Trace trace)
+int32_t Emu_x86_64_Run(const Load_x86_64_Image *img, Emu_x86_64_Trace trace)
 {
     Emu_x86_64_Cpu cpu;
     Emu_x86_64_Init(&cpu, img);

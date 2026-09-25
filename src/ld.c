@@ -11,6 +11,7 @@
 #include "util/log.h"
 #include "util/str.h"
 #include "object/elf.h"
+#include "arch/x86_64/link.h"
 
 // Permission bits for the executable ld writes (rwxr-xr-x).
 #define LD_MODE 0755
@@ -48,18 +49,18 @@ static char *Ld_PlaceName(const char *spec, size_t len)
 }
 
 // Parse a -place=SEC@ADDR argument into opts.
-static void Ld_ParsePlace(const char *spec, Elf_LinkOptions *opts)
+static void Ld_ParsePlace(const char *spec, Link_x86_64_Options *opts)
 {
     const char *at = strchr(spec, '@');
     Err_Assert(at, ERR_LD_PLACE_MALFORMED, spec);
-    Elf_Link_AddPlace(opts, Ld_PlaceName(spec, (size_t) (at - spec)), strtoull(at + 1, NULL, 0));
+    Link_x86_64_AddPlace(opts, Ld_PlaceName(spec, (size_t) (at - spec)), strtoull(at + 1, NULL, 0));
 }
 
 // Main function
 int main(int argc, char **argv)
 {
     const char  *output = LD_DEFAULT_OUTPUT;
-    Elf_LinkOptions opts = {0};
+    Link_x86_64_Options opts = {0};
 
     size_t nobjs = 0;
     const char **objs = calloc(argc, sizeof(*objs));
@@ -87,7 +88,7 @@ int main(int argc, char **argv)
         Ld_Usage(argv[0]);
     }
 
-    Elf *e = Elf_Link_Run((const char *const *) objs, nobjs, &opts);
+    Elf *e = Link_x86_64_Run((const char *const *) objs, nobjs, &opts);
     Err_Assert(Elf_Write_Path(e, output), ERR_FILE_ACCESS, output, strerror(errno));
     Elf_Free(e);
     if (! opts.lo_relocatable) {

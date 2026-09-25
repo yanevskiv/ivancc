@@ -88,16 +88,6 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_SEM_ASSIGN_AGGREGATE_MISMATCH] = { "ERR_SEM_ASSIGN_AGGREGATE_MISMATCH", "cannot assign a value of a different struct or union type" },
     [ERR_SEM_VA_START_FIXED]            = { "ERR_SEM_VA_START_FIXED",            "__builtin_va_start outside a variadic function" },
 
-    [ERR_ELF_MULTIPLE_DEFINITION]       = { "ERR_ELF_MULTIPLE_DEFINITION",       "multiple definition of '%s'" },
-    [ERR_ELF_OBJECT_UNREADABLE]         = { "ERR_ELF_OBJECT_UNREADABLE",         "cannot read object '%s'" },
-    [ERR_ELF_UNDEFINED_SYMBOL]          = { "ERR_ELF_UNDEFINED_SYMBOL",          "undefined symbol '%s'" },
-    [ERR_ELF_UNDEFINED_ENTRY]           = { "ERR_ELF_UNDEFINED_ENTRY",           "undefined entry symbol '%s'" },
-    [ERR_ELF_NOT_ELF]                   = { "ERR_ELF_NOT_ELF",                   "not an ELF file: '%s'" },
-    [ERR_ELF_NOT_ELF64_LSB]             = { "ERR_ELF_NOT_ELF64_LSB",             "not a 64-bit little-endian ELF file: '%s'" },
-    [ERR_ELF_NOT_EXECUTABLE]            = { "ERR_ELF_NOT_EXECUTABLE",            "not an executable: '%s'" },
-    [ERR_ELF_NO_LOAD_SEGMENTS]          = { "ERR_ELF_NO_LOAD_SEGMENTS",          "no loadable segments in '%s'" },
-    [ERR_ELF_SEGMENT_TRUNCATED]         = { "ERR_ELF_SEGMENT_TRUNCATED",         "segment runs past the end of '%s'" },
-
     [ERR_GEN_NOT_LVALUE]                = { "ERR_GEN_NOT_LVALUE",                "not an lvalue" },
     [ERR_GEN_UNEXPECTED_OPASSIGN]       = { "ERR_GEN_UNEXPECTED_OPASSIGN",       "unexpected compound assignment %d" },
     [ERR_GEN_UNEXPECTED_EXPR]           = { "ERR_GEN_UNEXPECTED_EXPR",           "unexpected node kind %d" },
@@ -109,7 +99,17 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_GEN_INIT_TOO_MANY_ADDRESSES]   = { "ERR_GEN_INIT_TOO_MANY_ADDRESSES",   "initializer for '%s' holds more addresses than %d" },
     [ERR_GEN_INIT_NOT_CONSTANT]         = { "ERR_GEN_INIT_NOT_CONSTANT",         "initializer for '%s' is not a constant" },
 
-    [ERR_REL_UNSUPPORTED_TYPE]          = { "ERR_REL_UNSUPPORTED_TYPE",          "unsupported relocation type %u" },
+    [ERR_LINK_MULTIPLE_DEFINITION]      = { "ERR_LINK_MULTIPLE_DEFINITION",      "multiple definition of '%s'" },
+    [ERR_LINK_OBJECT_UNREADABLE]        = { "ERR_LINK_OBJECT_UNREADABLE",        "cannot read object '%s'" },
+    [ERR_LINK_UNDEFINED_SYMBOL]         = { "ERR_LINK_UNDEFINED_SYMBOL",         "undefined symbol '%s'" },
+    [ERR_LINK_UNDEFINED_ENTRY]          = { "ERR_LINK_UNDEFINED_ENTRY",          "undefined entry symbol '%s'" },
+    [ERR_LINK_UNSUPPORTED_RELOCATION]   = { "ERR_LINK_UNSUPPORTED_RELOCATION",   "unsupported relocation type %u" },
+
+    [ERR_LOAD_NOT_ELF]                  = { "ERR_LOAD_NOT_ELF",                  "not an ELF file: '%s'" },
+    [ERR_LOAD_NOT_ELF64_LSB]            = { "ERR_LOAD_NOT_ELF64_LSB",            "not a 64-bit little-endian ELF file: '%s'" },
+    [ERR_LOAD_NOT_EXECUTABLE]           = { "ERR_LOAD_NOT_EXECUTABLE",           "not an executable: '%s'" },
+    [ERR_LOAD_NO_SEGMENTS]              = { "ERR_LOAD_NO_SEGMENTS",              "no loadable segments in '%s'" },
+    [ERR_LOAD_SEGMENT_TRUNCATED]        = { "ERR_LOAD_SEGMENT_TRUNCATED",        "segment runs past the end of '%s'" },
 
     [ERR_TXT_QUAD_NOT_ADDRESS]          = { "ERR_TXT_QUAD_NOT_ADDRESS",          "'%s' is not an address a .quad can hold" },
     [ERR_TXT_MNEMONIC_MALFORMED]        = { "ERR_TXT_MNEMONIC_MALFORMED",        "bad mnemonic in '%s'" },
