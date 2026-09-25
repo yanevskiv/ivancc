@@ -7,7 +7,6 @@
 #include "object/elf.h"
 #include "arch/x86_64/asm.h"
 #include "arch/x86_64/enc.h"
-#include "arch/x86_64/rel.h"
 
 // The object being encoded.
 static Elf *Enc_x86_64_Out;

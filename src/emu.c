@@ -10,6 +10,7 @@
 #include "util/log.h"
 #include "util/str.h"
 #include "object/elf.h"
+#include "arch/x86_64/load.h"
 #include "arch/x86_64/emu.h"
 
 // Target architecture selected when no -march= is given.
@@ -32,7 +33,7 @@ static void Emu_Usage(const char *prog)
 }
 
 // Print what the loader made of an executable.
-static void Emu_ShowImage(const Elf_LoadImage *img)
+static void Emu_ShowImage(const Load_x86_64_Image *img)
 {
     fprintf(stdout, "entry  0x%llx\n", (Emu_TypeULLong) img->li_entry);
     fprintf(stdout, "base   0x%llx\n", (Emu_TypeULLong) img->li_base);
@@ -41,12 +42,12 @@ static void Emu_ShowImage(const Elf_LoadImage *img)
 }
 
 // Disassemble forward from the image's base until the bytes stop decoding.
-static void Emu_Disassemble(const Elf_LoadImage *img)
+static void Emu_Disassemble(const Load_x86_64_Image *img)
 {
     uint64_t rip = img->li_base;
     for (;;) {
         size_t avail = img->li_base + img->li_size - rip;
-        const uint8_t *code = Elf_Load_At(img, rip, 1);
+        const uint8_t *code = Load_x86_64_At(img, rip, 1);
         Emu_x86_64_Insn insn;
         char text[128];
 
@@ -93,8 +94,8 @@ int main(int argc, char **argv)
     }
     Err_Assert(Str_Equals(arch, DEFAULT_ARCH), ERR_EMU_ARCH_UNSUPPORTED, arch, DEFAULT_ARCH);
 
-    Elf_LoadImage img = {0};
-    Err_Assert(Elf_Load_ReadExec(program, &img), ERR_FILE_ACCESS, program, strerror(errno));
+    Load_x86_64_Image img = {0};
+    Err_Assert(Load_x86_64_ReadExec(program, &img), ERR_FILE_ACCESS, program, strerror(errno));
     Err_Assert(img.li_machine == ELF_EM_X86_64, ERR_EMU_NOT_X86_64, program);
 
     int32_t status = 0;
@@ -106,6 +107,6 @@ int main(int argc, char **argv)
         status = Emu_x86_64_Run(&img, trace);
     }
 
-    Elf_Load_Free(&img);
+    Load_x86_64_Free(&img);
     return status;
 }

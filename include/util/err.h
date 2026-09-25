@@ -108,16 +108,6 @@ enum Err_Code {
     ERR_SEM_ASSIGN_AGGREGATE_MISMATCH,
     ERR_SEM_VA_START_FIXED,
 
-    ERR_ELF_MULTIPLE_DEFINITION,       // symbol
-    ERR_ELF_OBJECT_UNREADABLE,         // path
-    ERR_ELF_UNDEFINED_SYMBOL,          // symbol
-    ERR_ELF_UNDEFINED_ENTRY,           // symbol
-    ERR_ELF_NOT_ELF,                   // path
-    ERR_ELF_NOT_ELF64_LSB,             // path
-    ERR_ELF_NOT_EXECUTABLE,            // path
-    ERR_ELF_NO_LOAD_SEGMENTS,          // path
-    ERR_ELF_SEGMENT_TRUNCATED,         // path
-
     ERR_GEN_NOT_LVALUE,
     ERR_GEN_UNEXPECTED_OPASSIGN,       // operator kind
     ERR_GEN_UNEXPECTED_EXPR,           // node kind
@@ -129,7 +119,17 @@ enum Err_Code {
     ERR_GEN_INIT_TOO_MANY_ADDRESSES,   // name, limit
     ERR_GEN_INIT_NOT_CONSTANT,         // name
 
-    ERR_REL_UNSUPPORTED_TYPE,          // relocation type
+    ERR_LINK_MULTIPLE_DEFINITION,      // symbol
+    ERR_LINK_OBJECT_UNREADABLE,        // path
+    ERR_LINK_UNDEFINED_SYMBOL,         // symbol
+    ERR_LINK_UNDEFINED_ENTRY,          // symbol
+    ERR_LINK_UNSUPPORTED_RELOCATION,   // relocation type
+
+    ERR_LOAD_NOT_ELF,                  // path
+    ERR_LOAD_NOT_ELF64_LSB,            // path
+    ERR_LOAD_NOT_EXECUTABLE,           // path
+    ERR_LOAD_NO_SEGMENTS,              // path
+    ERR_LOAD_SEGMENT_TRUNCATED,        // path
 
     ERR_TXT_QUAD_NOT_ADDRESS,          // operand
     ERR_TXT_MNEMONIC_MALFORMED,        // line
