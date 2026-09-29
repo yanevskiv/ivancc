@@ -425,7 +425,7 @@ Front end:
 - New node kinds `AST_NODE_KIND_DEREF` and `AST_NODE_KIND_ADDR`.
 
 New `Sem_*` pass, run from `cc.c` between `yyparse()` and code generation, in
-`include/lang/sem.h` + `src/lang/sem.c`:
+`h/lang/sem.h` + `src/lang/sem.c`:
 
 - annotate every expression node with its `an_type`, bottom-up;
 - array-to-pointer decay;
@@ -491,9 +491,9 @@ is reached.
 
 ```
 src/emu.c                              driver: arguments, -march selection
-include/arch/x86_64/emu.h
+h/arch/x86_64/emu.h
 src/arch/x86_64/emu.c                  fetch, decode, execute
-include/arch/x86_64/load.h
+h/arch/x86_64/load.h
 src/arch/x86_64/load.c                 ELF executable -> flat memory
 libc/src/x86_64/target/ivanemu/crt0.s  _start that halts through the device
 ```
@@ -817,9 +817,9 @@ predictable enough to test. `Log` prints any message in the form
 Developer output can say anything, so it calls `Log` directly.
 
 ```
-include/util/console/log.h  severities, the locator type, printing
+h/util/console/log.h  severities, the locator type, printing
 src/util/console/log.c      the program name, the locator, the severity words
-include/util/console/err.h  codes, the entry type, raising
+h/util/console/err.h  codes, the entry type, raising
 src/util/console/err.c      the table, the status
 ```
 
@@ -1041,10 +1041,10 @@ that text unchanged. Nothing is bolted onto `c.flex`, and no temporary file is
 written.
 
 ```
-include/lang/pp.h
+h/lang/pp.h
 src/lang/pp.c             directives, macros, #if, includes, the line map
 src/lang/syntax/pp.flex   pp-tokens, scanned under the prefix pp
-include/util/buf.h        Buf, a growable string
+h/util/buf.h        Buf, a growable string
 src/util/buf.c
 libc/include/             the system include directory, new here
 ```
@@ -1467,8 +1467,8 @@ the only standard. So no `--trigraphs` option is needed. Both tests pass under
 
 ### Tests
 
-- Helper headers live in `tests/syntax/inc/`, named after their test:
-  `test65_include.c` includes `"inc/test65_include.h"`. The test glob matches
+- Helper headers live in `tests/syntax/h/`, named after their test:
+  `test65_include.c` includes `"h/test65_include.h"`. The test glob matches
   only `tests/syntax/test*.c`, and a quoted include finds them without `-I`.
 - No syntax test includes or calls the standard library. So `<...>` and the
   system directory go untested here, and a later suite outside `syntax` covers

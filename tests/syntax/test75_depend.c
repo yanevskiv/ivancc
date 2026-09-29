@@ -1,12 +1,11 @@
 // (Test) Status: 200
-// (Test) Compiler flags: --MMD --MP --MF=- --MT=test75_depend.o --MQ=$(OUT)/test75_depend.o --include=inc/test75_depend_forced.h
+// (Test) Compiler flags: --MMD --MP --MF=- --MT=test75_depend.o --MQ=$(OUT)/test75_depend.o --include=h/test75_depend_forced.h
 // (Test) Compiler output:
 // | test75_depend.o $$(OUT)/test75_depend.o: test75_depend.c \
-// |  inc/test75_depend_forced.h inc/test75_depend.h \
-// |  inc/test75_depend_nested.h
-// | inc/test75_depend_forced.h:
-// | inc/test75_depend.h:
-// | inc/test75_depend_nested.h:
+// |  h/test75_depend_forced.h h/test75_depend.h h/test75_depend_nested.h
+// | h/test75_depend_forced.h:
+// | h/test75_depend.h:
+// | h/test75_depend_nested.h:
 // Dependency rules. --MMD writes a make rule naming the source and every header
 // it read, and compiles as usual. --MF=- writes the rule to stdout. --MT names a
 // target as given, and --MQ escapes it for make. --MP adds an empty rule for
@@ -14,8 +13,8 @@
 // read through --include comes right after the source. A line that grows past
 // 72 columns breaks with a backslash.
 
-#include "inc/test75_depend.h"
-#include "inc/test75_depend.h"
+#include "h/test75_depend.h"
+#include "h/test75_depend.h"
 
 int main()
 {
