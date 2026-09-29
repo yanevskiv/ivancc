@@ -1,6 +1,7 @@
 #!/bin/sh
 #
-# run_test - compile one test file, run it, and check what it claims.
+# run_test - build one test file through every pipeline, run it, and check what
+# it claims.
 
 set -u
 
@@ -8,9 +9,11 @@ PROG=$(basename "$0")
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
 BIN="$HERE/build/bin"
+LIB="$HERE/build/lib/linux"
 TIMEOUT=5
 HEAD_LINES=10
-DEFAULT_PIPELINE=ivancc_linux
+PIPELINES="ivancc ivanld ivanemu"
+PIPELINE=
 SOURCE=${1:-}
 
 # Report a problem with the run and exit.
@@ -27,10 +30,10 @@ pass()
     exit 0
 }
 
-# Report a failing test and exit.
+# Report a failing test, naming the pipeline it failed in, and exit.
 fail()
 {
-    printf '\033[31mFAIL\033[0m: %s\n' "$SOURCE"
+    printf '\033[31mFAIL\033[0m: %s%s\n' "$SOURCE" "${PIPELINE:+ ($PIPELINE)}"
     { printf "$@"; printf '\n'; } | sed 's/^/    /' | sed '${/^ *$/d;}'
     exit 1
 }
@@ -52,50 +55,107 @@ get_text()
         | sed -nE '/^\/\/ \|( |$)/!q; s///; p'
 }
 
-# Fail if the compiler timed out or died from a signal, whatever the test expects.
-check_compiler()
+# Run ivancc on the test with the given options and the test's own flags, and
+# record its results. Fail if it timed out or died from a signal, whatever the
+# test expects.
+compile()
 {
-    GOT="$(cat "${TMP}/compiler_status")"
+    timeout "$TIMEOUT" "${BIN}/ivancc" "$@" $(cat "${TMP}/compiler_flags") "$NAME" >"${RUN}/compiler_output" 2>"${RUN}/compiler_error"
+    echo $? > "${RUN}/compiler_status"
 
+    GOT="$(cat "${RUN}/compiler_status")"
     [ "$GOT" -ne 124 ] || fail 'Compiler timed out after %ss' "$TIMEOUT"
-    [ "$GOT" -le 128 ] || fail 'Compiler died from signal %s:\n%s' "$((GOT - 128))" "$(cat "${TMP}/compiler_error")"
+    [ "$GOT" -le 128 ] || fail 'Compiler died from signal %s:\n%s' "$((GOT - 128))" "$(cat "${RUN}/compiler_error")"
 }
 
-# Succeed if the build succeeded and the test expects something of the program.
+# Succeed if the compile succeeded and the test expects no compile error.
 # Fail on a compile failure the test does not expect.
-wants_run()
+compiled()
 {
     [ -s "${TMP}/expected_compiler_error" ] && return 1
-    [ -s "${TMP}/expected_compiler_status" ] || grep -qx 0 "${TMP}/compiler_status" || fail '%s' "$(cat "${TMP}/compiler_error")"
-    grep -qx 0 "${TMP}/compiler_status" || return 1
+    [ -s "${TMP}/expected_compiler_status" ] || grep -qx 0 "${RUN}/compiler_status" || fail '%s' "$(cat "${RUN}/compiler_error")"
+    grep -qx 0 "${RUN}/compiler_status"
+}
+
+# Run one build step after the compiler, under the timeout. The first argument
+# names the tool. Fail if the step fails.
+build_step()
+{
+    TOOL="$1"
+    shift
+    timeout "$TIMEOUT" "$@" >"${RUN}/build_error" 2>&1
+    GOT=$?
+
+    [ "$GOT" -ne 124 ] || fail '%s timed out after %ss' "$TOOL" "$TIMEOUT"
+    [ "$GOT" -eq 0 ] || fail '%s returned %s:\n%s' "$TOOL" "$GOT" "$(cat "${RUN}/build_error")"
+}
+
+# Succeed if the test expects something of the program.
+wants_run()
+{
     [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ]
 }
 
-# Build with ivancc straight to a Linux executable, and run it natively.
-pipeline_ivancc_linux()
+# Run a command that runs the program, under the timeout, and record its results.
+run()
 {
-    cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
-    timeout "$TIMEOUT" "${BIN}/ivancc" -o "${TMP}/a.out" $(cat "${TMP}/compiler_flags") "$(basename -- "$SOURCE")" >"${TMP}/compiler_output" 2>"${TMP}/compiler_error"
-    echo $? > "${TMP}/compiler_status"
-    check_compiler
-
-    wants_run || return 0
-    timeout "$TIMEOUT" "${TMP}/a.out" >"${TMP}/output" 2>&1
-    echo $? > "${TMP}/status"
+    timeout "$TIMEOUT" "$@" >"${RUN}/output" 2>&1
+    echo $? > "${RUN}/status"
 }
 
-# Read the expectations, then build and run the test through its pipeline,
-# recording results and expectations as files.
+# Build with ivancc straight to a Linux executable, and run it natively.
+pipeline_ivancc()
+{
+    compile -o "${RUN}/a.out"
+    compiled || return 0
+    wants_run || return 0
+    run "${RUN}/a.out"
+}
+
+# Build assembly text with ivancc -S, assemble it with ivanas, link it against
+# the runtime with gcc, and run it natively.
+pipeline_ivanas()
+{
+    compile -S -o "${RUN}/a.s"
+    compiled || return 0
+    build_step ivanas "${BIN}/ivanas" -o "${RUN}/a.o" "${RUN}/a.s"
+    build_step gcc gcc -nostdlib -static -no-pie -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.o"
+    wants_run || return 0
+    run "${RUN}/a.out"
+}
+
+# Build an object with ivancc -c, link it against the runtime with ivanld, and
+# run it natively.
+pipeline_ivanld()
+{
+    compile -c -o "${RUN}/a.o"
+    compiled || return 0
+    build_step ivanld "${BIN}/ivanld" -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.o"
+    wants_run || return 0
+    run "${RUN}/a.out"
+}
+
+# Build for ivanemu with ivancc, and run it under ivanemu.
+pipeline_ivanemu()
+{
+    compile -mtarget=ivanemu -o "${RUN}/a.out"
+    compiled || return 0
+    wants_run || return 0
+    run "${BIN}/ivanemu" "${RUN}/a.out"
+}
+
+# Read the test's expectations into files, and enter its directory.
 setup()
 {
     [ -n "$SOURCE" ] || error "no test file given"
     [ -f "$SOURCE" ] || error "no such file: $SOURCE"
-    [ -x "${BIN}/ivancc" ] || error "compiler not executable: ${BIN}/ivancc"
+    for TOOL in ivancc ivanas ivanld ivanemu; do
+        [ -x "${BIN}/${TOOL}" ] || error "not executable: ${BIN}/${TOOL}"
+    done
 
     TMP=$(mktemp -d) || error "cannot create a temporary directory"
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
-    get_value "${SOURCE}" '(Test) Pipeline' > "${TMP}/pipeline"
     get_value "${SOURCE}" '(Test) Compiler flags' > "${TMP}/compiler_flags"
     get_value "${SOURCE}" '(Test) Compiler status' > "${TMP}/expected_compiler_status"
     get_text "${SOURCE}" '(Test) Compiler output' > "${TMP}/expected_compiler_output"
@@ -103,51 +163,52 @@ setup()
     get_value "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
     get_text "${SOURCE}" '(Test) Output' > "${TMP}/expected_output"
 
-    PIPELINE="$(cat "${TMP}/pipeline")"
-    PIPELINE="${PIPELINE:-$DEFAULT_PIPELINE}"
-    case "$PIPELINE" in
-        *[!a-z0-9_]*) error "bad pipeline name: $PIPELINE" ;;
-    esac
-    command -v "pipeline_${PIPELINE}" >/dev/null || error "no such pipeline: $PIPELINE"
+    NAME="$(basename -- "$SOURCE")"
+    cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
+}
 
-    : > "${TMP}/output"
-    : > "${TMP}/status"
-    "pipeline_${PIPELINE}"
+# Fail a test that declares no expectation.
+test_declared()
+{
+    [ -s "${TMP}/expected_compiler_error" ] && return
+    [ -s "${TMP}/expected_compiler_status" ] && return
+    [ -s "${TMP}/expected_compiler_output" ] && return
+    [ -s "${TMP}/expected_status" ] && return
+    [ -s "${TMP}/expected_output" ] && return
+    fail 'No expectation declared'
 }
 
 # Check the compile failure against `// (Test) Compiler error:`.
 test_compiler_error()
 {
     EXP="$(cat "${TMP}/expected_compiler_error")"
-    GOT="$(cat "${TMP}/compiler_error")"
+    GOT="$(cat "${RUN}/compiler_error")"
 
     [ -n "$EXP" ] || return 0
 
-    grep -qx 0 "${TMP}/compiler_status" && fail 'Compiled but expected %s' "$EXP"
-    grep -qF "$EXP" "${TMP}/compiler_error" || fail 'Failed with:\n%s\nbut expected %s' "$GOT" "$EXP"
-
-    pass
+    grep -qx 0 "${RUN}/compiler_status" && fail 'Compiled but expected %s' "$EXP"
+    grep -qF "$EXP" "${RUN}/compiler_error" || fail 'Failed with:\n%s\nbut expected %s' "$GOT" "$EXP"
 }
 
 # Check the compiler's exit status against `// (Test) Compiler status:`.
 test_compiler_status()
 {
     EXP="$(cat "${TMP}/expected_compiler_status")"
-    GOT="$(cat "${TMP}/compiler_status")"
+    GOT="$(cat "${RUN}/compiler_status")"
 
     [ -n "$EXP" ] || return 0
 
     echo "$EXP" | grep -qv '^[0-9][0-9]*$' && fail "Compiler status expects a number between 0 and 255, got '%s'" "$EXP"
     [ "$EXP" -le 255 ] || fail "Compiler status expects a number between 0 and 255, got '%s'" "$EXP"
 
-    [ "$GOT" -eq "$EXP" ] || fail 'Compiler returned %s but expected %s:\n%s' "$GOT" "$EXP" "$(cat "${TMP}/compiler_error")"
+    [ "$GOT" -eq "$EXP" ] || fail 'Compiler returned %s but expected %s:\n%s' "$GOT" "$EXP" "$(cat "${RUN}/compiler_error")"
 }
 
 # Check the compiler's output against `// (Test) Compiler output:`.
 test_compiler_output()
 {
     EXP="$(cat "${TMP}/expected_compiler_output")"
-    GOT="$(cat "${TMP}/compiler_output")"
+    GOT="$(cat "${RUN}/compiler_output")"
 
     [ -n "$EXP" ] || return 0
 
@@ -158,7 +219,7 @@ test_compiler_output()
 test_status()
 {
     EXP="$(cat "${TMP}/expected_status")"
-    GOT="$(cat "${TMP}/status")"
+    GOT="$(cat "${RUN}/status")"
 
     [ -n "$EXP" ] || return 0
 
@@ -176,29 +237,36 @@ test_status()
 test_output()
 {
     EXP="$(cat "${TMP}/expected_output")"
-    GOT="$(cat "${TMP}/output")"
+    GOT="$(cat "${RUN}/output")"
 
     [ -n "$EXP" ] || return 0
-    [ "$(cat "${TMP}/status")" -ne 124 ] || fail 'Timed out after %ss' "$TIMEOUT"
+    [ "$(cat "${RUN}/status")" -ne 124 ] || fail 'Timed out after %ss' "$TIMEOUT"
 
     [ "$GOT" = "$EXP" ] || fail 'Printed:\n%s\nbut expected:\n%s' "$GOT" "$EXP"
 }
 
-# Fail a test that declares no expectation.
-test_declared()
+# Check one pipeline's results against the expectations.
+test_pipeline()
 {
-    [ -s "${TMP}/expected_compiler_status" ] && return
-    [ -s "${TMP}/expected_compiler_output" ] && return
-    [ -s "${TMP}/expected_status" ] && return
-    [ -s "${TMP}/expected_output" ] && return
-    fail 'No expectation declared'
+    if [ -s "${TMP}/expected_compiler_error" ]; then
+        test_compiler_error
+        return
+    fi
+    test_compiler_status
+    test_compiler_output
+    test_status
+    test_output
 }
 
 setup
-test_compiler_error
-test_compiler_status
-test_compiler_output
-test_status
-test_output
 test_declared
+for PIPELINE in $PIPELINES; do
+    RUN="${TMP}/${PIPELINE}"
+    mkdir "$RUN" || error "cannot create $RUN"
+    : > "${RUN}/output"
+    : > "${RUN}/status"
+    "pipeline_${PIPELINE}"
+    test_pipeline
+done
+PIPELINE=
 pass

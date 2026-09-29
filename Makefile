@@ -63,7 +63,7 @@ AS_BIN := $(BUILD)/bin/$(TARGET)as
 LD_BIN := $(BUILD)/bin/$(TARGET)ld
 EMU_BIN := $(BUILD)/bin/$(TARGET)emu
 
-TEST_DEPS := $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
+TEST_DEPS := $(TEST_TOOL) $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME)
 
 # --- phony recipes ---
 all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
