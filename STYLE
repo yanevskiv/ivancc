@@ -181,7 +181,7 @@ C Style
         - Write an empty `switch` case body with `// empty` inside its braces.
         - Do not comment a line inside a function body, however surprising that line is.
         - Do not comment a declaration, a branch, a loop or a return inside a function body.
-        - Do not put the reason for a line in the body; it belongs in the commit message or ROADMAP.md.
+        - Do not put the reason for a line in the body; it belongs in the commit message.
 
         Section dividers:
 
