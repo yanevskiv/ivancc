@@ -258,15 +258,22 @@ test_pipeline()
     test_output
 }
 
+# Build, run and check the test through each pipeline in turn, each recording
+# into a directory of its own.
+run_pipelines()
+{
+    for PIPELINE in $PIPELINES; do
+        RUN="${TMP}/${PIPELINE}"
+        mkdir "$RUN" || error "cannot create $RUN"
+        : > "${RUN}/output"
+        : > "${RUN}/status"
+        "pipeline_${PIPELINE}"
+        test_pipeline
+    done
+    PIPELINE=
+}
+
 setup
 test_declared
-for PIPELINE in $PIPELINES; do
-    RUN="${TMP}/${PIPELINE}"
-    mkdir "$RUN" || error "cannot create $RUN"
-    : > "${RUN}/output"
-    : > "${RUN}/status"
-    "pipeline_${PIPELINE}"
-    test_pipeline
-done
-PIPELINE=
+run_pipelines
 pass
