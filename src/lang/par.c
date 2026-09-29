@@ -294,6 +294,29 @@ Par_Num Par_NumLiteral(const char *text)
     };
 }
 
+// Give a floating literal the value and type its spelling asks for.
+Par_FNum Par_FloatLiteral(const char *text)
+{
+    char last = text[strlen(text) - 1];
+
+    if (last == 'f' || last == 'F') {
+        return (Par_FNum) {
+            .pf_val  = strtof(text, NULL),
+            .pf_type = &Ast_TypeFloat
+        };
+    }
+    if (last == 'l' || last == 'L') {
+        return (Par_FNum) {
+            .pf_val  = strtold(text, NULL),
+            .pf_type = &Ast_TypeLDouble
+        };
+    }
+    return (Par_FNum) {
+        .pf_val  = strtod(text, NULL),
+        .pf_type = &Ast_TypeDouble
+    };
+}
+
 // Decode a character literal body into its value and type.
 Par_Num Par_CharLiteral(const char *body, size_t len, size_t width, Ast_Line line)
 {
@@ -601,6 +624,18 @@ Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line)
         case PAR_SPEC_LONG | PAR_SPEC_LLONG:
         case PAR_SPEC_LONG | PAR_SPEC_LLONG | PAR_SPEC_INT: {
             return Ast_IntegerType(AST_TYPE_KIND_LLONG, sign);
+        } break;
+        case PAR_SPEC_FLOAT: {
+            Err_AssertAt(line, ! explicit, ERR_PAR_FLOAT_SIGNED);
+            return &Ast_TypeFloat;
+        } break;
+        case PAR_SPEC_DOUBLE: {
+            Err_AssertAt(line, ! explicit, ERR_PAR_FLOAT_SIGNED);
+            return &Ast_TypeDouble;
+        } break;
+        case PAR_SPEC_LONG | PAR_SPEC_DOUBLE: {
+            Err_AssertAt(line, ! explicit, ERR_PAR_FLOAT_SIGNED);
+            return &Ast_TypeLDouble;
         } break;
         default: {
             Err_RaiseAt(line, ERR_PAR_SPEC_INVALID);
