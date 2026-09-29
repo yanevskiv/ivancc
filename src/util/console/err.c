@@ -114,6 +114,7 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PAR_OBJECT_INCOMPLETE]         = { "ERR_PAR_OBJECT_INCOMPLETE",         "'%s' has an incomplete type" },
     [ERR_PAR_OBJECT_REDEFINED]          = { "ERR_PAR_OBJECT_REDEFINED",          "redefinition of '%s'" },
     [ERR_PAR_OBJECT_LINKAGE]            = { "ERR_PAR_OBJECT_LINKAGE",            "'%s' is declared both static and not" },
+    [ERR_PAR_EXTERN_INITIALIZED]        = { "ERR_PAR_EXTERN_INITIALIZED",        "'%s' is extern inside a block and takes no initializer" },
     [ERR_PAR_SIZEOF_INCOMPLETE]         = { "ERR_PAR_SIZEOF_INCOMPLETE",         "invalid application of 'sizeof' to an incomplete type" },
     [ERR_PAR_TYPEDEF_INITIALIZED]       = { "ERR_PAR_TYPEDEF_INITIALIZED",       "a typedef takes no initializer" },
     [ERR_PAR_UNDECLARED]                = { "ERR_PAR_UNDECLARED",                "use of undeclared identifier '%s'" },

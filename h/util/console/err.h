@@ -142,6 +142,7 @@ enum Err_Code {
     ERR_PAR_OBJECT_INCOMPLETE,         // name
     ERR_PAR_OBJECT_REDEFINED,          // name
     ERR_PAR_OBJECT_LINKAGE,            // name
+    ERR_PAR_EXTERN_INITIALIZED,        // name
     ERR_PAR_SIZEOF_INCOMPLETE,
     ERR_PAR_TYPEDEF_INITIALIZED,
     ERR_PAR_UNDECLARED,                // identifier
