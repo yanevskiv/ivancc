@@ -158,9 +158,15 @@ Cut the comment at the first comma or semicolon:
 
 Where a comment goes:
 
-- Every file must open with a one-line banner naming what it is, then a blank line.
-  - Write a header's banner as `// C header file for string utilities.`
-  - Write a source file's banner as `// C source file for string utilities.`
+- Every file under `src/` and `include/` must open with a license comment, then a blank line.
+  - Write it as a `/* */` block with a ` * ` margin on every line.
+  - Write its first line as a banner naming what the file is, then an empty ` *` line.
+  - Write a header's banner as `C header file for string utilities.`
+  - Write a source file's banner as `C source file for string utilities.`
+  - Follow the banner with `Copyright (C) 2026 Ivan Janevski` and the GPLv3-or-later notice.
+  - Separate the copyright line and each paragraph of the notice with an empty ` *` line.
+  - Wrap every line at 72 columns, counting the margin.
+  - Copy the notice from `src/cc.c`, never reword it.
 - Every function must have exactly one comment directly above it.
 - Every macro, typedef, struct and enum must have one comment above it.
 - Every grammar rule must have one comment directly above it, as a function does.
@@ -185,7 +191,7 @@ Section dividers:
 
 What never gets a comment:
 
-- Do not write a comment across two lines, in any form a file allows.
+- Do not write a comment across two lines, in any form a file allows, except the license comment.
 - Do not leave commented-out code.
 - Do not leave TODOs-as-narration.
 - Do not leave changelog-style notes such as "added X for the Y fix".
