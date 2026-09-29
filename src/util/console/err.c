@@ -145,7 +145,6 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_SEM_DEREF_INCOMPLETE]          = { "ERR_SEM_DEREF_INCOMPLETE",          "cannot dereference a pointer to an incomplete type" },
     [ERR_SEM_SIZEOF_INCOMPLETE]         = { "ERR_SEM_SIZEOF_INCOMPLETE",         "invalid application of 'sizeof' to an incomplete type" },
     [ERR_SEM_ARRAY_LEN_NOT_INTEGER]     = { "ERR_SEM_ARRAY_LEN_NOT_INTEGER",     "an array length is not an integer" },
-    [ERR_SEM_VLA_SIZE_UNSUPPORTED]      = { "ERR_SEM_VLA_SIZE_UNSUPPORTED",      "the run-time size of a variable-length array is not supported" },
     [ERR_SEM_MEMBER_NOT_AGGREGATE]      = { "ERR_SEM_MEMBER_NOT_AGGREGATE",      "request for member '%s' in something that is not a struct or union" },
     [ERR_SEM_MEMBER_INCOMPLETE]         = { "ERR_SEM_MEMBER_INCOMPLETE",         "'%s' is an incomplete type" },
     [ERR_SEM_MEMBER_UNKNOWN]            = { "ERR_SEM_MEMBER_UNKNOWN",            "no member named '%s' in '%s'" },

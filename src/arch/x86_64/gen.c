@@ -1243,8 +1243,6 @@ void Gen_x86_64_EmitVla(const Ast_Node *node)
 
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RSP, ASM_X86_64_REG_RBP, slot + GEN_X86_64_VLA_SAVED_SP, ASM_X86_64_WIDTH_64);
     Gen_x86_64_EmitExpr(node->an_lhs);
-    Asm_x86_64_EmitMovImm(node->an_var->av_type->at_base->at_size, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitImul(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitAddImm(GEN_X86_64_SYSV_STACK_ALIGN - 1, ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitMovImm(-GEN_X86_64_SYSV_STACK_ALIGN, ASM_X86_64_REG_RCX);
     Asm_x86_64_EmitAnd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);

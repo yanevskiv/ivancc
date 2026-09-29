@@ -173,7 +173,6 @@ enum Err_Code {
     ERR_SEM_DEREF_INCOMPLETE,
     ERR_SEM_SIZEOF_INCOMPLETE,
     ERR_SEM_ARRAY_LEN_NOT_INTEGER,
-    ERR_SEM_VLA_SIZE_UNSUPPORTED,
     ERR_SEM_MEMBER_NOT_AGGREGATE,      // member
     ERR_SEM_MEMBER_INCOMPLETE,         // type name
     ERR_SEM_MEMBER_UNKNOWN,            // member, type name

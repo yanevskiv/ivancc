@@ -85,8 +85,8 @@ void      Sem_LowerOpAssign(Ast_Node *node);
 void      Sem_LowerPostInc(Ast_Node *node);
 
 // Annotation
-int32_t   Sem_Stride(const Ast_Type *type, Ast_Line line);
-Ast_Node *Sem_ScaleBy(Ast_Node *node, int32_t size);
+Ast_Node *Sem_Stride(const Ast_Type *type, Ast_Line line);
+Ast_Node *Sem_ScaleBy(Ast_Node *node, Ast_Node *size);
 void      Sem_Arith(Ast_Node *node);
 void      Sem_NeedInteger(const Ast_Node *node);
 void      Sem_CheckCast(Ast_Node *node);

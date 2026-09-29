@@ -370,6 +370,9 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
             if (! node->an_lhs->an_type) {
                 return false;  // the Sem_ pass has not typed the operand yet
             }
+            if (Ast_IsVla(node->an_lhs->an_type)) {
+                return false;
+            }
             *value = node->an_lhs->an_type->at_size;
         } break;
         case AST_NODE_KIND_CAST: {
@@ -763,21 +766,22 @@ void Sem_LowerPostInc(Ast_Node *node)
     Sem_Replace(node, Sem_NewBinary(AST_NODE_KIND_COMMA, first, second, line));
 }
 
-// Return the bytes one step of a pointer or array moves.
-int32_t Sem_Stride(const Ast_Type *type, Ast_Line line)
+// Build the bytes one step of a pointer or array moves.
+Ast_Node *Sem_Stride(const Ast_Type *type, Ast_Line line)
 {
-    Err_AssertAt(line, ! Ast_IsVla(type->at_base), ERR_SEM_VLA_SIZE_UNSUPPORTED);
-    return type->at_base->at_size;
+    if (Ast_IsVla(type->at_base)) {
+        return Sem_Convert(Sem_TempRef(type->at_base->at_vsize, line), &Ast_TypeLong);
+    }
+    Ast_Node *num = Ast_NewNum(type->at_base->at_size, line);
+    num->an_type = &Ast_TypeInt;
+    return num;
 }
 
 // Wrap node in a multiplication by size.
-Ast_Node *Sem_ScaleBy(Ast_Node *node, int32_t size)
+Ast_Node *Sem_ScaleBy(Ast_Node *node, Ast_Node *size)
 {
-    Ast_Node *num = Ast_NewNum(size, node->an_line);
-    num->an_type = &Ast_TypeInt;
-
-    Ast_Node *mul = Ast_NewBinary(AST_NODE_KIND_MUL, node, num, node->an_line);
-    mul->an_type = &Ast_TypeInt;
+    Ast_Node *mul = Ast_NewBinary(AST_NODE_KIND_MUL, node, size, node->an_line);
+    mul->an_type = size->an_type;
     return mul;
 }
 
@@ -801,8 +805,7 @@ void Sem_Arith(Ast_Node *node)
 
         node->an_kind = AST_NODE_KIND_DIV;
         node->an_lhs  = diff;
-        node->an_rhs  = Ast_NewNum(Sem_Stride(lhs, node->an_line), node->an_line);
-        node->an_rhs->an_type = &Ast_TypeInt;
+        node->an_rhs  = Sem_Stride(lhs, node->an_line);
         node->an_type = &Ast_TypeInt;
         return;
     }
@@ -1012,8 +1015,12 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_SIZEOF: {
-            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_complete, ERR_SEM_SIZEOF_INCOMPLETE);
-            Err_AssertAt(node->an_line, ! Ast_IsVla(node->an_lhs->an_type), ERR_SEM_VLA_SIZE_UNSUPPORTED);
+            Ast_Type *type = node->an_lhs->an_type;
+            Err_AssertAt(node->an_line, type->at_complete, ERR_SEM_SIZEOF_INCOMPLETE);
+            if (Ast_IsVla(type)) {
+                Sem_Replace(node, Sem_NewBinary(AST_NODE_KIND_COMMA, node->an_lhs, Sem_TempRef(type->at_vsize, node->an_line), node->an_line));
+                break;
+            }
             node->an_kind = AST_NODE_KIND_NUM;
             node->an_val  = node->an_lhs->an_type->at_size;
             node->an_lhs  = NULL;
@@ -1047,14 +1054,14 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_POSTINC: {
+            Ast_Type *type = node->an_lhs->an_type;
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
-            if (Sem_NeedsFloatAssign(node)) {
+            if (Sem_NeedsFloatAssign(node) || (Sem_IsPointer(type) && Ast_IsVla(type->at_base))) {
                 Sem_LowerPostInc(node);
                 break;
             }
-            Ast_Type *type = node->an_lhs->an_type;
             if (Sem_IsPointer(type)) {
-                node->an_val *= Sem_Stride(type, node->an_line);
+                node->an_val *= type->at_base->at_size;
             }
             node->an_type = type;
         } break;
@@ -1112,9 +1119,10 @@ void Sem_Annotate(Ast_Node *node)
             node->an_cond = Sem_Truth(node->an_cond);
         } break;
 
-        case AST_NODE_KIND_VLA: {
+        case AST_NODE_KIND_VSIZE: {
             Err_AssertAt(node->an_line, Ast_IsInteger(node->an_lhs->an_type), ERR_SEM_ARRAY_LEN_NOT_INTEGER);
-            node->an_lhs = Sem_Convert(node->an_lhs, &Ast_TypeULong);
+            Ast_Node *bytes = Sem_NewBinary(AST_NODE_KIND_MUL, Sem_Convert(node->an_lhs, &Ast_TypeULong), node->an_rhs, node->an_line);
+            Sem_Replace(node, Sem_NewBinary(AST_NODE_KIND_ASSIGN, Sem_TempRef(node->an_var, node->an_line), bytes, node->an_line));
         } break;
 
         case AST_NODE_KIND_GOTO:
@@ -1124,6 +1132,7 @@ void Sem_Annotate(Ast_Node *node)
         case AST_NODE_KIND_CONTINUE:
         case AST_NODE_KIND_BLOCK:
         case AST_NODE_KIND_DECL:
+        case AST_NODE_KIND_VLA:
         case AST_NODE_KIND_EXPR_STMT:
         case AST_NODE_KIND_INIT:
         case AST_NODE_KIND_INITLIST:

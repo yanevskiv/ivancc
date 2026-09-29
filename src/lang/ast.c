@@ -293,6 +293,18 @@ bool Ast_IsVla(const Ast_Type *type)
     return type->at_kind == AST_TYPE_KIND_ARRAY && type->at_vlen != NULL;
 }
 
+// Return whether this type has a variable-length array anywhere in it.
+bool Ast_IsVariablyModified(const Ast_Type *type)
+{
+    if (Ast_IsVla(type)) {
+        return true;
+    }
+    if (type->at_kind != AST_TYPE_KIND_PTR && type->at_kind != AST_TYPE_KIND_ARRAY) {
+        return false;
+    }
+    return Ast_IsVariablyModified(type->at_base);
+}
+
 // Build a function type.
 Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto)
 {
