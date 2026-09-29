@@ -23,11 +23,26 @@
 // Number of integer arguments the ABI passes in registers.
 #define GEN_X86_64_SYSV_MAX_REG_ARGS 6
 
+// Number of floating arguments the ABI passes in registers.
+#define GEN_X86_64_SYSV_MAX_SSE_ARGS 8
+
+// Number of general-purpose registers a value can come back in.
+#define GEN_X86_64_SYSV_MAX_RET_REGS 2
+
 // Required %rsp alignment.
 #define GEN_X86_64_SYSV_STACK_ALIGN 16
 
+// Bytes %rbp sits below a function's stack arguments.
+#define GEN_X86_64_SYSV_ARGS_OFFSET (2 * GEN_X86_64_SYSV_EIGHTBYTE)
+
+// Bytes one SSE register takes in the variadic save area.
+#define GEN_X86_64_SYSV_SSE_SAVE_SLOT 16
+
+// Bytes the general-purpose registers take in the variadic save area.
+#define GEN_X86_64_SYSV_GPR_SAVE_SIZE (GEN_X86_64_SYSV_MAX_REG_ARGS * GEN_X86_64_SYSV_EIGHTBYTE)
+
 // Bytes a variadic function reserves to spill the argument registers into.
-#define GEN_X86_64_SYSV_VA_SAVE_SIZE (GEN_X86_64_SYSV_MAX_REG_ARGS * GEN_X86_64_SYSV_EIGHTBYTE)
+#define GEN_X86_64_SYSV_VA_SAVE_SIZE (GEN_X86_64_SYSV_GPR_SAVE_SIZE + GEN_X86_64_SYSV_MAX_SSE_ARGS * GEN_X86_64_SYSV_SSE_SAVE_SLOT)
 
 // Size in bytes of a stack slot and a general-purpose register.
 #define GEN_X86_64_WORD_SIZE 8
@@ -71,41 +86,210 @@ static const Asm_x86_64_Reg Gen_x86_64_SysV_ArgReg[GEN_X86_64_SYSV_MAX_REG_ARGS]
     ASM_X86_64_REG_R9
 };
 
-// Give a type the class the SysV ABI passes it by.
-Gen_x86_64_SysV_Class Gen_x86_64_SysV_Classify(const Ast_Type *type)
+// Registers used to return integer eightbytes.
+static const Asm_x86_64_Reg Gen_x86_64_SysV_RetReg[GEN_X86_64_SYSV_MAX_RET_REGS] = {
+    ASM_X86_64_REG_RAX,
+    ASM_X86_64_REG_RDX
+};
+
+// Merge the class a member gives an eightbyte into the class it already has.
+Gen_x86_64_SysV_Class Gen_x86_64_SysV_Merge(Gen_x86_64_SysV_Class a, Gen_x86_64_SysV_Class b)
 {
-    if (! Sem_IsAggregate(type)) {
-        return GEN_X86_64_SYSV_CLASS_INTEGER;
+    if (a == b || b == GEN_X86_64_SYSV_CLASS_NONE) {
+        return a;
     }
-    if (type->at_size > GEN_X86_64_SYSV_MAX_REG_SIZE) {
+    if (a == GEN_X86_64_SYSV_CLASS_NONE) {
+        return b;
+    }
+    if (a == GEN_X86_64_SYSV_CLASS_MEMORY || b == GEN_X86_64_SYSV_CLASS_MEMORY) {
         return GEN_X86_64_SYSV_CLASS_MEMORY;
     }
-    return GEN_X86_64_SYSV_CLASS_INTEGER;
+    if (a == GEN_X86_64_SYSV_CLASS_INTEGER || b == GEN_X86_64_SYSV_CLASS_INTEGER) {
+        return GEN_X86_64_SYSV_CLASS_INTEGER;
+    }
+    return GEN_X86_64_SYSV_CLASS_MEMORY;
+}
+
+// Merge the classes the scalars of a type at offset give the eightbytes.
+void Gen_x86_64_SysV_ClassifyAt(const Ast_Type *type, int32_t offset, Gen_x86_64_SysV_Class *classes)
+{
+    int32_t index = offset / GEN_X86_64_SYSV_EIGHTBYTE;
+
+    switch (type->at_kind) {
+        case AST_TYPE_KIND_ARRAY: {
+            for (int32_t i = 0; i < type->at_len; i++) {
+                Gen_x86_64_SysV_ClassifyAt(type->at_base, offset + i * type->at_base->at_size, classes);
+            }
+        } break;
+        case AST_TYPE_KIND_STRUCT:
+        case AST_TYPE_KIND_UNION: {
+            for (const Ast_Member *member = type->at_members; member; member = member->am_next) {
+                if (! member->am_flexible) {
+                    Gen_x86_64_SysV_ClassifyAt(member->am_type, offset + member->am_offset, classes);
+                }
+            }
+        } break;
+        case AST_TYPE_KIND_FLOAT:
+        case AST_TYPE_KIND_DOUBLE: {
+            classes[index] = Gen_x86_64_SysV_Merge(classes[index], GEN_X86_64_SYSV_CLASS_SSE);
+        } break;
+        case AST_TYPE_KIND_LDOUBLE: {
+            classes[index] = Gen_x86_64_SysV_Merge(classes[index], GEN_X86_64_SYSV_CLASS_X87);
+            classes[index + 1] = Gen_x86_64_SysV_Merge(classes[index + 1], GEN_X86_64_SYSV_CLASS_X87UP);
+        } break;
+        default: {
+            classes[index] = Gen_x86_64_SysV_Merge(classes[index], GEN_X86_64_SYSV_CLASS_INTEGER);
+        }
+    }
+}
+
+// Give each eightbyte of a type the class the SysV ABI passes it by.
+void Gen_x86_64_SysV_Classify(const Ast_Type *type, Gen_x86_64_SysV_Class *classes)
+{
+    bool memory = type->at_size > GEN_X86_64_SYSV_MAX_REG_SIZE;
+
+    for (int32_t k = 0; k < GEN_X86_64_SYSV_MAX_EIGHTBYTES; k++) {
+        classes[k] = GEN_X86_64_SYSV_CLASS_NONE;
+    }
+    if (! Gen_x86_64_ByAddress(type)) {
+        classes[0] = Gen_x86_64_IsSse(type) ? GEN_X86_64_SYSV_CLASS_SSE : GEN_X86_64_SYSV_CLASS_INTEGER;
+        return;
+    }
+    if (! memory) {
+        Gen_x86_64_SysV_ClassifyAt(type, 0, classes);
+    }
+    for (int32_t k = 0; k < GEN_X86_64_SYSV_MAX_EIGHTBYTES; k++) {
+        if (classes[k] == GEN_X86_64_SYSV_CLASS_MEMORY) {
+            memory = true;
+        }
+        if (classes[k] == GEN_X86_64_SYSV_CLASS_X87UP && (k == 0 || classes[k - 1] != GEN_X86_64_SYSV_CLASS_X87)) {
+            memory = true;
+        }
+    }
+    if (! memory) {
+        return;
+    }
+    for (int32_t k = 0; k < GEN_X86_64_SYSV_MAX_EIGHTBYTES; k++) {
+        classes[k] = GEN_X86_64_SYSV_CLASS_MEMORY;
+    }
 }
 
 // Return the number of registers or stack slots a type occupies when passed.
 int32_t Gen_x86_64_SysV_Eightbytes(const Ast_Type *type)
 {
-    int32_t size = Sem_IsAggregate(type) ? type->at_size : GEN_X86_64_SYSV_EIGHTBYTE;
+    int32_t size = Gen_x86_64_ByAddress(type) ? type->at_size : GEN_X86_64_SYSV_EIGHTBYTE;
     return (size + GEN_X86_64_SYSV_EIGHTBYTE - 1) / GEN_X86_64_SYSV_EIGHTBYTE;
 }
 
 // True when an argument of this type is passed on the stack.
 bool Gen_x86_64_SysV_InMemory(const Ast_Type *type)
 {
-    return Gen_x86_64_SysV_Classify(type) == GEN_X86_64_SYSV_CLASS_MEMORY;
+    Gen_x86_64_SysV_Class classes[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+
+    Gen_x86_64_SysV_Classify(type, classes);
+    return classes[0] == GEN_X86_64_SYSV_CLASS_MEMORY || classes[0] == GEN_X86_64_SYSV_CLASS_X87;
 }
 
 // True when this type is returned through a hidden pointer.
 bool Gen_x86_64_SysV_ReturnsInMemory(const Ast_Type *type)
 {
-    return type && Sem_IsAggregate(type) && type->at_size > GEN_X86_64_SYSV_MAX_REG_SIZE;
+    Gen_x86_64_SysV_Class classes[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+
+    if (! type || ! Gen_x86_64_ByAddress(type)) {
+        return false;
+    }
+    Gen_x86_64_SysV_Classify(type, classes);
+    return classes[0] == GEN_X86_64_SYSV_CLASS_MEMORY;
+}
+
+// True when this type is returned in %st.
+bool Gen_x86_64_SysV_ReturnsInX87(const Ast_Type *type)
+{
+    Gen_x86_64_SysV_Class classes[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+
+    if (! Gen_x86_64_ByAddress(type)) {
+        return false;
+    }
+    Gen_x86_64_SysV_Classify(type, classes);
+    return classes[0] == GEN_X86_64_SYSV_CLASS_X87;
+}
+
+// Start placing the arguments of a function returning ret.
+void Gen_x86_64_SysV_StartCursor(Gen_x86_64_SysV_Cursor *cur, const Ast_Type *ret)
+{
+    cur->gc_gpr   = Gen_x86_64_SysV_ReturnsInMemory(ret) ? 1 : 0;
+    cur->gc_sse   = 0;
+    cur->gc_stack = 0;
+}
+
+// Place the next argument in registers if they all fit, or on the stack.
+void Gen_x86_64_SysV_Place(const Ast_Type *type, Gen_x86_64_SysV_Cursor *cur, Gen_x86_64_SysV_Loc *loc)
+{
+    int32_t gpr = 0;
+    int32_t sse = 0;
+
+    Gen_x86_64_SysV_Classify(type, loc->gl_class);
+    loc->gl_count = Gen_x86_64_SysV_Eightbytes(type);
+    for (int32_t k = 0; k < loc->gl_count && k < GEN_X86_64_SYSV_MAX_EIGHTBYTES; k++) {
+        if (loc->gl_class[k] == GEN_X86_64_SYSV_CLASS_INTEGER) {
+            gpr++;
+        } else if (loc->gl_class[k] == GEN_X86_64_SYSV_CLASS_SSE) {
+            sse++;
+        }
+    }
+
+    if (Gen_x86_64_SysV_InMemory(type) || cur->gc_gpr + gpr > GEN_X86_64_SYSV_MAX_REG_ARGS || cur->gc_sse + sse > GEN_X86_64_SYSV_MAX_SSE_ARGS) {
+        cur->gc_stack = Gen_x86_64_AlignTo(cur->gc_stack, type->at_align > GEN_X86_64_SYSV_EIGHTBYTE ? GEN_X86_64_SYSV_STACK_ALIGN : GEN_X86_64_SYSV_EIGHTBYTE);
+        loc->gl_gpr   = -1;
+        loc->gl_sse   = -1;
+        loc->gl_stack = cur->gc_stack;
+        cur->gc_stack += loc->gl_count * GEN_X86_64_SYSV_EIGHTBYTE;
+        return;
+    }
+    loc->gl_gpr   = cur->gc_gpr;
+    loc->gl_sse   = cur->gc_sse;
+    loc->gl_stack = -1;
+    cur->gc_gpr  += gpr;
+    cur->gc_sse  += sse;
+}
+
+// Place every argument of a call.
+Gen_x86_64_SysV_Loc *Gen_x86_64_SysV_PlaceArgs(Ast_Node *args, Gen_x86_64_SysV_Cursor *cur)
+{
+    int32_t count = 0;
+    int32_t i = 0;
+
+    for (Ast_Node *arg = args; arg; arg = arg->an_next) {
+        count++;
+    }
+    Gen_x86_64_SysV_Loc *locs = calloc(count ? count : 1, sizeof(*locs));
+    for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
+        Gen_x86_64_SysV_Place(arg->an_type, cur, &locs[i]);
+    }
+    return locs;
+}
+
+// Return the type an argument arrives as for a parameter.
+const Ast_Type *Gen_x86_64_SysV_PassedType(const Ast_Func *func, const Ast_Var *param)
+{
+    if (func->af_proto != AST_TYPE_PROTO && param->av_type->at_kind == AST_TYPE_KIND_FLOAT) {
+        return &Ast_TypeDouble;
+    }
+    return param->av_type;
 }
 
 // Turn the value of a return expression into what the ABI returns.
 void Gen_x86_64_SysV_EmitReturnValue(Ast_Node *node)
 {
-    if (! Sem_IsAggregate(node->an_type)) {
+    Gen_x86_64_SysV_Class classes[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+    int32_t gpr = 0;
+    int32_t sse = 0;
+
+    if (Gen_x86_64_IsSse(node->an_type)) {
+        Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_RAX, ASM_X86_64_XMM0);
+        return;
+    }
+    if (! Gen_x86_64_ByAddress(node->an_type)) {
         return;
     }
     if (Gen_x86_64_SysV_ReturnsInMemory(node->an_type)) {
@@ -113,75 +297,68 @@ void Gen_x86_64_SysV_EmitReturnValue(Ast_Node *node)
         Gen_x86_64_EmitCopy(node->an_type->at_size);
         return;
     }
-
-    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
-    if (Gen_x86_64_SysV_Eightbytes(node->an_type) > 1) {
-        Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RCX, GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RDX, ASM_X86_64_WIDTH_64);
-    }
-    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RCX, 0, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
-}
-
-// Spill one incoming parameter into its frame slot.
-void Gen_x86_64_SysV_EmitParam(Ast_Var *param, int32_t *reg, int32_t *stack)
-{
-    int32_t slots = Gen_x86_64_SysV_Eightbytes(param->av_type);
-    bool inReg = ! Gen_x86_64_SysV_InMemory(param->av_type) && *reg + slots <= GEN_X86_64_SYSV_MAX_REG_ARGS;
-
-    if (! Sem_IsAggregate(param->av_type)) {
-        Asm_x86_64_Width width = Gen_x86_64_TypeWidth(param->av_type);
-        if (inReg) {
-            Asm_x86_64_EmitMovStore(Gen_x86_64_SysV_ArgReg[(*reg)++], ASM_X86_64_REG_RBP, param->av_offset, width);
-        } else {
-            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, 2 * GEN_X86_64_SYSV_EIGHTBYTE + (*stack)++ * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
-            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, param->av_offset, width);
-        }
+    if (Gen_x86_64_SysV_ReturnsInX87(node->an_type)) {
+        Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDT, ASM_X86_64_REG_RAX, 0);
         return;
     }
 
-    for (int32_t k = 0; k < slots; k++) {
-        if (inReg) {
-            Asm_x86_64_EmitMovStore(Gen_x86_64_SysV_ArgReg[(*reg)++], ASM_X86_64_REG_RBP, param->av_offset + k * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_WIDTH_64);
-        } else {
-            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, 2 * GEN_X86_64_SYSV_EIGHTBYTE + (*stack)++ * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
-            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, param->av_offset + k * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_WIDTH_64);
+    Gen_x86_64_SysV_Classify(node->an_type, classes);
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
+    for (int32_t k = 0; k < Gen_x86_64_SysV_Eightbytes(node->an_type); k++) {
+        if (classes[k] == GEN_X86_64_SYSV_CLASS_INTEGER) {
+            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RCX, k * GEN_X86_64_SYSV_EIGHTBYTE, Gen_x86_64_SysV_RetReg[gpr++], ASM_X86_64_WIDTH_64);
+        } else if (classes[k] == GEN_X86_64_SYSV_CLASS_SSE) {
+            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RCX, k * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_R11, ASM_X86_64_WIDTH_64);
+            Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_R11, ASM_X86_64_XMM0 + sse++);
         }
     }
 }
 
-// Return the first argument register the argument at index takes.
-int32_t Gen_x86_64_SysV_ArgRegBase(Ast_Node *args, int32_t index, int32_t nHidden)
+// Spill one incoming parameter into its frame slot.
+void Gen_x86_64_SysV_EmitParam(Ast_Var *param, const Ast_Type *passed, const Gen_x86_64_SysV_Loc *loc)
 {
-    int32_t used = nHidden;
-    int32_t i = 0;
+    int32_t gpr = loc->gl_gpr;
+    int32_t sse = loc->gl_sse;
 
-    for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
-        int32_t want = Gen_x86_64_SysV_Eightbytes(arg->an_type);
-        if (Gen_x86_64_SysV_InMemory(arg->an_type) || used + want > GEN_X86_64_SYSV_MAX_REG_ARGS) {
-            if (i == index) {
-                return -1;
-            }
+    for (int32_t k = 0; k < loc->gl_count; k++) {
+        int32_t disp = param->av_offset + k * GEN_X86_64_SYSV_EIGHTBYTE;
+        Asm_x86_64_Reg src = ASM_X86_64_REG_RAX;
+        if (loc->gl_stack >= 0) {
+            Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, GEN_X86_64_SYSV_ARGS_OFFSET + loc->gl_stack + k * GEN_X86_64_SYSV_EIGHTBYTE, src, ASM_X86_64_WIDTH_64);
+        } else if (loc->gl_class[k] == GEN_X86_64_SYSV_CLASS_INTEGER) {
+            src = Gen_x86_64_SysV_ArgReg[gpr++];
+        } else if (loc->gl_class[k] == GEN_X86_64_SYSV_CLASS_SSE) {
+            Asm_x86_64_EmitMovFromXmm(ASM_X86_64_XMM0 + sse++, src);
+        } else {
             continue;
         }
-        if (i == index) {
-            return used;
+
+        if (Gen_x86_64_ByAddress(param->av_type)) {
+            Asm_x86_64_EmitMovStore(src, ASM_X86_64_REG_RBP, disp, ASM_X86_64_WIDTH_64);
+            continue;
         }
-        used += want;
+        if (passed != param->av_type) {
+            Gen_x86_64_EmitConvert(passed, param->av_type, 0);
+        }
+        Asm_x86_64_EmitMovStore(src, ASM_X86_64_REG_RBP, disp, Gen_x86_64_TypeWidth(param->av_type));
     }
-    return -1;
 }
 
-// Count the eightbytes a call leaves on the stack for its memory arguments.
-int32_t Gen_x86_64_SysV_CallStackSlots(Ast_Node *args, int32_t nHidden)
+// Spill every incoming parameter of a function into its frame slot.
+void Gen_x86_64_SysV_EmitParams(const Ast_Func *func)
 {
-    int32_t slots = 0;
-    int32_t i = 0;
+    Gen_x86_64_SysV_Cursor cur;
+    Gen_x86_64_SysV_Loc loc;
 
-    for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
-        if (Gen_x86_64_SysV_ArgRegBase(args, i, nHidden) < 0) {
-            slots += Gen_x86_64_SysV_Eightbytes(arg->an_type);
-        }
+    Gen_x86_64_SysV_StartCursor(&cur, func->af_ret);
+    if (cur.gc_gpr) {
+        Asm_x86_64_EmitMovStore(Gen_x86_64_SysV_ArgReg[0], ASM_X86_64_REG_RBP, Gen_x86_64_SysV_RetPtrOffset, ASM_X86_64_WIDTH_64);
     }
-    return slots;
+    for (Ast_Var *param = func->af_params; param; param = param->av_param_next) {
+        const Ast_Type *passed = Gen_x86_64_SysV_PassedType(func, param);
+        Gen_x86_64_SysV_Place(passed, &cur, &loc);
+        Gen_x86_64_SysV_EmitParam(param, passed, &loc);
+    }
 }
 
 // Evaluate one argument and push its eightbytes, lowest ending on top.
@@ -189,7 +366,7 @@ void Gen_x86_64_SysV_PushArg(Ast_Node *arg)
 {
     Gen_x86_64_EmitExpr(arg);
 
-    if (! Sem_IsAggregate(arg->an_type)) {
+    if (! Gen_x86_64_ByAddress(arg->an_type)) {
         Gen_x86_64_EmitPush();
         return;
     }
@@ -201,50 +378,103 @@ void Gen_x86_64_SysV_PushArg(Ast_Node *arg)
 }
 
 // Push the arguments the ABI places on the stack, last one first.
-void Gen_x86_64_SysV_CallPushStack(Ast_Node *args, Ast_Node *arg, int32_t index, int32_t nHidden)
+void Gen_x86_64_SysV_CallPushStack(Ast_Node *arg, const Gen_x86_64_SysV_Loc *loc, int32_t *end)
 {
     if (! arg) {
         return;
     }
-    Gen_x86_64_SysV_CallPushStack(args, arg->an_next, index + 1, nHidden);
-    if (Gen_x86_64_SysV_ArgRegBase(args, index, nHidden) < 0) {
-        Gen_x86_64_SysV_PushArg(arg);
+    Gen_x86_64_SysV_CallPushStack(arg->an_next, loc + 1, end);
+    if (loc->gl_stack < 0) {
+        return;
     }
+
+    int32_t pad = *end - loc->gl_stack - loc->gl_count * GEN_X86_64_SYSV_EIGHTBYTE;
+    if (pad) {
+        Asm_x86_64_EmitSubImm(pad, ASM_X86_64_REG_RSP);
+        Gen_x86_64_Depth += pad / GEN_X86_64_SYSV_EIGHTBYTE;
+    }
+    Gen_x86_64_SysV_PushArg(arg);
+    *end = loc->gl_stack;
 }
 
 // Push the arguments the ABI passes in registers, last one first.
-void Gen_x86_64_SysV_CallPushReg(Ast_Node *args, Ast_Node *arg, int32_t index, int32_t nHidden)
+void Gen_x86_64_SysV_CallPushReg(Ast_Node *arg, const Gen_x86_64_SysV_Loc *loc)
 {
     if (! arg) {
         return;
     }
-    Gen_x86_64_SysV_CallPushReg(args, arg->an_next, index + 1, nHidden);
-    if (Gen_x86_64_SysV_ArgRegBase(args, index, nHidden) >= 0) {
+    Gen_x86_64_SysV_CallPushReg(arg->an_next, loc + 1);
+    if (loc->gl_stack < 0) {
         Gen_x86_64_SysV_PushArg(arg);
     }
 }
 
 // Pop the pushed register arguments into the registers the ABI assigns them.
-void Gen_x86_64_SysV_CallPopReg(Ast_Node *args, int32_t nHidden)
+void Gen_x86_64_SysV_CallPopReg(Ast_Node *args, const Gen_x86_64_SysV_Loc *locs)
 {
     int32_t i = 0;
 
     for (Ast_Node *arg = args; arg; arg = arg->an_next, i++) {
-        int32_t base = Gen_x86_64_SysV_ArgRegBase(args, i, nHidden);
-        if (base < 0) {
+        const Gen_x86_64_SysV_Loc *loc = &locs[i];
+        int32_t gpr = loc->gl_gpr;
+        int32_t sse = loc->gl_sse;
+        if (loc->gl_stack >= 0) {
             continue;
         }
-        for (int32_t k = 0; k < Gen_x86_64_SysV_Eightbytes(arg->an_type); k++) {
-            Gen_x86_64_EmitPop(Gen_x86_64_SysV_ArgReg[base + k]);
+        for (int32_t k = 0; k < loc->gl_count; k++) {
+            if (loc->gl_class[k] == GEN_X86_64_SYSV_CLASS_INTEGER) {
+                Gen_x86_64_EmitPop(Gen_x86_64_SysV_ArgReg[gpr++]);
+            } else {
+                Gen_x86_64_EmitPop(ASM_X86_64_REG_RAX);
+            }
+            if (loc->gl_class[k] == GEN_X86_64_SYSV_CLASS_SSE) {
+                Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_RAX, ASM_X86_64_XMM0 + sse++);
+            }
         }
     }
+}
+
+// Bring the value a call returned into %rax.
+void Gen_x86_64_SysV_EmitCallResult(Ast_Node *node)
+{
+    Gen_x86_64_SysV_Class classes[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+    int32_t gpr = 0;
+    int32_t sse = 0;
+
+    if (Gen_x86_64_IsSse(node->an_type)) {
+        Asm_x86_64_EmitMovFromXmm(ASM_X86_64_XMM0, ASM_X86_64_REG_RAX);
+        return;
+    }
+    if (! Gen_x86_64_ByAddress(node->an_type) || Gen_x86_64_SysV_ReturnsInMemory(node->an_type)) {
+        return;
+    }
+    if (Gen_x86_64_SysV_ReturnsInX87(node->an_type)) {
+        Gen_x86_64_EmitX87Result(node->an_tmp);
+        return;
+    }
+
+    Gen_x86_64_SysV_Classify(node->an_type, classes);
+    for (int32_t k = 0; k < Gen_x86_64_SysV_Eightbytes(node->an_type); k++) {
+        int32_t disp = node->an_tmp + k * GEN_X86_64_SYSV_EIGHTBYTE;
+        if (classes[k] == GEN_X86_64_SYSV_CLASS_INTEGER) {
+            Asm_x86_64_EmitMovStore(Gen_x86_64_SysV_RetReg[gpr++], ASM_X86_64_REG_RBP, disp, ASM_X86_64_WIDTH_64);
+        } else if (classes[k] == GEN_X86_64_SYSV_CLASS_SSE) {
+            Asm_x86_64_EmitMovFromXmm(ASM_X86_64_XMM0 + sse++, ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RBP, disp, ASM_X86_64_WIDTH_64);
+        }
+    }
+    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_REG_RAX);
 }
 
 // Emit a call.
 void Gen_x86_64_SysV_EmitCall(Ast_Node *node)
 {
-    int32_t nHidden = Gen_x86_64_SysV_ReturnsInMemory(node->an_type) ? 1 : 0;
-    int32_t nStack = Gen_x86_64_SysV_CallStackSlots(node->an_args, nHidden);
+    Gen_x86_64_SysV_Cursor cur;
+
+    Gen_x86_64_SysV_StartCursor(&cur, node->an_type);
+    Gen_x86_64_SysV_Loc *locs = Gen_x86_64_SysV_PlaceArgs(node->an_args, &cur);
+    int32_t nStack = cur.gc_stack / GEN_X86_64_SYSV_EIGHTBYTE;
+    int32_t end = cur.gc_stack;
 
     int32_t nAlignPad = (Gen_x86_64_Depth + nStack) % (GEN_X86_64_SYSV_STACK_ALIGN / GEN_X86_64_SYSV_EIGHTBYTE);
     if (nAlignPad) {
@@ -257,15 +487,16 @@ void Gen_x86_64_SysV_EmitCall(Ast_Node *node)
         Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, node->an_calltmp, ASM_X86_64_WIDTH_64);
     }
 
-    Gen_x86_64_SysV_CallPushStack(node->an_args, node->an_args, 0, nHidden);
-    Gen_x86_64_SysV_CallPushReg(node->an_args, node->an_args, 0, nHidden);
-    Gen_x86_64_SysV_CallPopReg(node->an_args, nHidden);
+    Gen_x86_64_SysV_CallPushStack(node->an_args, locs, &end);
+    Gen_x86_64_SysV_CallPushReg(node->an_args, locs);
+    Gen_x86_64_SysV_CallPopReg(node->an_args, locs);
+    free(locs);
 
-    if (nHidden) {
+    if (Gen_x86_64_SysV_ReturnsInMemory(node->an_type)) {
         Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_REG_RDI);
     }
 
-    Asm_x86_64_EmitMovImm8(0, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovImm8(cur.gc_sse, ASM_X86_64_REG_RAX);
     if (node->an_lhs) {
         Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, node->an_calltmp, ASM_X86_64_REG_R11, ASM_X86_64_WIDTH_64);
         Asm_x86_64_EmitCallReg(ASM_X86_64_REG_R11);
@@ -277,15 +508,7 @@ void Gen_x86_64_SysV_EmitCall(Ast_Node *node)
         Asm_x86_64_EmitAddImm(GEN_X86_64_SYSV_EIGHTBYTE * (nStack + nAlignPad), ASM_X86_64_REG_RSP);
         Gen_x86_64_Depth -= nStack + nAlignPad;
     }
-
-    if (Sem_IsAggregate(node->an_type) && ! nHidden) {
-        int32_t slots = Gen_x86_64_SysV_Eightbytes(node->an_type);
-        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_WIDTH_64);
-        if (slots > 1) {
-            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RDX, ASM_X86_64_REG_RBP, node->an_tmp + GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_WIDTH_64);
-        }
-        Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_REG_RAX);
-    }
+    Gen_x86_64_SysV_EmitCallResult(node);
 }
 
 // Spill every argument register into the save area.
@@ -294,50 +517,47 @@ void Gen_x86_64_SysV_EmitVaSaveArea(void)
     for (int32_t i = 0; i < GEN_X86_64_SYSV_MAX_REG_ARGS; i++) {
         Asm_x86_64_EmitMovStore(Gen_x86_64_SysV_ArgReg[i], ASM_X86_64_REG_RBP, -GEN_X86_64_SYSV_VA_SAVE_SIZE + i * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_WIDTH_64);
     }
+    for (int32_t i = 0; i < GEN_X86_64_SYSV_MAX_SSE_ARGS; i++) {
+        Asm_x86_64_EmitMovFromXmm(ASM_X86_64_XMM0 + i, ASM_X86_64_REG_RAX);
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, -GEN_X86_64_SYSV_VA_SAVE_SIZE + GEN_X86_64_SYSV_GPR_SAVE_SIZE + i * GEN_X86_64_SYSV_SSE_SAVE_SLOT, ASM_X86_64_WIDTH_64);
+    }
 }
 
-// Count the argument registers and stack slots the named parameters used.
-void Gen_x86_64_SysV_CountNamedArgs(const Ast_Func *func, int32_t *reg, int32_t *stack)
+// Count the argument registers and stack bytes the named parameters used.
+void Gen_x86_64_SysV_CountNamedArgs(const Ast_Func *func, Gen_x86_64_SysV_Cursor *cur)
 {
-    *reg   = Gen_x86_64_SysV_ReturnsInMemory(func->af_ret) ? 1 : 0;
-    *stack = 0;
+    Gen_x86_64_SysV_Loc loc;
 
+    Gen_x86_64_SysV_StartCursor(cur, func->af_ret);
     for (Ast_Var *param = func->af_params; param; param = param->av_param_next) {
-        int32_t slots = Gen_x86_64_SysV_Eightbytes(param->av_type);
-        if (! Gen_x86_64_SysV_InMemory(param->av_type) && *reg + slots <= GEN_X86_64_SYSV_MAX_REG_ARGS) {
-            *reg += slots;
-        } else {
-            *stack += slots;
-        }
+        Gen_x86_64_SysV_Place(Gen_x86_64_SysV_PassedType(func, param), cur, &loc);
     }
 }
 
 // Fill the va_list at the address in %rax.
 void Gen_x86_64_SysV_EmitVaStart(void)
 {
-    int32_t reg = 0;
-    int32_t stack = 0;
+    Gen_x86_64_SysV_Cursor cur;
 
-    Gen_x86_64_SysV_CountNamedArgs(Gen_x86_64_CurrFunc, &reg, &stack);
-    Asm_x86_64_EmitMovImm(reg * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RCX);
+    Gen_x86_64_SysV_CountNamedArgs(Gen_x86_64_CurrFunc, &cur);
+    Asm_x86_64_EmitMovImm(cur.gc_gpr * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RCX);
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, GEN_X86_64_SYSV_VA_GP_OFFSET, ASM_X86_64_WIDTH_32);
-    Asm_x86_64_EmitMovImm(GEN_X86_64_SYSV_VA_SAVE_SIZE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovImm(GEN_X86_64_SYSV_GPR_SAVE_SIZE + cur.gc_sse * GEN_X86_64_SYSV_SSE_SAVE_SLOT, ASM_X86_64_REG_RCX);
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, GEN_X86_64_SYSV_VA_FP_OFFSET, ASM_X86_64_WIDTH_32);
-    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, 2 * GEN_X86_64_SYSV_EIGHTBYTE + stack * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, GEN_X86_64_SYSV_ARGS_OFFSET + cur.gc_stack, ASM_X86_64_REG_RCX);
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, GEN_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
     Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, -GEN_X86_64_SYSV_VA_SAVE_SIZE, ASM_X86_64_REG_RCX);
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, GEN_X86_64_SYSV_VA_REG_SAVE, ASM_X86_64_WIDTH_64);
 }
 
-// Read into %rax the next argument the va_list at %rax reaches.
-void Gen_x86_64_SysV_EmitVaArg(const Ast_Type *type)
+// Take into %rax the next save-area slot of one register class, or overflow.
+void Gen_x86_64_SysV_EmitVaNext(Gen_x86_64_SysV_VaField field, int32_t limit, int32_t step)
 {
     int32_t count = Gen_x86_64_Count();
 
-    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
-    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_GP_OFFSET, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, field, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitCmpImm(GEN_X86_64_SYSV_VA_SAVE_SIZE, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitCmpImm(limit, ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitSetl(ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
     Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
@@ -345,17 +565,46 @@ void Gen_x86_64_SysV_EmitVaArg(const Ast_Type *type)
 
     Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_REG_SAVE, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
     Asm_x86_64_EmitAdd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitAddImm(GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_GP_OFFSET, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitAddImm(step, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, field, ASM_X86_64_WIDTH_32);
     Asm_x86_64_EmitJmp(".L.va.end.%d", count);
 
     Asm_x86_64_EmitLabel(".L.va.stack.%d", count);
-    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
-    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitAddImm(GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
-
+    Gen_x86_64_SysV_EmitVaOverflow(&Ast_TypeLong);
     Asm_x86_64_EmitLabel(".L.va.end.%d", count);
+}
+
+// Take into %rax the next overflow-area slot for a type.
+void Gen_x86_64_SysV_EmitVaOverflow(const Ast_Type *type)
+{
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+    if (type->at_align > GEN_X86_64_SYSV_EIGHTBYTE) {
+        Asm_x86_64_EmitAddImm(GEN_X86_64_SYSV_STACK_ALIGN - 1, ASM_X86_64_REG_RAX);
+        Asm_x86_64_EmitMovImm(-GEN_X86_64_SYSV_STACK_ALIGN, ASM_X86_64_REG_RCX);
+        Asm_x86_64_EmitAnd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    }
+    Asm_x86_64_EmitLea(ASM_X86_64_REG_RAX, Gen_x86_64_SysV_Eightbytes(type) * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
+}
+
+// Read into %rax the next argument the va_list at %rax reaches.
+void Gen_x86_64_SysV_EmitVaArg(const Ast_Type *type)
+{
+    Gen_x86_64_SysV_Class classes[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+
+    Gen_x86_64_SysV_Classify(type, classes);
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
+    switch (classes[0]) {
+        case GEN_X86_64_SYSV_CLASS_INTEGER: {
+            Gen_x86_64_SysV_EmitVaNext(GEN_X86_64_SYSV_VA_GP_OFFSET, GEN_X86_64_SYSV_GPR_SAVE_SIZE, GEN_X86_64_SYSV_EIGHTBYTE);
+        } break;
+        case GEN_X86_64_SYSV_CLASS_SSE: {
+            Gen_x86_64_SysV_EmitVaNext(GEN_X86_64_SYSV_VA_FP_OFFSET, GEN_X86_64_SYSV_VA_SAVE_SIZE, GEN_X86_64_SYSV_SSE_SAVE_SLOT);
+        } break;
+        default: {
+            Gen_x86_64_SysV_EmitVaOverflow(type);
+        }
+    }
     Gen_x86_64_EmitLoad(type);
 }
 
@@ -1585,17 +1834,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         if (func->af_variadic == AST_TYPE_VARIADIC) {
             Gen_x86_64_SysV_EmitVaSaveArea();
         }
-
-        int32_t reg = 0;
-        int32_t stack = 0;
-        if (Gen_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
-            Asm_x86_64_EmitMovStore(Gen_x86_64_SysV_ArgReg[reg++], ASM_X86_64_REG_RBP, Gen_x86_64_SysV_RetPtrOffset, ASM_X86_64_WIDTH_64);
-        }
-
-        // spill incoming parameters
-        for (Ast_Var *param = func->af_params; param; param = param->av_param_next) {
-            Gen_x86_64_SysV_EmitParam(param, &reg, &stack);
-        }
+        Gen_x86_64_SysV_EmitParams(func);
 
         Gen_x86_64_EmitStmt(func->af_body);
 
