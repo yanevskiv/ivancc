@@ -681,7 +681,9 @@ Ast_Type *Par_VaListType(void)
 // Build the node reading the next anonymous argument.
 Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line)
 {
-    Err_AssertAt(line, ! Sem_IsAggregate(type) && type->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_VA_ARG_AGGREGATE);
+    bool object = type->at_kind != AST_TYPE_KIND_VOID && type->at_kind != AST_TYPE_KIND_FUNC && type->at_complete == AST_TYPE_COMPLETE;
+
+    Err_AssertAt(line, object && type->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_VA_ARG_TYPE);
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_VA_ARG, ap, line);
     node->an_type = type;
     return node;

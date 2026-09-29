@@ -550,23 +550,34 @@ void Gen_x86_64_SysV_EmitVaStart(void)
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX, GEN_X86_64_SYSV_VA_REG_SAVE, ASM_X86_64_WIDTH_64);
 }
 
+// Branch to the overflow path when a va_list offset has passed its last slot.
+void Gen_x86_64_SysV_EmitVaCheck(Gen_x86_64_SysV_VaField field, int32_t last, int32_t label)
+{
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, field, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitCmpImm(last, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitSetle(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
+    Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitJe(".L.va.stack.%d", label);
+}
+
+// Take into %rax the next save-area slot a va_list offset reaches.
+void Gen_x86_64_SysV_EmitVaTake(Gen_x86_64_SysV_VaField field, int32_t step)
+{
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, field, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
+    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_REG_SAVE, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitAdd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitAddImm(step, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, field, ASM_X86_64_WIDTH_32);
+}
+
 // Take into %rax the next save-area slot of one register class, or overflow.
 void Gen_x86_64_SysV_EmitVaNext(Gen_x86_64_SysV_VaField field, int32_t limit, int32_t step)
 {
     int32_t count = Gen_x86_64_Count();
 
-    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, field, ASM_X86_64_REG_RCX, ASM_X86_64_WIDTH_32);
-    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitCmpImm(limit, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitSetl(ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
-    Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitJe(".L.va.stack.%d", count);
-
-    Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_REG_SAVE, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
-    Asm_x86_64_EmitAdd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
-    Asm_x86_64_EmitAddImm(step, ASM_X86_64_REG_RCX);
-    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, field, ASM_X86_64_WIDTH_32);
+    Gen_x86_64_SysV_EmitVaCheck(field, limit - step, count);
+    Gen_x86_64_SysV_EmitVaTake(field, step);
     Asm_x86_64_EmitJmp(".L.va.end.%d", count);
 
     Asm_x86_64_EmitLabel(".L.va.stack.%d", count);
@@ -587,13 +598,66 @@ void Gen_x86_64_SysV_EmitVaOverflow(const Ast_Type *type)
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, GEN_X86_64_SYSV_VA_OVERFLOW, ASM_X86_64_WIDTH_64);
 }
 
-// Read into %rax the next argument the va_list at %rax reaches.
-void Gen_x86_64_SysV_EmitVaArg(const Ast_Type *type)
+// Gather into a frame temporary the next struct or union argument.
+void Gen_x86_64_SysV_EmitVaAggregate(const Ast_Node *node)
 {
     Gen_x86_64_SysV_Class classes[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+    int32_t count = Gen_x86_64_Count();
+    int32_t gpr = 0;
+    int32_t sse = 0;
 
-    Gen_x86_64_SysV_Classify(type, classes);
+    Gen_x86_64_SysV_Classify(node->an_type, classes);
+    if (Gen_x86_64_SysV_InMemory(node->an_type)) {
+        Gen_x86_64_SysV_EmitVaOverflow(node->an_type);
+        return;
+    }
+    for (int32_t k = 0; k < Gen_x86_64_SysV_Eightbytes(node->an_type); k++) {
+        if (classes[k] == GEN_X86_64_SYSV_CLASS_INTEGER) {
+            gpr++;
+        } else if (classes[k] == GEN_X86_64_SYSV_CLASS_SSE) {
+            sse++;
+        }
+    }
+
+    // Phase: registers
+    if (gpr) {
+        Gen_x86_64_SysV_EmitVaCheck(GEN_X86_64_SYSV_VA_GP_OFFSET, GEN_X86_64_SYSV_GPR_SAVE_SIZE - gpr * GEN_X86_64_SYSV_EIGHTBYTE, count);
+    }
+    if (sse) {
+        Gen_x86_64_SysV_EmitVaCheck(GEN_X86_64_SYSV_VA_FP_OFFSET, GEN_X86_64_SYSV_VA_SAVE_SIZE - sse * GEN_X86_64_SYSV_SSE_SAVE_SLOT, count);
+    }
+    for (int32_t k = 0; k < Gen_x86_64_SysV_Eightbytes(node->an_type); k++) {
+        if (classes[k] == GEN_X86_64_SYSV_CLASS_INTEGER) {
+            Gen_x86_64_SysV_EmitVaTake(GEN_X86_64_SYSV_VA_GP_OFFSET, GEN_X86_64_SYSV_EIGHTBYTE);
+        } else if (classes[k] == GEN_X86_64_SYSV_CLASS_SSE) {
+            Gen_x86_64_SysV_EmitVaTake(GEN_X86_64_SYSV_VA_FP_OFFSET, GEN_X86_64_SYSV_SSE_SAVE_SLOT);
+        } else {
+            continue;
+        }
+        Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RAX, 0, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
+        Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, node->an_tmp + k * GEN_X86_64_SYSV_EIGHTBYTE, ASM_X86_64_WIDTH_64);
+    }
+    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitJmp(".L.va.end.%d", count);
+
+    // Phase: stack
+    Asm_x86_64_EmitLabel(".L.va.stack.%d", count);
+    Gen_x86_64_SysV_EmitVaOverflow(node->an_type);
+    Asm_x86_64_EmitLabel(".L.va.end.%d", count);
+}
+
+// Read into %rax the next argument the va_list at %rax reaches.
+void Gen_x86_64_SysV_EmitVaArg(const Ast_Node *node)
+{
+    Gen_x86_64_SysV_Class classes[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+    const Ast_Type *type = node->an_type;
+
     Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
+    if (Sem_IsAggregate(type)) {
+        Gen_x86_64_SysV_EmitVaAggregate(node);
+        return;
+    }
+    Gen_x86_64_SysV_Classify(type, classes);
     switch (classes[0]) {
         case GEN_X86_64_SYSV_CLASS_INTEGER: {
             Gen_x86_64_SysV_EmitVaNext(GEN_X86_64_SYSV_VA_GP_OFFSET, GEN_X86_64_SYSV_GPR_SAVE_SIZE, GEN_X86_64_SYSV_EIGHTBYTE);
@@ -1381,7 +1445,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
         } break;
         case AST_NODE_KIND_VA_ARG: {
             Gen_x86_64_EmitExpr(node->an_lhs);
-            Gen_x86_64_SysV_EmitVaArg(node->an_type);
+            Gen_x86_64_SysV_EmitVaArg(node);
         } break;
         case AST_NODE_KIND_FUNCADDR: {
             Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_funcname);
@@ -1613,6 +1677,9 @@ bool Gen_x86_64_NeedsTemp(const Ast_Node *node)
     switch (node->an_kind) {
         case AST_NODE_KIND_CALL: {
             return true;
+        } break;
+        case AST_NODE_KIND_VA_ARG: {
+            return Sem_IsAggregate(node->an_type);
         } break;
         case AST_NODE_KIND_FNUM:
         case AST_NODE_KIND_CAST:
