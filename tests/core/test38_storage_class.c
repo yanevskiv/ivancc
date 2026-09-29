@@ -1,6 +1,7 @@
 // (Test) Status: 200
 // static keeps a name inside this file, and a static local keeps its value
-// between calls. register, auto and inline parse and mean nothing.
+// between calls, apart from a file-scope name it shares. register, auto and
+// inline parse and mean nothing.
 
 static int hidden = 7;
 
@@ -16,6 +17,8 @@ int ticker()
     return count;
 }
 
+int count = 50;
+
 int main()
 {
     register int r = 3;
@@ -30,5 +33,6 @@ int main()
     if (ticker() != 103) return 6;
 
     if (hidden + ticker() - 94 != 17) return 7;
+    if (count != 50) return 8;
     return 200;
 }

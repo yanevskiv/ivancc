@@ -395,6 +395,7 @@ void     Ast_EndScope(void);
 void     Ast_PushScope(void);
 void     Ast_PopScope(void);
 Ast_Var *Ast_FindVar(const char *name);
+Ast_Var *Ast_FindGlobal(const char *symbol);
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line);
 void     Ast_DeclareParam(Ast_Var *var);
 Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, Ast_Line line);
