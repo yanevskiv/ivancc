@@ -122,7 +122,14 @@ enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_GRP2_RM_CL    = 0xD3, // shl/sar by %cl, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_GRP3_RM       = 0xF7, // neg/not/idiv, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_GRP5_RM       = 0xFF, // inc/dec/call/jmp/push, selected the same way
-    ENC_X86_64_OPCODE_OPSIZE        = 0x66, // narrows the operand to 16 bits
+    ENC_X86_64_OPCODE_OPSIZE        = 0x66, // narrows the operand to 16 bits, or selects an SSE form
+    ENC_X86_64_OPCODE_SSE_DOUBLE    = 0xF2, // selects the scalar-double SSE form
+    ENC_X86_64_OPCODE_SSE_SINGLE    = 0xF3, // selects the scalar-single SSE form
+    ENC_X86_64_OPCODE_X87_D9        = 0xD9, // x87, selected by Enc_x86_64_X87Digit or a second byte
+    ENC_X86_64_OPCODE_X87_DB        = 0xDB,
+    ENC_X86_64_OPCODE_X87_DD        = 0xDD,
+    ENC_X86_64_OPCODE_X87_DE        = 0xDE,
+    ENC_X86_64_OPCODE_X87_DF        = 0xDF,
     ENC_X86_64_OPCODE_ESCAPE        = 0x0F  // introduces a two-byte opcode
 };
 
@@ -142,7 +149,60 @@ enum Enc_x86_64_Opcode2 {
     ENC_X86_64_OPCODE2_MOVZX_R_RM8  = 0xB6,
     ENC_X86_64_OPCODE2_MOVZX_R_RM16 = 0xB7,
     ENC_X86_64_OPCODE2_MOVSX_R_RM8  = 0xBE,
-    ENC_X86_64_OPCODE2_MOVSX_R_RM16 = 0xBF
+    ENC_X86_64_OPCODE2_MOVSX_R_RM16 = 0xBF,
+    ENC_X86_64_OPCODE2_SETA        = 0x97,
+    ENC_X86_64_OPCODE2_SETAE       = 0x93,
+    ENC_X86_64_OPCODE2_SETP        = 0x9A,
+    ENC_X86_64_OPCODE2_SETNP       = 0x9B,
+    ENC_X86_64_OPCODE2_CVTSI2S     = 0x2A,
+    ENC_X86_64_OPCODE2_CVTTS2SI    = 0x2C,
+    ENC_X86_64_OPCODE2_UCOMIS      = 0x2E,
+    ENC_X86_64_OPCODE2_ADDS        = 0x58,
+    ENC_X86_64_OPCODE2_MULS        = 0x59,
+    ENC_X86_64_OPCODE2_CVTS2S      = 0x5A,
+    ENC_X86_64_OPCODE2_SUBS        = 0x5C,
+    ENC_X86_64_OPCODE2_DIVS        = 0x5E,
+    ENC_X86_64_OPCODE2_MOVQ_XMM_RM = 0x6E,
+    ENC_X86_64_OPCODE2_MOVQ_RM_XMM = 0x7E
+};
+
+// Opcode extensions an x87 memory form carries in the ModRM reg field.
+typedef enum Enc_x86_64_X87Digit Enc_x86_64_X87Digit;
+enum Enc_x86_64_X87Digit {
+    ENC_X86_64_X87_FLD_M32    = 0, // after 0xD9
+    ENC_X86_64_X87_FSTP_M32   = 3, // after 0xD9
+    ENC_X86_64_X87_FLD_M80    = 5, // after 0xDB
+    ENC_X86_64_X87_FSTP_M80   = 7, // after 0xDB
+    ENC_X86_64_X87_FLD_M64    = 0, // after 0xDD
+    ENC_X86_64_X87_FISTTP_M64 = 1, // after 0xDD
+    ENC_X86_64_X87_FSTP_M64   = 3, // after 0xDD
+    ENC_X86_64_X87_FILD_M64   = 5  // after 0xDF
+};
+
+// Second bytes of the x87 register forms, before the stack register is added.
+typedef enum Enc_x86_64_X87Reg Enc_x86_64_X87Reg;
+enum Enc_x86_64_X87Reg {
+    ENC_X86_64_X87_FADDP   = 0xC0, // after 0xDE
+    ENC_X86_64_X87_FMULP   = 0xC8, // after 0xDE
+    ENC_X86_64_X87_FSUBRP  = 0xE8, // after 0xDE
+    ENC_X86_64_X87_FDIVRP  = 0xF8, // after 0xDE
+    ENC_X86_64_X87_FUCOMIP = 0xE8, // after 0xDF
+    ENC_X86_64_X87_FSTP    = 0xD8, // after 0xDD
+    ENC_X86_64_X87_FCHS    = 0xE0  // after 0xD9
+};
+
+// The mandatory prefix and second opcode byte of one SSE operation.
+typedef struct Enc_x86_64_SseForm Enc_x86_64_SseForm;
+struct Enc_x86_64_SseForm {
+    Enc_x86_64_Opcode  es_prefix;
+    Enc_x86_64_Opcode2 es_opcode;
+};
+
+// The opcode byte and extension of one x87 operation.
+typedef struct Enc_x86_64_X87Form Enc_x86_64_X87Form;
+struct Enc_x86_64_X87Form {
+    Enc_x86_64_Opcode ef_opcode;
+    uint8_t           ef_ext;    // Enc_x86_64_X87Digit for memory, Enc_x86_64_X87Reg otherwise
 };
 
 // A label defined in the stream, awaiting its symbol-table entry.
@@ -195,6 +255,9 @@ void Enc_x86_64_EmitShift(Enc_x86_64_Grp grp, Asm_x86_64_Reg dst);
 void Enc_x86_64_EmitSetcc(Enc_x86_64_Opcode2 opcode, Asm_x86_64_Reg reg);
 void Enc_x86_64_EmitBranch(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitMov(const Asm_x86_64_Item *item);
+void Enc_x86_64_EmitSseRR(Enc_x86_64_Opcode prefix, Asm_x86_64_Width width, Enc_x86_64_Opcode2 opcode, uint8_t reg, uint8_t rm);
+void Enc_x86_64_EmitSse(const Asm_x86_64_Item *item);
+void Enc_x86_64_EmitX87(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item);
 
 // Symbols, sections and relocations

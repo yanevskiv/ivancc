@@ -203,6 +203,7 @@ void Emu_x86_64_FlagsSub(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, Emu_x86_64
     cpu->ec_sf = (res >> sign) & 1;
     cpu->ec_cf = a < b;
     cpu->ec_of = (((a ^ b) & (a ^ res)) >> sign) & 1;
+    cpu->ec_pf = Emu_x86_64_Parity(res);
 }
 
 // Set the flags a + b leaves behind.
@@ -218,6 +219,258 @@ void Emu_x86_64_FlagsAdd(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, Emu_x86_64
     cpu->ec_sf = (res >> sign) & 1;
     cpu->ec_cf = res < a;
     cpu->ec_of = ((~(a ^ b) & (a ^ res)) >> sign) & 1;
+    cpu->ec_pf = Emu_x86_64_Parity(res);
+}
+
+// Return whether the low byte of a result has an even number of set bits.
+bool Emu_x86_64_Parity(uint64_t res)
+{
+    uint8_t byte = res & EMU_X86_64_MASK_8;
+    bool even = true;
+
+    for (; byte; byte &= byte - 1) {
+        even = ! even;
+    }
+    return even;
+}
+
+// Set the flags an unordered comparison of a with b leaves behind.
+void Emu_x86_64_FlagsCompare(Emu_x86_64_Cpu *cpu, long double a, long double b)
+{
+    bool unordered = isnan(a) || isnan(b);
+
+    cpu->ec_zf = unordered || a == b;
+    cpu->ec_pf = unordered;
+    cpu->ec_cf = unordered || a < b;
+    cpu->ec_sf = false;
+    cpu->ec_of = false;
+}
+
+// Truncate a value toward zero into a signed integer of width bits.
+uint64_t Emu_x86_64_Truncate(long double value, Emu_x86_64_OperandWidth width)
+{
+    long double limit = ldexpl(1, width - 1);
+
+    if (isnan(value) || value >= limit || value <= -limit - 1) {
+        return width == EMU_X86_64_WIDTH_64 ? EMU_X86_64_INDEFINITE_64 : EMU_X86_64_INDEFINITE_32;
+    }
+    return (uint64_t) (int64_t) value;
+}
+
+// Read an SSE instruction's source, an SSE register's low lane or memory.
+uint64_t Emu_x86_64_ReadSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, Emu_x86_64_OperandWidth width)
+{
+    if (insn->ei_rmkind != EMU_X86_64_RM_REG) {
+        return Emu_x86_64_ReadMem(cpu, Emu_x86_64_RmAddr(cpu, insn, next), width);
+    }
+    uint64_t lane = cpu->ec_xmm[insn->ei_rm & EMU_X86_64_REG_INDEX_MASK][0];
+    return width == EMU_X86_64_WIDTH_64 ? lane : lane & EMU_X86_64_MASK_32;
+}
+
+// Execute one scalar SSE operation or conversion.
+void Emu_x86_64_StepSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip)
+{
+    uint64_t *dst = cpu->ec_xmm[insn->ei_reg & EMU_X86_64_REG_INDEX_MASK];
+    Emu_x86_64_OperandWidth width = insn->ei_rexw ? EMU_X86_64_WIDTH_64 : EMU_X86_64_WIDTH_32;
+    bool dbl = insn->ei_rep == ENC_X86_64_OPCODE_SSE_DOUBLE || (insn->ei_rep == 0 && insn->ei_opsize16);
+    Emu_x86_64_OperandWidth lane = dbl ? EMU_X86_64_WIDTH_64 : EMU_X86_64_WIDTH_32;
+
+    switch (insn->ei_op2) {
+        case ENC_X86_64_OPCODE2_MOVQ_XMM_RM: {
+            dst[0] = Emu_x86_64_ReadRm(cpu, insn, next, width);
+            dst[1] = 0;
+        } break;
+        case ENC_X86_64_OPCODE2_MOVQ_RM_XMM: {
+            Emu_x86_64_WriteRm(cpu, insn, next, dst[0], width);
+        } break;
+        case ENC_X86_64_OPCODE2_UCOMIS: {
+            uint64_t b = Emu_x86_64_ReadSse(cpu, insn, next, lane);
+            if (dbl) {
+                Emu_x86_64_FlagsCompare(cpu, Fp_DoubleFromBits(dst[0]), Fp_DoubleFromBits(b));
+            } else {
+                Emu_x86_64_FlagsCompare(cpu, Fp_FloatFromBits((uint32_t) dst[0]), Fp_FloatFromBits((uint32_t) b));
+            }
+        } break;
+        case ENC_X86_64_OPCODE2_CVTSI2S: {
+            uint64_t a = Emu_x86_64_ReadRm(cpu, insn, next, width);
+            int64_t v = width == EMU_X86_64_WIDTH_64 ? (int64_t) a : (int32_t) a;
+            if (dbl) {
+                dst[0] = Fp_DoubleBits((double) v);
+            } else {
+                dst[0] = (dst[0] & ~(uint64_t) EMU_X86_64_MASK_32) | Fp_FloatBits((float) v);
+            }
+        } break;
+        case ENC_X86_64_OPCODE2_CVTTS2SI: {
+            uint64_t b = Emu_x86_64_ReadSse(cpu, insn, next, lane);
+            long double v = dbl ? Fp_DoubleFromBits(b) : Fp_FloatFromBits((uint32_t) b);
+            Emu_x86_64_WriteReg(cpu, insn->ei_reg, Emu_x86_64_Truncate(v, width), width);
+        } break;
+        case ENC_X86_64_OPCODE2_CVTS2S: {
+            if (dbl) {
+                double v = Fp_DoubleFromBits(Emu_x86_64_ReadSse(cpu, insn, next, EMU_X86_64_WIDTH_64));
+                dst[0] = (dst[0] & ~(uint64_t) EMU_X86_64_MASK_32) | Fp_FloatBits((float) v);
+            } else {
+                float v = Fp_FloatFromBits((uint32_t) Emu_x86_64_ReadSse(cpu, insn, next, EMU_X86_64_WIDTH_32));
+                dst[0] = Fp_DoubleBits((double) v);
+            }
+        } break;
+        default: {
+            uint64_t b = Emu_x86_64_ReadSse(cpu, insn, next, lane);
+            if (dbl) {
+                double x = Fp_DoubleFromBits(dst[0]);
+                double y = Fp_DoubleFromBits(b);
+                double r = 0;
+                switch (insn->ei_op2) {
+                    case ENC_X86_64_OPCODE2_ADDS: { r = x + y; } break;
+                    case ENC_X86_64_OPCODE2_SUBS: { r = x - y; } break;
+                    case ENC_X86_64_OPCODE2_MULS: { r = x * y; } break;
+                    case ENC_X86_64_OPCODE2_DIVS: { r = x / y; } break;
+                    default: {
+                        Emu_x86_64_Fault(cpu, "unimplemented SSE opcode", rip);
+                    }
+                }
+                dst[0] = Fp_DoubleBits(r);
+            } else {
+                float x = Fp_FloatFromBits((uint32_t) dst[0]);
+                float y = Fp_FloatFromBits((uint32_t) b);
+                float r = 0;
+                switch (insn->ei_op2) {
+                    case ENC_X86_64_OPCODE2_ADDS: { r = x + y; } break;
+                    case ENC_X86_64_OPCODE2_SUBS: { r = x - y; } break;
+                    case ENC_X86_64_OPCODE2_MULS: { r = x * y; } break;
+                    case ENC_X86_64_OPCODE2_DIVS: { r = x / y; } break;
+                    default: {
+                        Emu_x86_64_Fault(cpu, "unimplemented SSE opcode", rip);
+                    }
+                }
+                dst[0] = (dst[0] & ~(uint64_t) EMU_X86_64_MASK_32) | Fp_FloatBits(r);
+            }
+        } break;
+    }
+}
+
+// Return the x87 register %st(i) names.
+long double *Emu_x86_64_St(Emu_x86_64_Cpu *cpu, int32_t i)
+{
+    return &cpu->ec_st[(cpu->ec_top + i) & EMU_X86_64_ST_MASK];
+}
+
+// Push a value onto the x87 stack.
+void Emu_x86_64_StPush(Emu_x86_64_Cpu *cpu, long double value)
+{
+    cpu->ec_top = (cpu->ec_top - 1) & EMU_X86_64_ST_MASK;
+    cpu->ec_st[cpu->ec_top] = value;
+}
+
+// Pop the x87 stack.
+long double Emu_x86_64_StPop(Emu_x86_64_Cpu *cpu)
+{
+    long double value = cpu->ec_st[cpu->ec_top];
+    cpu->ec_top = (cpu->ec_top + 1) & EMU_X86_64_ST_MASK;
+    return value;
+}
+
+// Execute an x87 load or store of memory.
+void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip)
+{
+    uint64_t addr = Emu_x86_64_RmAddr(cpu, insn, next);
+    int32_t digit = insn->ei_reg & ENC_X86_64_REG_MASK;
+
+    switch (insn->ei_op << ENC_X86_64_REG_SHIFT | digit) {
+        case ENC_X86_64_OPCODE_X87_D9 << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M32: {
+            Emu_x86_64_StPush(cpu, Fp_FloatFromBits((uint32_t) Emu_x86_64_ReadMem(cpu, addr, EMU_X86_64_WIDTH_32)));
+        } break;
+        case ENC_X86_64_OPCODE_X87_D9 << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M32: {
+            Emu_x86_64_WriteMem(cpu, addr, Fp_FloatBits((float) Emu_x86_64_StPop(cpu)), EMU_X86_64_WIDTH_32);
+        } break;
+        case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M64: {
+            Emu_x86_64_StPush(cpu, Fp_DoubleFromBits(Emu_x86_64_ReadMem(cpu, addr, EMU_X86_64_WIDTH_64)));
+        } break;
+        case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M64: {
+            Emu_x86_64_WriteMem(cpu, addr, Fp_DoubleBits((double) Emu_x86_64_StPop(cpu)), EMU_X86_64_WIDTH_64);
+        } break;
+        case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FISTTP_M64: {
+            Emu_x86_64_WriteMem(cpu, addr, Emu_x86_64_Truncate(Emu_x86_64_StPop(cpu), EMU_X86_64_WIDTH_64), EMU_X86_64_WIDTH_64);
+        } break;
+        case ENC_X86_64_OPCODE_X87_DF << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FILD_M64: {
+            Emu_x86_64_StPush(cpu, (long double) (int64_t) Emu_x86_64_ReadMem(cpu, addr, EMU_X86_64_WIDTH_64));
+        } break;
+        case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M80: {
+            const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, FP_EXTENDED_SIZE);
+            if (! p) {
+                Emu_x86_64_Fault(cpu, "read of unmapped memory", addr);
+                return;
+            }
+            Emu_x86_64_StPush(cpu, Fp_DecodeExtended(p));
+        } break;
+        case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M80: {
+            uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, FP_EXTENDED_SIZE);
+            if (! p) {
+                Emu_x86_64_Fault(cpu, "write to unmapped memory", addr);
+                return;
+            }
+            Fp_EncodeExtended(Emu_x86_64_StPop(cpu), p);
+        } break;
+        default: {
+            Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+        }
+    }
+}
+
+// Execute an x87 operation.
+void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip)
+{
+    if (insn->ei_rmkind != EMU_X86_64_RM_REG) {
+        Emu_x86_64_StepX87Mem(cpu, insn, next, rip);
+        return;
+    }
+
+    int32_t i = insn->ei_rm & ENC_X86_64_REG_MASK;
+    int32_t form = EMU_X86_64_X87_REG_FORM | (insn->ei_reg & ENC_X86_64_REG_MASK) << ENC_X86_64_REG_SHIFT;
+    long double *top = Emu_x86_64_St(cpu, 0);
+    long double *sti = Emu_x86_64_St(cpu, i);
+
+    switch (insn->ei_op) {
+        case ENC_X86_64_OPCODE_X87_D9: {
+            if (form != ENC_X86_64_X87_FCHS || i != 0) {
+                Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+                return;
+            }
+            *top = -*top;
+        } break;
+        case ENC_X86_64_OPCODE_X87_DE: {
+            switch (form) {
+                case ENC_X86_64_X87_FADDP:  { *sti = *sti + *top; } break;
+                case ENC_X86_64_X87_FMULP:  { *sti = *sti * *top; } break;
+                case ENC_X86_64_X87_FSUBRP: { *sti = *sti - *top; } break;
+                case ENC_X86_64_X87_FDIVRP: { *sti = *sti / *top; } break;
+                default: {
+                    Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+                    return;
+                }
+            }
+            Emu_x86_64_StPop(cpu);
+        } break;
+        case ENC_X86_64_OPCODE_X87_DF: {
+            if (form != ENC_X86_64_X87_FUCOMIP) {
+                Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+                return;
+            }
+            Emu_x86_64_FlagsCompare(cpu, *top, *sti);
+            Emu_x86_64_StPop(cpu);
+        } break;
+        case ENC_X86_64_OPCODE_X87_DD: {
+            if (form != ENC_X86_64_X87_FSTP) {
+                Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+                return;
+            }
+            *sti = *top;
+            Emu_x86_64_StPop(cpu);
+        } break;
+        default: {
+            Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+        }
+    }
 }
 
 // Answer a syscall: the two the runtime makes, and nothing else.
@@ -304,6 +557,30 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
             } break;
             case ENC_X86_64_OPCODE2_SETBE: {
                 Emu_x86_64_WriteRm(cpu, &insn, next, cpu->ec_cf || cpu->ec_zf, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_SETA: {
+                Emu_x86_64_WriteRm(cpu, &insn, next, ! cpu->ec_cf && ! cpu->ec_zf, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_SETAE: {
+                Emu_x86_64_WriteRm(cpu, &insn, next, ! cpu->ec_cf, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_SETP: {
+                Emu_x86_64_WriteRm(cpu, &insn, next, cpu->ec_pf, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_SETNP: {
+                Emu_x86_64_WriteRm(cpu, &insn, next, ! cpu->ec_pf, EMU_X86_64_WIDTH_8);
+            } break;
+            case ENC_X86_64_OPCODE2_CVTSI2S:
+            case ENC_X86_64_OPCODE2_CVTTS2SI:
+            case ENC_X86_64_OPCODE2_UCOMIS:
+            case ENC_X86_64_OPCODE2_ADDS:
+            case ENC_X86_64_OPCODE2_MULS:
+            case ENC_X86_64_OPCODE2_CVTS2S:
+            case ENC_X86_64_OPCODE2_SUBS:
+            case ENC_X86_64_OPCODE2_DIVS:
+            case ENC_X86_64_OPCODE2_MOVQ_XMM_RM:
+            case ENC_X86_64_OPCODE2_MOVQ_RM_XMM: {
+                Emu_x86_64_StepSse(cpu, &insn, next, rip);
             } break;
             case ENC_X86_64_OPCODE2_IMUL_R_RM: {
                 uint64_t a = Emu_x86_64_ReadReg(cpu, insn.ei_reg, width);
@@ -503,6 +780,13 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                 }
             }
         } break;
+        case ENC_X86_64_OPCODE_X87_D9:
+        case ENC_X86_64_OPCODE_X87_DB:
+        case ENC_X86_64_OPCODE_X87_DD:
+        case ENC_X86_64_OPCODE_X87_DE:
+        case ENC_X86_64_OPCODE_X87_DF: {
+            Emu_x86_64_StepX87(cpu, &insn, next, rip);
+        } break;
         default: {
             Emu_x86_64_Fault(cpu, "unimplemented opcode", rip);
         }
@@ -557,6 +841,35 @@ bool Emu_x86_64_HasModRM(int32_t op)
             return true;
         } break;
         default: {
+            return Emu_x86_64_IsX87(op);
+        }
+    }
+}
+
+// Return whether a one-byte opcode is an x87 escape the interpreter answers.
+bool Emu_x86_64_IsX87(int32_t op)
+{
+    return op == ENC_X86_64_OPCODE_X87_D9 || op == ENC_X86_64_OPCODE_X87_DB || op == ENC_X86_64_OPCODE_X87_DD
+        || op == ENC_X86_64_OPCODE_X87_DE || op == ENC_X86_64_OPCODE_X87_DF;
+}
+
+// Return whether a two-byte opcode is a scalar SSE operation or conversion.
+bool Emu_x86_64_IsSse(int32_t op2)
+{
+    switch (op2) {
+        case ENC_X86_64_OPCODE2_CVTSI2S:
+        case ENC_X86_64_OPCODE2_CVTTS2SI:
+        case ENC_X86_64_OPCODE2_UCOMIS:
+        case ENC_X86_64_OPCODE2_ADDS:
+        case ENC_X86_64_OPCODE2_MULS:
+        case ENC_X86_64_OPCODE2_CVTS2S:
+        case ENC_X86_64_OPCODE2_SUBS:
+        case ENC_X86_64_OPCODE2_DIVS:
+        case ENC_X86_64_OPCODE2_MOVQ_XMM_RM:
+        case ENC_X86_64_OPCODE2_MOVQ_RM_XMM: {
+            return true;
+        } break;
+        default: {
             return false;
         }
     }
@@ -576,11 +889,15 @@ bool Emu_x86_64_HasModRM2(int32_t op2)
         case ENC_X86_64_OPCODE2_MOVSX_R_RM16:
         case ENC_X86_64_OPCODE2_IMUL_R_RM:
         case ENC_X86_64_OPCODE2_MOVZX_R_RM8:
-        case ENC_X86_64_OPCODE2_MOVSX_R_RM8: {
+        case ENC_X86_64_OPCODE2_MOVSX_R_RM8:
+        case ENC_X86_64_OPCODE2_SETA:
+        case ENC_X86_64_OPCODE2_SETAE:
+        case ENC_X86_64_OPCODE2_SETP:
+        case ENC_X86_64_OPCODE2_SETNP: {
             return true;
         } break;
         default: {
-            return false;
+            return Emu_x86_64_IsSse(op2);
         }
     }
 }
@@ -660,9 +977,14 @@ size_t Emu_x86_64_Decode(const uint8_t *code, size_t avail, Emu_x86_64_Insn *ins
 
     size_t n = 0;
     uint8_t rex = 0;
-    if (avail > 0 && code[0] == ENC_X86_64_OPCODE_OPSIZE) {
-        insn->ei_opsize16 = true;
-        n++;
+    for (; avail > n; n++) {
+        if (code[n] == ENC_X86_64_OPCODE_OPSIZE) {
+            insn->ei_opsize16 = true;
+        } else if (code[n] == ENC_X86_64_OPCODE_SSE_DOUBLE || code[n] == ENC_X86_64_OPCODE_SSE_SINGLE) {
+            insn->ei_rep = code[n];
+        } else {
+            break;
+        }
     }
     if (avail > n && (code[n] & EMU_X86_64_REX_PREFIX_MASK) == ENC_X86_64_REX_BASE) {
         rex = code[n++];
@@ -793,8 +1115,15 @@ const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
             case ENC_X86_64_OPCODE2_MOVZX_R_RM16: { return "movzwq"; } break;
             case ENC_X86_64_OPCODE2_MOVSX_R_RM8:  { return "movsbq"; } break;
             case ENC_X86_64_OPCODE2_MOVSX_R_RM16: { return "movswq"; } break;
-            default:                             { return "(bad)";   }
+            case ENC_X86_64_OPCODE2_SETA:        { return "seta";    } break;
+            case ENC_X86_64_OPCODE2_SETAE:       { return "setae";   } break;
+            case ENC_X86_64_OPCODE2_SETP:        { return "setp";    } break;
+            case ENC_X86_64_OPCODE2_SETNP:       { return "setnp";   } break;
+            default:                             { return Emu_x86_64_SseMnemonic(insn); }
         }
+    }
+    if (Emu_x86_64_IsX87(insn->ei_op)) {
+        return Emu_x86_64_X87Mnemonic(insn);
     }
 
     switch (insn->ei_op) {
@@ -853,6 +1182,67 @@ const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
     }
 }
 
+// Name the scalar SSE operation a decoded instruction performs.
+const char *Emu_x86_64_SseMnemonic(const Emu_x86_64_Insn *insn)
+{
+    bool dbl = insn->ei_rep == ENC_X86_64_OPCODE_SSE_DOUBLE || (insn->ei_rep == 0 && insn->ei_opsize16);
+
+    switch (insn->ei_op2) {
+        case ENC_X86_64_OPCODE2_ADDS:        { return dbl ? "addsd" : "addss"; } break;
+        case ENC_X86_64_OPCODE2_SUBS:        { return dbl ? "subsd" : "subss"; } break;
+        case ENC_X86_64_OPCODE2_MULS:        { return dbl ? "mulsd" : "mulss"; } break;
+        case ENC_X86_64_OPCODE2_DIVS:        { return dbl ? "divsd" : "divss"; } break;
+        case ENC_X86_64_OPCODE2_UCOMIS:      { return dbl ? "ucomisd" : "ucomiss"; } break;
+        case ENC_X86_64_OPCODE2_CVTS2S:      { return dbl ? "cvtsd2ss" : "cvtss2sd"; } break;
+        case ENC_X86_64_OPCODE2_CVTSI2S:     { return dbl ? "cvtsi2sd" : "cvtsi2ss"; } break;
+        case ENC_X86_64_OPCODE2_CVTTS2SI:    { return dbl ? "cvttsd2si" : "cvttss2si"; } break;
+        case ENC_X86_64_OPCODE2_MOVQ_XMM_RM:
+        case ENC_X86_64_OPCODE2_MOVQ_RM_XMM: { return insn->ei_rexw ? "movq" : "movd"; } break;
+        default:                             { return "(bad)"; }
+    }
+}
+
+// Name the x87 operation a decoded instruction performs.
+const char *Emu_x86_64_X87Mnemonic(const Emu_x86_64_Insn *insn)
+{
+    int32_t digit = insn->ei_reg & ENC_X86_64_REG_MASK;
+    bool mem = insn->ei_rmkind != EMU_X86_64_RM_REG;
+
+    switch (insn->ei_op) {
+        case ENC_X86_64_OPCODE_X87_D9: {
+            if (! mem) {
+                return (EMU_X86_64_X87_REG_FORM | digit << ENC_X86_64_REG_SHIFT) == ENC_X86_64_X87_FCHS ? "fchs" : "(bad)";
+            }
+            return digit == ENC_X86_64_X87_FLD_M32 ? "flds" : digit == ENC_X86_64_X87_FSTP_M32 ? "fstps" : "(bad)";
+        } break;
+        case ENC_X86_64_OPCODE_X87_DB: {
+            return digit == ENC_X86_64_X87_FLD_M80 ? "fldt" : digit == ENC_X86_64_X87_FSTP_M80 ? "fstpt" : "(bad)";
+        } break;
+        case ENC_X86_64_OPCODE_X87_DD: {
+            if (! mem) {
+                return "fstp";
+            }
+            return digit == ENC_X86_64_X87_FLD_M64 ? "fldl" : digit == ENC_X86_64_X87_FSTP_M64 ? "fstpl"
+                 : digit == ENC_X86_64_X87_FISTTP_M64 ? "fisttpq" : "(bad)";
+        } break;
+        case ENC_X86_64_OPCODE_X87_DE: {
+            switch ((EMU_X86_64_X87_REG_FORM | digit << ENC_X86_64_REG_SHIFT)) {
+                case ENC_X86_64_X87_FADDP:  { return "faddp";  } break;
+                case ENC_X86_64_X87_FMULP:  { return "fmulp";  } break;
+                case ENC_X86_64_X87_FSUBRP: { return "fsubrp"; } break;
+                case ENC_X86_64_X87_FDIVRP: { return "fdivrp"; } break;
+                default:                    { return "(bad)";  }
+            }
+        } break;
+        case ENC_X86_64_OPCODE_X87_DF: {
+            return mem ? "fildq" : "fucomip";
+        } break;
+        default: {
+            return "(bad)";
+        }
+    }
+}
+
 // Write the r/m operand into out, as a register, disp(%base) or disp(%rip).
 void Emu_x86_64_FormatRm(const Emu_x86_64_Insn *insn, Emu_x86_64_OperandWidth width, uint64_t next, char *out, size_t n)
 {
@@ -892,6 +1282,39 @@ void Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, siz
     }
     if (insn->ei_rmkind == EMU_X86_64_RM_NONE) {
         snprintf(out, n, "%s", name);
+        return;
+    }
+    if (Emu_x86_64_IsX87(insn->ei_op)) {
+        if (insn->ei_op == ENC_X86_64_OPCODE_X87_D9 && insn->ei_rmkind == EMU_X86_64_RM_REG) {
+            snprintf(out, n, "%s", name);
+        } else if (insn->ei_rmkind == EMU_X86_64_RM_REG) {
+            snprintf(out, n, "%s %%st(%d)", name, insn->ei_rm & ENC_X86_64_REG_MASK);
+        } else {
+            Emu_x86_64_FormatRm(insn, EMU_X86_64_WIDTH_64, next, rm, sizeof(rm));
+            snprintf(out, n, "%s %s", name, rm);
+        }
+        return;
+    }
+    if (insn->ei_op == ENC_X86_64_OPCODE_ESCAPE && Emu_x86_64_IsSse(insn->ei_op2)) {
+        bool gprm = insn->ei_op2 == ENC_X86_64_OPCODE2_CVTSI2S || insn->ei_op2 == ENC_X86_64_OPCODE2_MOVQ_XMM_RM
+                 || insn->ei_op2 == ENC_X86_64_OPCODE2_MOVQ_RM_XMM;
+        bool gpreg = insn->ei_op2 == ENC_X86_64_OPCODE2_CVTTS2SI;
+        char reg[16];
+        if (insn->ei_rmkind == EMU_X86_64_RM_REG && ! gprm) {
+            snprintf(rm, sizeof(rm), "%%xmm%d", insn->ei_rm & EMU_X86_64_REG_INDEX_MASK);
+        } else {
+            Emu_x86_64_FormatRm(insn, width, next, rm, sizeof(rm));
+        }
+        if (gpreg) {
+            snprintf(reg, sizeof(reg), "%%%s", Emu_x86_64_RegName(insn->ei_reg, width));
+        } else {
+            snprintf(reg, sizeof(reg), "%%xmm%d", insn->ei_reg & EMU_X86_64_REG_INDEX_MASK);
+        }
+        if (insn->ei_op2 == ENC_X86_64_OPCODE2_MOVQ_RM_XMM) {
+            snprintf(out, n, "%s %s, %s", name, reg, rm);
+        } else {
+            snprintf(out, n, "%s %s, %s", name, rm, reg);
+        }
         return;
     }
 
