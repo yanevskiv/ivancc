@@ -30,6 +30,7 @@ CC      := gcc
 CFLAGS  := -std=gnu99 -O2 -Ih -Iout -DTARGET_ARCH=$(TARGET_ARCH)
 DEPFLAGS := -MMD -MP
 WARN    := -Wall -Wextra
+LDLIBS  := -lm
 LEX     := flex
 YACC    := bison
 
@@ -45,7 +46,7 @@ ELF_OBJS := $(OUT)/util/object/elf.o $(OUT)/util/console/err.o $(OUT)/util/conso
 AS_OBJS := $(OUT)/as.o $(ELF_OBJS) $(OUT)/util/buf.o \
 	$(OUT)/arch/$(TARGET_ARCH)/txt.o $(OUT)/arch/$(TARGET_ARCH)/asm.o \
 	$(OUT)/arch/$(TARGET_ARCH)/enc.o
-EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/load.o $(OUT)/arch/$(TARGET_ARCH)/emu.o
+EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/util/fp.o $(OUT)/arch/$(TARGET_ARCH)/load.o $(OUT)/arch/$(TARGET_ARCH)/emu.o
 LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/link.o
 
 SYS_HEADERS := $(patsubst libc/include/%,$(BUILD)/include/%,$(shell find libc/include -name '*.h' 2>/dev/null))
@@ -69,7 +70,7 @@ tests: $(TEST_NAMES)
 
 # --- tool recipes ---
 $(CC_BIN): $(CC_OBJS) | $(BUILD)/bin
-	$(CC) $(CFLAGS) $(WARN) $^ -o $@
+	$(CC) $(CFLAGS) $(WARN) $^ $(LDLIBS) -o $@
 
 $(AS_BIN): $(AS_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
@@ -78,7 +79,7 @@ $(LD_BIN): $(LD_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 $(EMU_BIN): $(EMU_OBJS) | $(BUILD)/bin
-	$(CC) $(CFLAGS) $(WARN) $^ -o $@
+	$(CC) $(CFLAGS) $(WARN) $^ $(LDLIBS) -o $@
 
 # --- test recipes ---
 $(TEST_NAMES): %: tests/core/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
