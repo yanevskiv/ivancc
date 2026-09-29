@@ -33,7 +33,7 @@ Checklist toward ISO C99.
         - [x] `restrict` qualifier
         - [x] pointer declarators (`int *p`, any number of stars)
         - [x] array declarators, incl. multi-dimensional (`[N][M]`)
-        - [ ] variable-length arrays (`int a[n]`, `sizeof` of one evaluated at run time)
+        - [x] variable-length arrays (`int a[n]`, `sizeof` of one evaluated at run time)
         - [x] function-pointer declarators
         - [x] `struct`
         - [x] `union`
