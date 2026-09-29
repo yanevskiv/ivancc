@@ -118,7 +118,7 @@ $(LINUX_DIR)/libc.o: src/libc/libc.c $(CC_BIN) | $(LINUX_DIR)
 $(EMU_DIR)/crt0.o: $(TARGET_SRC)/ivanemu/crt0.s $(AS_BIN) | $(EMU_DIR)
 	$(AS_BIN) $< -o $@
 
-$(OUT)/libc/ivanemu/core.o: src/libc/libc.c $(CC_BIN)
+$(OUT)/libc/ivanemu/libc.o: src/libc/libc.c $(CC_BIN)
 	@mkdir -p $(dir $@)
 	$(CC_BIN) -c $< -o $@
 
@@ -126,8 +126,8 @@ $(OUT)/libc/ivanemu/sys.o: $(TARGET_SRC)/ivanemu/sys.s $(AS_BIN)
 	@mkdir -p $(dir $@)
 	$(AS_BIN) $< -o $@
 
-$(EMU_DIR)/libc.o: $(OUT)/libc/ivanemu/core.o $(OUT)/libc/ivanemu/sys.o $(LD_BIN) | $(EMU_DIR)
-	$(LD_BIN) -r $(OUT)/libc/ivanemu/core.o $(OUT)/libc/ivanemu/sys.o -o $@
+$(EMU_DIR)/libc.o: $(OUT)/libc/ivanemu/libc.o $(OUT)/libc/ivanemu/sys.o $(LD_BIN) | $(EMU_DIR)
+	$(LD_BIN) -r $(OUT)/libc/ivanemu/libc.o $(OUT)/libc/ivanemu/sys.o -o $@
 
 # --- system header recipes ---
 $(BUILD)/include/%.h: libc/include/%.h
