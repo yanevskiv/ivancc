@@ -147,6 +147,7 @@ struct Par_Deriv {
     Par_Deriv     *pd_next;
     Par_DerivKind  pd_kind;
     int64_t        pd_len;    // element count of an ARRAY
+    Ast_Node      *pd_vlen;   // run-time element count of an ARRAY, or NULL
     bool           pd_empty;  // the ARRAY was written `[]`
     Par_ArrayDecor pd_decor;  // what the ARRAY's brackets carried besides a length
     Par_ParamList  pd_params; // parameter list of a FUNCTION
@@ -176,6 +177,7 @@ void  Par_PushParam(Par_ParamList *list, Ast_Var *var);
 Par_Decl  *Par_NewDecl(char *name);
 void       Par_NeedName(Par_Decl *decl, Ast_Line line);
 Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, Ast_Line line);
+void       Par_SetArrayLen(Par_Deriv *deriv, Ast_Node *len);
 Ast_Type  *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv);
 Ast_Type  *Par_ApplyDecl(Ast_Type *base, Par_Decl *decl);
 Ast_Type  *Par_AdjustParam(Ast_Type *type);
@@ -240,6 +242,7 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line);
 
 // Declarations
 void      Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line);
+void      Par_NeedFixedSize(const Ast_Type *type, Ast_Line line);
 void      Par_Redeclare(Ast_Var *var, Ast_Line line);
 void      Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_Line line);
 Ast_Var  *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line);

@@ -276,8 +276,8 @@ direct_declarator
     | LPAREN stars RPAREN
         { $$ = Par_NewDecl(NULL); $$->pc_line = @1;
           for (int64_t i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
-    | direct_declarator LSQUARE array_decor array_len RSQUARE
-        { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_len = $4; d->pd_decor = $3; }
+    | direct_declarator LSQUARE array_decor expr RSQUARE
+        { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); Par_SetArrayLen(d, $4); d->pd_decor = $3; }
     | direct_declarator LSQUARE array_decor RSQUARE
         { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_empty = true; d->pd_decor = $3; }
     | direct_declarator LPAREN { Ast_PushScope(); } params RPAREN
@@ -457,7 +457,7 @@ for_init
 /* A block-scope declaration. */
 decl
     : storage decl_spec { Par_SetDeclSpec($1, $2); } decl_body
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_BLOCK, @2); n->an_body = $4; $$ = n; }
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DECL, @2); n->an_body = $4; $$ = n; }
     ;
 
 /* The declarators a block-scope declaration names. */

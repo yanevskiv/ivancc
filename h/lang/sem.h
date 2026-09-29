@@ -85,11 +85,12 @@ void      Sem_LowerOpAssign(Ast_Node *node);
 void      Sem_LowerPostInc(Ast_Node *node);
 
 // Annotation
+int32_t   Sem_Stride(const Ast_Type *type, Ast_Line line);
 Ast_Node *Sem_ScaleBy(Ast_Node *node, int32_t size);
 void      Sem_Arith(Ast_Node *node);
 void      Sem_NeedInteger(const Ast_Node *node);
 void      Sem_CheckCast(Ast_Node *node);
-bool      Sem_FindLabel(Ast_Node *node, const char *name);
+Ast_Node *Sem_FindLabel(Ast_Node *node, const char *name);
 void      Sem_CheckGotos(Ast_Node *node, Ast_Node *body);
 void      Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail);
 void      Sem_Annotate(Ast_Node *node);

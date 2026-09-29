@@ -279,6 +279,20 @@ Ast_Type *Ast_SizeArray(const Ast_Type *type, int32_t len)
     return Ast_Qualify(Ast_NewArray(type->at_base, len), type->at_qual);
 }
 
+// Build the type of an array of base whose length len computes at run time.
+Ast_Type *Ast_NewVla(Ast_Type *base, Ast_Node *len)
+{
+    Ast_Type *type = Ast_NewArray(base, 0);
+    type->at_vlen = len;
+    return type;
+}
+
+// Return whether this type is a variable-length array.
+bool Ast_IsVla(const Ast_Type *type)
+{
+    return type->at_kind == AST_TYPE_KIND_ARRAY && type->at_vlen != NULL;
+}
+
 // Build a function type.
 Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto)
 {

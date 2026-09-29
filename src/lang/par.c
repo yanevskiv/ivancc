@@ -124,6 +124,14 @@ Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, Ast_Line line)
     return deriv;
 }
 
+// Give an array derivation the length an expression computes.
+void Par_SetArrayLen(Par_Deriv *deriv, Ast_Node *len)
+{
+    if (! Sem_Fold(len, &deriv->pd_len)) {
+        deriv->pd_vlen = len;
+    }
+}
+
 // Wrap base in one derivation list, outermost first.
 Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
 {
@@ -133,13 +141,18 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
     Ast_Type *inner = Par_ApplyDerivs(base, deriv->pd_next);
     switch (deriv->pd_kind) {
         case PAR_DERIV_POINTER: {
+            Par_NeedFixedSize(inner, deriv->pd_line);
             return Ast_NewPointer(inner);
         }
         case PAR_DERIV_ARRAY: {
             Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC, ERR_PAR_ARRAY_OF_FUNCTIONS);
             Err_AssertAt(deriv->pd_line, ! deriv->pd_decor, ERR_PAR_ARRAY_DECOR_NOT_PARAM);
+            Par_NeedFixedSize(inner, deriv->pd_line);
             if (deriv->pd_empty) {
                 return Ast_NewUnsizedArray(inner);
+            }
+            if (deriv->pd_vlen) {
+                return Ast_NewVla(inner, deriv->pd_vlen);
             }
             return Ast_NewArray(inner, (int32_t) deriv->pd_len);
         }
@@ -726,6 +739,7 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
         Err_AssertAt(decl->pc_line, decl->pc_name || decl->pc_bits, ERR_PAR_MEMBER_UNNAMED);
         tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
+        Par_NeedFixedSize(tail->am_type, decl->pc_line);
         if (decl->pc_head && decl->pc_head->pd_kind == PAR_DERIV_ARRAY && decl->pc_head->pd_empty) {
             tail->am_flexible = true;
         }
@@ -1096,6 +1110,12 @@ void Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line)
     Err_AssertAt(line, type->at_complete || Par_DeclStorage == AST_STORAGE_EXTERN, ERR_PAR_OBJECT_INCOMPLETE, name);
 }
 
+// Reject a variable-length array where only a fixed-size type may go.
+void Par_NeedFixedSize(const Ast_Type *type, Ast_Line line)
+{
+    Err_AssertAt(line, ! Ast_IsVla(type), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+}
+
 // Merge a later file-scope declaration's storage class into the first one's.
 void Par_Redeclare(Ast_Var *var, Ast_Line line)
 {
@@ -1115,6 +1135,7 @@ void Par_Redeclare(Ast_Var *var, Ast_Line line)
 // Declare one file-scope name of the declaration being parsed.
 void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_Line line)
 {
+    Par_NeedFixedSize(type, line);
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
         Ast_DeclareTypedef(name, type);
         return;
@@ -1151,6 +1172,9 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
 // Declare a variable inside a function.
 Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
 {
+    if (Par_DeclStorage != AST_STORAGE_NONE) {
+        Par_NeedFixedSize(type, line);
+    }
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
         Ast_DeclareTypedef(name, type);
         return NULL;
@@ -1176,6 +1200,12 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
     Par_NeedName(decl, line);
     Ast_Var *var = Par_DeclareLocal(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), line);
 
+    if (var && Ast_IsVla(var->av_type)) {
+        Err_AssertAt(line, ! init, ERR_PAR_VLA_INITIALIZED, decl->pc_name);
+        Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_VLA, var->av_type->at_vlen, line);
+        node->an_var = var;
+        return node;
+    }
     if (! init) {
         if (var) {
             Par_CheckComplete(decl->pc_name, var->av_type, line);
