@@ -528,6 +528,7 @@ void Ast_PushScope(void)
 {
     Ast_Scope *scope = calloc(1, sizeof(Ast_Scope));
     scope->as_parent = Ast_CurScope;
+    scope->as_varmod = Ast_CurScope->as_varmod;
     Ast_CurScope = scope;
 }
 
@@ -594,6 +595,13 @@ void Ast_DeclareParam(Ast_Var *var)
     Ast_CurScope->as_vars = var;
 }
 
+// Make a parameter visible to the ones after it in its list.
+void Ast_DeclarePrototypeParam(Ast_Var *var)
+{
+    var->av_scope_next = Ast_CurScope->as_vars;
+    Ast_CurScope->as_vars = var;
+}
+
 // Declare a variable at file scope, reusing the slot if it is already there.
 Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, Ast_Line line)
 {
@@ -654,6 +662,31 @@ Ast_Var *Ast_DeclareExternLocal(const char *name, Ast_Type *type, Ast_Line line)
 Ast_Var *Ast_CurrentLocals(void)
 {
     return Ast_Locals;
+}
+
+// Start the scope of a variably modified name just declared.
+void Ast_OpenVarmodScope(void)
+{
+    Ast_VarmodScope *scope = calloc(1, sizeof(Ast_VarmodScope));
+    scope->vs_outer = Ast_CurScope->as_varmod;
+    Ast_CurScope->as_varmod = scope;
+}
+
+// Return the innermost variably modified name's scope, or NULL.
+Ast_VarmodScope *Ast_CurrentVarmodScope(void)
+{
+    return Ast_CurScope->as_varmod;
+}
+
+// Return whether outer is scope or a scope it is nested in.
+bool Ast_ContainsVarmodScope(const Ast_VarmodScope *scope, const Ast_VarmodScope *outer)
+{
+    for (; scope != outer; scope = scope->vs_outer) {
+        if (! scope) {
+            return false;
+        }
+    }
+    return true;
 }
 
 // Look up a tag by name.

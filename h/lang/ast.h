@@ -229,7 +229,7 @@ struct Ast_Type {
     Ast_Qual         at_qual;     // the qualifiers written on the declaration
     Ast_Type        *at_base;     // pointee for PTR, element type for ARRAY
     int32_t          at_len;      // element count for ARRAY
-    Ast_Node        *at_vlen;     // length a variable-length ARRAY computes
+    Ast_Node        *at_vlen;     // run-time length of an ARRAY; NOP for `[*]`
     Ast_Var         *at_vsize;    // local that sizes a variable-length ARRAY
     char            *at_tag;      // tag a STRUCT or UNION was declared with, or NULL
     Ast_Member      *at_members;  // members of a STRUCT or UNION
@@ -275,6 +275,7 @@ struct Ast_Var {
     bool         av_global;     // true when the variable lives in .data or .bss
     Ast_Storage  av_storage;    // storage class the declaration asked for
     Ast_Node    *av_init;       // initializer of a global, or NULL
+    Ast_Type    *av_varmodtype; // a varmod parameter's type before adjustment
 };
 
 // A struct, union or enum tag.
@@ -301,14 +302,21 @@ struct Ast_Typedef {
     Ast_Type    *ad_type;
 };
 
+// The scope of one variably modified name, inside those declared before it.
+typedef struct Ast_VarmodScope Ast_VarmodScope;
+struct Ast_VarmodScope {
+    Ast_VarmodScope *vs_outer; // the variably modified name declared before it
+};
+
 // One lexical scope: what was declared directly inside a pair of braces.
 typedef struct Ast_Scope Ast_Scope;
 struct Ast_Scope {
-    Ast_Scope   *as_parent;   // the scope this one is nested in
-    Ast_Var     *as_vars;     // declared here, innermost names first
-    Ast_Tag     *as_tags;     // struct, union and enum tags declared here
-    Ast_Typedef *as_typedefs; // typedef names declared here
-    Ast_EnumConst *as_enums;  // enumeration constants declared here
+    Ast_Scope       *as_parent;   // the scope this one is nested in
+    Ast_VarmodScope *as_varmod;   // innermost variably modified name in scope
+    Ast_Var         *as_vars;     // declared here, innermost names first
+    Ast_Tag         *as_tags;     // struct, union and enum tags declared here
+    Ast_Typedef     *as_typedefs; // typedef names declared here
+    Ast_EnumConst   *as_enums;    // enumeration constants declared here
 };
 
 // A node in the abstract syntax tree.
@@ -340,6 +348,7 @@ struct Ast_Node {
     char        *an_memname;  // member name a MEMBER node was written with
     int32_t      an_tmp;      // frame slot an aggregate return lands in
     int32_t      an_calltmp;  // frame slot an indirect CALL parks its callee in
+    Ast_VarmodScope *an_varmod; // varmod names in scope at a jump or label
 };
 
 // A function definition.
@@ -425,10 +434,14 @@ Ast_Var *Ast_FindVar(const char *name);
 Ast_Var *Ast_FindGlobal(const char *symbol);
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line);
 void     Ast_DeclareParam(Ast_Var *var);
+void     Ast_DeclarePrototypeParam(Ast_Var *var);
 Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_DeclareExternLocal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_CurrentLocals(void);
+void     Ast_OpenVarmodScope(void);
+Ast_VarmodScope *Ast_CurrentVarmodScope(void);
+bool     Ast_ContainsVarmodScope(const Ast_VarmodScope *scope, const Ast_VarmodScope *outer);
 
 // Tags and typedef names
 Ast_Type *Ast_FindTag(const char *name);
