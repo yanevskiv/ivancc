@@ -54,9 +54,13 @@ void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Load_x86_64_Image *img)
 }
 
 // Report a fault against the instruction that caused it and stop the program.
-void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, const char *what, uint64_t addr)
+void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, Err_Code code, ...)
 {
-    fprintf(stderr, "ivanemu: %s at 0x%llx from %%rip = 0x%llx\n", what, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+    va_list ap;
+
+    va_start(ap, code);
+    Err_ShowVa(LOG_SEVERITY_ERROR, LOG_LINE_NONE, code, ap);
+    va_end(ap);
     cpu->ec_halted = true;
     cpu->ec_status = EMU_X86_64_STATUS_FAULT;
 }
@@ -66,10 +70,18 @@ uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, Emu_x86_64_Reg reg, Emu_x
 {
     uint64_t val = cpu->ec_reg[reg & EMU_X86_64_REG_INDEX_MASK];
     switch (width) {
-        case EMU_X86_64_WIDTH_8:  { return val & EMU_X86_64_MASK_8; } break;
-        case EMU_X86_64_WIDTH_16: { return val & EMU_X86_64_MASK_16; } break;
-        case EMU_X86_64_WIDTH_32: { return val & EMU_X86_64_MASK_32; } break;
-        default:                  { return val; }
+        case EMU_X86_64_WIDTH_8: {
+            return val & EMU_X86_64_MASK_8;
+        } break;
+        case EMU_X86_64_WIDTH_16: {
+            return val & EMU_X86_64_MASK_16;
+        } break;
+        case EMU_X86_64_WIDTH_32: {
+            return val & EMU_X86_64_MASK_32;
+        } break;
+        default: {
+            return val;
+        }
     }
 }
 
@@ -133,7 +145,7 @@ uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, Emu_x86_64_Opera
     size_t n = width / EMU_X86_64_BITS_PER_BYTE;
     const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, n);
     if (! p) {
-        Emu_x86_64_Fault(cpu, "read of unmapped memory", addr);
+        Emu_x86_64_Fault(cpu, ERR_EMU_READ_UNMAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
         return 0;
     }
     uint64_t val = 0;
@@ -154,7 +166,7 @@ void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, Emu
     size_t n = width / EMU_X86_64_BITS_PER_BYTE;
     uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, n);
     if (! p) {
-        Emu_x86_64_Fault(cpu, "write to unmapped memory", addr);
+        Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_UNMAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
         return;
     }
     for (size_t i = 0; i < n; i++) {
@@ -321,12 +333,20 @@ void Emu_x86_64_StepSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
                 double y = Fp_DoubleFromBits(b);
                 double r = 0;
                 switch (insn->ei_op2) {
-                    case ENC_X86_64_OPCODE2_ADDS: { r = x + y; } break;
-                    case ENC_X86_64_OPCODE2_SUBS: { r = x - y; } break;
-                    case ENC_X86_64_OPCODE2_MULS: { r = x * y; } break;
-                    case ENC_X86_64_OPCODE2_DIVS: { r = x / y; } break;
+                    case ENC_X86_64_OPCODE2_ADDS: {
+                        r = x + y;
+                    } break;
+                    case ENC_X86_64_OPCODE2_SUBS: {
+                        r = x - y;
+                    } break;
+                    case ENC_X86_64_OPCODE2_MULS: {
+                        r = x * y;
+                    } break;
+                    case ENC_X86_64_OPCODE2_DIVS: {
+                        r = x / y;
+                    } break;
                     default: {
-                        Emu_x86_64_Fault(cpu, "unimplemented SSE opcode", rip);
+                        Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "SSE", (Emu_TypeULLong) rip);
                     }
                 }
                 dst[0] = Fp_DoubleBits(r);
@@ -335,12 +355,20 @@ void Emu_x86_64_StepSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
                 float y = Fp_FloatFromBits((uint32_t) b);
                 float r = 0;
                 switch (insn->ei_op2) {
-                    case ENC_X86_64_OPCODE2_ADDS: { r = x + y; } break;
-                    case ENC_X86_64_OPCODE2_SUBS: { r = x - y; } break;
-                    case ENC_X86_64_OPCODE2_MULS: { r = x * y; } break;
-                    case ENC_X86_64_OPCODE2_DIVS: { r = x / y; } break;
+                    case ENC_X86_64_OPCODE2_ADDS: {
+                        r = x + y;
+                    } break;
+                    case ENC_X86_64_OPCODE2_SUBS: {
+                        r = x - y;
+                    } break;
+                    case ENC_X86_64_OPCODE2_MULS: {
+                        r = x * y;
+                    } break;
+                    case ENC_X86_64_OPCODE2_DIVS: {
+                        r = x / y;
+                    } break;
                     default: {
-                        Emu_x86_64_Fault(cpu, "unimplemented SSE opcode", rip);
+                        Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "SSE", (Emu_TypeULLong) rip);
                     }
                 }
                 dst[0] = (dst[0] & ~(uint64_t) EMU_X86_64_MASK_32) | Fp_FloatBits(r);
@@ -398,7 +426,7 @@ void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uin
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M80: {
             const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, FP_EXTENDED_SIZE);
             if (! p) {
-                Emu_x86_64_Fault(cpu, "read of unmapped memory", addr);
+                Emu_x86_64_Fault(cpu, ERR_EMU_READ_UNMAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
                 return;
             }
             Emu_x86_64_StPush(cpu, Fp_DecodeExtended(p));
@@ -406,13 +434,13 @@ void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uin
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M80: {
             uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, FP_EXTENDED_SIZE);
             if (! p) {
-                Emu_x86_64_Fault(cpu, "write to unmapped memory", addr);
+                Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_UNMAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
                 return;
             }
             Fp_EncodeExtended(Emu_x86_64_StPop(cpu), p);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
         }
     }
 }
@@ -433,19 +461,27 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
     switch (insn->ei_op) {
         case ENC_X86_64_OPCODE_X87_D9: {
             if (form != ENC_X86_64_X87_FCHS || i != 0) {
-                Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
                 return;
             }
             *top = -*top;
         } break;
         case ENC_X86_64_OPCODE_X87_DE: {
             switch (form) {
-                case ENC_X86_64_X87_FADDP:  { *sti = *sti + *top; } break;
-                case ENC_X86_64_X87_FMULP:  { *sti = *sti * *top; } break;
-                case ENC_X86_64_X87_FSUBRP: { *sti = *sti - *top; } break;
-                case ENC_X86_64_X87_FDIVRP: { *sti = *sti / *top; } break;
+                case ENC_X86_64_X87_FADDP: {
+                    *sti = *sti + *top;
+                } break;
+                case ENC_X86_64_X87_FMULP: {
+                    *sti = *sti * *top;
+                } break;
+                case ENC_X86_64_X87_FSUBRP: {
+                    *sti = *sti - *top;
+                } break;
+                case ENC_X86_64_X87_FDIVRP: {
+                    *sti = *sti / *top;
+                } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
                     return;
                 }
             }
@@ -453,7 +489,7 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
         } break;
         case ENC_X86_64_OPCODE_X87_DF: {
             if (form != ENC_X86_64_X87_FUCOMIP) {
-                Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
                 return;
             }
             Emu_x86_64_FlagsCompare(cpu, *top, *sti);
@@ -461,14 +497,14 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
         } break;
         case ENC_X86_64_OPCODE_X87_DD: {
             if (form != ENC_X86_64_X87_FSTP) {
-                Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
                 return;
             }
             *sti = *top;
             Emu_x86_64_StPop(cpu);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, "unimplemented x87 opcode", rip);
+            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
         }
     }
 }
@@ -484,7 +520,7 @@ void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
             uint64_t len = cpu->ec_reg[EMU_X86_64_REG_RDX];
             const uint8_t *p = Load_x86_64_At(cpu->ec_img, buf, len);
             if (! p) {
-                Emu_x86_64_Fault(cpu, "write from unmapped memory", buf);
+                Emu_x86_64_Fault(cpu, ERR_EMU_SYSCALL_UNMAPPED, (Emu_TypeULLong) buf, (Emu_TypeULLong) cpu->ec_rip);
                 return;
             }
             ssize_t n = write((int) fd, p, (size_t) len);
@@ -495,9 +531,7 @@ void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
             cpu->ec_status = cpu->ec_reg[EMU_X86_64_REG_RDI] & EMU_X86_64_MASK_8;
         } break;
         default: {
-            fprintf(stderr, "ivanemu: unimplemented syscall %llu from %%rip = 0x%llx\n", (Emu_TypeULLong) nr, (Emu_TypeULLong) cpu->ec_rip);
-            cpu->ec_halted = true;
-            cpu->ec_status = EMU_X86_64_STATUS_FAULT;
+            Emu_x86_64_Fault(cpu, ERR_EMU_SYSCALL_UNIMPLEMENTED, (Emu_TypeULLong) nr, (Emu_TypeULLong) cpu->ec_rip);
         }
     }
 }
@@ -511,7 +545,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
     Emu_x86_64_Insn insn;
 
     if (! code || ! Emu_x86_64_Decode(code, avail, &insn)) {
-        Emu_x86_64_Fault(cpu, "undecodable instruction", rip);
+        Emu_x86_64_Fault(cpu, ERR_EMU_UNDECODABLE, (Emu_TypeULLong) rip);
         return;
     }
     if (trace == EMU_X86_64_TRACE) {
@@ -604,7 +638,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                 Emu_x86_64_WriteReg(cpu, insn.ei_reg, (uint64_t) (int64_t) (int16_t) b, width);
             } break;
             default: {
-                Emu_x86_64_Fault(cpu, "unimplemented two-byte opcode", rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "two-byte", (Emu_TypeULLong) rip);
             }
         }
         return;
@@ -658,7 +692,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     Emu_x86_64_WriteRm(cpu, &insn, next, a >> count, width);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, "unimplemented group 2 opcode", rip);
+                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "group 2", (Emu_TypeULLong) rip);
                 }
             }
         } break;
@@ -728,13 +762,13 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     Emu_x86_64_FlagsSub(cpu, a, b, width);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, "unimplemented group 1 opcode", rip);
+                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "group 1", (Emu_TypeULLong) rip);
                 }
             }
         } break;
         case ENC_X86_64_OPCODE_GRP5_RM: {
             if ((insn.ei_reg & ENC_X86_64_REG_MASK) != ENC_X86_64_GRP_CALL) {
-                Emu_x86_64_Fault(cpu, "unimplemented group 5 opcode", rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "group 5", (Emu_TypeULLong) rip);
                 return;
             }
             uint64_t target = Emu_x86_64_ReadRm(cpu, &insn, next, EMU_X86_64_WIDTH_64);
@@ -756,7 +790,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                 case ENC_X86_64_GRP_IDIV: {
                     int64_t d = (int64_t) Emu_x86_64_ReadRm(cpu, &insn, next, width);
                     if (d == 0) {
-                        Emu_x86_64_Fault(cpu, "divide by zero", rip);
+                        Emu_x86_64_Fault(cpu, ERR_EMU_DIVIDE_BY_ZERO, (Emu_TypeULLong) rip);
                         return;
                     }
                     Emu_TypeInt128 num = ((Emu_TypeInt128) (int64_t) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
@@ -767,7 +801,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                 case ENC_X86_64_GRP_DIV: {
                     uint64_t d = Emu_x86_64_ReadRm(cpu, &insn, next, width);
                     if (d == 0) {
-                        Emu_x86_64_Fault(cpu, "divide by zero", rip);
+                        Emu_x86_64_Fault(cpu, ERR_EMU_DIVIDE_BY_ZERO, (Emu_TypeULLong) rip);
                         return;
                     }
                     Emu_TypeUInt128 num = ((Emu_TypeUInt128) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
@@ -776,7 +810,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (num % d);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, "unimplemented group 3 opcode", rip);
+                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "group 3", (Emu_TypeULLong) rip);
                 }
             }
         } break;
@@ -788,7 +822,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
             Emu_x86_64_StepX87(cpu, &insn, next, rip);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, "unimplemented opcode", rip);
+            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "one-byte", (Emu_TypeULLong) rip);
         }
     }
 }
@@ -1101,25 +1135,63 @@ const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
 {
     if (insn->ei_op == ENC_X86_64_OPCODE_ESCAPE) {
         switch (insn->ei_op2) {
-            case ENC_X86_64_OPCODE2_SYSCALL:     { return "syscall"; } break;
-            case ENC_X86_64_OPCODE2_JE_REL32:    { return "je";      } break;
-            case ENC_X86_64_OPCODE2_JNE_REL32:   { return "jne";     } break;
-            case ENC_X86_64_OPCODE2_SETE:        { return "sete";    } break;
-            case ENC_X86_64_OPCODE2_SETNE:       { return "setne";   } break;
-            case ENC_X86_64_OPCODE2_SETL:        { return "setl";    } break;
-            case ENC_X86_64_OPCODE2_SETLE:       { return "setle";   } break;
-            case ENC_X86_64_OPCODE2_SETB:        { return "setb";    } break;
-            case ENC_X86_64_OPCODE2_SETBE:       { return "setbe";   } break;
-            case ENC_X86_64_OPCODE2_IMUL_R_RM:   { return "imul";    } break;
-            case ENC_X86_64_OPCODE2_MOVZX_R_RM8:  { return "movzbq"; } break;
-            case ENC_X86_64_OPCODE2_MOVZX_R_RM16: { return "movzwq"; } break;
-            case ENC_X86_64_OPCODE2_MOVSX_R_RM8:  { return "movsbq"; } break;
-            case ENC_X86_64_OPCODE2_MOVSX_R_RM16: { return "movswq"; } break;
-            case ENC_X86_64_OPCODE2_SETA:        { return "seta";    } break;
-            case ENC_X86_64_OPCODE2_SETAE:       { return "setae";   } break;
-            case ENC_X86_64_OPCODE2_SETP:        { return "setp";    } break;
-            case ENC_X86_64_OPCODE2_SETNP:       { return "setnp";   } break;
-            default:                             { return Emu_x86_64_SseMnemonic(insn); }
+            case ENC_X86_64_OPCODE2_SYSCALL: {
+                return "syscall";
+            } break;
+            case ENC_X86_64_OPCODE2_JE_REL32: {
+                return "je";
+            } break;
+            case ENC_X86_64_OPCODE2_JNE_REL32: {
+                return "jne";
+            } break;
+            case ENC_X86_64_OPCODE2_SETE: {
+                return "sete";
+            } break;
+            case ENC_X86_64_OPCODE2_SETNE: {
+                return "setne";
+            } break;
+            case ENC_X86_64_OPCODE2_SETL: {
+                return "setl";
+            } break;
+            case ENC_X86_64_OPCODE2_SETLE: {
+                return "setle";
+            } break;
+            case ENC_X86_64_OPCODE2_SETB: {
+                return "setb";
+            } break;
+            case ENC_X86_64_OPCODE2_SETBE: {
+                return "setbe";
+            } break;
+            case ENC_X86_64_OPCODE2_IMUL_R_RM: {
+                return "imul";
+            } break;
+            case ENC_X86_64_OPCODE2_MOVZX_R_RM8: {
+                return "movzbq";
+            } break;
+            case ENC_X86_64_OPCODE2_MOVZX_R_RM16: {
+                return "movzwq";
+            } break;
+            case ENC_X86_64_OPCODE2_MOVSX_R_RM8: {
+                return "movsbq";
+            } break;
+            case ENC_X86_64_OPCODE2_MOVSX_R_RM16: {
+                return "movswq";
+            } break;
+            case ENC_X86_64_OPCODE2_SETA: {
+                return "seta";
+            } break;
+            case ENC_X86_64_OPCODE2_SETAE: {
+                return "setae";
+            } break;
+            case ENC_X86_64_OPCODE2_SETP: {
+                return "setp";
+            } break;
+            case ENC_X86_64_OPCODE2_SETNP: {
+                return "setnp";
+            } break;
+            default: {
+                return Emu_x86_64_SseMnemonic(insn);
+            }
         }
     }
     if (Emu_x86_64_IsX87(insn->ei_op)) {
@@ -1127,58 +1199,120 @@ const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn)
     }
 
     switch (insn->ei_op) {
-        case ENC_X86_64_OPCODE_ADD_RM_R:      { return "add";   } break;
-        case ENC_X86_64_OPCODE_OR_RM_R:       { return "or";    } break;
-        case ENC_X86_64_OPCODE_AND_RM_R:      { return "and";   } break;
-        case ENC_X86_64_OPCODE_XOR_RM_R:      { return "xor";   } break;
-        case ENC_X86_64_OPCODE_SUB_RM_R:      { return "sub";   } break;
-        case ENC_X86_64_OPCODE_CMP_RM_R:      { return "cmp";   } break;
-        case ENC_X86_64_OPCODE_PUSH_R:        { return "push";  } break;
-        case ENC_X86_64_OPCODE_POP_R:         { return "pop";   } break;
-        case ENC_X86_64_OPCODE_MOVSXD_R_RM32: { return "movslq"; } break;
+        case ENC_X86_64_OPCODE_ADD_RM_R: {
+            return "add";
+        } break;
+        case ENC_X86_64_OPCODE_OR_RM_R: {
+            return "or";
+        } break;
+        case ENC_X86_64_OPCODE_AND_RM_R: {
+            return "and";
+        } break;
+        case ENC_X86_64_OPCODE_XOR_RM_R: {
+            return "xor";
+        } break;
+        case ENC_X86_64_OPCODE_SUB_RM_R: {
+            return "sub";
+        } break;
+        case ENC_X86_64_OPCODE_CMP_RM_R: {
+            return "cmp";
+        } break;
+        case ENC_X86_64_OPCODE_PUSH_R: {
+            return "push";
+        } break;
+        case ENC_X86_64_OPCODE_POP_R: {
+            return "pop";
+        } break;
+        case ENC_X86_64_OPCODE_MOVSXD_R_RM32: {
+            return "movslq";
+        } break;
         case ENC_X86_64_OPCODE_MOV_RM8_R8:
         case ENC_X86_64_OPCODE_MOV_RM_R:
         case ENC_X86_64_OPCODE_MOV_R_RM:
         case ENC_X86_64_OPCODE_MOV_R8_IMM8:
         case ENC_X86_64_OPCODE_MOV_R_IMM64:
-        case ENC_X86_64_OPCODE_MOV_RM_IMM32:  { return "mov";   } break;
-        case ENC_X86_64_OPCODE_LEA_R_M:       { return "lea";   } break;
-        case ENC_X86_64_OPCODE_CQO:           { return "cqto";  } break;
-        case ENC_X86_64_OPCODE_RET:           { return "ret";   } break;
-        case ENC_X86_64_OPCODE_CALL_REL32:    { return "call";  } break;
-        case ENC_X86_64_OPCODE_JMP_REL32:     { return "jmp";   } break;
+        case ENC_X86_64_OPCODE_MOV_RM_IMM32: {
+            return "mov";
+        } break;
+        case ENC_X86_64_OPCODE_LEA_R_M: {
+            return "lea";
+        } break;
+        case ENC_X86_64_OPCODE_CQO: {
+            return "cqto";
+        } break;
+        case ENC_X86_64_OPCODE_RET: {
+            return "ret";
+        } break;
+        case ENC_X86_64_OPCODE_CALL_REL32: {
+            return "call";
+        } break;
+        case ENC_X86_64_OPCODE_JMP_REL32: {
+            return "jmp";
+        } break;
         case ENC_X86_64_OPCODE_GRP1_RM_IMM32: {
             switch (insn->ei_reg & ENC_X86_64_REG_MASK) {
-                case ENC_X86_64_GRP_ADD: { return "add"; } break;
-                case ENC_X86_64_GRP_SUB: { return "sub"; } break;
-                case ENC_X86_64_GRP_CMP: { return "cmp"; } break;
-                default:                 { return "(bad)"; }
+                case ENC_X86_64_GRP_ADD: {
+                    return "add";
+                } break;
+                case ENC_X86_64_GRP_SUB: {
+                    return "sub";
+                } break;
+                case ENC_X86_64_GRP_CMP: {
+                    return "cmp";
+                } break;
+                default: {
+                    return "(bad)";
+                }
             }
         } break;
         case ENC_X86_64_OPCODE_GRP2_RM_CL: {
             switch (insn->ei_reg & ENC_X86_64_REG_MASK) {
-                case ENC_X86_64_GRP_SHL: { return "shl"; } break;
-                case ENC_X86_64_GRP_SAR: { return "sar"; } break;
-                case ENC_X86_64_GRP_SHR: { return "shr"; } break;
-                default:                 { return "(bad)"; }
+                case ENC_X86_64_GRP_SHL: {
+                    return "shl";
+                } break;
+                case ENC_X86_64_GRP_SAR: {
+                    return "sar";
+                } break;
+                case ENC_X86_64_GRP_SHR: {
+                    return "shr";
+                } break;
+                default: {
+                    return "(bad)";
+                }
             }
         } break;
         case ENC_X86_64_OPCODE_GRP5_RM: {
             switch (insn->ei_reg & ENC_X86_64_REG_MASK) {
-                case ENC_X86_64_GRP_CALL: { return "call"; } break;
-                default:                  { return "(bad)"; }
+                case ENC_X86_64_GRP_CALL: {
+                    return "call";
+                } break;
+                default: {
+                    return "(bad)";
+                }
             }
         } break;
         case ENC_X86_64_OPCODE_GRP3_RM: {
             switch (insn->ei_reg & ENC_X86_64_REG_MASK) {
-                case ENC_X86_64_GRP_NOT:  { return "not";  } break;
-                case ENC_X86_64_GRP_NEG:  { return "neg";  } break;
-                case ENC_X86_64_GRP_IDIV: { return "idiv"; } break;
-                case ENC_X86_64_GRP_DIV:  { return "div";  } break;
-                default:                  { return "(bad)"; }
+                case ENC_X86_64_GRP_NOT: {
+                    return "not";
+                } break;
+                case ENC_X86_64_GRP_NEG: {
+                    return "neg";
+                } break;
+                case ENC_X86_64_GRP_IDIV: {
+                    return "idiv";
+                } break;
+                case ENC_X86_64_GRP_DIV: {
+                    return "div";
+                } break;
+                default: {
+                    return "(bad)";
+                }
             }
         } break;
-        default: { return "(bad)"; }
+        default: {
+            return "(bad)";
+        }
     }
 }
 
@@ -1188,17 +1322,37 @@ const char *Emu_x86_64_SseMnemonic(const Emu_x86_64_Insn *insn)
     bool dbl = insn->ei_rep == ENC_X86_64_OPCODE_SSE_DOUBLE || (insn->ei_rep == 0 && insn->ei_opsize16);
 
     switch (insn->ei_op2) {
-        case ENC_X86_64_OPCODE2_ADDS:        { return dbl ? "addsd" : "addss"; } break;
-        case ENC_X86_64_OPCODE2_SUBS:        { return dbl ? "subsd" : "subss"; } break;
-        case ENC_X86_64_OPCODE2_MULS:        { return dbl ? "mulsd" : "mulss"; } break;
-        case ENC_X86_64_OPCODE2_DIVS:        { return dbl ? "divsd" : "divss"; } break;
-        case ENC_X86_64_OPCODE2_UCOMIS:      { return dbl ? "ucomisd" : "ucomiss"; } break;
-        case ENC_X86_64_OPCODE2_CVTS2S:      { return dbl ? "cvtsd2ss" : "cvtss2sd"; } break;
-        case ENC_X86_64_OPCODE2_CVTSI2S:     { return dbl ? "cvtsi2sd" : "cvtsi2ss"; } break;
-        case ENC_X86_64_OPCODE2_CVTTS2SI:    { return dbl ? "cvttsd2si" : "cvttss2si"; } break;
+        case ENC_X86_64_OPCODE2_ADDS: {
+            return dbl ? "addsd" : "addss";
+        } break;
+        case ENC_X86_64_OPCODE2_SUBS: {
+            return dbl ? "subsd" : "subss";
+        } break;
+        case ENC_X86_64_OPCODE2_MULS: {
+            return dbl ? "mulsd" : "mulss";
+        } break;
+        case ENC_X86_64_OPCODE2_DIVS: {
+            return dbl ? "divsd" : "divss";
+        } break;
+        case ENC_X86_64_OPCODE2_UCOMIS: {
+            return dbl ? "ucomisd" : "ucomiss";
+        } break;
+        case ENC_X86_64_OPCODE2_CVTS2S: {
+            return dbl ? "cvtsd2ss" : "cvtss2sd";
+        } break;
+        case ENC_X86_64_OPCODE2_CVTSI2S: {
+            return dbl ? "cvtsi2sd" : "cvtsi2ss";
+        } break;
+        case ENC_X86_64_OPCODE2_CVTTS2SI: {
+            return dbl ? "cvttsd2si" : "cvttss2si";
+        } break;
         case ENC_X86_64_OPCODE2_MOVQ_XMM_RM:
-        case ENC_X86_64_OPCODE2_MOVQ_RM_XMM: { return insn->ei_rexw ? "movq" : "movd"; } break;
-        default:                             { return "(bad)"; }
+        case ENC_X86_64_OPCODE2_MOVQ_RM_XMM: {
+            return insn->ei_rexw ? "movq" : "movd";
+        } break;
+        default: {
+            return "(bad)";
+        }
     }
 }
 
@@ -1227,11 +1381,21 @@ const char *Emu_x86_64_X87Mnemonic(const Emu_x86_64_Insn *insn)
         } break;
         case ENC_X86_64_OPCODE_X87_DE: {
             switch ((EMU_X86_64_X87_REG_FORM | digit << ENC_X86_64_REG_SHIFT)) {
-                case ENC_X86_64_X87_FADDP:  { return "faddp";  } break;
-                case ENC_X86_64_X87_FMULP:  { return "fmulp";  } break;
-                case ENC_X86_64_X87_FSUBRP: { return "fsubrp"; } break;
-                case ENC_X86_64_X87_FDIVRP: { return "fdivrp"; } break;
-                default:                    { return "(bad)";  }
+                case ENC_X86_64_X87_FADDP: {
+                    return "faddp";
+                } break;
+                case ENC_X86_64_X87_FMULP: {
+                    return "fmulp";
+                } break;
+                case ENC_X86_64_X87_FSUBRP: {
+                    return "fsubrp";
+                } break;
+                case ENC_X86_64_X87_FDIVRP: {
+                    return "fdivrp";
+                } break;
+                default: {
+                    return "(bad)";
+                }
             }
         } break;
         case ENC_X86_64_OPCODE_X87_DF: {

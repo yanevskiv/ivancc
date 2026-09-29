@@ -191,7 +191,14 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_LD_PLACE_MALFORMED]            = { "ERR_LD_PLACE_MALFORMED",            "malformed -place (expected SEC@ADDR): '%s'" },
 
     [ERR_EMU_ARCH_UNSUPPORTED]          = { "ERR_EMU_ARCH_UNSUPPORTED",          "unsupported architecture '%s' (only %s is supported)" },
-    [ERR_EMU_NOT_X86_64]                = { "ERR_EMU_NOT_X86_64",                "'%s' is not an x86_64 executable" }
+    [ERR_EMU_NOT_X86_64]                = { "ERR_EMU_NOT_X86_64",                "'%s' is not an x86_64 executable" },
+    [ERR_EMU_READ_UNMAPPED]             = { "ERR_EMU_READ_UNMAPPED",             "read of unmapped memory at 0x%llx from %%rip = 0x%llx" },
+    [ERR_EMU_WRITE_UNMAPPED]            = { "ERR_EMU_WRITE_UNMAPPED",            "write to unmapped memory at 0x%llx from %%rip = 0x%llx" },
+    [ERR_EMU_SYSCALL_UNMAPPED]          = { "ERR_EMU_SYSCALL_UNMAPPED",          "syscall buffer in unmapped memory at 0x%llx from %%rip = 0x%llx" },
+    [ERR_EMU_SYSCALL_UNIMPLEMENTED]     = { "ERR_EMU_SYSCALL_UNIMPLEMENTED",     "unimplemented syscall %llu from %%rip = 0x%llx" },
+    [ERR_EMU_UNDECODABLE]               = { "ERR_EMU_UNDECODABLE",               "undecodable instruction at 0x%llx" },
+    [ERR_EMU_OPCODE_UNIMPLEMENTED]      = { "ERR_EMU_OPCODE_UNIMPLEMENTED",      "unimplemented %s opcode at 0x%llx" },
+    [ERR_EMU_DIVIDE_BY_ZERO]            = { "ERR_EMU_DIVIDE_BY_ZERO",            "divide by zero at 0x%llx" }
 };
 
 // The code of the last error raised.
