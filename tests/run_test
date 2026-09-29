@@ -10,6 +10,7 @@ HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 BIN="$HERE/build/bin"
 TIMEOUT=5
 HEAD_LINES=10
+DEFAULT_PIPELINE=ivancc_linux
 SOURCE=${1:-}
 
 # Report a problem with the run and exit.
@@ -51,7 +52,40 @@ get_text()
         | sed -nE '/^\/\/ \|( |$)/!q; s///; p'
 }
 
-# Compile and run the test, recording results and expectations as files.
+# Fail if the compiler timed out or died from a signal, whatever the test expects.
+check_compiler()
+{
+    GOT="$(cat "${TMP}/compiler_status")"
+
+    [ "$GOT" -ne 124 ] || fail 'Compiler timed out after %ss' "$TIMEOUT"
+    [ "$GOT" -le 128 ] || fail 'Compiler died from signal %s:\n%s' "$((GOT - 128))" "$(cat "${TMP}/compiler_error")"
+}
+
+# Succeed if the build succeeded and the test expects something of the program.
+# Fail on a compile failure the test does not expect.
+wants_run()
+{
+    [ -s "${TMP}/expected_compiler_error" ] && return 1
+    [ -s "${TMP}/expected_compiler_status" ] || grep -qx 0 "${TMP}/compiler_status" || fail '%s' "$(cat "${TMP}/compiler_error")"
+    grep -qx 0 "${TMP}/compiler_status" || return 1
+    [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ]
+}
+
+# Build with ivancc straight to a Linux executable, and run it natively.
+pipeline_ivancc_linux()
+{
+    cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
+    timeout "$TIMEOUT" "${BIN}/ivancc" -o "${TMP}/a.out" $(cat "${TMP}/compiler_flags") "$(basename -- "$SOURCE")" >"${TMP}/compiler_output" 2>"${TMP}/compiler_error"
+    echo $? > "${TMP}/compiler_status"
+    check_compiler
+
+    wants_run || return 0
+    timeout "$TIMEOUT" "${TMP}/a.out" >"${TMP}/output" 2>&1
+    echo $? > "${TMP}/status"
+}
+
+# Read the expectations, then build and run the test through its pipeline,
+# recording results and expectations as files.
 setup()
 {
     [ -n "$SOURCE" ] || error "no test file given"
@@ -61,6 +95,7 @@ setup()
     TMP=$(mktemp -d) || error "cannot create a temporary directory"
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
+    get_value "${SOURCE}" '(Test) Pipeline' > "${TMP}/pipeline"
     get_value "${SOURCE}" '(Test) Compiler flags' > "${TMP}/compiler_flags"
     get_value "${SOURCE}" '(Test) Compiler status' > "${TMP}/expected_compiler_status"
     get_text "${SOURCE}" '(Test) Compiler output' > "${TMP}/expected_compiler_output"
@@ -68,19 +103,16 @@ setup()
     get_value "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
     get_text "${SOURCE}" '(Test) Output' > "${TMP}/expected_output"
 
-    cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
-    "${BIN}/ivancc" -o "${TMP}/a.out" $(cat "${TMP}/compiler_flags") "$(basename -- "$SOURCE")" >"${TMP}/compiler_output" 2>"${TMP}/compiler_error"
-    echo $? > "${TMP}/compiler_status"
+    PIPELINE="$(cat "${TMP}/pipeline")"
+    PIPELINE="${PIPELINE:-$DEFAULT_PIPELINE}"
+    case "$PIPELINE" in
+        *[!a-z0-9_]*) error "bad pipeline name: $PIPELINE" ;;
+    esac
+    command -v "pipeline_${PIPELINE}" >/dev/null || error "no such pipeline: $PIPELINE"
+
     : > "${TMP}/output"
     : > "${TMP}/status"
-
-    [ -s "${TMP}/expected_compiler_error" ] && return
-    [ -s "${TMP}/expected_compiler_status" ] || grep -qx 0 "${TMP}/compiler_status" || fail '%s' "$(cat "${TMP}/compiler_error")"
-    grep -qx 0 "${TMP}/compiler_status" || return
-    [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ] || return
-
-    timeout "$TIMEOUT" "${TMP}/a.out" >"${TMP}/output" 2>&1
-    echo $? > "${TMP}/status"
+    "pipeline_${PIPELINE}"
 }
 
 # Check the compile failure against `// (Test) Compiler error:`.
