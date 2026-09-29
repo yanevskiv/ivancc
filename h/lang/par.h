@@ -149,6 +149,7 @@ struct Par_Deriv {
     int64_t        pd_len;    // element count of an ARRAY
     Ast_Node      *pd_vlen;   // run-time element count of an ARRAY, or NULL
     bool           pd_empty;  // the ARRAY was written `[]`
+    bool           pd_star;   // the ARRAY was written `[*]`
     Par_ArrayDecor pd_decor;  // what the ARRAY's brackets carried besides a length
     Par_ParamList  pd_params; // parameter list of a FUNCTION
     Ast_Line       pd_line;
@@ -187,6 +188,9 @@ Ast_Var   *Par_MakeKnrParam(char *name, Ast_Line line);
 void       Par_SetKnrParam(Par_Decl *decl, Ast_Line line);
 void       Par_CheckKnrParams(void);
 Ast_Var   *Par_MakeAnonParam(Ast_Type *type, Ast_Line line);
+void       Par_KeepVarmodType(Ast_Var *param, Ast_Type *type);
+Ast_Node  *Par_SizeParams(void);
+void       Par_BeginBody(void);
 
 // Literals
 Par_Num  Par_NumLiteral(const char *text);
@@ -211,7 +215,6 @@ Par_Spec  Par_AddSpec(Par_Spec specs, Par_Spec spec, Ast_Line line);
 void      Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line);
 Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line);
 Ast_Type *Par_SpecsType(const Par_Specs *specs, Ast_Line line);
-Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims);
 Ast_Type *Par_VaListType(void);
 Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line);
 
@@ -267,6 +270,9 @@ void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_Designator(char *name, Ast_Line line);
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line);
 Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line);
+
+// Statements
+Ast_Node *Par_NewJump(Ast_NodeKind kind, Ast_Line line);
 
 // Parsing
 void Par_ParseText(const char *text, size_t len);

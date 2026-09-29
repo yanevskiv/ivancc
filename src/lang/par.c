@@ -30,6 +30,7 @@ static bool             Par_CurStatic;
 static Ast_Type        *Par_CurRetType;
 static bool             Par_InFunction;
 static Ast_Var         *Par_CurFuncVar;
+static Ast_Node        *Par_CurSizes;
 
 // Serial number of the next compound literal's object.
 static int32_t Par_CompoundCount;
@@ -150,8 +151,10 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
             Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC, ERR_PAR_ARRAY_OF_FUNCTIONS);
             Err_AssertAt(deriv->pd_line, ! deriv->pd_decor, ERR_PAR_ARRAY_DECOR_NOT_PARAM);
             if (deriv->pd_empty) {
-                Par_NeedFixedSize(inner, deriv->pd_line);
                 return Ast_NewUnsizedArray(inner);
+            }
+            if (deriv->pd_star) {
+                return Ast_NewVla(inner, Ast_NewNode(AST_NODE_KIND_NOP, deriv->pd_line));
             }
             if (deriv->pd_vlen) {
                 return Ast_NewVla(inner, deriv->pd_vlen);
@@ -199,7 +202,7 @@ void Par_TakeArrayDecor(Par_Decl *decl, Ast_Line line)
             continue;
         }
         Err_AssertAt(line, deriv == decl->pc_head && deriv->pd_kind == PAR_DERIV_ARRAY, ERR_PAR_ARRAY_DECOR_NOT_OUTERMOST);
-        Err_AssertAt(line, ! (deriv->pd_decor & PAR_ARRAY_STATIC) || ! deriv->pd_empty, ERR_PAR_ARRAY_STATIC_NO_LEN);
+        Err_AssertAt(line, ! (deriv->pd_decor & PAR_ARRAY_STATIC) || (! deriv->pd_empty && ! deriv->pd_star), ERR_PAR_ARRAY_STATIC_NO_LEN);
         deriv->pd_decor = PAR_ARRAY_NONE;
     }
 }
@@ -208,13 +211,16 @@ void Par_TakeArrayDecor(Par_Decl *decl, Ast_Line line)
 Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, Ast_Line line)
 {
     Par_TakeArrayDecor(decl, line);
-    Ast_Type *type = Par_AdjustParam(Par_ApplyDecl(base, decl));
+    Ast_Type *type = Par_ApplyDecl(base, decl);
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
 
-    Par_NeedFixedSize(type, line);
     var->av_name = decl->pc_name;
-    var->av_type = type;
+    var->av_type = Par_AdjustParam(type);
     var->av_line = line;
+    Par_KeepVarmodType(var, type);
+    if (var->av_name) {
+        Ast_DeclarePrototypeParam(var);
+    }
     return var;
 }
 
@@ -235,8 +241,9 @@ void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
     Par_TakeArrayDecor(decl, line);
     for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
         if (param->av_name && strcmp(param->av_name, decl->pc_name) == 0) {
-            param->av_type = Par_AdjustParam(Par_ApplyDecl(Par_DeclType, decl));
-            Par_NeedFixedSize(param->av_type, line);
+            Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
+            param->av_type = Par_AdjustParam(type);
+            Par_KeepVarmodType(param, type);
             return;
         }
     }
@@ -260,7 +267,37 @@ Ast_Var *Par_MakeAnonParam(Ast_Type *type, Ast_Line line)
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
     var->av_type = Par_AdjustParam(type);
     var->av_line = line;
+    Par_KeepVarmodType(var, type);
     return var;
+}
+
+// Keep a variably modified parameter's type for sizing on entry.
+void Par_KeepVarmodType(Ast_Var *param, Ast_Type *type)
+{
+    if (Ast_IsVariablyModified(type)) {
+        param->av_varmodtype = type;
+    }
+}
+
+// Size each variably modified parameter's lengths, outermost included.
+Ast_Node *Par_SizeParams(void)
+{
+    Ast_Node *sizes = NULL;
+
+    for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
+        Ast_Node *size = param->av_varmodtype ? Par_SizeExpr(param->av_varmodtype, param->av_line) : NULL;
+        if (size) {
+            sizes = sizes ? Ast_NewBinary(AST_NODE_KIND_COMMA, sizes, size, param->av_line) : size;
+        }
+    }
+    return sizes;
+}
+
+// Finish the parameters before a function body opens.
+void Par_BeginBody(void)
+{
+    Par_CheckKnrParams();
+    Par_CurSizes = Par_SizeParams();
 }
 
 // Give an integer literal the type its spelling and value ask for.
@@ -670,15 +707,6 @@ Ast_Type *Par_SpecsType(const Par_Specs *specs, Ast_Line line)
 {
     Ast_Type *type = specs->ps_type ? specs->ps_type : Par_SpecType(specs->ps_specs, line);
     return Ast_Qualify(type, specs->ps_qual);
-}
-
-// Wrap base in the array dimensions listed outermost first.
-Ast_Type *Par_ArrayType(Ast_Type *base, Ast_Node *dims)
-{
-    if (! dims) {
-        return base;
-    }
-    return Ast_NewArray(Par_ArrayType(base, dims->an_next), (int32_t) dims->an_val);
 }
 
 // The type __builtin_va_list names.
@@ -1136,6 +1164,7 @@ Ast_Node *Par_SizeExpr(Ast_Type *type, Ast_Line line)
         return inner;
     }
     Err_AssertAt(line, Par_InFunction, ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+    Err_AssertAt(line, type->at_vlen->an_kind != AST_NODE_KIND_NOP, ERR_PAR_VLA_STAR_NOT_PROTOTYPE);
 
     char *name = Str_Format(".vsize.%d", Par_SizeCount++);
     Ast_Node *elem = NULL;
@@ -1217,7 +1246,7 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
 // Declare a variable inside a function.
 Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
 {
-    if (Par_DeclStorage == AST_STORAGE_EXTERN) {
+    if (Par_DeclStorage == AST_STORAGE_EXTERN || Ast_IsUnsized(type)) {
         Par_NeedFixedSize(type, line);
     }
     if (Par_DeclStorage == AST_STORAGE_STATIC) {
@@ -1275,6 +1304,9 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
     Ast_Node *size = Par_SizeExpr(type, line);
     Ast_Node *stmt = Par_DefineLocal(decl, var, init, line);
 
+    if (Ast_IsVariablyModified(type)) {
+        Ast_OpenVarmodScope();
+    }
     if (! size) {
         return stmt;
     }
@@ -1414,6 +1446,11 @@ void Par_EndExternal(Ast_Node *init, Ast_Line line)
 // Close a function definition.
 void Par_EndFunction(Ast_Node *body)
 {
+    if (Par_CurSizes) {
+        Ast_Node *stmt = Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, Par_CurSizes, body->an_line);
+        stmt->an_next = body->an_body;
+        body->an_body = stmt;
+    }
     Par_AddFunction(Par_MakeFunction(body));
     Ast_EndScope();
     Par_InFunction = false;
@@ -1489,4 +1526,12 @@ Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
     Ast_Node *size = Par_SizeExpr(type, line);
     Ast_Node *bytes = Ast_NewVarNode(type->at_vsize, line);
     return size ? Ast_NewBinary(AST_NODE_KIND_COMMA, size, bytes, line) : bytes;
+}
+
+// Build a jump or a jump's target, noting the variably modified names in scope.
+Ast_Node *Par_NewJump(Ast_NodeKind kind, Ast_Line line)
+{
+    Ast_Node *node = Ast_NewNode(kind, line);
+    node->an_varmod = Ast_CurrentVarmodScope();
+    return node;
 }
