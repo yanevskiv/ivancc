@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# run_test - build one test file through every pipeline, run it, and check what
-# it claims.
+# run_test - check one test file's claims through every pipeline.
 
 set -u
 
@@ -30,7 +29,7 @@ pass()
     exit 0
 }
 
-# Report a failing test, naming the pipeline it failed in, and exit.
+# Report a failing test and its pipeline, and exit.
 fail()
 {
     printf '\033[31mFAIL\033[0m: %s%s\n' "$SOURCE" "${PIPELINE:+ ($PIPELINE)}"
@@ -55,9 +54,7 @@ get_text()
         | sed -nE '/^\/\/ \|( |$)/!q; s///; p'
 }
 
-# Run ivancc on the test with the given options and the test's own flags, and
-# record its results. Fail if it timed out or died from a signal, whatever the
-# test expects.
+# Compile the test with ivancc, failing on a timeout or a crash.
 compile()
 {
     timeout "$TIMEOUT" "${BIN}/ivancc" "$@" $(cat "${TMP}/compiler_flags") "$NAME" >"${RUN}/compiler_output" 2>"${RUN}/compiler_error"
@@ -68,8 +65,7 @@ compile()
     [ "$GOT" -le 128 ] || fail 'Compiler died from signal %s:\n%s' "$((GOT - 128))" "$(cat "${RUN}/compiler_error")"
 }
 
-# Succeed if the compile succeeded and the test expects no compile error.
-# Fail on a compile failure the test does not expect.
+# True if the compile succeeded as expected, failing on an unexpected failure.
 compiled()
 {
     [ -s "${TMP}/expected_compiler_error" ] && return 1
@@ -77,8 +73,7 @@ compiled()
     grep -qx 0 "${RUN}/compiler_status"
 }
 
-# Run one build step after the compiler, under the timeout. The first argument
-# names the tool. Fail if the step fails.
+# Run a build step after the compiler, failing if it fails.
 build_step()
 {
     TOOL="$1"
@@ -90,20 +85,20 @@ build_step()
     [ "$GOT" -eq 0 ] || fail '%s returned %s:\n%s' "$TOOL" "$GOT" "$(cat "${RUN}/build_error")"
 }
 
-# Succeed if the test expects something of the program.
+# True if the test expects something of the program.
 wants_run()
 {
     [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ]
 }
 
-# Run a command that runs the program, under the timeout, and record its results.
+# Run the program and record its output and status.
 run()
 {
     timeout "$TIMEOUT" "$@" >"${RUN}/output" 2>&1
     echo $? > "${RUN}/status"
 }
 
-# Build with ivancc straight to a Linux executable, and run it natively.
+# Build an executable with ivancc alone, and run it natively.
 pipeline_ivancc()
 {
     compile -o "${RUN}/a.out"
@@ -112,8 +107,7 @@ pipeline_ivancc()
     run "${RUN}/a.out"
 }
 
-# Build assembly text with ivancc -S, assemble it with ivanas, link it against
-# the runtime with gcc, and run it natively.
+# Build through assembly text and ivanas, link with gcc, and run natively.
 pipeline_ivanas()
 {
     compile -S -o "${RUN}/a.s"
@@ -124,8 +118,7 @@ pipeline_ivanas()
     run "${RUN}/a.out"
 }
 
-# Build an object with ivancc -c, link it against the runtime with ivanld, and
-# run it natively.
+# Build an object, link it with ivanld, and run it natively.
 pipeline_ivanld()
 {
     compile -c -o "${RUN}/a.o"
@@ -135,7 +128,7 @@ pipeline_ivanld()
     run "${RUN}/a.out"
 }
 
-# Build for ivanemu with ivancc, and run it under ivanemu.
+# Build for ivanemu, and run it under the emulator.
 pipeline_ivanemu()
 {
     compile -mtarget=ivanemu -o "${RUN}/a.out"
@@ -144,7 +137,7 @@ pipeline_ivanemu()
     run "${BIN}/ivanemu" "${RUN}/a.out"
 }
 
-# Read the test's expectations into files, and enter its directory.
+# Read the test's expectations, and enter its directory.
 setup()
 {
     [ -n "$SOURCE" ] || error "no test file given"
@@ -258,8 +251,7 @@ test_pipeline()
     test_output
 }
 
-# Build, run and check the test through each pipeline in turn, each recording
-# into a directory of its own.
+# Build, run and check the test through each pipeline in turn.
 run_pipelines()
 {
     for PIPELINE in $PIPELINES; do
