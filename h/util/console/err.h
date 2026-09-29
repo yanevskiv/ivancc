@@ -220,6 +220,13 @@ enum Err_Code {
 
     ERR_EMU_ARCH_UNSUPPORTED,          // architecture, supported architecture
     ERR_EMU_NOT_X86_64,                // path
+    ERR_EMU_READ_UNMAPPED,             // address, instruction address
+    ERR_EMU_WRITE_UNMAPPED,            // address, instruction address
+    ERR_EMU_SYSCALL_UNMAPPED,          // address, instruction address
+    ERR_EMU_SYSCALL_UNIMPLEMENTED,     // syscall number, instruction address
+    ERR_EMU_UNDECODABLE,               // instruction address
+    ERR_EMU_OPCODE_UNIMPLEMENTED,      // opcode map, instruction address
+    ERR_EMU_DIVIDE_BY_ZERO,            // instruction address
 
     ERR_CODE_COUNT
 };
