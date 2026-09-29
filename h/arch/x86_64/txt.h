@@ -39,6 +39,12 @@
 // Most digits an octal escape takes.
 #define TXT_X86_64_ESCAPE_OCTAL_DIGITS 3
 
+// Length of the `%st` that opens an x87 stack register.
+#define TXT_X86_64_ST_PREFIX_LEN 3
+
+// Number of x87 stack registers.
+#define TXT_X86_64_ST_COUNT 8
+
 // Whether a string directive appends a terminating NUL.
 typedef enum Txt_x86_64_Terminate Txt_x86_64_Terminate;
 enum Txt_x86_64_Terminate {
@@ -65,6 +71,7 @@ int32_t Txt_x86_64_Att_ExtendOp(const char *mnem, Asm_x86_64_Width *width);
 int32_t Txt_x86_64_Att_IndirectOp(int32_t opcode);
 bool    Txt_x86_64_Att_IsDirectBranch(int32_t opcode);
 int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width);
+int32_t Txt_x86_64_XmmByName(const char *name);
 int32_t Txt_x86_64_OpByName(const char *name);
 
 // Text scanning
@@ -79,6 +86,7 @@ int32_t Txt_x86_64_Att_DigitValue(char c, Txt_x86_64_Base base);
 const char *Txt_x86_64_Att_ScanString(const char *p, Buf *out);
 
 // AT&T syntax parser
+bool Txt_x86_64_Att_ParseSt(const char *text, Asm_x86_64_Operand *op);
 bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op);
 void Txt_x86_64_Att_EmitInts(const char *args, size_t width);
 bool Txt_x86_64_Att_EmitAddress(const char *text, size_t width);

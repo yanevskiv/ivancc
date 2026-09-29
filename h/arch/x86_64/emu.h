@@ -29,6 +29,7 @@
 #include <unistd.h>
 
 // Project headers.
+#include "util/fp.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/load.h"
 
@@ -83,6 +84,21 @@
 // Linux syscall numbers the interpreter answers.
 #define EMU_X86_64_SYS_WRITE 1
 #define EMU_X86_64_SYS_EXIT  60
+
+// SSE registers, and the 64-bit lanes each holds.
+#define EMU_X86_64_XMM_COUNT 16
+#define EMU_X86_64_XMM_LANES 2
+
+// x87 stack registers, and the mask that wraps an index into them.
+#define EMU_X86_64_ST_COUNT 8
+#define EMU_X86_64_ST_MASK  7
+
+// The ModRM bits an x87 register form carries around its digit and register.
+#define EMU_X86_64_X87_REG_FORM 0xC0
+
+// The integer a conversion leaves when its value is out of range.
+#define EMU_X86_64_INDEFINITE_32 ((uint64_t) 1 << 31)
+#define EMU_X86_64_INDEFINITE_64 ((uint64_t) 1 << 63)
 
 // Exit status reserved for a fault in the machine rather than in the program.
 #define EMU_X86_64_STATUS_FAULT 125
@@ -151,7 +167,8 @@ struct Emu_x86_64_Insn {
     int32_t           ei_op;       // primary opcode byte
     int32_t           ei_op2;      // byte following 0x0F, or -1
     bool              ei_rexw;     // true when REX.W selects a 64-bit operand
-    bool              ei_opsize16; // true when a 0x66 prefix selects a 16-bit operand
+    bool              ei_opsize16; // true when a 0x66 prefix selects a 16-bit operand or an SSE form
+    int32_t           ei_rep;      // an 0xF2 or 0xF3 prefix selecting an SSE form, or 0
     Emu_x86_64_Reg    ei_reg;      // ModRM reg field, extended by REX.R
     Emu_x86_64_Reg    ei_rm;       // r/m register, or the base register of a memory operand
     Emu_x86_64_RmKind ei_rmkind;
@@ -168,8 +185,12 @@ struct Emu_x86_64_Cpu {
     bool     ec_sf;      // the result was negative
     bool     ec_of;      // the result overflowed a signed operand
     bool     ec_cf;      // the result carried out of an unsigned operand
+    bool     ec_pf;      // the result's low byte had even parity, or a comparison was unordered
     bool     ec_halted;  // the program asked to stop, or faulted
     int32_t  ec_status;  // the status it stopped with
+    uint64_t ec_xmm[EMU_X86_64_XMM_COUNT][EMU_X86_64_XMM_LANES];
+    long double ec_st[EMU_X86_64_ST_COUNT];
+    int32_t  ec_top;     // the x87 register %st names
     const Load_x86_64_Image *ec_img;
 };
 
@@ -188,6 +209,16 @@ uint64_t Emu_x86_64_ReadRm(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uin
 void Emu_x86_64_WriteRm(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t value, Emu_x86_64_OperandWidth width);
 void Emu_x86_64_FlagsSub(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, Emu_x86_64_OperandWidth width);
 void Emu_x86_64_FlagsAdd(Emu_x86_64_Cpu *cpu, uint64_t a, uint64_t b, Emu_x86_64_OperandWidth width);
+bool Emu_x86_64_Parity(uint64_t res);
+void Emu_x86_64_FlagsCompare(Emu_x86_64_Cpu *cpu, long double a, long double b);
+uint64_t Emu_x86_64_Truncate(long double value, Emu_x86_64_OperandWidth width);
+uint64_t Emu_x86_64_ReadSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, Emu_x86_64_OperandWidth width);
+void Emu_x86_64_StepSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
+long double *Emu_x86_64_St(Emu_x86_64_Cpu *cpu, int32_t i);
+void Emu_x86_64_StPush(Emu_x86_64_Cpu *cpu, long double value);
+long double Emu_x86_64_StPop(Emu_x86_64_Cpu *cpu);
+void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
+void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu);
 void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace);
 int32_t Emu_x86_64_Run(const Load_x86_64_Image *img, Emu_x86_64_Trace trace);
@@ -203,6 +234,10 @@ size_t Emu_x86_64_Decode(const uint8_t *code, size_t avail, Emu_x86_64_Insn *ins
 // Naming what was decoded
 const char *Emu_x86_64_RegName(Emu_x86_64_Reg reg, Emu_x86_64_OperandWidth width);
 const char *Emu_x86_64_Mnemonic(const Emu_x86_64_Insn *insn);
+const char *Emu_x86_64_SseMnemonic(const Emu_x86_64_Insn *insn);
+const char *Emu_x86_64_X87Mnemonic(const Emu_x86_64_Insn *insn);
+bool        Emu_x86_64_IsSse(int32_t op2);
+bool        Emu_x86_64_IsX87(int32_t op);
 void        Emu_x86_64_FormatRm(const Emu_x86_64_Insn *insn, Emu_x86_64_OperandWidth width, uint64_t next, char *out, size_t n);
 void        Emu_x86_64_Format(const Emu_x86_64_Insn *insn, uint64_t rip, char *out, size_t n);
 

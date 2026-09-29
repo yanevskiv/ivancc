@@ -91,6 +91,24 @@ Asm_x86_64_Operand Asm_x86_64_Target(const char *label)
     };
 }
 
+// Make an SSE register operand (%xmm0 .. %xmm15).
+Asm_x86_64_Operand Asm_x86_64_XmmReg(Asm_x86_64_Xmm xmm)
+{
+    return (Asm_x86_64_Operand) {
+        .ao_kind = ASM_X86_64_OPERAND_XMM,
+        .ao_xmm = xmm
+    };
+}
+
+// Make an x87 stack operand (%st, %st(1) ..).
+Asm_x86_64_Operand Asm_x86_64_St(int32_t st)
+{
+    return (Asm_x86_64_Operand) {
+        .ao_kind = ASM_X86_64_OPERAND_ST,
+        .ao_st = st
+    };
+}
+
 // Append a fresh item of the given kind to the list and return it.
 Asm_x86_64_Item *Asm_x86_64_New(Asm_x86_64_ItemKind kind)
 {
@@ -397,6 +415,38 @@ void Asm_x86_64_EmitSetbe(Asm_x86_64_Reg reg)
     item->ai_dst = Asm_x86_64_Reg8(reg);
 }
 
+// Emit `seta %reg`.
+void Asm_x86_64_EmitSeta(Asm_x86_64_Reg reg)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_SETA;
+    item->ai_dst = Asm_x86_64_Reg8(reg);
+}
+
+// Emit `setae %reg`.
+void Asm_x86_64_EmitSetae(Asm_x86_64_Reg reg)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_SETAE;
+    item->ai_dst = Asm_x86_64_Reg8(reg);
+}
+
+// Emit `setp %reg`.
+void Asm_x86_64_EmitSetp(Asm_x86_64_Reg reg)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_SETP;
+    item->ai_dst = Asm_x86_64_Reg8(reg);
+}
+
+// Emit `setnp %reg`.
+void Asm_x86_64_EmitSetnp(Asm_x86_64_Reg reg)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_SETNP;
+    item->ai_dst = Asm_x86_64_Reg8(reg);
+}
+
 // Emit `cmp $imm, %dst`.
 void Asm_x86_64_EmitCmpImm(int64_t imm, Asm_x86_64_Reg dst)
 {
@@ -573,4 +623,80 @@ void Asm_x86_64_EmitSyscall(void)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
     item->ai_op = ASM_X86_64_OP_SYSCALL;
+}
+
+// Emit `movq %src, %dst` into an SSE register.
+void Asm_x86_64_EmitMovToXmm(Asm_x86_64_Reg src, Asm_x86_64_Xmm dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_MOV;
+    item->ai_dst = Asm_x86_64_XmmReg(dst);
+    item->ai_src = Asm_x86_64_Reg64(src);
+}
+
+// Emit `movq %src, %dst` out of an SSE register.
+void Asm_x86_64_EmitMovFromXmm(Asm_x86_64_Xmm src, Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_MOV;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_XmmReg(src);
+}
+
+// Emit a scalar SSE operation between two SSE registers.
+void Asm_x86_64_EmitSse(Asm_x86_64_Op op, Asm_x86_64_Xmm src, Asm_x86_64_Xmm dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = op;
+    item->ai_dst = Asm_x86_64_XmmReg(dst);
+    item->ai_src = Asm_x86_64_XmmReg(src);
+}
+
+// Emit a conversion from a 64-bit integer register into an SSE register.
+void Asm_x86_64_EmitCvtToSse(Asm_x86_64_Op op, Asm_x86_64_Reg src, Asm_x86_64_Xmm dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = op;
+    item->ai_dst = Asm_x86_64_XmmReg(dst);
+    item->ai_src = Asm_x86_64_Reg64(src);
+}
+
+// Emit a truncating conversion from an SSE register into a 64-bit integer register.
+void Asm_x86_64_EmitCvtFromSse(Asm_x86_64_Op op, Asm_x86_64_Xmm src, Asm_x86_64_Reg dst)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = op;
+    item->ai_dst = Asm_x86_64_Reg64(dst);
+    item->ai_src = Asm_x86_64_XmmReg(src);
+}
+
+// Emit an x87 load or store of disp(%base).
+void Asm_x86_64_EmitX87Mem(Asm_x86_64_Op op, Asm_x86_64_Reg base, int32_t disp)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = op;
+    item->ai_dst = Asm_x86_64_Mem(base, disp);
+}
+
+// Emit an x87 operation on the stack registers its opcode implies.
+void Asm_x86_64_EmitX87(Asm_x86_64_Op op)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op = op;
+    switch (op) {
+        case ASM_X86_64_OP_FUCOMIP: {
+            item->ai_src = Asm_x86_64_St(1);
+            item->ai_dst = Asm_x86_64_St(0);
+        } break;
+        case ASM_X86_64_OP_FSTP: {
+            item->ai_dst = Asm_x86_64_St(0);
+        } break;
+        case ASM_X86_64_OP_FCHS: {
+            // empty
+        } break;
+        default: {
+            item->ai_src = Asm_x86_64_St(0);
+            item->ai_dst = Asm_x86_64_St(1);
+        } break;
+    }
 }

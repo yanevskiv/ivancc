@@ -64,6 +64,28 @@ enum Asm_x86_64_Width {
     ASM_X86_64_WIDTH_64   = 64
 };
 
+// SSE registers
+typedef enum Asm_x86_64_Xmm Asm_x86_64_Xmm;
+enum Asm_x86_64_Xmm {
+    ASM_X86_64_XMM0 = 0,
+    ASM_X86_64_XMM1,
+    ASM_X86_64_XMM2,
+    ASM_X86_64_XMM3,
+    ASM_X86_64_XMM4,
+    ASM_X86_64_XMM5,
+    ASM_X86_64_XMM6,
+    ASM_X86_64_XMM7,
+    ASM_X86_64_XMM8,
+    ASM_X86_64_XMM9,
+    ASM_X86_64_XMM10,
+    ASM_X86_64_XMM11,
+    ASM_X86_64_XMM12,
+    ASM_X86_64_XMM13,
+    ASM_X86_64_XMM14,
+    ASM_X86_64_XMM15,
+    ASM_X86_64_XMM_COUNT // number of registers
+};
+
 // Opcodes
 typedef enum Asm_x86_64_Op Asm_x86_64_Op;
 enum Asm_x86_64_Op {
@@ -101,6 +123,41 @@ enum Asm_x86_64_Op {
     ASM_X86_64_OP_CALL_REG,
     ASM_X86_64_OP_RET,
     ASM_X86_64_OP_SYSCALL,
+    ASM_X86_64_OP_SETA,
+    ASM_X86_64_OP_SETAE,
+    ASM_X86_64_OP_SETP,
+    ASM_X86_64_OP_SETNP,
+    ASM_X86_64_OP_ADDSD,
+    ASM_X86_64_OP_ADDSS,
+    ASM_X86_64_OP_SUBSD,
+    ASM_X86_64_OP_SUBSS,
+    ASM_X86_64_OP_MULSD,
+    ASM_X86_64_OP_MULSS,
+    ASM_X86_64_OP_DIVSD,
+    ASM_X86_64_OP_DIVSS,
+    ASM_X86_64_OP_UCOMISD,
+    ASM_X86_64_OP_UCOMISS,
+    ASM_X86_64_OP_CVTSS2SD,
+    ASM_X86_64_OP_CVTSD2SS,
+    ASM_X86_64_OP_CVTSI2SD,  // from a 64-bit register
+    ASM_X86_64_OP_CVTSI2SS,  // from a 64-bit register
+    ASM_X86_64_OP_CVTTSD2SI, // into a 64-bit register
+    ASM_X86_64_OP_CVTTSS2SI, // into a 64-bit register
+    ASM_X86_64_OP_FLDT,
+    ASM_X86_64_OP_FSTPT,
+    ASM_X86_64_OP_FLDL,
+    ASM_X86_64_OP_FSTPL,
+    ASM_X86_64_OP_FLDS,
+    ASM_X86_64_OP_FSTPS,
+    ASM_X86_64_OP_FILDQ,
+    ASM_X86_64_OP_FISTTPQ,
+    ASM_X86_64_OP_FADDP,     // %st(1) += %st, then pop
+    ASM_X86_64_OP_FMULP,     // %st(1) *= %st, then pop
+    ASM_X86_64_OP_FSUBRP,    // %st(1) -= %st, then pop, as gas spells it
+    ASM_X86_64_OP_FDIVRP,    // %st(1) /= %st, then pop, as gas spells it
+    ASM_X86_64_OP_FCHS,
+    ASM_X86_64_OP_FUCOMIP,   // compare %st with %st(1), then pop
+    ASM_X86_64_OP_FSTP,      // pop %st
     ASM_X86_64_OP_COUNT // number of operations
 };
 
@@ -113,6 +170,8 @@ enum Asm_x86_64_OperandKind {
     ASM_X86_64_OPERAND_MEM,   // ao_reg (base), ao_disp   -8(%rbp)
     ASM_X86_64_OPERAND_RIP,   // ao_label              .Lstr0(%rip)
     ASM_X86_64_OPERAND_LABEL, // ao_label              jump / call target
+    ASM_X86_64_OPERAND_XMM,   // ao_xmm                %xmm0
+    ASM_X86_64_OPERAND_ST,    // ao_st                 %st(1)
     ASM_X86_64_OPERAND_COUNT  // number of kinds
 };
 
@@ -138,6 +197,8 @@ struct Asm_x86_64_Operand {
     int32_t                ao_disp;   // MEM displacement
     const char            *ao_label;  // RIP / LABEL
     Asm_x86_64_Width       ao_width;  // REG width, as ASM_X86_64_WIDTH_*
+    Asm_x86_64_Xmm         ao_xmm;    // XMM
+    int32_t                ao_st;     // ST, counted from the top of the x87 stack
 };
 
 // One node in the ordered instruction list.
@@ -165,6 +226,8 @@ Asm_x86_64_Operand Asm_x86_64_Imm(int64_t val);
 Asm_x86_64_Operand Asm_x86_64_Mem(Asm_x86_64_Reg base, int32_t disp);
 Asm_x86_64_Operand Asm_x86_64_Rip(const char *label);
 Asm_x86_64_Operand Asm_x86_64_Target(const char *label);
+Asm_x86_64_Operand Asm_x86_64_XmmReg(Asm_x86_64_Xmm xmm);
+Asm_x86_64_Operand Asm_x86_64_St(int32_t st);
 
 // Instruction list
 Asm_x86_64_Item *Asm_x86_64_New(Asm_x86_64_ItemKind kind);
@@ -211,6 +274,10 @@ void Asm_x86_64_EmitSetl(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitSetle(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitSetb(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitSetbe(Asm_x86_64_Reg reg);
+void Asm_x86_64_EmitSeta(Asm_x86_64_Reg reg);
+void Asm_x86_64_EmitSetae(Asm_x86_64_Reg reg);
+void Asm_x86_64_EmitSetp(Asm_x86_64_Reg reg);
+void Asm_x86_64_EmitSetnp(Asm_x86_64_Reg reg);
 
 // Immediate operands
 void Asm_x86_64_EmitCmpImm(int64_t imm, Asm_x86_64_Reg dst);
@@ -238,5 +305,16 @@ void Asm_x86_64_EmitCall(const char *label, ...);
 void Asm_x86_64_EmitCallReg(Asm_x86_64_Reg reg);
 void Asm_x86_64_EmitRet(void);
 void Asm_x86_64_EmitSyscall(void);
+
+// SSE scalars
+void Asm_x86_64_EmitMovToXmm(Asm_x86_64_Reg src, Asm_x86_64_Xmm dst);
+void Asm_x86_64_EmitMovFromXmm(Asm_x86_64_Xmm src, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitSse(Asm_x86_64_Op op, Asm_x86_64_Xmm src, Asm_x86_64_Xmm dst);
+void Asm_x86_64_EmitCvtToSse(Asm_x86_64_Op op, Asm_x86_64_Reg src, Asm_x86_64_Xmm dst);
+void Asm_x86_64_EmitCvtFromSse(Asm_x86_64_Op op, Asm_x86_64_Xmm src, Asm_x86_64_Reg dst);
+
+// The x87 stack
+void Asm_x86_64_EmitX87Mem(Asm_x86_64_Op op, Asm_x86_64_Reg base, int32_t disp);
+void Asm_x86_64_EmitX87(Asm_x86_64_Op op);
 
 #endif // ASM_X86_64_H
