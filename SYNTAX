@@ -11,7 +11,7 @@ Checklist toward ISO C99.
         - [x] hex integer literals (`0x...`)
         - [x] octal integer literals (`0...`)
         - [x] integer suffixes (`u U l L ll LL` and combinations)
-        - [ ] floating-point literals (`1.0`, `1e10`, `0x1p0`)
+        - [x] floating-point literals (`1.0`, `1e10`, `0x1p0`)
         - [x] character literals
         - [x] full escape set (`\a \b \f \v \xHH`, octal `\nnn`, `\uXXXX`/`\UXXXXXXXX`)
         - [x] string literals
@@ -24,8 +24,8 @@ Checklist toward ISO C99.
         - [x] `int`, `char`, `void`
         - [x] `short`
         - [x] `long`, `long long`
-        - [ ] `float`, `double`
-        - [ ] `long double` (80-bit x87, or aliased to `double` — both conform)
+        - [x] `float`, `double`
+        - [x] `long double` (80-bit x87: 16 bytes, aligned 16, passed on the stack, returned in `%st`)
         - [x] `_Bool`
         - [x] `signed` / `unsigned`
         - [x] `const` qualifier
