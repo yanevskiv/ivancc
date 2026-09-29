@@ -476,8 +476,14 @@ Ast_Var *Ast_FindVar(const char *name)
             }
         }
     }
+    return Ast_FindGlobal(name);
+}
+
+// Find a file-scope variable by the symbol it takes.
+Ast_Var *Ast_FindGlobal(const char *symbol)
+{
     for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
-        if (strcmp(var->av_name, name) == 0) {
+        if (strcmp(var->av_symbol, symbol) == 0) {
             return var;
         }
     }
@@ -520,13 +526,12 @@ void Ast_DeclareParam(Ast_Var *var)
 // Declare a variable at file scope, reusing the slot if it is already there.
 Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, Ast_Line line)
 {
-    for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
-        if (strcmp(var->av_name, name) == 0) {
-            return var;
-        }
+    Ast_Var *var = Ast_FindGlobal(name);
+    if (var) {
+        return var;
     }
 
-    Ast_Var *var = calloc(1, sizeof(Ast_Var));
+    var = calloc(1, sizeof(Ast_Var));
     var->av_name   = Str_Clone(name);
     var->av_symbol = var->av_name;
     var->av_type   = type;
