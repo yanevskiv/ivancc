@@ -22,60 +22,102 @@
 
 // 64-bit register names.
 static const char *Txt_x86_64_Reg64Name[ASM_X86_64_REG_COUNT] = {
-    "rax",
-    "rcx",
-    "rdx",
-    "rbx",
-    "rsp",
-    "rbp",
-    "rsi",
-    "rdi",
-    "r8",
-    "r9",
-    "r10",
-    "r11",
-    "r12",
-    "r13",
-    "r14",
-    "r15"
+    [ASM_X86_64_REG_RAX] = "rax",
+    [ASM_X86_64_REG_RCX] = "rcx",
+    [ASM_X86_64_REG_RDX] = "rdx",
+    [ASM_X86_64_REG_RBX] = "rbx",
+    [ASM_X86_64_REG_RSP] = "rsp",
+    [ASM_X86_64_REG_RBP] = "rbp",
+    [ASM_X86_64_REG_RSI] = "rsi",
+    [ASM_X86_64_REG_RDI] = "rdi",
+    [ASM_X86_64_REG_R8]  = "r8",
+    [ASM_X86_64_REG_R9]  = "r9",
+    [ASM_X86_64_REG_R10] = "r10",
+    [ASM_X86_64_REG_R11] = "r11",
+    [ASM_X86_64_REG_R12] = "r12",
+    [ASM_X86_64_REG_R13] = "r13",
+    [ASM_X86_64_REG_R14] = "r14",
+    [ASM_X86_64_REG_R15] = "r15"
 };
 
 // 8-bit (low-byte) register names.
 static const char *Txt_x86_64_Reg8Name[ASM_X86_64_REG_COUNT] = {
-    "al",
-    "cl",
-    "dl",
-    "bl",
-    "spl",
-    "bpl",
-    "sil",
-    "dil",
-    "r8b",
-    "r9b",
-    "r10b",
-    "r11b",
-    "r12b",
-    "r13b",
-    "r14b",
-    "r15b"
+    [ASM_X86_64_REG_RAX] = "al",
+    [ASM_X86_64_REG_RCX] = "cl",
+    [ASM_X86_64_REG_RDX] = "dl",
+    [ASM_X86_64_REG_RBX] = "bl",
+    [ASM_X86_64_REG_RSP] = "spl",
+    [ASM_X86_64_REG_RBP] = "bpl",
+    [ASM_X86_64_REG_RSI] = "sil",
+    [ASM_X86_64_REG_RDI] = "dil",
+    [ASM_X86_64_REG_R8]  = "r8b",
+    [ASM_X86_64_REG_R9]  = "r9b",
+    [ASM_X86_64_REG_R10] = "r10b",
+    [ASM_X86_64_REG_R11] = "r11b",
+    [ASM_X86_64_REG_R12] = "r12b",
+    [ASM_X86_64_REG_R13] = "r13b",
+    [ASM_X86_64_REG_R14] = "r14b",
+    [ASM_X86_64_REG_R15] = "r15b"
 };
 
 // 32-bit register names.
 static const char *Txt_x86_64_Reg32Name[ASM_X86_64_REG_COUNT] = {
-    "eax", "ecx", "edx",  "ebx",  "esp",  "ebp",  "esi",  "edi",
-    "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d"
+    [ASM_X86_64_REG_RAX] = "eax",
+    [ASM_X86_64_REG_RCX] = "ecx",
+    [ASM_X86_64_REG_RDX] = "edx",
+    [ASM_X86_64_REG_RBX] = "ebx",
+    [ASM_X86_64_REG_RSP] = "esp",
+    [ASM_X86_64_REG_RBP] = "ebp",
+    [ASM_X86_64_REG_RSI] = "esi",
+    [ASM_X86_64_REG_RDI] = "edi",
+    [ASM_X86_64_REG_R8]  = "r8d",
+    [ASM_X86_64_REG_R9]  = "r9d",
+    [ASM_X86_64_REG_R10] = "r10d",
+    [ASM_X86_64_REG_R11] = "r11d",
+    [ASM_X86_64_REG_R12] = "r12d",
+    [ASM_X86_64_REG_R13] = "r13d",
+    [ASM_X86_64_REG_R14] = "r14d",
+    [ASM_X86_64_REG_R15] = "r15d"
 };
 
 // 16-bit register names.
 static const char *Txt_x86_64_Reg16Name[ASM_X86_64_REG_COUNT] = {
-    "ax",  "cx",  "dx",   "bx",   "sp",   "bp",   "si",   "di",
-    "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w"
+    [ASM_X86_64_REG_RAX] = "ax",
+    [ASM_X86_64_REG_RCX] = "cx",
+    [ASM_X86_64_REG_RDX] = "dx",
+    [ASM_X86_64_REG_RBX] = "bx",
+    [ASM_X86_64_REG_RSP] = "sp",
+    [ASM_X86_64_REG_RBP] = "bp",
+    [ASM_X86_64_REG_RSI] = "si",
+    [ASM_X86_64_REG_RDI] = "di",
+    [ASM_X86_64_REG_R8]  = "r8w",
+    [ASM_X86_64_REG_R9]  = "r9w",
+    [ASM_X86_64_REG_R10] = "r10w",
+    [ASM_X86_64_REG_R11] = "r11w",
+    [ASM_X86_64_REG_R12] = "r12w",
+    [ASM_X86_64_REG_R13] = "r13w",
+    [ASM_X86_64_REG_R14] = "r14w",
+    [ASM_X86_64_REG_R15] = "r15w"
 };
 
 // SSE register names.
 static const char *Txt_x86_64_XmmName[ASM_X86_64_XMM_COUNT] = {
-    "xmm0", "xmm1", "xmm2",  "xmm3",  "xmm4",  "xmm5",  "xmm6",  "xmm7",
-    "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"
+    [ASM_X86_64_XMM0]  = "xmm0",
+    [ASM_X86_64_XMM1]  = "xmm1",
+    [ASM_X86_64_XMM2]  = "xmm2",
+    [ASM_X86_64_XMM3]  = "xmm3",
+    [ASM_X86_64_XMM4]  = "xmm4",
+    [ASM_X86_64_XMM5]  = "xmm5",
+    [ASM_X86_64_XMM6]  = "xmm6",
+    [ASM_X86_64_XMM7]  = "xmm7",
+    [ASM_X86_64_XMM8]  = "xmm8",
+    [ASM_X86_64_XMM9]  = "xmm9",
+    [ASM_X86_64_XMM10] = "xmm10",
+    [ASM_X86_64_XMM11] = "xmm11",
+    [ASM_X86_64_XMM12] = "xmm12",
+    [ASM_X86_64_XMM13] = "xmm13",
+    [ASM_X86_64_XMM14] = "xmm14",
+    [ASM_X86_64_XMM15] = "xmm15"
 };
 
 // Mnemonics.
