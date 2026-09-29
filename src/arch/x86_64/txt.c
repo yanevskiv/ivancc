@@ -779,6 +779,9 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
         item->ai_dst = ops[1];
         if (ext_width) {
             item->ai_src.ao_width = ext_width;
+        } else if (item->ai_src.ao_kind == ASM_X86_64_OPERAND_MEM && item->ai_dst.ao_kind == ASM_X86_64_OPERAND_REG) {
+            // A memory source is as wide as the register it loads.
+            item->ai_src.ao_width = item->ai_dst.ao_width;
         }
     } else if (n_ops == 1) {
         item->ai_dst = ops[0];
