@@ -51,8 +51,8 @@ LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/link.o
 SYS_HEADERS := $(patsubst libc/include/%,$(BUILD)/include/%,$(shell find libc/include -name '*.h' 2>/dev/null))
 
 TEST_TOOL  := tests/run_test
-TEST_SRCS  := $(sort $(wildcard tests/syntax/test*.c))
-TEST_NAMES := $(patsubst tests/syntax/%.c,%,$(TEST_SRCS))
+TEST_SRCS  := $(sort $(wildcard tests/core/test*.c))
+TEST_NAMES := $(patsubst tests/core/%.c,%,$(TEST_SRCS))
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
@@ -81,7 +81,7 @@ $(EMU_BIN): $(EMU_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 # --- test recipes ---
-$(TEST_NAMES): %: tests/syntax/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
+$(TEST_NAMES): %: tests/core/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
 	@$(TEST_TOOL) $<
 
 # --- front-end generators ---
