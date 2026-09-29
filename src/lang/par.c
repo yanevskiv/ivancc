@@ -1059,6 +1059,22 @@ void Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line)
     Err_AssertAt(line, type->at_complete || Par_DeclStorage == AST_STORAGE_EXTERN, ERR_PAR_OBJECT_INCOMPLETE, name);
 }
 
+// Merge a later file-scope declaration's storage class into the first one's.
+void Par_Redeclare(Ast_Var *var, Ast_Line line)
+{
+    switch (Par_DeclStorage) {
+    case AST_STORAGE_EXTERN:
+        break;
+    case AST_STORAGE_STATIC:
+        Err_AssertAt(line, var->av_storage == AST_STORAGE_STATIC, ERR_PAR_OBJECT_LINKAGE, var->av_name);
+        break;
+    default:
+        Err_AssertAt(line, var->av_storage != AST_STORAGE_STATIC, ERR_PAR_OBJECT_LINKAGE, var->av_name);
+        var->av_storage = AST_STORAGE_NONE;
+        break;
+    }
+}
+
 // Declare one file-scope name of the declaration being parsed.
 void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_Line line)
 {
@@ -1073,12 +1089,26 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
     if (! Ast_IsUnsized(type)) {
         Par_CheckComplete(name, type, line);
     }
-    Ast_Var *var = Ast_DeclareGlobal(name, type, line);
+
+    Ast_Var *var = Ast_FindGlobal(name);
+    if (var) {
+        Par_Redeclare(var, line);
+    } else {
+        var = Ast_DeclareGlobal(name, type, line);
+        var->av_storage = Par_DeclStorage;
+    }
     if (Ast_IsUnsized(var->av_type)) {
         var->av_type = type;
     }
-    var->av_storage = Par_DeclStorage;
-    var->av_init = init ? Par_FlattenInit(&var->av_type, init, line) : NULL;
+    if (! init) {
+        return;
+    }
+
+    Err_AssertAt(line, ! var->av_init, ERR_PAR_OBJECT_REDEFINED, name);
+    var->av_init = Par_FlattenInit(&var->av_type, init, line);
+    if (var->av_storage == AST_STORAGE_EXTERN) {
+        var->av_storage = AST_STORAGE_NONE;
+    }
 }
 
 // Declare a variable inside a function.
