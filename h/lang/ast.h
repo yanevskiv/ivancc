@@ -201,6 +201,8 @@ enum Ast_NodeKind {
     AST_NODE_KIND_BREAK,     // break;
     AST_NODE_KIND_CONTINUE,  // continue;
     AST_NODE_KIND_BLOCK,     // { ... }
+    AST_NODE_KIND_DECL,      // the statements one declaration becomes
+    AST_NODE_KIND_VLA,       // allocate an_var, an array of an_lhs elements
     AST_NODE_KIND_EXPR_STMT, // expression used as a statement
     AST_NODE_KIND_NOP,       // empty statement / bare declaration
     AST_NODE_KIND_COUNT      // number of kinds
@@ -226,6 +228,7 @@ struct Ast_Type {
     Ast_Qual         at_qual;     // the qualifiers written on the declaration
     Ast_Type        *at_base;     // pointee for PTR, element type for ARRAY
     int32_t          at_len;      // element count for ARRAY
+    Ast_Node        *at_vlen;     // length a variable-length ARRAY computes
     char            *at_tag;      // tag a STRUCT or UNION was declared with, or NULL
     Ast_Member      *at_members;  // members of a STRUCT or UNION
     Ast_TypeComplete at_complete; // incomplete until the member list or the length is known
@@ -389,6 +392,8 @@ Ast_Type *Ast_NewArray(Ast_Type *base, int32_t len);
 Ast_Type *Ast_NewUnsizedArray(Ast_Type *base);
 bool      Ast_IsUnsized(const Ast_Type *type);
 Ast_Type *Ast_SizeArray(const Ast_Type *type, int32_t len);
+Ast_Type *Ast_NewVla(Ast_Type *base, Ast_Node *len);
+bool      Ast_IsVla(const Ast_Type *type);
 Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto);
 Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, Ast_Line line);

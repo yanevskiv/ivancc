@@ -146,6 +146,7 @@ enum Err_Code {
     ERR_PAR_EXTERN_INITIALIZED,        // name
     ERR_PAR_SIZEOF_INCOMPLETE,
     ERR_PAR_TYPEDEF_INITIALIZED,
+    ERR_PAR_VLA_INITIALIZED,           // name
     ERR_PAR_UNDECLARED,                // identifier
 
     ERR_AST_FLEXIBLE_IN_UNION,
@@ -171,6 +172,8 @@ enum Err_Code {
     ERR_SEM_DEREF_VOID,
     ERR_SEM_DEREF_INCOMPLETE,
     ERR_SEM_SIZEOF_INCOMPLETE,
+    ERR_SEM_ARRAY_LEN_NOT_INTEGER,
+    ERR_SEM_VLA_SIZE_UNSUPPORTED,
     ERR_SEM_MEMBER_NOT_AGGREGATE,      // member
     ERR_SEM_MEMBER_INCOMPLETE,         // type name
     ERR_SEM_MEMBER_UNKNOWN,            // member, type name

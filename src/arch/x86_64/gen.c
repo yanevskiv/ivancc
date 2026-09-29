@@ -70,6 +70,17 @@ static int32_t Gen_x86_64_LabelId;
 static int32_t Gen_x86_64_BreakId = -1;
 static int32_t Gen_x86_64_ContinueId = -1;
 
+// Frame offsets of the %rsp each live variable-length array saved.
+static int32_t *Gen_x86_64_VlaSaves;
+
+// Count and capacity of Gen_x86_64_VlaSaves.
+static int32_t Gen_x86_64_VlaDepth;
+static int32_t Gen_x86_64_VlaRoom;
+
+// Number of variable-length arrays live where break and continue land.
+static int32_t Gen_x86_64_BreakVla;
+static int32_t Gen_x86_64_ContinueVla;
+
 // The function currently being emitted.
 static const Ast_Func *Gen_x86_64_CurrFunc;
 
@@ -701,10 +712,22 @@ int32_t Gen_x86_64_AlignTo(int32_t n, int32_t align)
 // Return the frame bytes a local reserves.
 int32_t Gen_x86_64_SlotSize(const Ast_Type *type)
 {
+    if (Ast_IsVla(type)) {
+        return GEN_X86_64_VLA_SLOT_SIZE;
+    }
     if (! Sem_IsAggregate(type)) {
         return type->at_size;
     }
     return Gen_x86_64_AlignTo(type->at_size, GEN_X86_64_WORD_SIZE);
+}
+
+// Return the address multiple a local's frame slot sits on.
+int32_t Gen_x86_64_SlotAlign(const Ast_Type *type)
+{
+    if (Ast_IsVla(type)) {
+        return GEN_X86_64_WORD_SIZE;
+    }
+    return type->at_align;
 }
 
 // Return the operand width in bits used to load or store a value of type.
@@ -720,6 +743,8 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
         case AST_NODE_KIND_VAR: {
             if (node->an_var->av_global) {
                 Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_var->av_symbol);
+            } else if (Ast_IsVla(node->an_var->av_type)) {
+                Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, node->an_var->av_offset + GEN_X86_64_VLA_ADDR, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
             } else {
                 Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_var->av_offset, ASM_X86_64_REG_RAX);
             }
@@ -1201,6 +1226,106 @@ void Gen_x86_64_EmitFloatNeg(Ast_Node *node)
     Asm_x86_64_EmitXor(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
 }
 
+// Record the frame offset a new variable-length array saved %rsp at.
+void Gen_x86_64_PushVla(int32_t saved)
+{
+    if (Gen_x86_64_VlaDepth == Gen_x86_64_VlaRoom) {
+        Gen_x86_64_VlaRoom = Gen_x86_64_VlaRoom > 0 ? Gen_x86_64_VlaRoom * 2 : GEN_X86_64_VLA_ROOM;
+        Gen_x86_64_VlaSaves = realloc(Gen_x86_64_VlaSaves, (size_t) Gen_x86_64_VlaRoom * sizeof(*Gen_x86_64_VlaSaves));
+    }
+    Gen_x86_64_VlaSaves[Gen_x86_64_VlaDepth++] = saved;
+}
+
+// Allocate a variable-length array below the frame.
+void Gen_x86_64_EmitVla(const Ast_Node *node)
+{
+    int32_t slot = node->an_var->av_offset;
+
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RSP, ASM_X86_64_REG_RBP, slot + GEN_X86_64_VLA_SAVED_SP, ASM_X86_64_WIDTH_64);
+    Gen_x86_64_EmitExpr(node->an_lhs);
+    Asm_x86_64_EmitMovImm(node->an_var->av_type->at_base->at_size, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitImul(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitAddImm(GEN_X86_64_SYSV_STACK_ALIGN - 1, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovImm(-GEN_X86_64_SYSV_STACK_ALIGN, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitAnd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitSub(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RSP);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RSP, ASM_X86_64_REG_RBP, slot + GEN_X86_64_VLA_ADDR, ASM_X86_64_WIDTH_64);
+    Gen_x86_64_PushVla(slot + GEN_X86_64_VLA_SAVED_SP);
+}
+
+// Give back the stack of every variable-length array past the first depth.
+void Gen_x86_64_EmitVlaRestore(int32_t depth)
+{
+    if (Gen_x86_64_VlaDepth > depth) {
+        Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, Gen_x86_64_VlaSaves[depth], ASM_X86_64_REG_RSP, ASM_X86_64_WIDTH_64);
+    }
+}
+
+// Close a scope that opened with depth variable-length arrays live.
+void Gen_x86_64_EndVlaScope(int32_t depth)
+{
+    Gen_x86_64_EmitVlaRestore(depth);
+    Gen_x86_64_VlaDepth = depth;
+}
+
+// Emit a statement as a scope of its own.
+void Gen_x86_64_EmitScoped(Ast_Node *node)
+{
+    int32_t depth = Gen_x86_64_VlaDepth;
+
+    Gen_x86_64_EmitStmt(node);
+    Gen_x86_64_EndVlaScope(depth);
+}
+
+// Record at every label how many variable-length arrays are live there.
+int32_t Gen_x86_64_MarkLabels(Ast_Node *node, int32_t depth)
+{
+    int32_t inner = depth;
+
+    if (! node) {
+        return depth;
+    }
+
+    switch (node->an_kind) {
+        case AST_NODE_KIND_VLA: {
+            depth++;
+        } break;
+        case AST_NODE_KIND_DECL: {
+            for (Ast_Node *stmt = node->an_body; stmt; stmt = stmt->an_next) {
+                depth = Gen_x86_64_MarkLabels(stmt, depth);
+            }
+        } break;
+        case AST_NODE_KIND_LABEL: {
+            node->an_val = depth;
+            depth = Gen_x86_64_MarkLabels(node->an_lhs, depth);
+        } break;
+        case AST_NODE_KIND_CASE:
+        case AST_NODE_KIND_DEFAULT: {
+            depth = Gen_x86_64_MarkLabels(node->an_lhs, depth);
+        } break;
+        case AST_NODE_KIND_BLOCK: {
+            for (Ast_Node *stmt = node->an_body; stmt; stmt = stmt->an_next) {
+                inner = Gen_x86_64_MarkLabels(stmt, inner);
+            }
+        } break;
+        case AST_NODE_KIND_IF: {
+            Gen_x86_64_MarkLabels(node->an_then, depth);
+            Gen_x86_64_MarkLabels(node->an_els, depth);
+        } break;
+        case AST_NODE_KIND_FOR: {
+            Gen_x86_64_MarkLabels(node->an_body, Gen_x86_64_MarkLabels(node->an_init, depth));
+        } break;
+        case AST_NODE_KIND_DO:
+        case AST_NODE_KIND_SWITCH: {
+            Gen_x86_64_MarkLabels(node->an_body, depth);
+        } break;
+        default: {
+            // empty
+        } break;
+    }
+    return depth;
+}
+
 // Bring a result in %rax back into its type.
 void Gen_x86_64_EmitNarrow(const Ast_Type *type)
 {
@@ -1548,11 +1673,11 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Gen_x86_64_EmitExpr(node->an_cond);
             Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
             Asm_x86_64_EmitJe(".L.else.%d", count);
-            Gen_x86_64_EmitStmt(node->an_then);
+            Gen_x86_64_EmitScoped(node->an_then);
             Asm_x86_64_EmitJmp(".L.endif.%d", count);
             Asm_x86_64_EmitLabel(".L.else.%d", count);
             if (node->an_els) {
-                Gen_x86_64_EmitStmt(node->an_els);
+                Gen_x86_64_EmitScoped(node->an_els);
             }
             Asm_x86_64_EmitLabel(".L.endif.%d", count);
         } break;
@@ -1560,36 +1685,46 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             int32_t count = Gen_x86_64_Count();
             int32_t brk = Gen_x86_64_BreakId;
             int32_t cnt = Gen_x86_64_ContinueId;
+            int32_t depth = Gen_x86_64_VlaDepth;
+            int32_t brkvla = Gen_x86_64_BreakVla;
+            int32_t cntvla = Gen_x86_64_ContinueVla;
             Gen_x86_64_BreakId = Gen_x86_64_ContinueId = count;
 
             if (node->an_init) {
                 Gen_x86_64_EmitStmt(node->an_init);
             }
+            Gen_x86_64_BreakVla = Gen_x86_64_ContinueVla = Gen_x86_64_VlaDepth;
             Asm_x86_64_EmitLabel(".L.begin.%d", count);
             if (node->an_cond) {
                 Gen_x86_64_EmitExpr(node->an_cond);
                 Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
                 Asm_x86_64_EmitJe(".L.brk.%d", count);
             }
-            Gen_x86_64_EmitStmt(node->an_body);
+            Gen_x86_64_EmitScoped(node->an_body);
             Asm_x86_64_EmitLabel(".L.cnt.%d", count);
             if (node->an_inc) {
                 Gen_x86_64_EmitExpr(node->an_inc);
             }
             Asm_x86_64_EmitJmp(".L.begin.%d", count);
             Asm_x86_64_EmitLabel(".L.brk.%d", count);
+            Gen_x86_64_EndVlaScope(depth);
 
             Gen_x86_64_BreakId = brk;
             Gen_x86_64_ContinueId = cnt;
+            Gen_x86_64_BreakVla = brkvla;
+            Gen_x86_64_ContinueVla = cntvla;
         } break;
         case AST_NODE_KIND_DO: {
             int32_t count = Gen_x86_64_Count();
             int32_t brk = Gen_x86_64_BreakId;
             int32_t cnt = Gen_x86_64_ContinueId;
+            int32_t brkvla = Gen_x86_64_BreakVla;
+            int32_t cntvla = Gen_x86_64_ContinueVla;
             Gen_x86_64_BreakId = Gen_x86_64_ContinueId = count;
+            Gen_x86_64_BreakVla = Gen_x86_64_ContinueVla = Gen_x86_64_VlaDepth;
 
             Asm_x86_64_EmitLabel(".L.begin.%d", count);
-            Gen_x86_64_EmitStmt(node->an_body);
+            Gen_x86_64_EmitScoped(node->an_body);
             Asm_x86_64_EmitLabel(".L.cnt.%d", count);
             Gen_x86_64_EmitExpr(node->an_cond);
             Asm_x86_64_EmitCmpImm(0, ASM_X86_64_REG_RAX);
@@ -1598,11 +1733,15 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
 
             Gen_x86_64_BreakId = brk;
             Gen_x86_64_ContinueId = cnt;
+            Gen_x86_64_BreakVla = brkvla;
+            Gen_x86_64_ContinueVla = cntvla;
         } break;
         case AST_NODE_KIND_SWITCH: {
             int32_t count = Gen_x86_64_Count();
             int32_t brk = Gen_x86_64_BreakId;
+            int32_t brkvla = Gen_x86_64_BreakVla;
             Gen_x86_64_BreakId = count;
+            Gen_x86_64_BreakVla = Gen_x86_64_VlaDepth;
 
             Gen_x86_64_EmitExpr(node->an_cond);
             Ast_Node *deflt = NULL;
@@ -1621,9 +1760,10 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
                 Asm_x86_64_EmitJmp(".L.brk.%d", count);
             }
 
-            Gen_x86_64_EmitStmt(node->an_body);
+            Gen_x86_64_EmitScoped(node->an_body);
             Asm_x86_64_EmitLabel(".L.brk.%d", count);
             Gen_x86_64_BreakId = brk;
+            Gen_x86_64_BreakVla = brkvla;
         } break;
         case AST_NODE_KIND_CASE:
         case AST_NODE_KIND_DEFAULT: {
@@ -1635,20 +1775,34 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Gen_x86_64_EmitStmt(node->an_lhs);
         } break;
         case AST_NODE_KIND_GOTO: {
+            Ast_Node *label = Sem_FindLabel(Gen_x86_64_CurrFunc->af_body, node->an_funcname);
+            Gen_x86_64_EmitVlaRestore((int32_t) label->an_val);
             Asm_x86_64_EmitJmp(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_funcname);
         } break;
         case AST_NODE_KIND_BREAK: {
             Err_AssertAt(node->an_line, Gen_x86_64_BreakId >= 0, ERR_GEN_BREAK_OUTSIDE_LOOP);
+            Gen_x86_64_EmitVlaRestore(Gen_x86_64_BreakVla);
             Asm_x86_64_EmitJmp(".L.brk.%d", Gen_x86_64_BreakId);
         } break;
         case AST_NODE_KIND_CONTINUE: {
             Err_AssertAt(node->an_line, Gen_x86_64_ContinueId >= 0, ERR_GEN_CONTINUE_OUTSIDE_LOOP);
+            Gen_x86_64_EmitVlaRestore(Gen_x86_64_ContinueVla);
             Asm_x86_64_EmitJmp(".L.cnt.%d", Gen_x86_64_ContinueId);
         } break;
         case AST_NODE_KIND_BLOCK: {
+            int32_t depth = Gen_x86_64_VlaDepth;
             for (Ast_Node *stmt = node->an_body; stmt; stmt = stmt->an_next) {
                 Gen_x86_64_EmitStmt(stmt);
             }
+            Gen_x86_64_EndVlaScope(depth);
+        } break;
+        case AST_NODE_KIND_DECL: {
+            for (Ast_Node *stmt = node->an_body; stmt; stmt = stmt->an_next) {
+                Gen_x86_64_EmitStmt(stmt);
+            }
+        } break;
+        case AST_NODE_KIND_VLA: {
+            Gen_x86_64_EmitVla(node);
         } break;
         case AST_NODE_KIND_EXPR_STMT: {
             Gen_x86_64_EmitExpr(node->an_lhs);
@@ -1737,7 +1891,7 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
 
     for (Ast_Var *var = func->af_locals; var; var = var->av_next) {
         offset += Gen_x86_64_SlotSize(var->av_type);
-        offset = Gen_x86_64_AlignTo(offset, var->av_type->at_align);
+        offset = Gen_x86_64_AlignTo(offset, Gen_x86_64_SlotAlign(var->av_type));
         var->av_offset = -offset;
     }
     Gen_x86_64_AssignTemps(func->af_body, &offset);
@@ -1885,6 +2039,8 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         Gen_x86_64_AssignLvarOffsets(func);
         Gen_x86_64_CurrFunc = func;
         Gen_x86_64_BreakId = Gen_x86_64_ContinueId = -1;
+        Gen_x86_64_VlaDepth = Gen_x86_64_BreakVla = Gen_x86_64_ContinueVla = 0;
+        Gen_x86_64_MarkLabels(func->af_body, 0);
 
         if (! func->af_static) {
             Asm_x86_64_EmitGlobl(func->af_name);
