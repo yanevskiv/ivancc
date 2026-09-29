@@ -1046,7 +1046,7 @@ src/lang/pp.c             directives, macros, #if, includes, the line map
 src/lang/syntax/pp.flex   pp-tokens, scanned under the prefix pp
 h/util/buf.h        Buf, a growable string
 src/util/buf.c
-libc/include/             the system include directory, new here
+h/libc/                   the system include directory, new here
 ```
 
 ### The pipeline
@@ -1226,9 +1226,9 @@ and it would need a second start symbol.
 - A quoted include searches the including file's directory, then each `-I`
   directory, then the system directory.
 - An angle include searches each `-I` directory, then the system directory.
-- The system headers live in `libc/include`. The Makefile copies them to
+- The system headers live in `h/libc`. The Makefile copies them to
   `build/include`, and `cc.c` searches `<exe dir>/../include`, the way
-  `Cc_GetRuntimeDir` finds the runtime. `libc/include` holds no headers yet.
+  `Cc_GetRuntimeDir` finds the runtime. `h/libc` does not exist yet.
 - `Pp_FindInclude` raises `ERR_PP_INCLUDE_NOT_FOUND` itself, so it never
   returns without a path.
 - `#include_next` resumes the search after the directory the current file was
@@ -1390,7 +1390,7 @@ suite green.
    through the new path unchanged. **Done.** Every `-E` output in the corpus
    matches `gcc -std=c99 -E -P` modulo whitespace.
 1. **`#include`** (`test65_include`). Add both search orders, `#include_next`,
-   the depth limit, the file cache and `libc/include`. Give `Pp_File` its
+   the depth limit, the file cache and `h/libc`. Give `Pp_File` its
    directory index and system flag, and `Pp_Run` a `Pp_Options` carrying the
    `-I` list. Add the `1` and `2` flags to the `-E` markers. Stop refusing `-I`.
    **Done.** A header with no tokens before a nested include loses its own
@@ -1642,7 +1642,7 @@ our C, on our machine.
 src/libc/x86_64/target/linux/crt0.s    _start only
 src/libc/x86_64/target/linux/sys.s     write() and exit() syscall wrappers
 src/libc/stdio.c                       putchar, puts, printf   (replaces libc.c)
-libc/include/stdio.h                   the prototypes #include <stdio.h> pulls in
+h/libc/stdio.h                         the prototypes #include <stdio.h> pulls in
 ```
 
 - `putchar` moves out of `crt0.s` and into C, which `test16_address_of` already
