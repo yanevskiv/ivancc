@@ -53,7 +53,7 @@ SYS_HEADERS := $(patsubst libc/include/%,$(BUILD)/include/%,$(shell find libc/in
 
 TEST_TOOL  := tests/run_test
 CORE_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/core/test*.c)))
-BUG_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/test*.c)))
+BUG_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/bug*.c)))
 EDGE_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/test*.c)))
 LIBC_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/test*.c)))
 TEST_NAMES := $(CORE_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES)
