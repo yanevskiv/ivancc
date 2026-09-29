@@ -1,4 +1,4 @@
-// Declarations and definitions test65_include reads through an include.
+// Declarations and definitions core065_include reads through an include.
 
 struct Pair { int a; int b; };
 typedef struct Pair Pair;

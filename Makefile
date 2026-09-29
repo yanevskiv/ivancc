@@ -52,13 +52,18 @@ LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/link.o
 SYS_HEADERS := $(patsubst libc/include/%,$(BUILD)/include/%,$(shell find libc/include -name '*.h' 2>/dev/null))
 
 TEST_TOOL  := tests/run_test
-TEST_SRCS  := $(sort $(wildcard tests/core/test*.c))
-TEST_NAMES := $(patsubst tests/core/%.c,%,$(TEST_SRCS))
+CORE_NAMES := $(patsubst tests/core/%.c,%,$(sort $(wildcard tests/core/core*.c)))
+BUG_NAMES  := $(patsubst tests/bugs/%.c,%,$(sort $(wildcard tests/bugs/bug*.c)))
+EDGE_NAMES := $(patsubst tests/edge/%.c,%,$(sort $(wildcard tests/edge/edge*.c)))
+LIBC_NAMES := $(patsubst tests/libc/%.c,%,$(sort $(wildcard tests/libc/libc*.c)))
+TEST_NAMES := $(CORE_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES)
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
 LD_BIN := $(BUILD)/bin/$(TARGET)ld
 EMU_BIN := $(BUILD)/bin/$(TARGET)emu
+
+TEST_DEPS := $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
 
 # --- phony recipes ---
 all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
@@ -66,7 +71,15 @@ all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
 clean:
 	rm -rf $(BUILD) $(OUT)
 
-tests: $(TEST_NAMES)
+tests: test_core test_bugs test_edge test_libc
+
+test_core: $(CORE_NAMES)
+
+test_bugs: $(BUG_NAMES)
+
+test_edge: $(EDGE_NAMES)
+
+test_libc: $(LIBC_NAMES)
 
 # --- tool recipes ---
 $(CC_BIN): $(CC_OBJS) | $(BUILD)/bin
@@ -82,7 +95,16 @@ $(EMU_BIN): $(EMU_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ $(LDLIBS) -o $@
 
 # --- test recipes ---
-$(TEST_NAMES): %: tests/core/%.c $(TEST_TOOL) $(CC_BIN) $(RUNTIME)
+$(CORE_NAMES): %: tests/core/%.c $(TEST_DEPS)
+	@$(TEST_TOOL) $<
+
+$(BUG_NAMES): %: tests/bugs/%.c $(TEST_DEPS)
+	@$(TEST_TOOL) $<
+
+$(EDGE_NAMES): %: tests/edge/%.c $(TEST_DEPS)
+	@$(TEST_TOOL) $<
+
+$(LIBC_NAMES): %: tests/libc/%.c $(TEST_DEPS)
 	@$(TEST_TOOL) $<
 
 # --- front-end generators ---
@@ -153,4 +175,4 @@ $(EMU_DIR): | $(BUILD)
 
 -include $(shell find $(OUT) -name '*.d' 2>/dev/null)
 
-.PHONY: all clean tests $(TEST_NAMES)
+.PHONY: all clean tests test_core test_bugs test_edge test_libc $(TEST_NAMES)
