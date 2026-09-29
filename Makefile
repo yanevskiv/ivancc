@@ -24,7 +24,7 @@ BUILD   := build
 LINUX_DIR := $(BUILD)/lib/linux
 EMU_DIR   := $(BUILD)/lib/ivanemu
 RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.o $(EMU_DIR)/crt0.o $(EMU_DIR)/libc.o
-TARGET_SRC := libc/src/$(TARGET_ARCH)/target
+TARGET_SRC := src/libc/$(TARGET_ARCH)/target
 
 CC      := gcc
 CFLAGS  := -std=gnu99 -O2 -Ih -Iout -DTARGET_ARCH=$(TARGET_ARCH)
@@ -34,7 +34,7 @@ LEX     := flex
 YACC    := bison
 
 MAIN_SRCS := src/cc.c src/ld.c src/as.c src/emu.c
-ALL_SRCS  := $(shell find src -name '*.c')
+ALL_SRCS  := $(shell find src -path src/libc -prune -o -name '*.c' -print)
 LIB_SRCS  := $(filter-out $(MAIN_SRCS),$(ALL_SRCS))
 LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
 GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/c.tab.o $(OUT)/pp.yy.o
@@ -112,13 +112,13 @@ $(OUT)/%.o: src/%.c $(OUT)/c.tab.h | $(OUT)
 $(LINUX_DIR)/crt0.o: $(TARGET_SRC)/linux/crt0.s $(AS_BIN) | $(LINUX_DIR)
 	$(AS_BIN) $< -o $@
 
-$(LINUX_DIR)/libc.o: libc/src/libc.c $(CC_BIN) | $(LINUX_DIR)
+$(LINUX_DIR)/libc.o: src/libc/libc.c $(CC_BIN) | $(LINUX_DIR)
 	$(CC_BIN) -c $< -o $@
 
 $(EMU_DIR)/crt0.o: $(TARGET_SRC)/ivanemu/crt0.s $(AS_BIN) | $(EMU_DIR)
 	$(AS_BIN) $< -o $@
 
-$(OUT)/libc/ivanemu/core.o: libc/src/libc.c $(CC_BIN)
+$(OUT)/libc/ivanemu/core.o: src/libc/libc.c $(CC_BIN)
 	@mkdir -p $(dir $@)
 	$(CC_BIN) -c $< -o $@
 
