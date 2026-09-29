@@ -1,7 +1,7 @@
 // (Test) Status: 200
 // extern declares without defining, so the definition later in the file is the
 // one that counts and no second slot appears. A later declaration keeps what an
-// earlier one settled.
+// earlier one settled, and extern inside a block names the file-scope object.
 
 extern int shared;
 extern int missing_is_fine;
@@ -28,6 +28,15 @@ extern int initialized = 4;
 int lengths[];
 int lengths[] = { 1, 2, 3 };
 
+int inner()
+{
+    int shared = 1;
+    {
+        extern int shared;
+        return shared + 1;
+    }
+}
+
 int main()
 {
     if (shared != 12) return 1;
@@ -44,5 +53,6 @@ int main()
     if (initialized != 4) return 8;
     if (sizeof lengths != 3 * sizeof(int)) return 9;
     if (lengths[2] != 3) return 10;
+    if (inner() != 19) return 11;
     return 200;
 }

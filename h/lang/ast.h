@@ -400,6 +400,7 @@ Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line);
 void     Ast_DeclareParam(Ast_Var *var);
 Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, Ast_Line line);
+Ast_Var *Ast_DeclareExternLocal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_CurrentLocals(void);
 
 // Tags and typedef names

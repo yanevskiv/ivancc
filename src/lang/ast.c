@@ -558,6 +558,27 @@ Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *
     return var;
 }
 
+// Declare a file-scope name inside a block, as `extern` there does.
+Ast_Var *Ast_DeclareExternLocal(const char *name, Ast_Type *type, Ast_Line line)
+{
+    Ast_Var *global = Ast_FindGlobal(name);
+    if (global && Ast_IsUnsized(type)) {
+        type = global->av_type;
+    }
+
+    Ast_Var *var = calloc(1, sizeof(Ast_Var));
+    var->av_name    = Str_Clone(name);
+    var->av_symbol  = var->av_name;
+    var->av_type    = type;
+    var->av_line    = line;
+    var->av_global  = true;
+    var->av_storage = AST_STORAGE_EXTERN;
+
+    var->av_scope_next = Ast_CurScope->as_vars;
+    Ast_CurScope->as_vars = var;
+    return var;
+}
+
 // Return the list of locals declared in the current scope.
 Ast_Var *Ast_CurrentLocals(void)
 {

@@ -1121,6 +1121,9 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
     if (! Ast_IsUnsized(type)) {
         Par_CheckComplete(name, type, line);
     }
+    if (Par_DeclStorage == AST_STORAGE_EXTERN) {
+        return Ast_DeclareExternLocal(name, type, line);
+    }
     if (Par_DeclStorage != AST_STORAGE_STATIC) {
         return Ast_DeclareVar(name, type, line);
     }
@@ -1143,6 +1146,7 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
         return Ast_NewNode(AST_NODE_KIND_NOP, line);
     }
     Err_AssertAt(line, var, ERR_PAR_TYPEDEF_INITIALIZED);
+    Err_AssertAt(line, var->av_storage != AST_STORAGE_EXTERN, ERR_PAR_EXTERN_INITIALIZED, decl->pc_name);
     if (var->av_global) {
         var->av_init = Par_FlattenInit(&var->av_type, init, line);
         return Ast_NewNode(AST_NODE_KIND_NOP, line);
