@@ -38,6 +38,9 @@
 // Largest aggregate the ABI passes in registers.
 #define GEN_X86_64_SYSV_MAX_REG_SIZE 16
 
+// Most eightbytes one value passed in registers occupies.
+#define GEN_X86_64_SYSV_MAX_EIGHTBYTES (GEN_X86_64_SYSV_MAX_REG_SIZE / GEN_X86_64_SYSV_EIGHTBYTE)
+
 // The sign bit of a float and of a double.
 #define GEN_X86_64_FLOAT_SIGN  0x80000000LL
 #define GEN_X86_64_DOUBLE_SIGN ((int64_t) 1 << 63)
@@ -61,8 +64,11 @@ enum Gen_x86_64_SysV_VaField {
 // The class the SysV ABI gives one eightbyte of an argument.
 typedef enum Gen_x86_64_SysV_Class Gen_x86_64_SysV_Class;
 enum Gen_x86_64_SysV_Class {
+    GEN_X86_64_SYSV_CLASS_NONE,    // no member reaches the eightbyte
     GEN_X86_64_SYSV_CLASS_INTEGER, // a general-purpose register carries it
-    GEN_X86_64_SYSV_CLASS_SSE,     // an SSE register carries it; no type reaches this yet
+    GEN_X86_64_SYSV_CLASS_SSE,     // an SSE register carries it
+    GEN_X86_64_SYSV_CLASS_X87,     // the low eightbyte of a long double
+    GEN_X86_64_SYSV_CLASS_X87UP,   // the high eightbyte of a long double
     GEN_X86_64_SYSV_CLASS_MEMORY,  // the stack carries it, or a hidden pointer returns it
     GEN_X86_64_SYSV_CLASS_COUNT    // number of classes
 };
@@ -74,27 +80,56 @@ struct Gen_x86_64_Addr {
     const char *ga_symbol; // symbol the address is taken from
 };
 
+// The argument registers and stack bytes the values placed so far have taken.
+typedef struct Gen_x86_64_SysV_Cursor Gen_x86_64_SysV_Cursor;
+struct Gen_x86_64_SysV_Cursor {
+    int32_t gc_gpr;   // general-purpose registers taken
+    int32_t gc_sse;   // SSE registers taken
+    int32_t gc_stack; // bytes of the stack argument area taken
+};
+
+// Where the ABI places one argument.
+typedef struct Gen_x86_64_SysV_Loc Gen_x86_64_SysV_Loc;
+struct Gen_x86_64_SysV_Loc {
+    Gen_x86_64_SysV_Class gl_class[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+    int32_t               gl_count; // eightbytes the argument occupies
+    int32_t               gl_gpr;   // first general-purpose register it takes
+    int32_t               gl_sse;   // first SSE register it takes
+    int32_t               gl_stack; // bytes into the stack argument area, or -1
+};
+
 // SysV classification
-Gen_x86_64_SysV_Class Gen_x86_64_SysV_Classify(const Ast_Type *type);
+Gen_x86_64_SysV_Class Gen_x86_64_SysV_Merge(Gen_x86_64_SysV_Class a, Gen_x86_64_SysV_Class b);
+void                  Gen_x86_64_SysV_ClassifyAt(const Ast_Type *type, int32_t offset, Gen_x86_64_SysV_Class *classes);
+void                  Gen_x86_64_SysV_Classify(const Ast_Type *type, Gen_x86_64_SysV_Class *classes);
 int32_t               Gen_x86_64_SysV_Eightbytes(const Ast_Type *type);
 bool                  Gen_x86_64_SysV_InMemory(const Ast_Type *type);
 bool                  Gen_x86_64_SysV_ReturnsInMemory(const Ast_Type *type);
+bool                  Gen_x86_64_SysV_ReturnsInX87(const Ast_Type *type);
+
+// SysV argument placement
+void                 Gen_x86_64_SysV_StartCursor(Gen_x86_64_SysV_Cursor *cur, const Ast_Type *ret);
+void                 Gen_x86_64_SysV_Place(const Ast_Type *type, Gen_x86_64_SysV_Cursor *cur, Gen_x86_64_SysV_Loc *loc);
+Gen_x86_64_SysV_Loc *Gen_x86_64_SysV_PlaceArgs(Ast_Node *args, Gen_x86_64_SysV_Cursor *cur);
+const Ast_Type      *Gen_x86_64_SysV_PassedType(const Ast_Func *func, const Ast_Var *param);
 
 // SysV calls
-void    Gen_x86_64_SysV_EmitReturnValue(Ast_Node *node);
-void    Gen_x86_64_SysV_EmitParam(Ast_Var *param, int32_t *reg, int32_t *stack);
-int32_t Gen_x86_64_SysV_ArgRegBase(Ast_Node *args, int32_t index, int32_t nHidden);
-int32_t Gen_x86_64_SysV_CallStackSlots(Ast_Node *args, int32_t nHidden);
-void    Gen_x86_64_SysV_PushArg(Ast_Node *arg);
-void    Gen_x86_64_SysV_CallPushStack(Ast_Node *args, Ast_Node *arg, int32_t index, int32_t nHidden);
-void    Gen_x86_64_SysV_CallPushReg(Ast_Node *args, Ast_Node *arg, int32_t index, int32_t nHidden);
-void    Gen_x86_64_SysV_CallPopReg(Ast_Node *args, int32_t nHidden);
-void    Gen_x86_64_SysV_EmitCall(Ast_Node *node);
+void Gen_x86_64_SysV_EmitReturnValue(Ast_Node *node);
+void Gen_x86_64_SysV_EmitParam(Ast_Var *param, const Ast_Type *passed, const Gen_x86_64_SysV_Loc *loc);
+void Gen_x86_64_SysV_EmitParams(const Ast_Func *func);
+void Gen_x86_64_SysV_PushArg(Ast_Node *arg);
+void Gen_x86_64_SysV_CallPushStack(Ast_Node *arg, const Gen_x86_64_SysV_Loc *loc, int32_t *end);
+void Gen_x86_64_SysV_CallPushReg(Ast_Node *arg, const Gen_x86_64_SysV_Loc *loc);
+void Gen_x86_64_SysV_CallPopReg(Ast_Node *args, const Gen_x86_64_SysV_Loc *locs);
+void Gen_x86_64_SysV_EmitCallResult(Ast_Node *node);
+void Gen_x86_64_SysV_EmitCall(Ast_Node *node);
 
 // SysV variadic arguments
 void Gen_x86_64_SysV_EmitVaSaveArea(void);
-void Gen_x86_64_SysV_CountNamedArgs(const Ast_Func *func, int32_t *reg, int32_t *stack);
+void Gen_x86_64_SysV_CountNamedArgs(const Ast_Func *func, Gen_x86_64_SysV_Cursor *cur);
 void Gen_x86_64_SysV_EmitVaStart(void);
+void Gen_x86_64_SysV_EmitVaNext(Gen_x86_64_SysV_VaField field, int32_t limit, int32_t step);
+void Gen_x86_64_SysV_EmitVaOverflow(const Ast_Type *type);
 void Gen_x86_64_SysV_EmitVaArg(const Ast_Type *type);
 
 // Code emission helpers
