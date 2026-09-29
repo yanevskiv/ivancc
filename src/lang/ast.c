@@ -133,6 +133,30 @@ Ast_Type Ast_TypeULLong = {
     .at_complete = AST_TYPE_COMPLETE
 };
 
+// The IEEE binary32 type.
+Ast_Type Ast_TypeFloat = {
+    .at_kind     = AST_TYPE_KIND_FLOAT,
+    .at_size     = AST_TYPE_SIZE_FLOAT,
+    .at_align    = AST_TYPE_ALIGN_FLOAT,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The IEEE binary64 type.
+Ast_Type Ast_TypeDouble = {
+    .at_kind     = AST_TYPE_KIND_DOUBLE,
+    .at_size     = AST_TYPE_SIZE_DOUBLE,
+    .at_align    = AST_TYPE_ALIGN_DOUBLE,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
+// The x87 80-bit extended type.
+Ast_Type Ast_TypeLDouble = {
+    .at_kind     = AST_TYPE_KIND_LDOUBLE,
+    .at_size     = AST_TYPE_SIZE_LDOUBLE,
+    .at_align    = AST_TYPE_ALIGN_LDOUBLE,
+    .at_complete = AST_TYPE_COMPLETE
+};
+
 // Every integer type.
 static Ast_Type *Ast_IntTypes[AST_TYPE_KIND_COUNT][2] = {
     [AST_TYPE_KIND_BOOL]  = {&Ast_TypeBool,  &Ast_TypeBool},
@@ -196,6 +220,18 @@ Ast_Type *Ast_Qualify(Ast_Type *type, Ast_Qual qual)
 bool Ast_IsInteger(const Ast_Type *type)
 {
     return type->at_kind >= AST_TYPE_KIND_FIRST_INT && type->at_kind <= AST_TYPE_KIND_LAST_INT;
+}
+
+// Return whether this type is a floating type.
+bool Ast_IsFloating(const Ast_Type *type)
+{
+    return type->at_kind >= AST_TYPE_KIND_FIRST_FLOAT && type->at_kind <= AST_TYPE_KIND_LAST_FLOAT;
+}
+
+// Return whether this type is an integer or a floating type.
+bool Ast_IsArithmetic(const Ast_Type *type)
+{
+    return Ast_IsInteger(type) || Ast_IsFloating(type);
 }
 
 // Build the pointer type that points at base.
@@ -403,6 +439,15 @@ Ast_Node *Ast_NewNum(int64_t val, Ast_Line line)
 {
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_NUM, line);
     node->an_val = val;
+    return node;
+}
+
+// Build a floating-literal node of the given type.
+Ast_Node *Ast_NewFNum(long double val, Ast_Type *type, Ast_Line line)
+{
+    Ast_Node *node = Ast_NewNode(AST_NODE_KIND_FNUM, line);
+    node->an_fval = val;
+    node->an_type = type;
     return node;
 }
 

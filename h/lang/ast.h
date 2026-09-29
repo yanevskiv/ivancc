@@ -49,7 +49,7 @@ typedef struct Ast_Var Ast_Var;
 // Forward declaration: a global's initializer is one of these.
 typedef struct Ast_Node Ast_Node;
 
-// The kind of a type, the integer kinds in rank order.
+// The kind of a type, the integer and floating kinds in rank order.
 typedef enum Ast_TypeKind Ast_TypeKind;
 enum Ast_TypeKind {
     AST_TYPE_KIND_VOID,
@@ -59,42 +59,53 @@ enum Ast_TypeKind {
     AST_TYPE_KIND_INT,
     AST_TYPE_KIND_LONG,
     AST_TYPE_KIND_LLONG,
+    AST_TYPE_KIND_FLOAT,
+    AST_TYPE_KIND_DOUBLE,
+    AST_TYPE_KIND_LDOUBLE,
     AST_TYPE_KIND_PTR,
     AST_TYPE_KIND_ARRAY,
     AST_TYPE_KIND_FUNC,
     AST_TYPE_KIND_STRUCT,
     AST_TYPE_KIND_UNION,
-    AST_TYPE_KIND_COUNT,                           // number of kinds
-    AST_TYPE_KIND_FIRST_INT = AST_TYPE_KIND_BOOL,  // narrowest integer kind
-    AST_TYPE_KIND_LAST_INT  = AST_TYPE_KIND_LLONG  // widest integer kind
+    AST_TYPE_KIND_COUNT,                              // number of kinds
+    AST_TYPE_KIND_FIRST_INT   = AST_TYPE_KIND_BOOL,   // narrowest integer kind
+    AST_TYPE_KIND_LAST_INT    = AST_TYPE_KIND_LLONG,  // widest integer kind
+    AST_TYPE_KIND_FIRST_FLOAT = AST_TYPE_KIND_FLOAT,  // narrowest floating kind
+    AST_TYPE_KIND_LAST_FLOAT  = AST_TYPE_KIND_LDOUBLE // widest floating kind
 };
 
 // The target ABI's sizes in bytes.
 typedef enum Ast_TypeSize Ast_TypeSize;
 enum Ast_TypeSize {
-    AST_TYPE_SIZE_VOID  = 1,
-    AST_TYPE_SIZE_BOOL  = 1,
-    AST_TYPE_SIZE_CHAR  = 1,
-    AST_TYPE_SIZE_SHORT = 2,
-    AST_TYPE_SIZE_INT   = 4,
-    AST_TYPE_SIZE_LONG  = 8,
-    AST_TYPE_SIZE_LLONG = 8,
-    AST_TYPE_SIZE_PTR   = 8,
-    AST_TYPE_SIZE_FUNC  = 1   // C gives a function no size; gcc answers 1
+    AST_TYPE_SIZE_VOID    = 1,
+    AST_TYPE_SIZE_BOOL    = 1,
+    AST_TYPE_SIZE_CHAR    = 1,
+    AST_TYPE_SIZE_SHORT   = 2,
+    AST_TYPE_SIZE_INT     = 4,
+    AST_TYPE_SIZE_LONG    = 8,
+    AST_TYPE_SIZE_LLONG   = 8,
+    AST_TYPE_SIZE_FLOAT   = 4,
+    AST_TYPE_SIZE_DOUBLE  = 8,
+    AST_TYPE_SIZE_LDOUBLE = 16, // ten bytes of x87 extended, padded
+    AST_TYPE_SIZE_PTR     = 8,
+    AST_TYPE_SIZE_FUNC    = 1   // C gives a function no size; gcc answers 1
 };
 
 // The target ABI's alignments in bytes.
 typedef enum Ast_TypeAlign Ast_TypeAlign;
 enum Ast_TypeAlign {
-    AST_TYPE_ALIGN_VOID  = 1,
-    AST_TYPE_ALIGN_BOOL  = 1,
-    AST_TYPE_ALIGN_CHAR  = 1,
-    AST_TYPE_ALIGN_SHORT = 2,
-    AST_TYPE_ALIGN_INT   = 4,
-    AST_TYPE_ALIGN_LONG  = 8,
-    AST_TYPE_ALIGN_LLONG = 8,
-    AST_TYPE_ALIGN_PTR   = 8,
-    AST_TYPE_ALIGN_FUNC  = 1
+    AST_TYPE_ALIGN_VOID    = 1,
+    AST_TYPE_ALIGN_BOOL    = 1,
+    AST_TYPE_ALIGN_CHAR    = 1,
+    AST_TYPE_ALIGN_SHORT   = 2,
+    AST_TYPE_ALIGN_INT     = 4,
+    AST_TYPE_ALIGN_LONG    = 8,
+    AST_TYPE_ALIGN_LLONG   = 8,
+    AST_TYPE_ALIGN_FLOAT   = 4,
+    AST_TYPE_ALIGN_DOUBLE  = 8,
+    AST_TYPE_ALIGN_LDOUBLE = 16,
+    AST_TYPE_ALIGN_PTR     = 8,
+    AST_TYPE_ALIGN_FUNC    = 1
 };
 
 // Whether a function's parameter list ended in `...`.
@@ -137,6 +148,7 @@ enum Ast_TypeComplete {
 typedef enum Ast_NodeKind Ast_NodeKind;
 enum Ast_NodeKind {
     AST_NODE_KIND_NUM,       // integer literal
+    AST_NODE_KIND_FNUM,      // floating literal
     AST_NODE_KIND_STR,       // string literal
     AST_NODE_KIND_VAR,       // a reference to a local variable
     AST_NODE_KIND_ADD,       // lhs + rhs
@@ -315,6 +327,7 @@ struct Ast_Node {
     Ast_Node    *an_case_next; // next case of the switch this one belongs to
     int32_t      an_label;    // label number a case is emitted with
     int64_t      an_val;      // integer value for AST_NODE_KIND_NUM
+    long double  an_fval;     // value for AST_NODE_KIND_FNUM
     size_t       an_str_idx;  // string table slot for AST_NODE_KIND_STR
     Ast_Var     *an_var;      // variable a VAR names, or the object a COMPOUND fills
     Ast_Node    *an_items;    // flattened initializer a COMPOUND fills
@@ -359,6 +372,9 @@ extern Ast_Type Ast_TypeLong;
 extern Ast_Type Ast_TypeULong;
 extern Ast_Type Ast_TypeLLong;
 extern Ast_Type Ast_TypeULLong;
+extern Ast_Type Ast_TypeFloat;
+extern Ast_Type Ast_TypeDouble;
+extern Ast_Type Ast_TypeLDouble;
 
 // Type construction
 int32_t   Ast_AlignTo(int32_t n, int32_t align);
@@ -366,6 +382,8 @@ int32_t   Ast_AlignDown(int32_t n, int32_t align);
 Ast_Type *Ast_IntegerType(Ast_TypeKind kind, Ast_TypeSign sign);
 Ast_Type *Ast_Qualify(Ast_Type *type, Ast_Qual qual);
 bool      Ast_IsInteger(const Ast_Type *type);
+bool      Ast_IsFloating(const Ast_Type *type);
+bool      Ast_IsArithmetic(const Ast_Type *type);
 Ast_Type *Ast_NewPointer(Ast_Type *base);
 Ast_Type *Ast_NewArray(Ast_Type *base, int32_t len);
 Ast_Type *Ast_NewUnsizedArray(Ast_Type *base);
@@ -384,6 +402,7 @@ Ast_Node *Ast_NewNode(Ast_NodeKind kind, Ast_Line line);
 Ast_Node *Ast_NewBinary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Node *rhs, Ast_Line line);
 Ast_Node *Ast_NewUnary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Line line);
 Ast_Node *Ast_NewNum(int64_t val, Ast_Line line);
+Ast_Node *Ast_NewFNum(long double val, Ast_Type *type, Ast_Line line);
 Ast_Node *Ast_NewVarNode(Ast_Var *var, Ast_Line line);
 Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, Ast_Line line);
 Ast_Node *Ast_NewPostInc(Ast_Node *lhs, int64_t step, Ast_Line line);

@@ -493,6 +493,9 @@ void Gen_x86_64_EmitCast(const Ast_Type *type)
         } break;
         case AST_TYPE_KIND_LONG:
         case AST_TYPE_KIND_LLONG:
+        case AST_TYPE_KIND_FLOAT:
+        case AST_TYPE_KIND_DOUBLE:
+        case AST_TYPE_KIND_LDOUBLE:
         case AST_TYPE_KIND_VOID:
         case AST_TYPE_KIND_PTR:
         case AST_TYPE_KIND_ARRAY:

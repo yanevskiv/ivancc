@@ -38,7 +38,11 @@
 DIGIT   [0-9]
 ALPHA   [A-Za-z_]
 ALNUM   [A-Za-z_0-9]
+HEX     [0-9A-Fa-f]
 ISUFFIX ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
+FSUFFIX [fFlL]
+DEXP    [eE][+-]?{DIGIT}+
+BEXP    [pP][+-]?{DIGIT}+
 
 %%
 
@@ -53,6 +57,8 @@ ISUFFIX ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
 "signed"                return SIGNED;
 "unsigned"              return UNSIGNED;
 "_Bool"                 return BOOL;
+"float"                 return FLOAT;
+"double"                return DOUBLE;
 "void"                  return VOID;
 "const"                 return CONST;
 "volatile"              return VOLATILE;
@@ -87,9 +93,16 @@ ISUFFIX ([uU](l|L|ll|LL)?|(l|L|ll|LL)[uU]?)
 {ALPHA}{ALNUM}*         { yylval.name = Str_Clone(yytext);
                           return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }
 
-0[xX][0-9A-Fa-f]+{ISUFFIX}?  { yylval.num = Par_NumLiteral(yytext); return NUM; }
+0[xX]{HEX}+{ISUFFIX}?        { yylval.num = Par_NumLiteral(yytext); return NUM; }
 0[0-7]*{ISUFFIX}?            { yylval.num = Par_NumLiteral(yytext); return NUM; }
 [1-9]{DIGIT}*{ISUFFIX}?      { yylval.num = Par_NumLiteral(yytext); return NUM; }
+
+{DIGIT}+{DEXP}{FSUFFIX}?                    { yylval.fnum = Par_FloatLiteral(yytext); return FNUM; }
+{DIGIT}*"."{DIGIT}+{DEXP}?{FSUFFIX}?        { yylval.fnum = Par_FloatLiteral(yytext); return FNUM; }
+{DIGIT}+"."{DEXP}?{FSUFFIX}?                { yylval.fnum = Par_FloatLiteral(yytext); return FNUM; }
+0[xX]{HEX}+{BEXP}{FSUFFIX}?                 { yylval.fnum = Par_FloatLiteral(yytext); return FNUM; }
+0[xX]{HEX}*"."{HEX}+{BEXP}{FSUFFIX}?        { yylval.fnum = Par_FloatLiteral(yytext); return FNUM; }
+0[xX]{HEX}+"."{BEXP}{FSUFFIX}?              { yylval.fnum = Par_FloatLiteral(yytext); return FNUM; }
 
 L?\"([^"\\\n]|\\.)*\"   { bool wide = yytext[0] == 'L';
                           yylval.str = Par_StringLiteral(yytext + wide + 1, yyleng - wide - 2, wide ? AST_TYPE_SIZE_INT : AST_TYPE_SIZE_CHAR, (Ast_Line) yylineno);

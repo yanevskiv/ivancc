@@ -26,6 +26,9 @@ static Ast_Func *Sem_Prog;
 // The function whose body is being analysed.
 static Ast_Func *Sem_CurFunc;
 
+// Serial number of the next temporary a rewrite declares.
+static int32_t Sem_TempCount;
+
 // Return the function of that name defined in this program.
 Ast_Func *Sem_FindFunc(const char *name)
 {
@@ -103,12 +106,24 @@ Ast_Type *Sem_Promote(Ast_Type *type)
     return type;
 }
 
+// Return the type a default argument promotion gives an operand.
+Ast_Type *Sem_PromoteArg(Ast_Type *type)
+{
+    if (type->at_kind == AST_TYPE_KIND_FLOAT) {
+        return &Ast_TypeDouble;
+    }
+    return Sem_Promote(type);
+}
+
 // Return the type two arithmetic operands meet in.
 Ast_Type *Sem_CommonType(Ast_Type *lhs, Ast_Type *rhs)
 {
     lhs = Sem_Promote(lhs);
     rhs = Sem_Promote(rhs);
 
+    if (Ast_IsFloating(lhs) && Ast_IsFloating(rhs)) {
+        return lhs->at_kind >= rhs->at_kind ? lhs : rhs;
+    }
     if (! Ast_IsInteger(lhs) || ! Ast_IsInteger(rhs)) {
         return Ast_IsInteger(lhs) ? rhs : lhs;
     }
@@ -128,14 +143,26 @@ Ast_Type *Sem_CommonType(Ast_Type *lhs, Ast_Type *rhs)
     return Ast_IntegerType(sign->at_kind, AST_TYPE_UNSIGNED);
 }
 
+// Turn a floating value tested for truth into its comparison with zero.
+Ast_Node *Sem_Truth(Ast_Node *node)
+{
+    if (! node || ! node->an_type || ! Ast_IsFloating(node->an_type)) {
+        return node;
+    }
+    return Sem_NewBinary(AST_NODE_KIND_NE, node, Ast_NewFNum(0, node->an_type, node->an_line), node->an_line);
+}
+
 // Wrap a node in the cast that converts it to type.
 Ast_Node *Sem_Convert(Ast_Node *node, Ast_Type *type)
 {
     if (! node || ! node->an_type || Sem_SameType(node->an_type, type)) {
         return node;
     }
-    if (! Ast_IsInteger(node->an_type) || ! Ast_IsInteger(type)) {
+    if (! Ast_IsArithmetic(node->an_type) || ! Ast_IsArithmetic(type)) {
         return node;
+    }
+    if (type->at_kind == AST_TYPE_KIND_BOOL) {
+        node = Sem_Truth(node);
     }
 
     Ast_Node *cast = Ast_NewUnary(AST_NODE_KIND_CAST, node, node->an_line);
@@ -179,6 +206,9 @@ int64_t Sem_Truncate(const Ast_Type *type, int64_t value)
         } break;
         case AST_TYPE_KIND_LONG:
         case AST_TYPE_KIND_LLONG:
+        case AST_TYPE_KIND_FLOAT:
+        case AST_TYPE_KIND_DOUBLE:
+        case AST_TYPE_KIND_LDOUBLE:
         case AST_TYPE_KIND_VOID:
         case AST_TYPE_KIND_PTR:
         case AST_TYPE_KIND_ARRAY:
@@ -281,6 +311,44 @@ bool Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, 
     return true;
 }
 
+// Fold an integer a cast or a comparison makes of floating operands.
+bool Sem_FoldFromFloat(const Ast_Node *node, int64_t *value)
+{
+    long double lhs = 0;
+    long double rhs = 0;
+
+    if (! Sem_FoldFloat(node->an_lhs, &lhs)) {
+        return false;
+    }
+    if (node->an_kind == AST_NODE_KIND_CAST) {
+        bool high = node->an_type->at_sign == AST_TYPE_UNSIGNED && lhs >= SEM_TWO_TO_63;
+        *value = Sem_Truncate(node->an_type, high ? (int64_t) (uint64_t) lhs : (int64_t) lhs);
+        return true;
+    }
+    if (! Sem_FoldFloat(node->an_rhs, &rhs)) {
+        return false;
+    }
+
+    switch (node->an_kind) {
+        case AST_NODE_KIND_EQ: {
+            *value = lhs == rhs;
+        } break;
+        case AST_NODE_KIND_NE: {
+            *value = lhs != rhs;
+        } break;
+        case AST_NODE_KIND_LT: {
+            *value = lhs < rhs;
+        } break;
+        case AST_NODE_KIND_LE: {
+            *value = lhs <= rhs;
+        } break;
+        default: {
+            return false;
+        }
+    }
+    return true;
+}
+
 // Fold an integer constant expression to its value.
 bool Sem_Fold(const Ast_Node *node, int64_t *value)
 {
@@ -289,6 +357,9 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
 
     if (! node) {
         return false;
+    }
+    if (node->an_kind != AST_NODE_KIND_SIZEOF && node->an_lhs && node->an_lhs->an_type && Ast_IsFloating(node->an_lhs->an_type)) {
+        return Sem_FoldFromFloat(node, value);
     }
 
     switch (node->an_kind) {
@@ -302,7 +373,7 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
             *value = node->an_lhs->an_type->at_size;
         } break;
         case AST_NODE_KIND_CAST: {
-            if (! Sem_Fold(node->an_lhs, &lhs)) {
+            if (Ast_IsFloating(node->an_type) || ! Sem_Fold(node->an_lhs, &lhs)) {
                 return false;
             }
             *value = Sem_Truncate(node->an_type, lhs);
@@ -333,6 +404,125 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
                 return false;
             }
         } break;
+    }
+    return true;
+}
+
+// Round a folded value to the precision a floating type holds.
+long double Sem_RoundFloat(const Ast_Type *type, long double value)
+{
+    switch (type->at_kind) {
+        case AST_TYPE_KIND_FLOAT: {
+            return (float) value;
+        } break;
+        case AST_TYPE_KIND_DOUBLE: {
+            return (double) value;
+        } break;
+        default: {
+            return value;
+        }
+    }
+}
+
+// Apply one arithmetic operator to folded doubles.
+double Sem_FoldDoubleOp(Ast_NodeKind kind, double lhs, double rhs)
+{
+    switch (kind) {
+        case AST_NODE_KIND_ADD: {
+            return lhs + rhs;
+        } break;
+        case AST_NODE_KIND_SUB: {
+            return lhs - rhs;
+        } break;
+        case AST_NODE_KIND_MUL: {
+            return lhs * rhs;
+        } break;
+        default: {
+            return lhs / rhs;
+        }
+    }
+}
+
+// Apply one arithmetic operator to folded operands of a floating type.
+long double Sem_FoldFloatOp(Ast_NodeKind kind, const Ast_Type *type, long double lhs, long double rhs)
+{
+    if (type->at_kind == AST_TYPE_KIND_DOUBLE) {
+        return Sem_FoldDoubleOp(kind, (double) lhs, (double) rhs);
+    }
+
+    switch (kind) {
+        case AST_NODE_KIND_ADD: {
+            return Sem_RoundFloat(type, lhs + rhs);
+        } break;
+        case AST_NODE_KIND_SUB: {
+            return Sem_RoundFloat(type, lhs - rhs);
+        } break;
+        case AST_NODE_KIND_MUL: {
+            return Sem_RoundFloat(type, lhs * rhs);
+        } break;
+        default: {
+            return Sem_RoundFloat(type, lhs / rhs);
+        }
+    }
+}
+
+// Fold an arithmetic constant expression to its value as a long double.
+bool Sem_FoldFloat(const Ast_Node *node, long double *value)
+{
+    int64_t cond = 0;
+    long double lhs = 0;
+    long double rhs = 0;
+
+    if (! node || ! node->an_type) {
+        return false;
+    }
+    if (Ast_IsInteger(node->an_type)) {
+        if (! Sem_Fold(node, &cond)) {
+            return false;
+        }
+        *value = node->an_type->at_sign == AST_TYPE_UNSIGNED ? (long double) (uint64_t) cond : (long double) cond;
+        return true;
+    }
+    if (! Ast_IsFloating(node->an_type)) {
+        return false;
+    }
+
+    switch (node->an_kind) {
+        case AST_NODE_KIND_FNUM: {
+            *value = Sem_RoundFloat(node->an_type, node->an_fval);
+        } break;
+        case AST_NODE_KIND_CAST: {
+            if (! Sem_FoldFloat(node->an_lhs, &lhs)) {
+                return false;
+            }
+            *value = Sem_RoundFloat(node->an_type, lhs);
+        } break;
+        case AST_NODE_KIND_NEG: {
+            if (! Sem_FoldFloat(node->an_lhs, &lhs)) {
+                return false;
+            }
+            *value = -lhs;
+        } break;
+        case AST_NODE_KIND_ADD:
+        case AST_NODE_KIND_SUB:
+        case AST_NODE_KIND_MUL:
+        case AST_NODE_KIND_DIV: {
+            if (! Sem_FoldFloat(node->an_lhs, &lhs) || ! Sem_FoldFloat(node->an_rhs, &rhs)) {
+                return false;
+            }
+            *value = Sem_FoldFloatOp(node->an_kind, node->an_type, lhs, rhs);
+        } break;
+        case AST_NODE_KIND_COND: {
+            if (! Sem_Fold(node->an_cond, &cond)) {
+                return false;
+            }
+            if (! Sem_FoldFloat(cond ? node->an_then : node->an_els, value)) {
+                return false;
+            }
+        } break;
+        default: {
+            return false;
+        }
     }
     return true;
 }
@@ -432,7 +622,7 @@ void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeV
         if (param && param->av_type) {
             arg = Sem_Convert(arg, param->av_type);
         } else if (i >= from && arg->an_type) {
-            arg = Sem_Convert(arg, Sem_Promote(arg->an_type));
+            arg = Sem_Convert(arg, Sem_PromoteArg(arg->an_type));
         }
         tail->an_next = arg;
         tail = arg;
@@ -462,6 +652,117 @@ void Sem_CheckCall(Ast_Node *node)
     Sem_ConvertArgs(node, func->af_params, func->af_nparams, func->af_variadic, func->af_proto);
 }
 
+// Declare a nameless local of the function being analysed.
+Ast_Var *Sem_NewTemp(Ast_Type *type, Ast_Line line)
+{
+    Ast_Var *var = calloc(1, sizeof(Ast_Var));
+
+    var->av_name = Str_Format(".tmp.%d", Sem_TempCount++);
+    var->av_type = type;
+    var->av_line = line;
+    var->av_next = Sem_CurFunc->af_locals;
+    Sem_CurFunc->af_locals = var;
+    return var;
+}
+
+// Build and annotate a unary node over an annotated operand.
+Ast_Node *Sem_NewUnary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Line line)
+{
+    Ast_Node *node = Ast_NewUnary(kind, lhs, line);
+    Sem_Annotate(node);
+    return node;
+}
+
+// Build and annotate a binary node over annotated operands.
+Ast_Node *Sem_NewBinary(Ast_NodeKind kind, Ast_Node *lhs, Ast_Node *rhs, Ast_Line line)
+{
+    Ast_Node *node = Ast_NewBinary(kind, lhs, rhs, line);
+    Sem_Annotate(node);
+    return node;
+}
+
+// Build and annotate a reference to a temporary.
+Ast_Node *Sem_TempRef(Ast_Var *var, Ast_Line line)
+{
+    Ast_Node *node = Ast_NewVarNode(var, line);
+    Sem_Annotate(node);
+    return node;
+}
+
+// Build the assignment that parks the address of an lvalue in a new pointer.
+Ast_Node *Sem_PinLvalue(Ast_Node *lhs, Ast_Var **ptr)
+{
+    bool bits = lhs->an_kind == AST_NODE_KIND_MEMBER && lhs->an_member->am_bits;
+    Ast_Node *base = bits ? lhs->an_lhs : lhs;
+
+    *ptr = Sem_NewTemp(Ast_NewPointer(base->an_type), lhs->an_line);
+    return Sem_NewBinary(AST_NODE_KIND_ASSIGN, Sem_TempRef(*ptr, lhs->an_line), Sem_NewUnary(AST_NODE_KIND_ADDR, base, lhs->an_line), lhs->an_line);
+}
+
+// Build the lvalue a pinned pointer reaches again.
+Ast_Node *Sem_Target(Ast_Node *lhs, Ast_Var *ptr)
+{
+    Ast_Node *target = Sem_NewUnary(AST_NODE_KIND_DEREF, Sem_TempRef(ptr, lhs->an_line), lhs->an_line);
+
+    if (lhs->an_kind == AST_NODE_KIND_MEMBER && lhs->an_member->am_bits) {
+        target = Ast_NewMemberNode(target, lhs->an_memname, lhs->an_line);
+        Sem_Annotate(target);
+    }
+    return target;
+}
+
+// Return whether an assignment's floating operand calls for a rewrite.
+bool Sem_NeedsFloatAssign(const Ast_Node *node)
+{
+    if (! Sem_CurFunc) {
+        return false;
+    }
+    if (Ast_IsFloating(node->an_lhs->an_type)) {
+        return true;
+    }
+    return node->an_kind == AST_NODE_KIND_OPASSIGN && Ast_IsFloating(node->an_rhs->an_type);
+}
+
+// Put another node's contents in place of a node, keeping its place in a list.
+void Sem_Replace(Ast_Node *node, const Ast_Node *with)
+{
+    Ast_Node *next = node->an_next;
+
+    *node = *with;
+    node->an_next = next;
+}
+
+// Rewrite `lhs op= rhs` as `p = &lhs, *p = *p op rhs`.
+void Sem_LowerOpAssign(Ast_Node *node)
+{
+    Ast_Var *ptr = NULL;
+    Ast_Line line = node->an_line;
+    Ast_Node *set = Sem_PinLvalue(node->an_lhs, &ptr);
+    Ast_Node *value = Sem_NewBinary(node->an_op, Sem_Target(node->an_lhs, ptr), node->an_rhs, line);
+    Ast_Node *store = Sem_NewBinary(AST_NODE_KIND_ASSIGN, Sem_Target(node->an_lhs, ptr), value, line);
+
+    Sem_Replace(node, Sem_NewBinary(AST_NODE_KIND_COMMA, set, store, line));
+}
+
+// Rewrite `lhs++` as `p = &lhs, old = *p, *p = old + 1, old`.
+void Sem_LowerPostInc(Ast_Node *node)
+{
+    Ast_Var *ptr = NULL;
+    Ast_Line line = node->an_line;
+    Ast_Node *step = Ast_NewNum(node->an_val, line);
+    Ast_Var *old = Sem_NewTemp(node->an_lhs->an_type, line);
+    Ast_Node *set = Sem_PinLvalue(node->an_lhs, &ptr);
+
+    Sem_Annotate(step);
+    Ast_Node *save = Sem_NewBinary(AST_NODE_KIND_ASSIGN, Sem_TempRef(old, line), Sem_Target(node->an_lhs, ptr), line);
+    Ast_Node *sum = Sem_NewBinary(AST_NODE_KIND_ADD, Sem_TempRef(old, line), step, line);
+    Ast_Node *store = Sem_NewBinary(AST_NODE_KIND_ASSIGN, Sem_Target(node->an_lhs, ptr), sum, line);
+    Ast_Node *first = Sem_NewBinary(AST_NODE_KIND_COMMA, set, save, line);
+    Ast_Node *second = Sem_NewBinary(AST_NODE_KIND_COMMA, store, Sem_TempRef(old, line), line);
+
+    Sem_Replace(node, Sem_NewBinary(AST_NODE_KIND_COMMA, first, second, line));
+}
+
 // Wrap node in a multiplication by size.
 Ast_Node *Sem_ScaleBy(Ast_Node *node, int32_t size)
 {
@@ -483,6 +784,7 @@ void Sem_Arith(Ast_Node *node)
         Sem_UsualArith(node);
         return;
     }
+    Err_AssertAt(node->an_line, ! Ast_IsFloating(lhs) && ! Ast_IsFloating(rhs), ERR_SEM_POINTER_FLOATING);
 
     if (Sem_IsPointer(lhs) && Sem_IsPointer(rhs)) {
         Err_AssertAt(node->an_line, node->an_kind == AST_NODE_KIND_SUB, ERR_SEM_ADD_POINTERS);
@@ -507,6 +809,31 @@ void Sem_Arith(Ast_Node *node)
 
     node->an_rhs  = Sem_ScaleBy(node->an_rhs, lhs->at_base->at_size);
     node->an_type = Sem_Decay(lhs);
+}
+
+// Reject a floating operand of an operator that takes only integers.
+void Sem_NeedInteger(const Ast_Node *node)
+{
+    bool lhs = node->an_lhs && Ast_IsFloating(node->an_lhs->an_type);
+    bool rhs = node->an_rhs && Ast_IsFloating(node->an_rhs->an_type);
+
+    Err_AssertAt(node->an_line, ! lhs && ! rhs, ERR_SEM_OPERAND_FLOATING);
+}
+
+// Reject a cast between a floating type and a non-arithmetic one.
+void Sem_CheckCast(Ast_Node *node)
+{
+    Ast_Type *from = node->an_lhs->an_type;
+    Ast_Type *to = node->an_type;
+
+    if (! from || to->at_kind == AST_TYPE_KIND_VOID) {
+        return;
+    }
+    Err_AssertAt(node->an_line, ! Ast_IsFloating(to) || Ast_IsArithmetic(from), ERR_SEM_CAST_FLOATING);
+    Err_AssertAt(node->an_line, ! Ast_IsFloating(from) || Ast_IsArithmetic(to), ERR_SEM_CAST_FLOATING);
+    if (to->at_kind == AST_TYPE_KIND_BOOL) {
+        node->an_lhs = Sem_Truth(node->an_lhs);
+    }
 }
 
 // Return whether the statements under node define a label of this name.
@@ -563,24 +890,9 @@ void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
     Sem_CollectCases(node->an_next, sw, tail);
 }
 
-// Annotate a node and everything below it.
-void Sem_Node(Ast_Node *node)
+// Annotate one node whose operands are annotated already.
+void Sem_Annotate(Ast_Node *node)
 {
-    if (! node) {
-        return;
-    }
-
-    Sem_Node(node->an_lhs);
-    Sem_Node(node->an_rhs);
-    Sem_Node(node->an_cond);
-    Sem_Node(node->an_then);
-    Sem_Node(node->an_els);
-    Sem_Node(node->an_init);
-    Sem_Node(node->an_inc);
-    Sem_Node(node->an_body);
-    Sem_Node(node->an_args);
-    Sem_Node(node->an_next);
-
     switch (node->an_kind) {
         case AST_NODE_KIND_NUM: {
             if (! node->an_type) {
@@ -588,17 +900,27 @@ void Sem_Node(Ast_Node *node)
             }
         } break;
 
+        case AST_NODE_KIND_FNUM: {
+            // the parser already set an_type from the literal's suffix
+        } break;
+
         case AST_NODE_KIND_AND:
         case AST_NODE_KIND_OR: {
+            node->an_lhs = Sem_Truth(node->an_lhs);
+            node->an_rhs = Sem_Truth(node->an_rhs);
             node->an_type = &Ast_TypeInt;
         } break;
 
         case AST_NODE_KIND_MUL:
-        case AST_NODE_KIND_DIV:
+        case AST_NODE_KIND_DIV: {
+            Sem_UsualArith(node);
+        } break;
+
         case AST_NODE_KIND_MOD:
         case AST_NODE_KIND_BITAND:
         case AST_NODE_KIND_BITOR:
         case AST_NODE_KIND_BITXOR: {
+            Sem_NeedInteger(node);
             Sem_UsualArith(node);
         } break;
 
@@ -614,16 +936,21 @@ void Sem_Node(Ast_Node *node)
 
         case AST_NODE_KIND_SHL:
         case AST_NODE_KIND_SHR: {
+            Sem_NeedInteger(node);
             Sem_PromoteShift(node);
         } break;
 
         case AST_NODE_KIND_NEG:
         case AST_NODE_KIND_BITNOT: {
+            if (node->an_kind == AST_NODE_KIND_BITNOT) {
+                Sem_NeedInteger(node);
+            }
             node->an_lhs = Sem_Convert(node->an_lhs, Sem_Promote(node->an_lhs->an_type));
             node->an_type = node->an_lhs->an_type;
         } break;
 
         case AST_NODE_KIND_NOT: {
+            node->an_lhs = Sem_Truth(node->an_lhs);
             node->an_type = &Ast_TypeInt;
         } break;
 
@@ -669,7 +996,7 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_CAST: {
-            // the parser already set an_type from the type it names
+            Sem_CheckCast(node);
         } break;
 
         case AST_NODE_KIND_SIZEOF: {
@@ -695,6 +1022,10 @@ void Sem_Node(Ast_Node *node)
 
         case AST_NODE_KIND_OPASSIGN: {
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
+            if (Sem_NeedsFloatAssign(node)) {
+                Sem_LowerOpAssign(node);
+                break;
+            }
             Ast_Type *type = node->an_lhs->an_type;
             if (Sem_IsPointer(type) && (node->an_op == AST_NODE_KIND_ADD || node->an_op == AST_NODE_KIND_SUB)) {
                 node->an_rhs = Sem_ScaleBy(node->an_rhs, type->at_base->at_size);
@@ -704,6 +1035,10 @@ void Sem_Node(Ast_Node *node)
 
         case AST_NODE_KIND_POSTINC: {
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
+            if (Sem_NeedsFloatAssign(node)) {
+                Sem_LowerPostInc(node);
+                break;
+            }
             Ast_Type *type = node->an_lhs->an_type;
             if (Sem_IsPointer(type)) {
                 node->an_val *= type->at_base->at_size;
@@ -712,7 +1047,14 @@ void Sem_Node(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_COND: {
-            node->an_type = node->an_then->an_type;
+            node->an_cond = Sem_Truth(node->an_cond);
+            if (! Ast_IsArithmetic(node->an_then->an_type) || ! Ast_IsArithmetic(node->an_els->an_type)) {
+                node->an_type = node->an_then->an_type;
+                break;
+            }
+            node->an_type = Sem_CommonType(node->an_then->an_type, node->an_els->an_type);
+            node->an_then = Sem_Convert(node->an_then, node->an_type);
+            node->an_els  = Sem_Convert(node->an_els, node->an_type);
         } break;
 
         case AST_NODE_KIND_COMMA: {
@@ -751,12 +1093,15 @@ void Sem_Node(Ast_Node *node)
             }
         } break;
 
+        case AST_NODE_KIND_IF:
+        case AST_NODE_KIND_FOR:
+        case AST_NODE_KIND_DO: {
+            node->an_cond = Sem_Truth(node->an_cond);
+        } break;
+
         case AST_NODE_KIND_GOTO:
         case AST_NODE_KIND_LABEL:
         case AST_NODE_KIND_DEFAULT:
-        case AST_NODE_KIND_IF:
-        case AST_NODE_KIND_FOR:
-        case AST_NODE_KIND_DO:
         case AST_NODE_KIND_BREAK:
         case AST_NODE_KIND_CONTINUE:
         case AST_NODE_KIND_BLOCK:
@@ -772,10 +1117,45 @@ void Sem_Node(Ast_Node *node)
     }
 }
 
+// Annotate a node and everything below it.
+void Sem_Node(Ast_Node *node)
+{
+    if (! node) {
+        return;
+    }
+
+    Sem_Node(node->an_lhs);
+    Sem_Node(node->an_rhs);
+    Sem_Node(node->an_cond);
+    Sem_Node(node->an_then);
+    Sem_Node(node->an_els);
+    Sem_Node(node->an_init);
+    Sem_Node(node->an_inc);
+    Sem_Node(node->an_body);
+    Sem_Node(node->an_args);
+    Sem_Node(node->an_next);
+    Sem_Annotate(node);
+}
+
+// Annotate every file-scope initializer and convert it to the slot it fills.
+void Sem_AnalyzeGlobals(void)
+{
+    for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
+        for (Ast_Node *item = var->av_init; item; item = item->an_next) {
+            Sem_Node(item->an_lhs);
+            if (Ast_IsArithmetic(item->an_type)) {
+                item->an_lhs = Sem_Convert(item->an_lhs, item->an_type);
+            }
+        }
+    }
+}
+
 // Annotate every node with its type and reject what the grammar cannot.
 void Sem_Analyze(Ast_Func *prog)
 {
     Sem_Prog = prog;
+    Sem_CurFunc = NULL;
+    Sem_AnalyzeGlobals();
 
     for (Ast_Func *func = prog; func; func = func->af_next) {
         if (! func->af_body) {

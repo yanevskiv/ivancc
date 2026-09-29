@@ -44,6 +44,7 @@ void yyerror(const char *s);
     Ast_Storage     storage;
     Par_ArrayDecor  decor;
     Par_Num         num;
+    Par_FNum        fnum;
     Par_Specs       specs;
     Par_Decl       *decl;
     Par_ParamList   params;
@@ -56,9 +57,10 @@ void yyerror(const char *s);
 }
 
 %token <num>  NUM
+%token <fnum> FNUM
 %token <name> IDENT
 %token <str>  STR
-%token INT CHAR SHORT LONG SIGNED UNSIGNED BOOL VOID RETURN IF ELSE FOR WHILE DO BREAK CONTINUE SIZEOF
+%token INT CHAR SHORT LONG SIGNED UNSIGNED BOOL FLOAT DOUBLE VOID RETURN IF ELSE FOR WHILE DO BREAK CONTINUE SIZEOF
 %token CONST VOLATILE RESTRICT
 %token STRUCT UNION ENUM TYPEDEF
 %token <name> TYPEDEF_NAME
@@ -244,6 +246,8 @@ spec
     | SIGNED               { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_SIGNED; }
     | UNSIGNED             { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_UNSIGNED; }
     | BOOL                 { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_BOOL; }
+    | FLOAT                { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_FLOAT; }
+    | DOUBLE               { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_DOUBLE; }
     | VOID                 { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_VOID; }
     | qual                 { Par_ClearSpecs(&$$); $$.ps_qual = $1; }
     | named_type           { $$ = $1; }
@@ -628,6 +632,7 @@ postfix
 /* An operand that stands alone. */
 primary
     : NUM                  { $$ = Ast_NewNum($1.pn_val, @1); $$->an_type = $1.pn_type; }
+    | FNUM                 { $$ = Ast_NewFNum($1.pf_val, $1.pf_type, @1); }
     | string               { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_STR, @1);
                              n->an_str_idx = Ast_AddString($1.as_data, $1.as_len, $1.as_width); $$ = n; }
     | IDENT
