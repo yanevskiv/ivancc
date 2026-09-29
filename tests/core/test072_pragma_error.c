@@ -4,10 +4,10 @@
 // pragma is dropped. #warning prints its message and carries on, and #error
 // prints its message and fails the compile.
 
-#include "h/core072_pragma_error.h"
-#include "h/core072_pragma_error.h"
-#include "h/core072_pragma_error_operator.h"
-#include "h/core072_pragma_error_operator.h"
+#include "h/test072_pragma_error.h"
+#include "h/test072_pragma_error.h"
+#include "h/test072_pragma_error_operator.h"
+#include "h/test072_pragma_error_operator.h"
 
 #define PRAGMA(x) _Pragma(#x)
 

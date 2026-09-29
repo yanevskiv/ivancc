@@ -5,7 +5,7 @@
 // __STDC_VERSION__, __DATE__ and __TIME__ are defined before the source is
 // read. __func__ is not a macro. A function body names its function with it.
 
-#include "h/core070_predefined.h"
+#include "h/test070_predefined.h"
 
 #define HERE __LINE__
 #define LINE_OF(x) __LINE__
@@ -56,14 +56,14 @@ int main()
     if (call != __LINE__ - 4) return 3;
 
     // __FILE__ names the file being read, a header included or the source.
-    if (! ends_with(__FILE__, "core070_predefined.c")) return 4;
-    if (! ends_with(header_file(), "h/core070_predefined.h")) return 5;
+    if (! ends_with(__FILE__, "test070_predefined.c")) return 4;
+    if (! ends_with(header_file(), "h/test070_predefined.h")) return 5;
     if (header_line() != 10) return 6;
 
     // #line in a header lasts until the header ends.
     if (! same(renamed_file(), "renamed.h")) return 7;
     if (renamed_line() != 507) return 8;
-    if (! ends_with(__FILE__, "core070_predefined.c")) return 9;
+    if (! ends_with(__FILE__, "test070_predefined.c")) return 9;
 
     // __COUNTER__ starts at 0 and counts up.
     int c0 = __COUNTER__;
@@ -99,7 +99,7 @@ int main()
     // #line numbers the next line and keeps the name.
 #line 100
     if (__LINE__ != 100) return 19;
-    if (! ends_with(__FILE__, "core070_predefined.c")) return 20;
+    if (! ends_with(__FILE__, "test070_predefined.c")) return 20;
 
     // A name after the number renames the file.
 #line 200 "other.c"
