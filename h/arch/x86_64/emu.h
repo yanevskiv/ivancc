@@ -21,6 +21,7 @@
 #define EMU_X86_64_H
 
 // Standard headers.
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -29,6 +30,7 @@
 #include <unistd.h>
 
 // Project headers.
+#include "util/console/err.h"
 #include "util/fp.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/load.h"
@@ -196,7 +198,7 @@ struct Emu_x86_64_Cpu {
 
 // Running
 void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Load_x86_64_Image *img);
-void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, const char *what, uint64_t addr);
+void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, Err_Code code, ...);
 uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, Emu_x86_64_Reg reg, Emu_x86_64_OperandWidth width);
 void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, Emu_x86_64_Reg reg, uint64_t value, Emu_x86_64_OperandWidth width);
 bool Emu_x86_64_IsDevice(uint64_t addr);
