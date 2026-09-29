@@ -158,8 +158,9 @@ C Style
 
         Where a comment goes:
 
-        - Every file under `src/` and `include/` must open with a license comment, then a blank line.
+        - Every file under `src/` and `include/`, and the `Makefile`, must open with a license comment, then a blank line.
           - Write it as a `/* */` block with a ` * ` margin on every line.
+          - Write the `Makefile`'s as `#` lines with a `# ` margin, and its banner as `Makefile for the ivancc toolchain.`
           - Write its first line as a banner naming what the file is, then an empty ` *` line.
           - Write a header's banner as `C header file for string utilities.`
           - Write a source file's banner as `C source file for string utilities.`
