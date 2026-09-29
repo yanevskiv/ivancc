@@ -128,9 +128,12 @@ void Gen_x86_64_SysV_EmitCall(Ast_Node *node);
 void Gen_x86_64_SysV_EmitVaSaveArea(void);
 void Gen_x86_64_SysV_CountNamedArgs(const Ast_Func *func, Gen_x86_64_SysV_Cursor *cur);
 void Gen_x86_64_SysV_EmitVaStart(void);
+void Gen_x86_64_SysV_EmitVaCheck(Gen_x86_64_SysV_VaField field, int32_t last, int32_t label);
+void Gen_x86_64_SysV_EmitVaTake(Gen_x86_64_SysV_VaField field, int32_t step);
 void Gen_x86_64_SysV_EmitVaNext(Gen_x86_64_SysV_VaField field, int32_t limit, int32_t step);
 void Gen_x86_64_SysV_EmitVaOverflow(const Ast_Type *type);
-void Gen_x86_64_SysV_EmitVaArg(const Ast_Type *type);
+void Gen_x86_64_SysV_EmitVaAggregate(const Ast_Node *node);
+void Gen_x86_64_SysV_EmitVaArg(const Ast_Node *node);
 
 // Code emission helpers
 int32_t          Gen_x86_64_Count(void);
