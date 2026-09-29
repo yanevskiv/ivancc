@@ -52,6 +52,12 @@
 // The shift that brings a 64-bit sign bit down to bit 0 and back.
 #define GEN_X86_64_SIGN_SHIFT 63
 
+// Bytes a variable-length array's frame slot takes.
+#define GEN_X86_64_VLA_SLOT_SIZE 16
+
+// Variable-length arrays the scope stack first makes room for.
+#define GEN_X86_64_VLA_ROOM 16
+
 // Byte offsets of the fields in the SysV va_list record the parser builds.
 typedef enum Gen_x86_64_SysV_VaField Gen_x86_64_SysV_VaField;
 enum Gen_x86_64_SysV_VaField {
@@ -59,6 +65,13 @@ enum Gen_x86_64_SysV_VaField {
     GEN_X86_64_SYSV_VA_FP_OFFSET = 4,  // the same for SSE registers
     GEN_X86_64_SYSV_VA_OVERFLOW  = 8,  // next argument above the return address
     GEN_X86_64_SYSV_VA_REG_SAVE  = 16  // start of the spilled argument registers
+};
+
+// Byte offsets of the words a variable-length array's frame slot holds.
+typedef enum Gen_x86_64_VlaField Gen_x86_64_VlaField;
+enum Gen_x86_64_VlaField {
+    GEN_X86_64_VLA_ADDR     = 0, // where the array was allocated
+    GEN_X86_64_VLA_SAVED_SP = 8  // %rsp before the array was allocated
 };
 
 // The class the SysV ABI gives one eightbyte of an argument.
@@ -141,6 +154,7 @@ void             Gen_x86_64_EmitPush(void);
 void             Gen_x86_64_EmitPop(Asm_x86_64_Reg reg);
 int32_t          Gen_x86_64_AlignTo(int32_t n, int32_t align);
 int32_t          Gen_x86_64_SlotSize(const Ast_Type *type);
+int32_t          Gen_x86_64_SlotAlign(const Ast_Type *type);
 Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type);
 void             Gen_x86_64_EmitAddr(Ast_Node *node);
 Ast_TypeSign     Gen_x86_64_Sign(const Ast_Node *node);
@@ -171,6 +185,14 @@ void          Gen_x86_64_EmitConvert(const Ast_Type *from, const Ast_Type *to, i
 void          Gen_x86_64_EmitFloatCompare(Ast_NodeKind kind);
 void          Gen_x86_64_EmitFloatBinary(Ast_Node *node);
 void          Gen_x86_64_EmitFloatNeg(Ast_Node *node);
+
+// Variable-length arrays
+void    Gen_x86_64_PushVla(int32_t saved);
+void    Gen_x86_64_EmitVla(const Ast_Node *node);
+void    Gen_x86_64_EmitVlaRestore(int32_t depth);
+void    Gen_x86_64_EndVlaScope(int32_t depth);
+void    Gen_x86_64_EmitScoped(Ast_Node *node);
+int32_t Gen_x86_64_MarkLabels(Ast_Node *node, int32_t depth);
 
 // Expressions, statements and data
 void Gen_x86_64_EmitNarrow(const Ast_Type *type);

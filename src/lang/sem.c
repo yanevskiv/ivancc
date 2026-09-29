@@ -763,6 +763,13 @@ void Sem_LowerPostInc(Ast_Node *node)
     Sem_Replace(node, Sem_NewBinary(AST_NODE_KIND_COMMA, first, second, line));
 }
 
+// Return the bytes one step of a pointer or array moves.
+int32_t Sem_Stride(const Ast_Type *type, Ast_Line line)
+{
+    Err_AssertAt(line, ! Ast_IsVla(type->at_base), ERR_SEM_VLA_SIZE_UNSUPPORTED);
+    return type->at_base->at_size;
+}
+
 // Wrap node in a multiplication by size.
 Ast_Node *Sem_ScaleBy(Ast_Node *node, int32_t size)
 {
@@ -794,7 +801,7 @@ void Sem_Arith(Ast_Node *node)
 
         node->an_kind = AST_NODE_KIND_DIV;
         node->an_lhs  = diff;
-        node->an_rhs  = Ast_NewNum(lhs->at_base->at_size, node->an_line);
+        node->an_rhs  = Ast_NewNum(Sem_Stride(lhs, node->an_line), node->an_line);
         node->an_rhs->an_type = &Ast_TypeInt;
         node->an_type = &Ast_TypeInt;
         return;
@@ -802,12 +809,12 @@ void Sem_Arith(Ast_Node *node)
 
     if (Sem_IsPointer(rhs)) {
         Err_AssertAt(node->an_line, node->an_kind == AST_NODE_KIND_ADD, ERR_SEM_SUB_POINTER_FROM_INT);
-        node->an_lhs  = Sem_ScaleBy(node->an_lhs, rhs->at_base->at_size);
+        node->an_lhs  = Sem_ScaleBy(node->an_lhs, Sem_Stride(rhs, node->an_line));
         node->an_type = Sem_Decay(rhs);
         return;
     }
 
-    node->an_rhs  = Sem_ScaleBy(node->an_rhs, lhs->at_base->at_size);
+    node->an_rhs  = Sem_ScaleBy(node->an_rhs, Sem_Stride(lhs, node->an_line));
     node->an_type = Sem_Decay(lhs);
 }
 
@@ -836,18 +843,23 @@ void Sem_CheckCast(Ast_Node *node)
     }
 }
 
-// Return whether the statements under node define a label of this name.
-bool Sem_FindLabel(Ast_Node *node, const char *name)
+// Return the label of this name the statements under node define.
+Ast_Node *Sem_FindLabel(Ast_Node *node, const char *name)
 {
+    Ast_Node *found = NULL;
+
     if (! node) {
-        return false;
+        return NULL;
     }
     if (node->an_kind == AST_NODE_KIND_LABEL && strcmp(node->an_funcname, name) == 0) {
-        return true;
+        return node;
     }
-    return Sem_FindLabel(node->an_lhs, name) || Sem_FindLabel(node->an_then, name)
-        || Sem_FindLabel(node->an_els, name) || Sem_FindLabel(node->an_body, name)
-        || Sem_FindLabel(node->an_next, name);
+
+    Ast_Node *kids[] = { node->an_lhs, node->an_then, node->an_els, node->an_body, node->an_next };
+    for (size_t i = 0; i < sizeof(kids) / sizeof(kids[0]) && ! found; i++) {
+        found = Sem_FindLabel(kids[i], name);
+    }
+    return found;
 }
 
 // Reject a goto that names a label its function never defines.
@@ -856,7 +868,7 @@ void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
     if (! node) {
         return;
     }
-    Err_AssertAt(node->an_line, node->an_kind != AST_NODE_KIND_GOTO || Sem_FindLabel(body, node->an_funcname), ERR_SEM_GOTO_UNDEFINED, node->an_funcname);
+    Err_AssertAt(node->an_line, node->an_kind != AST_NODE_KIND_GOTO || Sem_FindLabel(body, node->an_funcname) != NULL, ERR_SEM_GOTO_UNDEFINED, node->an_funcname);
     Sem_CheckGotos(node->an_lhs, body);
     Sem_CheckGotos(node->an_then, body);
     Sem_CheckGotos(node->an_els, body);
@@ -1001,6 +1013,7 @@ void Sem_Annotate(Ast_Node *node)
 
         case AST_NODE_KIND_SIZEOF: {
             Err_AssertAt(node->an_line, node->an_lhs->an_type->at_complete, ERR_SEM_SIZEOF_INCOMPLETE);
+            Err_AssertAt(node->an_line, ! Ast_IsVla(node->an_lhs->an_type), ERR_SEM_VLA_SIZE_UNSUPPORTED);
             node->an_kind = AST_NODE_KIND_NUM;
             node->an_val  = node->an_lhs->an_type->at_size;
             node->an_lhs  = NULL;
@@ -1028,7 +1041,7 @@ void Sem_Annotate(Ast_Node *node)
             }
             Ast_Type *type = node->an_lhs->an_type;
             if (Sem_IsPointer(type) && (node->an_op == AST_NODE_KIND_ADD || node->an_op == AST_NODE_KIND_SUB)) {
-                node->an_rhs = Sem_ScaleBy(node->an_rhs, type->at_base->at_size);
+                node->an_rhs = Sem_ScaleBy(node->an_rhs, Sem_Stride(type, node->an_line));
             }
             node->an_type = type;
         } break;
@@ -1041,7 +1054,7 @@ void Sem_Annotate(Ast_Node *node)
             }
             Ast_Type *type = node->an_lhs->an_type;
             if (Sem_IsPointer(type)) {
-                node->an_val *= type->at_base->at_size;
+                node->an_val *= Sem_Stride(type, node->an_line);
             }
             node->an_type = type;
         } break;
@@ -1099,12 +1112,18 @@ void Sem_Annotate(Ast_Node *node)
             node->an_cond = Sem_Truth(node->an_cond);
         } break;
 
+        case AST_NODE_KIND_VLA: {
+            Err_AssertAt(node->an_line, Ast_IsInteger(node->an_lhs->an_type), ERR_SEM_ARRAY_LEN_NOT_INTEGER);
+            node->an_lhs = Sem_Convert(node->an_lhs, &Ast_TypeULong);
+        } break;
+
         case AST_NODE_KIND_GOTO:
         case AST_NODE_KIND_LABEL:
         case AST_NODE_KIND_DEFAULT:
         case AST_NODE_KIND_BREAK:
         case AST_NODE_KIND_CONTINUE:
         case AST_NODE_KIND_BLOCK:
+        case AST_NODE_KIND_DECL:
         case AST_NODE_KIND_EXPR_STMT:
         case AST_NODE_KIND_INIT:
         case AST_NODE_KIND_INITLIST:
