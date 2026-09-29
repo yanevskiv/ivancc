@@ -495,7 +495,7 @@ h/arch/x86_64/emu.h
 src/arch/x86_64/emu.c                  fetch, decode, execute
 h/arch/x86_64/load.h
 src/arch/x86_64/load.c                 ELF executable -> flat memory
-libc/src/x86_64/target/ivanemu/crt0.s  _start that halts through the device
+src/libc/x86_64/target/ivanemu/crt0.s  _start that halts through the device
 ```
 
 ```sh
@@ -591,7 +591,7 @@ status, so an interpreter that could print but not stop would be no use beyond
 the milestone.
 
 The device is how a `-mtarget=ivanemu` program talks, and it is the whole of
-what such a program may assume: `libc/src/x86_64/target/ivanemu/crt0.s` ends
+what such a program may assume: `src/libc/x86_64/target/ivanemu/crt0.s` ends
 with a store to the halt register rather than `mov $60, %rax; syscall`, and
 nothing it links knows what a kernel is.
 
@@ -1639,9 +1639,9 @@ last it needs none of that, and it doubles as the closing exam: a C library, in
 our C, on our machine.
 
 ```
-libc/src/x86_64/target/linux/crt0.s    _start only
-libc/src/x86_64/target/linux/sys.s     write() and exit() syscall wrappers
-libc/src/stdio.c                       putchar, puts, printf   (replaces libc.c)
+src/libc/x86_64/target/linux/crt0.s    _start only
+src/libc/x86_64/target/linux/sys.s     write() and exit() syscall wrappers
+src/libc/stdio.c                       putchar, puts, printf   (replaces libc.c)
 libc/include/stdio.h                   the prototypes #include <stdio.h> pulls in
 ```
 
