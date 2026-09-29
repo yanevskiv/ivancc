@@ -85,7 +85,7 @@ void yyerror(const char *s);
 %type <member> members member_decl
 %type <type> type_name decl_spec
 %type <specs> spec_seq spec named_type
-%type <decl> declarator direct_declarator
+%type <decl> declarator direct_declarator abstract_declarator direct_abstract
 %type <params> params param_list ident_list
 %type <name> tag_name
 %type <val>     stars array_len
@@ -255,10 +255,24 @@ spec
 
 /* A type written without a name, as a cast or a sizeof takes. */
 type_name
-    : decl_spec stars array_dims
-        { Ast_Type *t = $1;
-          for (int64_t i = 0; i < $2; i++) { t = Ast_NewPointer(t); }
-          $$ = Par_ArrayType(t, $3); }
+    : decl_spec abstract_declarator  { $$ = Par_ApplyDecl($1, $2); }
+    ;
+
+/* The pointers and arrays a type name wraps its specifier in. */
+abstract_declarator
+    : stars direct_abstract
+        { $$ = $2;
+          for (int64_t i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
+    ;
+
+/* An abstract declarator without its leading pointers. */
+direct_abstract
+    : /* empty */          { $$ = Par_NewDecl(NULL); }
+    | LPAREN stars RPAREN
+        { $$ = Par_NewDecl(NULL);
+          for (int64_t i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
+    | direct_abstract LSQUARE expr RSQUARE
+        { $$ = $1; Par_SetArrayLen(Par_AddDeriv($$, PAR_DERIV_ARRAY, @2), $3); }
     ;
 
 /* A name with the pointers, arrays and parameters around it. */
@@ -593,7 +607,8 @@ expr
 cast
     : unary                { $$ = $1; }
     | LPAREN type_name RPAREN cast
-        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_CAST, $4, @1); n->an_type = $2; $$ = n; }
+        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_CAST, $4, @1); n->an_type = $2;
+          $$ = Par_WithSizes($2, n, @1); }
     ;
 
 /* A prefix operator applied to an expression. */

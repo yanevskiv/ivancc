@@ -34,6 +34,9 @@ static Ast_Var         *Par_CurFuncVar;
 // Serial number of the next compound literal's object.
 static int32_t Par_CompoundCount;
 
+// Serial number of the next local a variable-length array's size lands in.
+static int32_t Par_SizeCount;
+
 // The unsized array an initializer is sizing, and the length it has reached.
 static Ast_Type *Par_OpenArray;
 static int32_t   Par_OpenLen;
@@ -141,23 +144,26 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
     Ast_Type *inner = Par_ApplyDerivs(base, deriv->pd_next);
     switch (deriv->pd_kind) {
         case PAR_DERIV_POINTER: {
-            Par_NeedFixedSize(inner, deriv->pd_line);
             return Ast_NewPointer(inner);
         }
         case PAR_DERIV_ARRAY: {
             Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC, ERR_PAR_ARRAY_OF_FUNCTIONS);
             Err_AssertAt(deriv->pd_line, ! deriv->pd_decor, ERR_PAR_ARRAY_DECOR_NOT_PARAM);
-            Par_NeedFixedSize(inner, deriv->pd_line);
             if (deriv->pd_empty) {
+                Par_NeedFixedSize(inner, deriv->pd_line);
                 return Ast_NewUnsizedArray(inner);
             }
             if (deriv->pd_vlen) {
                 return Ast_NewVla(inner, deriv->pd_vlen);
             }
+            if (Ast_IsVla(inner)) {
+                return Ast_NewVla(inner, Ast_NewNum(deriv->pd_len, deriv->pd_line));
+            }
             return Ast_NewArray(inner, (int32_t) deriv->pd_len);
         }
         case PAR_DERIV_FUNCTION: {
             Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC && inner->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_FUNCTION_BAD_RETURN);
+            Par_NeedFixedSize(inner, deriv->pd_line);
             return Ast_NewFunction(inner, deriv->pd_params.pl_head, deriv->pd_params.pl_count, deriv->pd_params.pl_variadic, deriv->pd_params.pl_proto);
         }
         case PAR_DERIV_COUNT: {
@@ -205,6 +211,7 @@ Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, Ast_Line line)
     Ast_Type *type = Par_AdjustParam(Par_ApplyDecl(base, decl));
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
 
+    Par_NeedFixedSize(type, line);
     var->av_name = decl->pc_name;
     var->av_type = type;
     var->av_line = line;
@@ -229,6 +236,7 @@ void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
     for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
         if (param->av_name && strcmp(param->av_name, decl->pc_name) == 0) {
             param->av_type = Par_AdjustParam(Par_ApplyDecl(Par_DeclType, decl));
+            Par_NeedFixedSize(param->av_type, line);
             return;
         }
     }
@@ -699,7 +707,7 @@ Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line)
     Err_AssertAt(line, object && type->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_VA_ARG_TYPE);
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_VA_ARG, ap, line);
     node->an_type = type;
-    return node;
+    return Par_WithSizes(type, node, line);
 }
 
 // Join two member lists, keeping declaration order.
@@ -1083,6 +1091,7 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line)
 Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line)
 {
     Err_AssertAt(line, type->at_complete || Ast_IsUnsized(type), ERR_PAR_LITERAL_INCOMPLETE);
+    Par_NeedFixedSize(type, line);
 
     Ast_Node *list = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
     list->an_body = items;
@@ -1110,10 +1119,46 @@ void Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line)
     Err_AssertAt(line, type->at_complete || Par_DeclStorage == AST_STORAGE_EXTERN, ERR_PAR_OBJECT_INCOMPLETE, name);
 }
 
-// Reject a variable-length array where only a fixed-size type may go.
+// Reject a variably modified type where only a fixed-size type may go.
 void Par_NeedFixedSize(const Ast_Type *type, Ast_Line line)
 {
-    Err_AssertAt(line, ! Ast_IsVla(type), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+    Err_AssertAt(line, ! Ast_IsVariablyModified(type), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+}
+
+// Build the expression that sizes a type's variable-length arrays.
+Ast_Node *Par_SizeExpr(Ast_Type *type, Ast_Line line)
+{
+    if (type->at_kind != AST_TYPE_KIND_PTR && type->at_kind != AST_TYPE_KIND_ARRAY) {
+        return NULL;
+    }
+    Ast_Node *inner = Par_SizeExpr(type->at_base, line);
+    if (! Ast_IsVla(type) || type->at_vsize) {
+        return inner;
+    }
+    Err_AssertAt(line, Par_InFunction, ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+
+    char *name = Str_Format(".vsize.%d", Par_SizeCount++);
+    Ast_Node *elem = NULL;
+
+    if (Ast_IsVla(type->at_base)) {
+        elem = Ast_NewVarNode(type->at_base->at_vsize, line);
+    } else {
+        elem = Ast_NewNum(type->at_base->at_size, line);
+        elem->an_type = &Ast_TypeULong;
+    }
+    type->at_vsize = Ast_DeclareVar(name, &Ast_TypeULong, line);
+    Str_Free(name);
+
+    Ast_Node *size = Ast_NewBinary(AST_NODE_KIND_VSIZE, type->at_vlen, elem, line);
+    size->an_var = type->at_vsize;
+    return inner ? Ast_NewBinary(AST_NODE_KIND_COMMA, inner, size, line) : size;
+}
+
+// Put the sizing of a type name's variable-length arrays ahead of expr.
+Ast_Node *Par_WithSizes(Ast_Type *type, Ast_Node *expr, Ast_Line line)
+{
+    Ast_Node *size = Par_SizeExpr(type, line);
+    return size ? Ast_NewBinary(AST_NODE_KIND_COMMA, size, expr, line) : expr;
 }
 
 // Merge a later file-scope declaration's storage class into the first one's.
@@ -1172,8 +1217,11 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
 // Declare a variable inside a function.
 Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
 {
-    if (Par_DeclStorage != AST_STORAGE_NONE) {
+    if (Par_DeclStorage == AST_STORAGE_EXTERN) {
         Par_NeedFixedSize(type, line);
+    }
+    if (Par_DeclStorage == AST_STORAGE_STATIC) {
+        Err_AssertAt(line, ! Ast_IsVla(type), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
     }
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
         Ast_DeclareTypedef(name, type);
@@ -1194,15 +1242,12 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
     return var;
 }
 
-// Declare one local and build the statement its initializer becomes.
-Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
+// Build the statement that gives a declared local its storage or value.
+Ast_Node *Par_DefineLocal(Par_Decl *decl, Ast_Var *var, Ast_Node *init, Ast_Line line)
 {
-    Par_NeedName(decl, line);
-    Ast_Var *var = Par_DeclareLocal(decl->pc_name, Par_ApplyDecl(Par_DeclType, decl), line);
-
     if (var && Ast_IsVla(var->av_type)) {
         Err_AssertAt(line, ! init, ERR_PAR_VLA_INITIALIZED, decl->pc_name);
-        Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_VLA, var->av_type->at_vlen, line);
+        Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_VLA, Ast_NewVarNode(var->av_type->at_vsize, line), line);
         node->an_var = var;
         return node;
     }
@@ -1219,6 +1264,23 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
         return Ast_NewNode(AST_NODE_KIND_NOP, line);
     }
     return Par_InitLocal(var, init, line);
+}
+
+// Declare one local and build the statements its declaration becomes.
+Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
+{
+    Par_NeedName(decl, line);
+    Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
+    Ast_Var *var = Par_DeclareLocal(decl->pc_name, type, line);
+    Ast_Node *size = Par_SizeExpr(type, line);
+    Ast_Node *stmt = Par_DefineLocal(decl, var, init, line);
+
+    if (! size) {
+        return stmt;
+    }
+    Ast_Node *head = Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, size, line);
+    head->an_next = stmt;
+    return head;
 }
 
 // Give each file-scope array still missing its length one element.
@@ -1417,9 +1479,14 @@ Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line)
     return node;
 }
 
-// Fold a sizeof of a type name to its size.
+// Build the size a sizeof of a type name yields.
 Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
 {
     Err_AssertAt(line, type->at_complete, ERR_PAR_SIZEOF_INCOMPLETE);
-    return Ast_NewNum(type->at_size, line);
+    if (! Ast_IsVla(type)) {
+        return Ast_NewNum(type->at_size, line);
+    }
+    Ast_Node *size = Par_SizeExpr(type, line);
+    Ast_Node *bytes = Ast_NewVarNode(type->at_vsize, line);
+    return size ? Ast_NewBinary(AST_NODE_KIND_COMMA, size, bytes, line) : bytes;
 }
