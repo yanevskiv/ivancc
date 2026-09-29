@@ -12,7 +12,7 @@
 #define TYPE int
 #define SIZE 4
 
-#define HEADER "h/core066_define.h"
+#define HEADER "h/test066_define.h"
 #include HEADER
 
 // A macro that names itself, or two that name each other, stop expanding.
