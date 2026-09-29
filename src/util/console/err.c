@@ -90,6 +90,7 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PAR_SPEC_INVALID]              = { "ERR_PAR_SPEC_INVALID",              "these type specifiers do not name a type" },
     [ERR_PAR_VOID_SIGNED]               = { "ERR_PAR_VOID_SIGNED",               "'void' cannot be signed or unsigned" },
     [ERR_PAR_BOOL_SIGNED]               = { "ERR_PAR_BOOL_SIGNED",               "'_Bool' cannot be signed or unsigned" },
+    [ERR_PAR_FLOAT_SIGNED]              = { "ERR_PAR_FLOAT_SIGNED",              "a floating type cannot be signed or unsigned" },
     [ERR_PAR_VA_ARG_AGGREGATE]          = { "ERR_PAR_VA_ARG_AGGREGATE",          "__builtin_va_arg of a struct, union or array is not supported" },
     [ERR_PAR_BITFIELD_NOT_CONSTANT]     = { "ERR_PAR_BITFIELD_NOT_CONSTANT",     "a bit-field width is not a constant" },
     [ERR_PAR_BITFIELD_NOT_INTEGER]      = { "ERR_PAR_BITFIELD_NOT_INTEGER",      "a bit-field must have an integer type" },
@@ -149,6 +150,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_SEM_ASSIGN_ARRAY]              = { "ERR_SEM_ASSIGN_ARRAY",              "cannot assign to an array" },
     [ERR_SEM_ASSIGN_AGGREGATE_MISMATCH] = { "ERR_SEM_ASSIGN_AGGREGATE_MISMATCH", "cannot assign a value of a different struct or union type" },
     [ERR_SEM_VA_START_FIXED]            = { "ERR_SEM_VA_START_FIXED",            "__builtin_va_start outside a variadic function" },
+    [ERR_SEM_POINTER_FLOATING]          = { "ERR_SEM_POINTER_FLOATING",          "pointer arithmetic needs an integer, not a floating operand" },
+    [ERR_SEM_OPERAND_FLOATING]          = { "ERR_SEM_OPERAND_FLOATING",          "this operator needs integer operands, not floating ones" },
+    [ERR_SEM_CAST_FLOATING]             = { "ERR_SEM_CAST_FLOATING",             "cannot convert between a floating type and a non-arithmetic one" },
 
     [ERR_GEN_NOT_LVALUE]                = { "ERR_GEN_NOT_LVALUE",                "not an lvalue" },
     [ERR_GEN_UNEXPECTED_OPASSIGN]       = { "ERR_GEN_UNEXPECTED_OPASSIGN",       "unexpected compound assignment %d" },

@@ -80,7 +80,9 @@ enum Par_Spec {
     PAR_SPEC_LONG     = 1 << 5,
     PAR_SPEC_LLONG    = 1 << 6,  // set when a second `long` arrives
     PAR_SPEC_SIGNED   = 1 << 7,
-    PAR_SPEC_UNSIGNED = 1 << 8
+    PAR_SPEC_UNSIGNED = 1 << 8,
+    PAR_SPEC_FLOAT    = 1 << 9,
+    PAR_SPEC_DOUBLE   = 1 << 10
 };
 
 // One step of a declarator, collected walking outward from the name.
@@ -112,6 +114,13 @@ typedef struct Par_Num Par_Num;
 struct Par_Num {
     int64_t   pn_val;
     Ast_Type *pn_type;
+};
+
+// A floating literal.
+typedef struct Par_FNum Par_FNum;
+struct Par_FNum {
+    long double pf_val;
+    Ast_Type   *pf_type;
 };
 
 // The type specifiers and qualifiers one declaration wrote.
@@ -178,11 +187,12 @@ void       Par_CheckKnrParams(void);
 Ast_Var   *Par_MakeAnonParam(Ast_Type *type, Ast_Line line);
 
 // Literals
-Par_Num Par_NumLiteral(const char *text);
-Par_Num Par_CharLiteral(const char *body, size_t len, size_t width, Ast_Line line);
-Ast_Str Par_StringLiteral(const char *body, size_t len, size_t width, Ast_Line line);
-Ast_Str Par_WidenString(Ast_Str str, size_t width);
-Ast_Str Par_ConcatStrings(Ast_Str left, Ast_Str right);
+Par_Num  Par_NumLiteral(const char *text);
+Par_FNum Par_FloatLiteral(const char *text);
+Par_Num  Par_CharLiteral(const char *body, size_t len, size_t width, Ast_Line line);
+Ast_Str  Par_StringLiteral(const char *body, size_t len, size_t width, Ast_Line line);
+Ast_Str  Par_WidenString(Ast_Str str, size_t width);
+Ast_Str  Par_ConcatStrings(Ast_Str left, Ast_Str right);
 
 // Escape sequences
 int32_t  Par_DigitValue(char c);
