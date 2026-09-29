@@ -151,6 +151,68 @@ long double vmixed(int n, ...)
     return t;
 }
 
+struct L2 { long a; long b; };
+
+// Leading ints and doubles decide which structs still fit in registers.
+double vstruct(int ints, int dbls, ...)
+{
+    __builtin_va_list ap;
+    double t = 0;
+    int i;
+    struct L2 l2;
+    struct F2 f2;
+    struct DL dl;
+    struct LD ld;
+    struct F3 f3;
+    struct E e;
+    struct Big bg;
+
+    __builtin_va_start(ap, dbls);
+    for (i = 0; i < ints; i++) {
+        t = t * 2 + __builtin_va_arg(ap, int);
+    }
+    for (i = 0; i < dbls; i++) {
+        t = t * 2 + __builtin_va_arg(ap, double);
+    }
+    l2 = __builtin_va_arg(ap, struct L2);
+    t = (t * 2 + l2.a) * 2 + l2.b;
+    t = t * 2 + __builtin_va_arg(ap, int);
+    f2 = __builtin_va_arg(ap, struct F2);
+    t = (t * 2 + f2.a) * 2 + f2.b;
+    dl = __builtin_va_arg(ap, struct DL);
+    t = (t * 2 + dl.d) * 2 + dl.l;
+    ld = __builtin_va_arg(ap, struct LD);
+    t = (t * 2 + ld.l) * 2 + ld.d;
+    f3 = __builtin_va_arg(ap, struct F3);
+    t = ((t * 2 + f3.a) * 2 + f3.b) * 2 + f3.c;
+    e = __builtin_va_arg(ap, struct E);
+    t = t * 2 + e.x;
+    bg = __builtin_va_arg(ap, struct Big);
+    t = ((t * 2 + bg.a) * 2 + bg.b) * 2 + bg.c;
+    t = t * 2 + __builtin_va_arg(ap, double);
+    __builtin_va_end(ap);
+    return t;
+}
+
+// The value vstruct folds from its arguments.
+double expect(int ints, int dbls)
+{
+    double vals[17] ={ 3, 4, 5, 0.5, 1.5, 4.5, 6, 7, 8.5, 1, 2, 3, 10.5, 1, 2, 3, 12.5 };
+    double t = 0;
+    int i;
+
+    for (i = 0; i < ints; i++) {
+        t = t * 2 + (i + 1);
+    }
+    for (i = 0; i < dbls; i++) {
+        t = t * 2 + (i + 1);
+    }
+    for (i = 0; i < 17; i++) {
+        t = t * 2 + vals[i];
+    }
+    return t;
+}
+
 double scale(double x, float y)
 {
     return x * y;
@@ -192,6 +254,7 @@ int main()
     struct Big rb;
     union UL w;
     union UL rw;
+    struct L2 l2;
 
     if (mix(1, 2.5, 3, 0.5f) != 17) return 1;
     if (nine(1, 2, 3, 4, 5, 6, 7, 8, 9) != 285) return 2;
@@ -254,6 +317,26 @@ int main()
     if (knr(1.5f, 2.0) != 3.5) return 21;
     if (unproto(0.25f, 3) != 0.75) return 22;
     if (mix(1, 2.5, 3, 0.5f) + mix(0, 0, 0, 1) != 21) return 23;
+
+    // A struct read by va_arg takes all its registers, or only the stack.
+    l2.a = 3;
+    l2.b = 4;
+    a2.a = 0.5f;
+    a2.b = 1.5f;
+    c.d = 4.5;
+    c.l = 6;
+    d.l = 7;
+    d.d = 8.5;
+    e3.a = 1;
+    e3.b = 2;
+    e3.c = 3;
+    x.x = 10.5L;
+    bg.a = 1;
+    bg.b = 2;
+    bg.c = 3;
+    if (vstruct(0, 0, l2, 5, a2, c, d, e3, x, bg, 12.5) != expect(0, 0)) return 24;
+    if (vstruct(3, 0, 1, 2, 3, l2, 5, a2, c, d, e3, x, bg, 12.5) != expect(3, 0)) return 25;
+    if (vstruct(0, 4, 1.0, 2.0, 3.0, 4.0, l2, 5, a2, c, d, e3, x, bg, 12.5) != expect(0, 4)) return 26;
     return 200;
 }
 
