@@ -1,6 +1,6 @@
 # Roadmap
 
-Plan for closing out [SYNTAX.md](SYNTAX.md) — every unchecked box, in dependency
+Plan for closing out [SYNTAX.txt](SYNTAX.txt) — every unchecked box, in dependency
 order, on top of a machine of our own
 ([`ivanemu`](#stage-3--ivanemu-the-uart-and-hello-world)).
 
@@ -13,13 +13,13 @@ make tests
 Every file in [`tests/syntax/`](#tests) green — compiled by our compiler,
 assembled by our assembler, linked by our linker, and agreed on by our emulator,
 with no kernel and no libc anywhere underneath it. The corpus is the one thing
-the whole toolchain is measured against, and closing SYNTAX.md means closing the
+the whole toolchain is measured against, and closing SYNTAX.txt means closing the
 corpus. Stage 3 made that measurable by giving us a machine of our own to run it
 on; every stage since has been counted in tests.
 
 ISO C99 is the destination, and it is reached at the end of stage 14: the
-complete C99 *language*, every box in SYNTAX.md closed, 81 tests green. Every
-stage up to there closes SYNTAX.md boxes and teaches whichever tools the new
+complete C99 *language*, every box in SYNTAX.txt closed, 81 tests green. Every
+stage up to there closes SYNTAX.txt boxes and teaches whichever tools the new
 syntax reaches — the encoder and the interpreter together when it needs
 instructions, the linker when it needs sections or relocations.
 
@@ -310,7 +310,7 @@ compile-failure path here, ready for stage 12's `test72_pragma_error`.
 - `test80_vla_sizeof`
 - `test81_vla_param`
 
-81 tests, closing every box in SYNTAX.md. That is the end of the C99 language,
+81 tests, closing every box in SYNTAX.txt. That is the end of the C99 language,
 and the end of this roadmap's obligations.
 
 **Stage 15 — libc**, which opens the next roadmap rather than closing this one.
@@ -655,7 +655,7 @@ not part of this stage.
 
 ---
 
-Everything below is the rest of SYNTAX.md, in the order that keeps each stage
+Everything below is the rest of SYNTAX.txt, in the order that keeps each stage
 useful on its own.
 
 ## Stage 4 — The rest of the operators
@@ -1578,7 +1578,7 @@ Last because it touches every layer and nothing else depends on it.
   Alias now and the cost of changing later is `<float.h>`, the classification
   table and an x87 operand class; take the ABI now and stage 13 grows a second
   register file it otherwise would not need. Decide here, record it in
-  SYNTAX.md, and keep stage 7's classification enum honest either way.
+  SYNTAX.txt, and keep stage 7's classification enum honest either way.
 
 **Tests:** `test76_float_basic` through `test78_float_abi`.
 
@@ -1610,7 +1610,7 @@ C11 later made VLAs optional behind `__STDC_NO_VLA__`, which is a fair measure
 of how much they cost relative to what they buy. That is the argument for last,
 not for never — C99 is the target and C99 requires them.
 
-Closing this stage closes SYNTAX.md. Everything after it is library, not
+Closing this stage closes SYNTAX.txt. Everything after it is library, not
 language.
 
 **Tests:** `test79_vla`, `test80_vla_sizeof`, `test81_vla_param`.
@@ -1751,7 +1751,7 @@ Cross-cutting work that no single stage owns, but which several stages need.
 
 ## Future roads
 
-Not commitments. Directions that open up once SYNTAX.md is closed, written down so
+Not commitments. Directions that open up once SYNTAX.txt is closed, written down so
 the reasoning behind them does not have to be rediscovered.
 
 ### Self-hosting, against musl rather than a libc of our own
@@ -1859,9 +1859,9 @@ A second target multiplies back-end work without deepening it, and it is much
 cheaper once an IR exists than before. `ivanemu` is what makes it testable at
 all, which is why the emulator comes first.
 
-## SYNTAX.md coverage
+## SYNTAX.txt coverage
 
-Every box in SYNTAX.md, and the stage that closes it.
+Every box in SYNTAX.txt, and the stage that closes it.
 
 | Section | Item | Stage |
 |---|---|---|
@@ -1907,7 +1907,7 @@ Every box in SYNTAX.md, and the stage that closes it.
   1 and nothing new gets added to the grammar's actions.
 - We keep emitting standard ELF on purpose. Cross-checking each tool against its
   GNU counterpart stays the cheapest correctness test we have.
-- Stage 3 closes no SYNTAX.md box, and is a stage anyway: it is what the rest of
+- Stage 3 closes no SYNTAX.txt box, and is a stage anyway: it is what the rest of
   the file is measured on. From it on, a stage is not done until the emulator
   decodes what the stage taught the compiler to emit.
 - Syntax is the spine, but a stage owns whatever the new syntax reaches. New
