@@ -12,7 +12,7 @@ BIN="$HERE/build/bin"
 LIB="$HERE/build/lib/linux"
 TIMEOUT=5
 HEAD_LINES=10
-PIPELINES="ivancc ivanld ivanemu"
+PIPELINES="ivancc ivanas ivanld ivanemu"
 PIPELINE=
 SOURCE=${1:-}
 
