@@ -41,6 +41,45 @@ static Enc_x86_64_Fix *Enc_x86_64_Fixes;
 static size_t Enc_x86_64_NumFixes;
 static size_t Enc_x86_64_CapFixes;
 
+// The prefix and opcode of each scalar SSE operation.
+static const Enc_x86_64_SseForm Enc_x86_64_SseForms[ASM_X86_64_OP_COUNT] = {
+    [ASM_X86_64_OP_ADDSD]     = { ENC_X86_64_OPCODE_SSE_DOUBLE, ENC_X86_64_OPCODE2_ADDS },
+    [ASM_X86_64_OP_ADDSS]     = { ENC_X86_64_OPCODE_SSE_SINGLE, ENC_X86_64_OPCODE2_ADDS },
+    [ASM_X86_64_OP_SUBSD]     = { ENC_X86_64_OPCODE_SSE_DOUBLE, ENC_X86_64_OPCODE2_SUBS },
+    [ASM_X86_64_OP_SUBSS]     = { ENC_X86_64_OPCODE_SSE_SINGLE, ENC_X86_64_OPCODE2_SUBS },
+    [ASM_X86_64_OP_MULSD]     = { ENC_X86_64_OPCODE_SSE_DOUBLE, ENC_X86_64_OPCODE2_MULS },
+    [ASM_X86_64_OP_MULSS]     = { ENC_X86_64_OPCODE_SSE_SINGLE, ENC_X86_64_OPCODE2_MULS },
+    [ASM_X86_64_OP_DIVSD]     = { ENC_X86_64_OPCODE_SSE_DOUBLE, ENC_X86_64_OPCODE2_DIVS },
+    [ASM_X86_64_OP_DIVSS]     = { ENC_X86_64_OPCODE_SSE_SINGLE, ENC_X86_64_OPCODE2_DIVS },
+    [ASM_X86_64_OP_UCOMISD]   = { ENC_X86_64_OPCODE_OPSIZE,     ENC_X86_64_OPCODE2_UCOMIS },
+    [ASM_X86_64_OP_UCOMISS]   = { 0,                            ENC_X86_64_OPCODE2_UCOMIS },
+    [ASM_X86_64_OP_CVTSS2SD]  = { ENC_X86_64_OPCODE_SSE_SINGLE, ENC_X86_64_OPCODE2_CVTS2S },
+    [ASM_X86_64_OP_CVTSD2SS]  = { ENC_X86_64_OPCODE_SSE_DOUBLE, ENC_X86_64_OPCODE2_CVTS2S },
+    [ASM_X86_64_OP_CVTSI2SD]  = { ENC_X86_64_OPCODE_SSE_DOUBLE, ENC_X86_64_OPCODE2_CVTSI2S },
+    [ASM_X86_64_OP_CVTSI2SS]  = { ENC_X86_64_OPCODE_SSE_SINGLE, ENC_X86_64_OPCODE2_CVTSI2S },
+    [ASM_X86_64_OP_CVTTSD2SI] = { ENC_X86_64_OPCODE_SSE_DOUBLE, ENC_X86_64_OPCODE2_CVTTS2SI },
+    [ASM_X86_64_OP_CVTTSS2SI] = { ENC_X86_64_OPCODE_SSE_SINGLE, ENC_X86_64_OPCODE2_CVTTS2SI }
+};
+
+// The opcode and extension of each x87 operation.
+static const Enc_x86_64_X87Form Enc_x86_64_X87Forms[ASM_X86_64_OP_COUNT] = {
+    [ASM_X86_64_OP_FLDT]    = { ENC_X86_64_OPCODE_X87_DB, ENC_X86_64_X87_FLD_M80 },
+    [ASM_X86_64_OP_FSTPT]   = { ENC_X86_64_OPCODE_X87_DB, ENC_X86_64_X87_FSTP_M80 },
+    [ASM_X86_64_OP_FLDL]    = { ENC_X86_64_OPCODE_X87_DD, ENC_X86_64_X87_FLD_M64 },
+    [ASM_X86_64_OP_FSTPL]   = { ENC_X86_64_OPCODE_X87_DD, ENC_X86_64_X87_FSTP_M64 },
+    [ASM_X86_64_OP_FLDS]    = { ENC_X86_64_OPCODE_X87_D9, ENC_X86_64_X87_FLD_M32 },
+    [ASM_X86_64_OP_FSTPS]   = { ENC_X86_64_OPCODE_X87_D9, ENC_X86_64_X87_FSTP_M32 },
+    [ASM_X86_64_OP_FILDQ]   = { ENC_X86_64_OPCODE_X87_DF, ENC_X86_64_X87_FILD_M64 },
+    [ASM_X86_64_OP_FISTTPQ] = { ENC_X86_64_OPCODE_X87_DD, ENC_X86_64_X87_FISTTP_M64 },
+    [ASM_X86_64_OP_FADDP]   = { ENC_X86_64_OPCODE_X87_DE, ENC_X86_64_X87_FADDP },
+    [ASM_X86_64_OP_FMULP]   = { ENC_X86_64_OPCODE_X87_DE, ENC_X86_64_X87_FMULP },
+    [ASM_X86_64_OP_FSUBRP]  = { ENC_X86_64_OPCODE_X87_DE, ENC_X86_64_X87_FSUBRP },
+    [ASM_X86_64_OP_FDIVRP]  = { ENC_X86_64_OPCODE_X87_DE, ENC_X86_64_X87_FDIVRP },
+    [ASM_X86_64_OP_FCHS]    = { ENC_X86_64_OPCODE_X87_D9, ENC_X86_64_X87_FCHS },
+    [ASM_X86_64_OP_FUCOMIP] = { ENC_X86_64_OPCODE_X87_DF, ENC_X86_64_X87_FUCOMIP },
+    [ASM_X86_64_OP_FSTP]    = { ENC_X86_64_OPCODE_X87_DD, ENC_X86_64_X87_FSTP }
+};
+
 // Append one byte to the current section.
 void Enc_x86_64_Emit8(uint8_t byte)
 {
@@ -337,8 +376,15 @@ void Enc_x86_64_EmitMov(const Asm_x86_64_Item *item)
             Asm_x86_64_Width width = item->ai_src.ao_width ? item->ai_src.ao_width : ASM_X86_64_WIDTH_64;
             Enc_x86_64_EmitMemForm(ENC_X86_64_OPCODE_MOV_R_RM, dst, item->ai_src.ao_reg, item->ai_src.ao_disp, width);
         } break;
+        case ASM_X86_64_OPERAND_XMM: {
+            Enc_x86_64_EmitSseRR(ENC_X86_64_OPCODE_OPSIZE, ASM_X86_64_WIDTH_64, ENC_X86_64_OPCODE2_MOVQ_RM_XMM, item->ai_src.ao_xmm, dst);
+        } break;
         case ASM_X86_64_OPERAND_REG: {
             Asm_x86_64_Width width = item->ai_src.ao_width;
+            if (item->ai_dst.ao_kind == ASM_X86_64_OPERAND_XMM) {
+                Enc_x86_64_EmitSseRR(ENC_X86_64_OPCODE_OPSIZE, ASM_X86_64_WIDTH_64, ENC_X86_64_OPCODE2_MOVQ_XMM_RM, item->ai_dst.ao_xmm, src);
+                break;
+            }
             if (item->ai_dst.ao_kind == ASM_X86_64_OPERAND_MEM) {
                 Enc_x86_64_Opcode opcode = width == ASM_X86_64_WIDTH_8 ? ENC_X86_64_OPCODE_MOV_RM8_R8 : ENC_X86_64_OPCODE_MOV_RM_R;
                 Enc_x86_64_EmitMemForm(opcode, src, item->ai_dst.ao_reg, item->ai_dst.ao_disp, width);
@@ -352,6 +398,55 @@ void Enc_x86_64_EmitMov(const Asm_x86_64_Item *item)
             // empty
         } break;
     }
+}
+
+// Emit `<prefix> 0F <opcode>` pairing reg with the register rm, REX.W at 64 bits.
+void Enc_x86_64_EmitSseRR(Enc_x86_64_Opcode prefix, Asm_x86_64_Width width, Enc_x86_64_Opcode2 opcode, uint8_t reg, uint8_t rm)
+{
+    if (prefix) {
+        Enc_x86_64_Emit8(prefix);
+    }
+    Enc_x86_64_EmitRex(width, reg, rm);
+    Enc_x86_64_Emit8(ENC_X86_64_OPCODE_ESCAPE);
+    Enc_x86_64_Emit8(opcode);
+    Enc_x86_64_EmitModRR(reg, rm);
+}
+
+// Emit a scalar SSE operation or conversion.
+void Enc_x86_64_EmitSse(const Asm_x86_64_Item *item)
+{
+    const Enc_x86_64_SseForm *form = &Enc_x86_64_SseForms[item->ai_op];
+
+    switch (item->ai_op) {
+        case ASM_X86_64_OP_CVTSI2SD:
+        case ASM_X86_64_OP_CVTSI2SS: {
+            Enc_x86_64_EmitSseRR(form->es_prefix, ASM_X86_64_WIDTH_64, form->es_opcode, item->ai_dst.ao_xmm, item->ai_src.ao_reg);
+        } break;
+        case ASM_X86_64_OP_CVTTSD2SI:
+        case ASM_X86_64_OP_CVTTSS2SI: {
+            Enc_x86_64_EmitSseRR(form->es_prefix, ASM_X86_64_WIDTH_64, form->es_opcode, item->ai_dst.ao_reg, item->ai_src.ao_xmm);
+        } break;
+        default: {
+            Enc_x86_64_EmitSseRR(form->es_prefix, ASM_X86_64_WIDTH_32, form->es_opcode, item->ai_dst.ao_xmm, item->ai_src.ao_xmm);
+        } break;
+    }
+}
+
+// Emit an x87 operation, on memory or on the stack registers.
+void Enc_x86_64_EmitX87(const Asm_x86_64_Item *item)
+{
+    const Enc_x86_64_X87Form *form = &Enc_x86_64_X87Forms[item->ai_op];
+
+    if (item->ai_dst.ao_kind == ASM_X86_64_OPERAND_MEM) {
+        Enc_x86_64_EmitRex(ASM_X86_64_WIDTH_32, 0, item->ai_dst.ao_reg);
+        Enc_x86_64_Emit8(form->ef_opcode);
+        Enc_x86_64_EmitMem(form->ef_ext, item->ai_dst.ao_reg, item->ai_dst.ao_disp);
+        return;
+    }
+
+    int32_t st = item->ai_op == ASM_X86_64_OP_FUCOMIP ? item->ai_src.ao_st : item->ai_dst.ao_st;
+    Enc_x86_64_Emit8(form->ef_opcode);
+    Enc_x86_64_Emit8((uint8_t) (form->ef_ext + st));
 }
 
 // Encode one instruction item into the current section.
@@ -488,6 +583,53 @@ void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item)
         case ASM_X86_64_OP_SYSCALL: {
             Enc_x86_64_Emit8(ENC_X86_64_OPCODE_ESCAPE);
             Enc_x86_64_Emit8(ENC_X86_64_OPCODE2_SYSCALL);
+        } break;
+        case ASM_X86_64_OP_SETA: {
+            Enc_x86_64_EmitSetcc(ENC_X86_64_OPCODE2_SETA, dst);
+        } break;
+        case ASM_X86_64_OP_SETAE: {
+            Enc_x86_64_EmitSetcc(ENC_X86_64_OPCODE2_SETAE, dst);
+        } break;
+        case ASM_X86_64_OP_SETP: {
+            Enc_x86_64_EmitSetcc(ENC_X86_64_OPCODE2_SETP, dst);
+        } break;
+        case ASM_X86_64_OP_SETNP: {
+            Enc_x86_64_EmitSetcc(ENC_X86_64_OPCODE2_SETNP, dst);
+        } break;
+        case ASM_X86_64_OP_ADDSD:
+        case ASM_X86_64_OP_ADDSS:
+        case ASM_X86_64_OP_SUBSD:
+        case ASM_X86_64_OP_SUBSS:
+        case ASM_X86_64_OP_MULSD:
+        case ASM_X86_64_OP_MULSS:
+        case ASM_X86_64_OP_DIVSD:
+        case ASM_X86_64_OP_DIVSS:
+        case ASM_X86_64_OP_UCOMISD:
+        case ASM_X86_64_OP_UCOMISS:
+        case ASM_X86_64_OP_CVTSS2SD:
+        case ASM_X86_64_OP_CVTSD2SS:
+        case ASM_X86_64_OP_CVTSI2SD:
+        case ASM_X86_64_OP_CVTSI2SS:
+        case ASM_X86_64_OP_CVTTSD2SI:
+        case ASM_X86_64_OP_CVTTSS2SI: {
+            Enc_x86_64_EmitSse(item);
+        } break;
+        case ASM_X86_64_OP_FLDT:
+        case ASM_X86_64_OP_FSTPT:
+        case ASM_X86_64_OP_FLDL:
+        case ASM_X86_64_OP_FSTPL:
+        case ASM_X86_64_OP_FLDS:
+        case ASM_X86_64_OP_FSTPS:
+        case ASM_X86_64_OP_FILDQ:
+        case ASM_X86_64_OP_FISTTPQ:
+        case ASM_X86_64_OP_FADDP:
+        case ASM_X86_64_OP_FMULP:
+        case ASM_X86_64_OP_FSUBRP:
+        case ASM_X86_64_OP_FDIVRP:
+        case ASM_X86_64_OP_FCHS:
+        case ASM_X86_64_OP_FUCOMIP:
+        case ASM_X86_64_OP_FSTP: {
+            Enc_x86_64_EmitX87(item);
         } break;
         case ASM_X86_64_OP_COUNT: {
             // empty

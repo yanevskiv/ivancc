@@ -72,6 +72,12 @@ static const char *Txt_x86_64_Reg16Name[ASM_X86_64_REG_COUNT] = {
     "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w"
 };
 
+// SSE register names.
+static const char *Txt_x86_64_XmmName[ASM_X86_64_XMM_COUNT] = {
+    "xmm0", "xmm1", "xmm2",  "xmm3",  "xmm4",  "xmm5",  "xmm6",  "xmm7",
+    "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"
+};
+
 // Mnemonics.
 static const char *Txt_x86_64_OpName[ASM_X86_64_OP_COUNT] = {
     [ASM_X86_64_OP_MOV]     = "mov",
@@ -107,7 +113,42 @@ static const char *Txt_x86_64_OpName[ASM_X86_64_OP_COUNT] = {
     [ASM_X86_64_OP_JNE]     = "jne",
     [ASM_X86_64_OP_CALL]    = "call",
     [ASM_X86_64_OP_RET]     = "ret",
-    [ASM_X86_64_OP_SYSCALL] = "syscall"
+    [ASM_X86_64_OP_SYSCALL] = "syscall",
+    [ASM_X86_64_OP_SETA]    = "seta",
+    [ASM_X86_64_OP_SETAE]   = "setae",
+    [ASM_X86_64_OP_SETP]    = "setp",
+    [ASM_X86_64_OP_SETNP]   = "setnp",
+    [ASM_X86_64_OP_ADDSD]   = "addsd",
+    [ASM_X86_64_OP_ADDSS]   = "addss",
+    [ASM_X86_64_OP_SUBSD]   = "subsd",
+    [ASM_X86_64_OP_SUBSS]   = "subss",
+    [ASM_X86_64_OP_MULSD]   = "mulsd",
+    [ASM_X86_64_OP_MULSS]   = "mulss",
+    [ASM_X86_64_OP_DIVSD]   = "divsd",
+    [ASM_X86_64_OP_DIVSS]   = "divss",
+    [ASM_X86_64_OP_UCOMISD] = "ucomisd",
+    [ASM_X86_64_OP_UCOMISS] = "ucomiss",
+    [ASM_X86_64_OP_CVTSS2SD] = "cvtss2sd",
+    [ASM_X86_64_OP_CVTSD2SS] = "cvtsd2ss",
+    [ASM_X86_64_OP_CVTSI2SD] = "cvtsi2sdq",
+    [ASM_X86_64_OP_CVTSI2SS] = "cvtsi2ssq",
+    [ASM_X86_64_OP_CVTTSD2SI] = "cvttsd2si",
+    [ASM_X86_64_OP_CVTTSS2SI] = "cvttss2si",
+    [ASM_X86_64_OP_FLDT]    = "fldt",
+    [ASM_X86_64_OP_FSTPT]   = "fstpt",
+    [ASM_X86_64_OP_FLDL]    = "fldl",
+    [ASM_X86_64_OP_FSTPL]   = "fstpl",
+    [ASM_X86_64_OP_FLDS]    = "flds",
+    [ASM_X86_64_OP_FSTPS]   = "fstps",
+    [ASM_X86_64_OP_FILDQ]   = "fildq",
+    [ASM_X86_64_OP_FISTTPQ] = "fisttpq",
+    [ASM_X86_64_OP_FADDP]   = "faddp",
+    [ASM_X86_64_OP_FMULP]   = "fmulp",
+    [ASM_X86_64_OP_FSUBRP]  = "fsubrp",
+    [ASM_X86_64_OP_FDIVRP]  = "fdivrp",
+    [ASM_X86_64_OP_FCHS]    = "fchs",
+    [ASM_X86_64_OP_FUCOMIP] = "fucomip",
+    [ASM_X86_64_OP_FSTP]    = "fstp"
 };
 
 // Write one operand in AT&T syntax.
@@ -141,6 +182,16 @@ void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
         case ASM_X86_64_OPERAND_LABEL: {
             fprintf(out, "%s", op->ao_label);
         } break;
+        case ASM_X86_64_OPERAND_XMM: {
+            fprintf(out, "%%%s", Txt_x86_64_XmmName[op->ao_xmm]);
+        } break;
+        case ASM_X86_64_OPERAND_ST: {
+            if (op->ao_st) {
+                fprintf(out, "%%st(%d)", op->ao_st);
+            } else {
+                fprintf(out, "%%st");
+            }
+        } break;
         case ASM_X86_64_OPERAND_NONE:
         case ASM_X86_64_OPERAND_COUNT: {
             // empty
@@ -154,6 +205,8 @@ void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
     if (item->ai_op == ASM_X86_64_OP_MOVSX || item->ai_op == ASM_X86_64_OP_MOVZX) {
         const char *stem = item->ai_op == ASM_X86_64_OP_MOVSX ? "movs" : "movz";
         fprintf(out, "  %s%cq", stem, Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
+    } else if (item->ai_op == ASM_X86_64_OP_MOV && (item->ai_src.ao_kind == ASM_X86_64_OPERAND_XMM || item->ai_dst.ao_kind == ASM_X86_64_OPERAND_XMM)) {
+        fprintf(out, "  movq");
     } else {
         fprintf(out, "  %s", Txt_x86_64_OpName[item->ai_op]);
     }
@@ -300,6 +353,42 @@ int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
         }
     }
     return -1;
+}
+
+// Return the SSE register for an AT&T name like "xmm0".
+int32_t Txt_x86_64_XmmByName(const char *name)
+{
+    for (int32_t i = 0; i < ASM_X86_64_XMM_COUNT; i++) {
+        if (strcmp(name, Txt_x86_64_XmmName[i]) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Parse an x87 stack register, `%st` or `%st(i)`.
+bool Txt_x86_64_Att_ParseSt(const char *text, Asm_x86_64_Operand *op)
+{
+    int64_t st = 0;
+    const char *end;
+
+    if (strncmp(text, "%st", TXT_X86_64_ST_PREFIX_LEN) != 0) {
+        return false;
+    }
+    text += TXT_X86_64_ST_PREFIX_LEN;
+    if (*text == '\0') {
+        *op = Asm_x86_64_St(0);
+        return true;
+    }
+    if (*text != '(') {
+        return false;
+    }
+    end = Txt_x86_64_Att_ScanNumber(text + 1, &st);
+    if (! end || strcmp(end, ")") != 0 || st < 0 || st >= TXT_X86_64_ST_COUNT) {
+        return false;
+    }
+    *op = Asm_x86_64_St((int32_t) st);
+    return true;
 }
 
 // Return the opcode for a mnemonic.
@@ -482,9 +571,17 @@ bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
     const char *p = text;
     Asm_x86_64_Width width;
 
+    if (Txt_x86_64_Att_ParseSt(text, op)) {
+        return true;
+    }
     if (text[0] == '%') {
         end = Txt_x86_64_Att_ScanReg(text + 1);
         if (end && *end == '\0') {
+            int32_t xmm = Txt_x86_64_XmmByName(text + 1);
+            if (xmm >= 0) {
+                *op = Asm_x86_64_XmmReg(xmm);
+                return true;
+            }
             int32_t reg = Txt_x86_64_RegByName(text + 1, &width);
             if (reg < 0) {
                 return false;
