@@ -22,26 +22,82 @@
 
 // 64-bit register names, numbered as ModRM and REX number them.
 static const char *Emu_x86_64_Name64[EMU_X86_64_REG_COUNT] = {
-    "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
-    "r8",  "r9",  "r10", "r11", "r12", "r13", "r14", "r15"
+    [EMU_X86_64_REG_RAX] = "rax",
+    [EMU_X86_64_REG_RCX] = "rcx",
+    [EMU_X86_64_REG_RDX] = "rdx",
+    [EMU_X86_64_REG_RBX] = "rbx",
+    [EMU_X86_64_REG_RSP] = "rsp",
+    [EMU_X86_64_REG_RBP] = "rbp",
+    [EMU_X86_64_REG_RSI] = "rsi",
+    [EMU_X86_64_REG_RDI] = "rdi",
+    [EMU_X86_64_REG_R8]  = "r8",
+    [EMU_X86_64_REG_R9]  = "r9",
+    [EMU_X86_64_REG_R10] = "r10",
+    [EMU_X86_64_REG_R11] = "r11",
+    [EMU_X86_64_REG_R12] = "r12",
+    [EMU_X86_64_REG_R13] = "r13",
+    [EMU_X86_64_REG_R14] = "r14",
+    [EMU_X86_64_REG_R15] = "r15"
 };
 
 // 32-bit register names.
 static const char *Emu_x86_64_Name32[EMU_X86_64_REG_COUNT] = {
-    "eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi",
-    "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d"
+    [EMU_X86_64_REG_RAX] = "eax",
+    [EMU_X86_64_REG_RCX] = "ecx",
+    [EMU_X86_64_REG_RDX] = "edx",
+    [EMU_X86_64_REG_RBX] = "ebx",
+    [EMU_X86_64_REG_RSP] = "esp",
+    [EMU_X86_64_REG_RBP] = "ebp",
+    [EMU_X86_64_REG_RSI] = "esi",
+    [EMU_X86_64_REG_RDI] = "edi",
+    [EMU_X86_64_REG_R8]  = "r8d",
+    [EMU_X86_64_REG_R9]  = "r9d",
+    [EMU_X86_64_REG_R10] = "r10d",
+    [EMU_X86_64_REG_R11] = "r11d",
+    [EMU_X86_64_REG_R12] = "r12d",
+    [EMU_X86_64_REG_R13] = "r13d",
+    [EMU_X86_64_REG_R14] = "r14d",
+    [EMU_X86_64_REG_R15] = "r15d"
 };
 
 // 16-bit register names.
 static const char *Emu_x86_64_Name16[EMU_X86_64_REG_COUNT] = {
-    "ax",  "cx",  "dx",  "bx",  "sp",  "bp",  "si",  "di",
-    "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w"
+    [EMU_X86_64_REG_RAX] = "ax",
+    [EMU_X86_64_REG_RCX] = "cx",
+    [EMU_X86_64_REG_RDX] = "dx",
+    [EMU_X86_64_REG_RBX] = "bx",
+    [EMU_X86_64_REG_RSP] = "sp",
+    [EMU_X86_64_REG_RBP] = "bp",
+    [EMU_X86_64_REG_RSI] = "si",
+    [EMU_X86_64_REG_RDI] = "di",
+    [EMU_X86_64_REG_R8]  = "r8w",
+    [EMU_X86_64_REG_R9]  = "r9w",
+    [EMU_X86_64_REG_R10] = "r10w",
+    [EMU_X86_64_REG_R11] = "r11w",
+    [EMU_X86_64_REG_R12] = "r12w",
+    [EMU_X86_64_REG_R13] = "r13w",
+    [EMU_X86_64_REG_R14] = "r14w",
+    [EMU_X86_64_REG_R15] = "r15w"
 };
 
 // 8-bit register names.
 static const char *Emu_x86_64_Name8[EMU_X86_64_REG_COUNT] = {
-    "al",  "cl",  "dl",  "bl",  "spl", "bpl", "sil", "dil",
-    "r8b", "r9b", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b"
+    [EMU_X86_64_REG_RAX] = "al",
+    [EMU_X86_64_REG_RCX] = "cl",
+    [EMU_X86_64_REG_RDX] = "dl",
+    [EMU_X86_64_REG_RBX] = "bl",
+    [EMU_X86_64_REG_RSP] = "spl",
+    [EMU_X86_64_REG_RBP] = "bpl",
+    [EMU_X86_64_REG_RSI] = "sil",
+    [EMU_X86_64_REG_RDI] = "dil",
+    [EMU_X86_64_REG_R8]  = "r8b",
+    [EMU_X86_64_REG_R9]  = "r9b",
+    [EMU_X86_64_REG_R10] = "r10b",
+    [EMU_X86_64_REG_R11] = "r11b",
+    [EMU_X86_64_REG_R12] = "r12b",
+    [EMU_X86_64_REG_R13] = "r13b",
+    [EMU_X86_64_REG_R14] = "r14b",
+    [EMU_X86_64_REG_R15] = "r15b"
 };
 
 // Start a program.
