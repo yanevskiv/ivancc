@@ -829,6 +829,9 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
             flags = ELF_SHF_ALLOC | ELF_SHF_EXECINSTR;
         } else if (Str_Equals(secname, ".data")) {
             flags = ELF_SHF_ALLOC | ELF_SHF_WRITE;
+        } else if (Str_Equals(secname, ".bss")) {
+            type  = ELF_SHT_NOBITS;
+            flags = ELF_SHF_ALLOC | ELF_SHF_WRITE;
         } else {
             flags = ELF_SHF_ALLOC;
         }
