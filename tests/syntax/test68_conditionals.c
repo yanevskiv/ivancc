@@ -77,7 +77,7 @@ int main()
     // A skipped group is never lexed as C, and its directives never run.
 #if 0
     don't "stop
-#include "inc/no_such_file.h"
+#include "h/no_such_file.h"
 #frobnicate
 #define TEN 11
 #endif

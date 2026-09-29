@@ -27,7 +27,7 @@ RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.o $(EMU_DIR)/crt0.o $(EMU_DIR
 TARGET_SRC := libc/src/$(TARGET_ARCH)/target
 
 CC      := gcc
-CFLAGS  := -std=gnu99 -O2 -Iinclude -Iout -DTARGET_ARCH=$(TARGET_ARCH)
+CFLAGS  := -std=gnu99 -O2 -Ih -Iout -DTARGET_ARCH=$(TARGET_ARCH)
 DEPFLAGS := -MMD -MP
 WARN    := -Wall -Wextra
 LEX     := flex

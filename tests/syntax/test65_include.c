@@ -6,7 +6,7 @@
 
 int before = 1;
 
-#include "inc/test65_include.h"
+#include "h/test65_include.h"
 
 int pair_scale(Pair *p, int by)
 {

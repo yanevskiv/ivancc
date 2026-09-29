@@ -5,7 +5,7 @@
 // __STDC_VERSION__, __DATE__ and __TIME__ are defined before the source is
 // read. __func__ is not a macro. A function body names its function with it.
 
-#include "inc/test70_predefined.h"
+#include "h/test70_predefined.h"
 
 #define HERE __LINE__
 #define LINE_OF(x) __LINE__
@@ -57,7 +57,7 @@ int main()
 
     // __FILE__ names the file being read, a header included or the source.
     if (! ends_with(__FILE__, "test70_predefined.c")) return 4;
-    if (! ends_with(header_file(), "inc/test70_predefined.h")) return 5;
+    if (! ends_with(header_file(), "h/test70_predefined.h")) return 5;
     if (header_line() != 10) return 6;
 
     // #line in a header lasts until the header ends.
