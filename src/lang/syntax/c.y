@@ -77,7 +77,7 @@ void yyerror(const char *s);
 %type <node> stmt stmt_list compound_stmt decl decl_body local_list local_decl
 %type <node> for_init expr expr_comma expr_opt args arg_list
 %type <node> initializer init_list init_item designators designator
-%type <node> cast unary postfix primary array_dims
+%type <node> cast unary postfix primary
 %type <str>  string
 %type <var>  param
 %type <decl> member_declarators member_declarator
@@ -85,7 +85,7 @@ void yyerror(const char *s);
 %type <member> members member_decl
 %type <type> type_name decl_spec
 %type <specs> spec_seq spec named_type
-%type <decl> declarator direct_declarator abstract_declarator direct_abstract
+%type <decl> declarator direct_declarator abstract_declarator direct_abstract param_dims
 %type <params> params param_list ident_list
 %type <name> tag_name
 %type <val>     stars array_len
@@ -152,8 +152,8 @@ global_rest
 
 /* An old-style definition's parameter declarations. */
 knr_opt
-    : /* empty */          { Par_CheckKnrParams(); }
-    | knr_decls            { Par_CheckKnrParams(); }
+    : /* empty */          { Par_BeginBody(); }
+    | knr_decls            { Par_BeginBody(); }
     ;
 
 /* One or more old-style parameter declarations. */
@@ -218,10 +218,19 @@ param_list
 param
     : decl_spec declarator
         { $$ = Par_MakeParam($1, $2, @1); }
-    | decl_spec stars array_dims
-        { Ast_Type *t = $1;
-          for (int64_t i = 0; i < $2; i++) { t = Ast_NewPointer(t); }
-          $$ = Par_MakeAnonParam(Par_ArrayType(t, $3), @1); }
+    | decl_spec stars param_dims
+        { Par_Decl *d = $3;
+          for (int64_t i = 0; i < $2; i++) { Par_AddDeriv(d, PAR_DERIV_POINTER, @2); }
+          $$ = Par_MakeAnonParam(Par_ApplyDecl($1, d), @1); }
+    ;
+
+/* The dimensions an unnamed parameter carries. */
+param_dims
+    : /* empty */          { $$ = Par_NewDecl(NULL); }
+    | param_dims LSQUARE expr RSQUARE
+        { $$ = $1; Par_SetArrayLen(Par_AddDeriv($$, PAR_DERIV_ARRAY, @2), $3); }
+    | param_dims LSQUARE MUL RSQUARE
+        { $$ = $1; Par_AddDeriv($$, PAR_DERIV_ARRAY, @2)->pd_star = true; }
     ;
 
 /* ---- types --------------------------------------------------------- */
@@ -294,6 +303,8 @@ direct_declarator
         { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); Par_SetArrayLen(d, $4); d->pd_decor = $3; }
     | direct_declarator LSQUARE array_decor RSQUARE
         { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_empty = true; d->pd_decor = $3; }
+    | direct_declarator LSQUARE array_decor MUL RSQUARE
+        { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); d->pd_star = true; d->pd_decor = $3; }
     | direct_declarator LPAREN { Ast_PushScope(); } params RPAREN
         { Ast_PopScope(); $$ = $1; Par_AddDeriv($$, PAR_DERIV_FUNCTION, @2)->pd_params = $4; }
     ;
@@ -438,19 +449,16 @@ stmt
     | DO stmt WHILE LPAREN expr_comma RPAREN SEMI
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DO, @1);
           n->an_body = $2; n->an_cond = $5; $$ = n; }
-    | SWITCH LPAREN expr_comma RPAREN stmt
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_SWITCH, @1);
-          n->an_cond = $3; n->an_body = $5; $$ = n; }
-    | CASE expr COLON stmt
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_CASE, @1);
-          n->an_cond = $2; n->an_lhs = $4; $$ = n; }
-    | DEFAULT COLON stmt
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DEFAULT, @1); n->an_lhs = $3; $$ = n; }
+    | SWITCH LPAREN expr_comma RPAREN { $<node>$ = Par_NewJump(AST_NODE_KIND_SWITCH, @1); } stmt
+        { Ast_Node *n = $<node>5; n->an_cond = $3; n->an_body = $6; $$ = n; }
+    | CASE expr COLON { $<node>$ = Par_NewJump(AST_NODE_KIND_CASE, @1); } stmt
+        { Ast_Node *n = $<node>4; n->an_cond = $2; n->an_lhs = $5; $$ = n; }
+    | DEFAULT COLON { $<node>$ = Par_NewJump(AST_NODE_KIND_DEFAULT, @1); } stmt
+        { Ast_Node *n = $<node>3; n->an_lhs = $4; $$ = n; }
     | GOTO IDENT SEMI
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_GOTO, @1); n->an_funcname = $2; $$ = n; }
-    | IDENT COLON stmt
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_LABEL, @1);
-          n->an_funcname = $1; n->an_lhs = $3; $$ = n; }
+        { Ast_Node *n = Par_NewJump(AST_NODE_KIND_GOTO, @1); n->an_funcname = $2; $$ = n; }
+    | IDENT COLON { $<node>$ = Par_NewJump(AST_NODE_KIND_LABEL, @1); } stmt
+        { Ast_Node *n = $<node>3; n->an_funcname = $1; n->an_lhs = $4; $$ = n; }
     | BREAK SEMI           { $$ = Ast_NewNode(AST_NODE_KIND_BREAK, @1); }
     | CONTINUE SEMI        { $$ = Ast_NewNode(AST_NODE_KIND_CONTINUE, @1); }
     | WHILE LPAREN expr RPAREN stmt
@@ -535,13 +543,6 @@ designator
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_val = $2; $$ = n; }
     | DOT IDENT
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_memname = $2; $$ = n; }
-    ;
-
-/* The dimensions an unnamed type carries. */
-array_dims
-    : /* empty */          { $$ = NULL; }
-    | LSQUARE array_len RSQUARE array_dims
-        { Ast_Node *n = Ast_NewNum($2, @1); n->an_next = $4; $$ = n; }
     ;
 
 /* An array length. */
