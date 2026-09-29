@@ -243,9 +243,12 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line);
 // Declarations
 void      Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line);
 void      Par_NeedFixedSize(const Ast_Type *type, Ast_Line line);
+Ast_Node *Par_SizeExpr(Ast_Type *type, Ast_Line line);
+Ast_Node *Par_WithSizes(Ast_Type *type, Ast_Node *expr, Ast_Line line);
 void      Par_Redeclare(Ast_Var *var, Ast_Line line);
 void      Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_Line line);
 Ast_Var  *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line);
+Ast_Node *Par_DefineLocal(Par_Decl *decl, Ast_Var *var, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 void      Par_CompleteTentatives(void);
 
