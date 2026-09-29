@@ -26,6 +26,7 @@
 
 // Project headers.
 #include "util/console/err.h"
+#include "util/fp.h"
 #include "util/object/elf.h"
 #include "lang/ast.h"
 #include "lang/sem.h"
@@ -36,6 +37,17 @@
 
 // Largest aggregate the ABI passes in registers.
 #define GEN_X86_64_SYSV_MAX_REG_SIZE 16
+
+// The sign bit of a float and of a double.
+#define GEN_X86_64_FLOAT_SIGN  0x80000000LL
+#define GEN_X86_64_DOUBLE_SIGN ((int64_t) 1 << 63)
+
+// The float bits of 2^63 and 2^64, the edges of the unsigned 64-bit range.
+#define GEN_X86_64_FLOAT_TWO_TO_63 0x5F000000
+#define GEN_X86_64_FLOAT_TWO_TO_64 0x5F800000
+
+// The shift that brings a 64-bit sign bit down to bit 0 and back.
+#define GEN_X86_64_SIGN_SHIFT 63
 
 // Byte offsets of the fields in the SysV va_list record the parser builds.
 typedef enum Gen_x86_64_SysV_VaField Gen_x86_64_SysV_VaField;
@@ -105,6 +117,23 @@ const Ast_Member *Gen_x86_64_Bitfield(const Ast_Node *node);
 void              Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member);
 void              Gen_x86_64_EmitBitfieldStore(const Ast_Member *member);
 
+// Floating point
+bool          Gen_x86_64_ByAddress(const Ast_Type *type);
+bool          Gen_x86_64_IsSse(const Ast_Type *type);
+bool          Gen_x86_64_IsWideUnsigned(const Ast_Type *type);
+Asm_x86_64_Op Gen_x86_64_SseOp(Ast_NodeKind kind, const Ast_Type *type);
+Asm_x86_64_Op Gen_x86_64_X87Op(Ast_NodeKind kind);
+void          Gen_x86_64_EmitFNum(const Ast_Node *node);
+void          Gen_x86_64_EmitX87Result(int32_t tmp);
+void          Gen_x86_64_EmitIntToX87(const Ast_Type *from);
+void          Gen_x86_64_EmitToX87(const Ast_Type *from);
+void          Gen_x86_64_EmitX87ToSse(const Ast_Type *to);
+void          Gen_x86_64_EmitX87ToInt(const Ast_Type *to);
+void          Gen_x86_64_EmitConvert(const Ast_Type *from, const Ast_Type *to, int32_t tmp);
+void          Gen_x86_64_EmitFloatCompare(Ast_NodeKind kind);
+void          Gen_x86_64_EmitFloatBinary(Ast_Node *node);
+void          Gen_x86_64_EmitFloatNeg(Ast_Node *node);
+
 // Expressions, statements and data
 void Gen_x86_64_EmitNarrow(const Ast_Type *type);
 void Gen_x86_64_EmitDivide(Ast_TypeSign sign, Asm_x86_64_Reg reg);
@@ -112,9 +141,11 @@ void Gen_x86_64_EmitShift(Ast_TypeSign sign, Asm_x86_64_Reg reg);
 void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, Ast_Line line);
 void Gen_x86_64_EmitExpr(Ast_Node *node);
 void Gen_x86_64_EmitStmt(Ast_Node *node);
-void Gen_x86_64_AssignCallTemps(Ast_Node *node, int32_t *offset);
+bool Gen_x86_64_NeedsTemp(const Ast_Node *node);
+void Gen_x86_64_AssignTemps(Ast_Node *node, int32_t *offset);
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func);
 void Gen_x86_64_EmitDataSection(void);
+void Gen_x86_64_EmitFloatConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var *var);
 void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int32_t *naddrs);
 void Gen_x86_64_EmitImage(const uint8_t *bytes, int32_t size, const Gen_x86_64_Addr *addrs, int32_t naddrs);
 void Gen_x86_64_EmitGlobal(Ast_Var *var);

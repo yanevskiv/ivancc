@@ -427,7 +427,7 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
         case AST_NODE_KIND_ASSIGN:
         case AST_NODE_KIND_COMMA:
         case AST_NODE_KIND_COND: {
-            Err_AssertAt(node->an_line, Sem_IsAggregate(node->an_type), ERR_GEN_NOT_LVALUE);
+            Err_AssertAt(node->an_line, Gen_x86_64_ByAddress(node->an_type), ERR_GEN_NOT_LVALUE);
             Gen_x86_64_EmitExpr(node);
         } break;
         case AST_NODE_KIND_COMPOUND: {
@@ -453,7 +453,7 @@ Ast_TypeSign Gen_x86_64_Sign(const Ast_Node *node)
 // Load a value of type from disp(%base) into %dst.
 void Gen_x86_64_EmitLoadFrom(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg dst, const Ast_Type *type)
 {
-    if (type->at_sign == AST_TYPE_UNSIGNED) {
+    if (type->at_sign == AST_TYPE_UNSIGNED || Ast_IsFloating(type)) {
         Asm_x86_64_EmitMovLoadZero(base, disp, dst, Gen_x86_64_TypeWidth(type));
         return;
     }
@@ -463,7 +463,7 @@ void Gen_x86_64_EmitLoadFrom(Asm_x86_64_Reg base, int32_t disp, Asm_x86_64_Reg d
 // Load the value at the address in %rax.
 void Gen_x86_64_EmitLoad(const Ast_Type *type)
 {
-    if (type->at_kind == AST_TYPE_KIND_ARRAY || type->at_kind == AST_TYPE_KIND_FUNC || Sem_IsAggregate(type)) {
+    if (type->at_kind == AST_TYPE_KIND_ARRAY || type->at_kind == AST_TYPE_KIND_FUNC || Gen_x86_64_ByAddress(type)) {
         return;
     }
     Gen_x86_64_EmitLoadFrom(ASM_X86_64_REG_RAX, 0, ASM_X86_64_REG_RAX, type);
@@ -594,6 +594,300 @@ void Gen_x86_64_EmitBitfieldStore(const Ast_Member *member)
     Gen_x86_64_EmitBitfieldLoad(member);
 }
 
+// Return whether a value of this type travels in %rax as its address.
+bool Gen_x86_64_ByAddress(const Ast_Type *type)
+{
+    return Sem_IsAggregate(type) || type->at_kind == AST_TYPE_KIND_LDOUBLE;
+}
+
+// Return whether a value of this type is a float or a double.
+bool Gen_x86_64_IsSse(const Ast_Type *type)
+{
+    return type->at_kind == AST_TYPE_KIND_FLOAT || type->at_kind == AST_TYPE_KIND_DOUBLE;
+}
+
+// Return whether this is an unsigned integer too wide for a signed conversion.
+bool Gen_x86_64_IsWideUnsigned(const Ast_Type *type)
+{
+    return Ast_IsInteger(type) && type->at_sign == AST_TYPE_UNSIGNED && type->at_size == GEN_X86_64_WORD_SIZE;
+}
+
+// Return the SSE instruction an arithmetic operator takes at a type.
+Asm_x86_64_Op Gen_x86_64_SseOp(Ast_NodeKind kind, const Ast_Type *type)
+{
+    bool dbl = type->at_kind == AST_TYPE_KIND_DOUBLE;
+
+    switch (kind) {
+        case AST_NODE_KIND_ADD: {
+            return dbl ? ASM_X86_64_OP_ADDSD : ASM_X86_64_OP_ADDSS;
+        } break;
+        case AST_NODE_KIND_SUB: {
+            return dbl ? ASM_X86_64_OP_SUBSD : ASM_X86_64_OP_SUBSS;
+        } break;
+        case AST_NODE_KIND_MUL: {
+            return dbl ? ASM_X86_64_OP_MULSD : ASM_X86_64_OP_MULSS;
+        } break;
+        case AST_NODE_KIND_DIV: {
+            return dbl ? ASM_X86_64_OP_DIVSD : ASM_X86_64_OP_DIVSS;
+        } break;
+        default: {
+            return dbl ? ASM_X86_64_OP_UCOMISD : ASM_X86_64_OP_UCOMISS;
+        }
+    }
+}
+
+// Return the x87 instruction an arithmetic operator takes.
+Asm_x86_64_Op Gen_x86_64_X87Op(Ast_NodeKind kind)
+{
+    switch (kind) {
+        case AST_NODE_KIND_ADD: {
+            return ASM_X86_64_OP_FADDP;
+        } break;
+        case AST_NODE_KIND_SUB: {
+            return ASM_X86_64_OP_FSUBRP;
+        } break;
+        case AST_NODE_KIND_MUL: {
+            return ASM_X86_64_OP_FMULP;
+        } break;
+        default: {
+            return ASM_X86_64_OP_FDIVRP;
+        }
+    }
+}
+
+// Load a floating literal into %rax.
+void Gen_x86_64_EmitFNum(const Ast_Node *node)
+{
+    uint8_t bytes[FP_EXTENDED_SIZE];
+    uint64_t low = 0;
+    uint64_t high = 0;
+
+    switch (node->an_type->at_kind) {
+        case AST_TYPE_KIND_FLOAT: {
+            Asm_x86_64_EmitMovImm(Fp_FloatBits((float) node->an_fval), ASM_X86_64_REG_RAX);
+        } break;
+        case AST_TYPE_KIND_DOUBLE: {
+            Asm_x86_64_EmitMovImm((int64_t) Fp_DoubleBits((double) node->an_fval), ASM_X86_64_REG_RAX);
+        } break;
+        default: {
+            Fp_EncodeExtended(node->an_fval, bytes);
+            for (int32_t i = 0; i < FP_EXTENDED_SIZE; i++) {
+                if (i < FP_EXTENDED_TOP_OFF) {
+                    low |= (uint64_t) bytes[i] << (i * FP_BITS_PER_BYTE);
+                } else {
+                    high |= (uint64_t) bytes[i] << ((i - FP_EXTENDED_TOP_OFF) * FP_BITS_PER_BYTE);
+                }
+            }
+            Asm_x86_64_EmitMovImm((int64_t) low, ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_WIDTH_64);
+            Asm_x86_64_EmitMovImm((int64_t) high, ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RBP, node->an_tmp + FP_EXTENDED_TOP_OFF, ASM_X86_64_WIDTH_16);
+            Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_tmp, ASM_X86_64_REG_RAX);
+        }
+    }
+}
+
+// Pop %st into a frame slot and leave its address in %rax.
+void Gen_x86_64_EmitX87Result(int32_t tmp)
+{
+    Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FSTPT, ASM_X86_64_REG_RBP, tmp);
+    Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, tmp, ASM_X86_64_REG_RAX);
+}
+
+// Push the integer in %rax onto the x87 stack.
+void Gen_x86_64_EmitIntToX87(const Ast_Type *from)
+{
+    Asm_x86_64_EmitPush(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FILDQ, ASM_X86_64_REG_RSP, 0);
+    Asm_x86_64_EmitPop(ASM_X86_64_REG_RAX);
+    if (! Gen_x86_64_IsWideUnsigned(from)) {
+        return;
+    }
+
+    // fildq read the top bit as a sign, so add 2^64 back when it was set
+    Asm_x86_64_EmitMovImm(GEN_X86_64_SIGN_SHIFT, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitShr(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovImm(GEN_X86_64_FLOAT_TWO_TO_64, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitImul(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitPush(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDS, ASM_X86_64_REG_RSP, 0);
+    Asm_x86_64_EmitPop(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitX87(ASM_X86_64_OP_FADDP);
+}
+
+// Push the arithmetic value in %rax onto the x87 stack.
+void Gen_x86_64_EmitToX87(const Ast_Type *from)
+{
+    if (from->at_kind == AST_TYPE_KIND_LDOUBLE) {
+        Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDT, ASM_X86_64_REG_RAX, 0);
+        return;
+    }
+    if (! Gen_x86_64_IsSse(from)) {
+        Gen_x86_64_EmitIntToX87(from);
+        return;
+    }
+    Asm_x86_64_EmitPush(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitX87Mem(from->at_kind == AST_TYPE_KIND_FLOAT ? ASM_X86_64_OP_FLDS : ASM_X86_64_OP_FLDL, ASM_X86_64_REG_RSP, 0);
+    Asm_x86_64_EmitPop(ASM_X86_64_REG_RAX);
+}
+
+// Pop %st into %rax as a float or a double.
+void Gen_x86_64_EmitX87ToSse(const Ast_Type *to)
+{
+    Asm_x86_64_EmitPush(ASM_X86_64_REG_RAX);
+    if (to->at_kind == AST_TYPE_KIND_FLOAT) {
+        Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FSTPS, ASM_X86_64_REG_RSP, 0);
+        Asm_x86_64_EmitPop(ASM_X86_64_REG_RAX);
+        Asm_x86_64_EmitMovRRWidth(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_32);
+        return;
+    }
+    Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FSTPL, ASM_X86_64_REG_RSP, 0);
+    Asm_x86_64_EmitPop(ASM_X86_64_REG_RAX);
+}
+
+// Pop %st into %rax as an integer, truncating toward zero.
+void Gen_x86_64_EmitX87ToInt(const Ast_Type *to)
+{
+    Asm_x86_64_EmitPush(ASM_X86_64_REG_RAX);
+    if (! Gen_x86_64_IsWideUnsigned(to)) {
+        Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FISTTPQ, ASM_X86_64_REG_RSP, 0);
+        Asm_x86_64_EmitPop(ASM_X86_64_REG_RAX);
+        Gen_x86_64_EmitCast(to);
+        return;
+    }
+
+    // take 2^63 off a value that reaches it, and put the top bit back after
+    Asm_x86_64_EmitMovImm(GEN_X86_64_FLOAT_TWO_TO_63, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RSP, 0, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDS, ASM_X86_64_REG_RSP, 0);
+    Asm_x86_64_EmitX87(ASM_X86_64_OP_FUCOMIP);
+    Asm_x86_64_EmitSetbe(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDX);
+    Asm_x86_64_EmitMovImm(GEN_X86_64_FLOAT_TWO_TO_63, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitImul(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RSP, 0, ASM_X86_64_WIDTH_64);
+    Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDS, ASM_X86_64_REG_RSP, 0);
+    Asm_x86_64_EmitX87(ASM_X86_64_OP_FSUBRP);
+    Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FISTTPQ, ASM_X86_64_REG_RSP, 0);
+    Asm_x86_64_EmitPop(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovImm(GEN_X86_64_SIGN_SHIFT, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitShl(ASM_X86_64_REG_RDX);
+    Asm_x86_64_EmitXor(ASM_X86_64_REG_RDX, ASM_X86_64_REG_RAX);
+}
+
+// Convert the value in %rax from one arithmetic type to another.
+void Gen_x86_64_EmitConvert(const Ast_Type *from, const Ast_Type *to, int32_t tmp)
+{
+    bool wide = Gen_x86_64_IsWideUnsigned(from) || Gen_x86_64_IsWideUnsigned(to);
+
+    if (to->at_kind == AST_TYPE_KIND_VOID) {
+        return;
+    }
+    if (! Ast_IsFloating(from) && ! Ast_IsFloating(to)) {
+        Gen_x86_64_EmitCast(to);
+        return;
+    }
+    if (Gen_x86_64_IsSse(from) && Gen_x86_64_IsSse(to)) {
+        if (from->at_kind != to->at_kind) {
+            Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_RAX, ASM_X86_64_XMM0);
+            Asm_x86_64_EmitSse(to->at_kind == AST_TYPE_KIND_DOUBLE ? ASM_X86_64_OP_CVTSS2SD : ASM_X86_64_OP_CVTSD2SS, ASM_X86_64_XMM0, ASM_X86_64_XMM0);
+            Asm_x86_64_EmitMovFromXmm(ASM_X86_64_XMM0, ASM_X86_64_REG_RAX);
+        }
+        return;
+    }
+    if (! wide && Ast_IsInteger(from) && Gen_x86_64_IsSse(to)) {
+        Asm_x86_64_EmitCvtToSse(to->at_kind == AST_TYPE_KIND_DOUBLE ? ASM_X86_64_OP_CVTSI2SD : ASM_X86_64_OP_CVTSI2SS, ASM_X86_64_REG_RAX, ASM_X86_64_XMM0);
+        Asm_x86_64_EmitMovFromXmm(ASM_X86_64_XMM0, ASM_X86_64_REG_RAX);
+        return;
+    }
+    if (! wide && Gen_x86_64_IsSse(from) && Ast_IsInteger(to)) {
+        Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_RAX, ASM_X86_64_XMM0);
+        Asm_x86_64_EmitCvtFromSse(from->at_kind == AST_TYPE_KIND_DOUBLE ? ASM_X86_64_OP_CVTTSD2SI : ASM_X86_64_OP_CVTTSS2SI, ASM_X86_64_XMM0, ASM_X86_64_REG_RAX);
+        Gen_x86_64_EmitCast(to);
+        return;
+    }
+
+    Gen_x86_64_EmitToX87(from);
+    if (to->at_kind == AST_TYPE_KIND_LDOUBLE) {
+        Gen_x86_64_EmitX87Result(tmp);
+    } else if (Gen_x86_64_IsSse(to)) {
+        Gen_x86_64_EmitX87ToSse(to);
+    } else {
+        Gen_x86_64_EmitX87ToInt(to);
+    }
+}
+
+// Turn the flags an unordered compare set into 0 or 1 in %rax.
+void Gen_x86_64_EmitFloatCompare(Ast_NodeKind kind)
+{
+    switch (kind) {
+        case AST_NODE_KIND_EQ: {
+            Asm_x86_64_EmitSete(ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitSetnp(ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitAnd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_NE: {
+            Asm_x86_64_EmitSetne(ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitSetp(ASM_X86_64_REG_RCX);
+            Asm_x86_64_EmitOr(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+        } break;
+        case AST_NODE_KIND_LT: {
+            Asm_x86_64_EmitSeta(ASM_X86_64_REG_RAX);
+        } break;
+        default: {
+            Asm_x86_64_EmitSetae(ASM_X86_64_REG_RAX);
+        }
+    }
+    Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
+}
+
+// Apply an arithmetic or comparison operator to floating %rax and %rdi.
+void Gen_x86_64_EmitFloatBinary(Ast_Node *node)
+{
+    const Ast_Type *type = node->an_lhs->an_type;
+    bool compare = node->an_kind == AST_NODE_KIND_EQ || node->an_kind == AST_NODE_KIND_NE || node->an_kind == AST_NODE_KIND_LT || node->an_kind == AST_NODE_KIND_LE;
+
+    if (type->at_kind == AST_TYPE_KIND_LDOUBLE) {
+        Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDT, ASM_X86_64_REG_RAX, 0);
+        Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDT, ASM_X86_64_REG_RDI, 0);
+        if (! compare) {
+            Asm_x86_64_EmitX87(Gen_x86_64_X87Op(node->an_kind));
+            Gen_x86_64_EmitX87Result(node->an_tmp);
+            return;
+        }
+        Asm_x86_64_EmitX87(ASM_X86_64_OP_FUCOMIP);
+        Asm_x86_64_EmitX87(ASM_X86_64_OP_FSTP);
+        Gen_x86_64_EmitFloatCompare(node->an_kind);
+        return;
+    }
+
+    if (! compare) {
+        Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_RAX, ASM_X86_64_XMM0);
+        Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_RDI, ASM_X86_64_XMM1);
+        Asm_x86_64_EmitSse(Gen_x86_64_SseOp(node->an_kind, type), ASM_X86_64_XMM1, ASM_X86_64_XMM0);
+        Asm_x86_64_EmitMovFromXmm(ASM_X86_64_XMM0, ASM_X86_64_REG_RAX);
+        return;
+    }
+    Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_RDI, ASM_X86_64_XMM0);
+    Asm_x86_64_EmitMovToXmm(ASM_X86_64_REG_RAX, ASM_X86_64_XMM1);
+    Asm_x86_64_EmitSse(Gen_x86_64_SseOp(node->an_kind, type), ASM_X86_64_XMM1, ASM_X86_64_XMM0);
+    Gen_x86_64_EmitFloatCompare(node->an_kind);
+}
+
+// Negate the floating value in %rax.
+void Gen_x86_64_EmitFloatNeg(Ast_Node *node)
+{
+    if (node->an_type->at_kind == AST_TYPE_KIND_LDOUBLE) {
+        Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDT, ASM_X86_64_REG_RAX, 0);
+        Asm_x86_64_EmitX87(ASM_X86_64_OP_FCHS);
+        Gen_x86_64_EmitX87Result(node->an_tmp);
+        return;
+    }
+    Asm_x86_64_EmitMovImm(node->an_type->at_kind == AST_TYPE_KIND_FLOAT ? GEN_X86_64_FLOAT_SIGN : GEN_X86_64_DOUBLE_SIGN, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitXor(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+}
+
 // Bring a result in %rax back into its type.
 void Gen_x86_64_EmitNarrow(const Ast_Type *type)
 {
@@ -674,6 +968,9 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
         case AST_NODE_KIND_NUM: {
             Asm_x86_64_EmitMovImm(node->an_val, ASM_X86_64_REG_RAX);
         } break;
+        case AST_NODE_KIND_FNUM: {
+            Gen_x86_64_EmitFNum(node);
+        } break;
         case AST_NODE_KIND_STR: {
             Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, ".Lstr%d", node->an_str_idx);
         } break;
@@ -698,7 +995,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
         } break;
         case AST_NODE_KIND_CAST: {
             Gen_x86_64_EmitExpr(node->an_lhs);
-            Gen_x86_64_EmitCast(node->an_type);
+            Gen_x86_64_EmitConvert(node->an_lhs->an_type, node->an_type, node->an_tmp);
         } break;
         case AST_NODE_KIND_ASSIGN: {
             const Ast_Member *bits = Gen_x86_64_Bitfield(node->an_lhs);
@@ -708,7 +1005,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
             if (bits) {
                 Gen_x86_64_EmitBitfieldStore(bits);
-            } else if (Sem_IsAggregate(node->an_type)) {
+            } else if (Gen_x86_64_ByAddress(node->an_type)) {
                 Gen_x86_64_EmitCopy(node->an_type->at_size);
             } else {
                 Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI, 0, Gen_x86_64_TypeWidth(node->an_type));
@@ -770,6 +1067,10 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
         } break;
         case AST_NODE_KIND_NEG: {
             Gen_x86_64_EmitExpr(node->an_lhs);
+            if (Ast_IsFloating(node->an_type)) {
+                Gen_x86_64_EmitFloatNeg(node);
+                break;
+            }
             Asm_x86_64_EmitNeg(ASM_X86_64_REG_RAX);
             Gen_x86_64_EmitNarrow(node->an_type);
         } break;
@@ -846,6 +1147,10 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitPush();
             Gen_x86_64_EmitExpr(node->an_lhs);
             Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
+            if (Ast_IsFloating(node->an_lhs->an_type)) {
+                Gen_x86_64_EmitFloatBinary(node);
+                break;
+            }
 
             switch (node->an_kind) {
                 case AST_NODE_KIND_ADD: {
@@ -1049,13 +1354,39 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
     }
 }
 
-// Give every call that returns an aggregate a frame slot to land the result in.
-void Gen_x86_64_AssignCallTemps(Ast_Node *node, int32_t *offset)
+// Return whether a node makes a new value it must hand over by address.
+bool Gen_x86_64_NeedsTemp(const Ast_Node *node)
+{
+    if (! node->an_type || ! Gen_x86_64_ByAddress(node->an_type)) {
+        return false;
+    }
+
+    switch (node->an_kind) {
+        case AST_NODE_KIND_CALL: {
+            return true;
+        } break;
+        case AST_NODE_KIND_FNUM:
+        case AST_NODE_KIND_CAST:
+        case AST_NODE_KIND_ADD:
+        case AST_NODE_KIND_SUB:
+        case AST_NODE_KIND_MUL:
+        case AST_NODE_KIND_DIV:
+        case AST_NODE_KIND_NEG: {
+            return node->an_type->at_kind == AST_TYPE_KIND_LDOUBLE;
+        } break;
+        default: {
+            return false;
+        }
+    }
+}
+
+// Give every node that makes a value held by address a frame slot for it.
+void Gen_x86_64_AssignTemps(Ast_Node *node, int32_t *offset)
 {
     if (! node) {
         return;
     }
-    if (node->an_kind == AST_NODE_KIND_CALL && Sem_IsAggregate(node->an_type)) {
+    if (Gen_x86_64_NeedsTemp(node)) {
         *offset = Gen_x86_64_AlignTo(*offset + Gen_x86_64_SlotSize(node->an_type), node->an_type->at_align);
         node->an_tmp = -*offset;
     }
@@ -1064,16 +1395,16 @@ void Gen_x86_64_AssignCallTemps(Ast_Node *node, int32_t *offset)
         node->an_calltmp = -*offset;
     }
 
-    Gen_x86_64_AssignCallTemps(node->an_lhs, offset);
-    Gen_x86_64_AssignCallTemps(node->an_rhs, offset);
-    Gen_x86_64_AssignCallTemps(node->an_cond, offset);
-    Gen_x86_64_AssignCallTemps(node->an_then, offset);
-    Gen_x86_64_AssignCallTemps(node->an_els, offset);
-    Gen_x86_64_AssignCallTemps(node->an_init, offset);
-    Gen_x86_64_AssignCallTemps(node->an_inc, offset);
-    Gen_x86_64_AssignCallTemps(node->an_body, offset);
-    Gen_x86_64_AssignCallTemps(node->an_args, offset);
-    Gen_x86_64_AssignCallTemps(node->an_next, offset);
+    Gen_x86_64_AssignTemps(node->an_lhs, offset);
+    Gen_x86_64_AssignTemps(node->an_rhs, offset);
+    Gen_x86_64_AssignTemps(node->an_cond, offset);
+    Gen_x86_64_AssignTemps(node->an_then, offset);
+    Gen_x86_64_AssignTemps(node->an_els, offset);
+    Gen_x86_64_AssignTemps(node->an_init, offset);
+    Gen_x86_64_AssignTemps(node->an_inc, offset);
+    Gen_x86_64_AssignTemps(node->an_body, offset);
+    Gen_x86_64_AssignTemps(node->an_args, offset);
+    Gen_x86_64_AssignTemps(node->an_next, offset);
 }
 
 // Assign each local a stack slot and record the frame size.
@@ -1093,7 +1424,7 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
         offset = Gen_x86_64_AlignTo(offset, var->av_type->at_align);
         var->av_offset = -offset;
     }
-    Gen_x86_64_AssignCallTemps(func->af_body, &offset);
+    Gen_x86_64_AssignTemps(func->af_body, &offset);
     func->af_stack_size = Gen_x86_64_AlignTo(offset, GEN_X86_64_SYSV_STACK_ALIGN);
 }
 
@@ -1112,6 +1443,33 @@ void Gen_x86_64_EmitDataSection(void)
     }
 }
 
+// Write one floating initializer into the bytes it fills.
+void Gen_x86_64_EmitFloatConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var *var)
+{
+    uint32_t single = 0;
+    uint64_t dbl = 0;
+    long double value = 0;
+
+    Err_AssertAt(var->av_line, Sem_FoldFloat(item->an_lhs, &value), ERR_GEN_INIT_NOT_CONSTANT, var->av_name);
+    switch (item->an_type->at_kind) {
+        case AST_TYPE_KIND_FLOAT: {
+            single = Fp_FloatBits((float) value);
+            for (int32_t i = 0; i < AST_TYPE_SIZE_FLOAT; i++) {
+                bytes[i] = (uint8_t) (single >> (i * FP_BITS_PER_BYTE));
+            }
+        } break;
+        case AST_TYPE_KIND_DOUBLE: {
+            dbl = Fp_DoubleBits((double) value);
+            for (int32_t i = 0; i < AST_TYPE_SIZE_DOUBLE; i++) {
+                bytes[i] = (uint8_t) (dbl >> (i * FP_BITS_PER_BYTE));
+            }
+        } break;
+        default: {
+            Fp_EncodeExtended(value, bytes);
+        }
+    }
+}
+
 // Write one flattened initializer into a global's image.
 void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int32_t *naddrs)
 {
@@ -1121,6 +1479,10 @@ void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var
     const char *symbol = NULL;
 
     Err_AssertAt(var->av_line, offset + size <= var->av_type->at_size, ERR_GEN_INIT_TOO_LARGE, var->av_name);
+    if (Ast_IsFloating(item->an_type)) {
+        Gen_x86_64_EmitFloatConstant(bytes + offset, item, var);
+        return;
+    }
     if (Sem_FoldAddr(item->an_lhs, &symbol)) {
         Err_AssertAt(var->av_line, size == GEN_X86_64_WORD_SIZE, ERR_GEN_INIT_ADDRESS_WIDTH, var->av_name);
         Err_AssertAt(var->av_line, *naddrs < GEN_X86_64_MAX_ADDRS, ERR_GEN_INIT_TOO_MANY_ADDRESSES, var->av_name, GEN_X86_64_MAX_ADDRS);
