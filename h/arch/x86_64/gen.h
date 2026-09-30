@@ -21,6 +21,7 @@
 #define GEN_X86_64_H
 
 // Standard headers.
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -43,7 +44,7 @@
 
 // The sign bit of a float and of a double.
 #define GEN_X86_64_FLOAT_SIGN  0x80000000LL
-#define GEN_X86_64_DOUBLE_SIGN ((int64_t) 1 << 63)
+#define GEN_X86_64_DOUBLE_SIGN INT64_MIN
 
 // The float bits of 2^63 and 2^64, the edges of the unsigned 64-bit range.
 #define GEN_X86_64_FLOAT_TWO_TO_63 0x5F000000
@@ -153,7 +154,6 @@ void Gen_x86_64_SysV_EmitVaArg(const Ast_Node *node);
 int32_t          Gen_x86_64_Count(void);
 void             Gen_x86_64_EmitPush(void);
 void             Gen_x86_64_EmitPop(Asm_x86_64_Reg reg);
-int32_t          Gen_x86_64_AlignTo(int32_t n, int32_t align);
 int32_t          Gen_x86_64_SlotSize(const Ast_Type *type);
 int32_t          Gen_x86_64_SlotAlign(const Ast_Type *type);
 Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type);
@@ -205,7 +205,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node);
 bool Gen_x86_64_NeedsTemp(const Ast_Node *node);
 void Gen_x86_64_AssignTemps(Ast_Node *node, int32_t *offset);
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func);
-void Gen_x86_64_EmitDataSection(void);
+void Gen_x86_64_EmitStrings(void);
 void Gen_x86_64_EmitFloatConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var *var);
 void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int32_t *naddrs);
 void Gen_x86_64_EmitImage(const uint8_t *bytes, int32_t size, const Gen_x86_64_Addr *addrs, int32_t naddrs);
