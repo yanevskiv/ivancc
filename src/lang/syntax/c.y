@@ -76,7 +76,7 @@ void yyerror(const char *s);
 
 %type <node> stmt stmt_list compound_stmt decl decl_body local_list local_decl
 %type <node> for_init expr expr_comma expr_opt args arg_list
-%type <node> initializer init_list init_item designators designator
+%type <node> initializer init_body init_list init_item designators designator
 %type <node> cast unary postfix primary
 %type <str>  string
 %type <var>  param
@@ -506,15 +506,20 @@ local_decl
 /* A scalar initializer. */
 initializer
     : expr                       { $$ = $1; }
-    | LBRACE init_list RBRACE
+    | LBRACE init_body RBRACE
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_INITLIST, @1); n->an_body = $2; $$ = n; }
+    ;
+
+/* The items between an initializer's braces, with an optional trailing comma. */
+init_body
+    : /* empty */                { $$ = NULL; }
+    | init_list                  { $$ = $1; }
+    | init_list COMMA            { $$ = $1; }
     ;
 
 /* The items in a braced initializer. */
 init_list
-    : /* empty */                { $$ = NULL; }
-    | init_item                  { $$ = $1; }
-    | init_list COMMA            { $$ = $1; }
+    : init_item                  { $$ = $1; }
     | init_list COMMA init_item
         { Ast_Node *last = $1;
           while (last->an_next) { last = last->an_next; }
@@ -641,7 +646,7 @@ postfix
     | postfix DOT IDENT    { $$ = Ast_NewMemberNode($1, $3, @2); }
     | postfix ARROW IDENT
         { $$ = Ast_NewMemberNode(Ast_NewUnary(AST_NODE_KIND_DEREF, $1, @2), $3, @2); }
-    | LPAREN type_name RPAREN LBRACE init_list RBRACE
+    | LPAREN type_name RPAREN LBRACE init_body RBRACE
         { $$ = Par_CompoundLiteral($2, $5, @1); }
     ;
 
