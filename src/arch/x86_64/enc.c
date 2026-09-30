@@ -641,7 +641,7 @@ void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item)
 bool Enc_x86_64_IsGlobl(const char *name)
 {
     for (size_t i = 0; i < Enc_x86_64_NumGlobls; i++) {
-        if (strcmp(Enc_x86_64_Globls[i], name) == 0) {
+        if (Str_Equals(Enc_x86_64_Globls[i], name)) {
             return true;
         }
     }

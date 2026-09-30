@@ -82,9 +82,12 @@ char *Str_ChangeOrAppendExt(const char *input, const char *suffix)
     return out;
 }
 
-// Test whether two strings are equal.
+// Test whether two strings, or two NULLs, are equal.
 bool Str_Equals(const char *a, const char *b)
 {
+    if (! a || ! b) {
+        return a == b;
+    }
     return strcmp(a, b) == 0;
 }
 

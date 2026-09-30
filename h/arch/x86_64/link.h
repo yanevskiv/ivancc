@@ -25,11 +25,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
 // Project headers.
 #include "util/console/err.h"
 #include "util/object/elf.h"
+#include "util/str.h"
 
 // One -place request: load the named section at a fixed address.
 typedef struct Link_x86_64_Place Link_x86_64_Place;

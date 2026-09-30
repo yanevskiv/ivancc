@@ -101,7 +101,7 @@ Elf_Sym *Link_x86_64_FindGlobal(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < Elf_Symbol_Count(elf); i++) {
         Elf_Sym *sym = Elf_Symbol_At(elf, i);
-        if (sym->sym_bind != ELF_BIND_LOCAL && strcmp(sym->sym_name, name) == 0) {
+        if (sym->sym_bind != ELF_BIND_LOCAL && Str_Equals(sym->sym_name, name)) {
             return sym;
         }
     }
@@ -204,7 +204,7 @@ void Link_x86_64_AddPlace(Link_x86_64_Options *opts, const char *name, uint64_t 
 uint64_t Link_x86_64_PlacedAddr(const Link_x86_64_Options *opts, const char *name, bool *placed)
 {
     for (size_t i = 0; i < opts->lo_nplaces; i++) {
-        if (strcmp(opts->lo_places[i].lp_name, name) == 0) {
+        if (Str_Equals(opts->lo_places[i].lp_name, name)) {
             *placed = true;
             return opts->lo_places[i].lp_addr;
         }

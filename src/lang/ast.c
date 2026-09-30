@@ -396,7 +396,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
         }
         Err_AssertAt(member->am_line, member->am_type->at_complete, ERR_AST_MEMBER_INCOMPLETE, member->am_name);
         for (Ast_Member *seen = members; seen != member; seen = seen->am_next) {
-            Err_AssertAt(member->am_line, ! seen->am_name || ! member->am_name || strcmp(seen->am_name, member->am_name) != 0, ERR_AST_MEMBER_DUPLICATE, member->am_name);
+            Err_AssertAt(member->am_line, ! member->am_name || ! Str_Equals(seen->am_name, member->am_name), ERR_AST_MEMBER_DUPLICATE, member->am_name);
         }
         if (member->am_type->at_align > align) {
             align = member->am_type->at_align;
@@ -430,7 +430,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
 Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name)
 {
     for (Ast_Member *member = type->at_members; member; member = member->am_next) {
-        if (strcmp(member->am_name, name) == 0) {
+        if (Str_Equals(member->am_name, name)) {
             return member;
         }
     }
@@ -466,7 +466,7 @@ bool Ast_IsCompatibleUnqualified(const Ast_Type *a, const Ast_Type *b)
         } break;
         case AST_TYPE_KIND_STRUCT:
         case AST_TYPE_KIND_UNION: {
-            bool tags = a->at_tag && b->at_tag ? strcmp(a->at_tag, b->at_tag) == 0 : a->at_tag == b->at_tag;
+            bool tags = Str_Equals(a->at_tag, b->at_tag);
             bool open = ! a->at_complete || ! b->at_complete;
             return tags && (open || a->at_members == b->at_members);
         } break;
@@ -605,7 +605,7 @@ Ast_Var *Ast_FindVar(const char *name)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
         for (Ast_Var *var = scope->as_vars; var; var = var->av_scope_next) {
-            if (strcmp(var->av_name, name) == 0) {
+            if (Str_Equals(var->av_name, name)) {
                 return var;
             }
         }
@@ -627,7 +627,7 @@ Ast_Var *Ast_FindVarHere(const char *name)
 
     for (size_t i = 0; i < sizeof(scopes) / sizeof(scopes[0]) && scopes[i]; i++) {
         for (Ast_Var *var = scopes[i]->as_vars; var; var = var->av_scope_next) {
-            if (strcmp(var->av_name, name) == 0) {
+            if (Str_Equals(var->av_name, name)) {
                 return var;
             }
         }
@@ -639,7 +639,7 @@ Ast_Var *Ast_FindVarHere(const char *name)
 Ast_Var *Ast_FindGlobal(const char *symbol)
 {
     for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
-        if (strcmp(var->av_symbol, symbol) == 0) {
+        if (Str_Equals(var->av_symbol, symbol)) {
             return var;
         }
     }
@@ -650,7 +650,7 @@ Ast_Var *Ast_FindGlobal(const char *symbol)
 Ast_Func *Ast_FindFunction(const char *name)
 {
     for (Ast_Func *fn = Ast_Program; fn; fn = fn->af_next) {
-        if (strcmp(fn->af_name, name) == 0) {
+        if (Str_Equals(fn->af_name, name)) {
             return fn;
         }
     }
@@ -783,7 +783,7 @@ Ast_Type *Ast_FindTag(const char *name)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
         for (Ast_Tag *tag = scope->as_tags; tag; tag = tag->ag_next) {
-            if (strcmp(tag->ag_name, name) == 0) {
+            if (Str_Equals(tag->ag_name, name)) {
                 return tag->ag_type;
             }
         }
@@ -795,7 +795,7 @@ Ast_Type *Ast_FindTag(const char *name)
 Ast_Type *Ast_FindTagHere(const char *name)
 {
     for (Ast_Tag *tag = Ast_CurScope->as_tags; tag; tag = tag->ag_next) {
-        if (strcmp(tag->ag_name, name) == 0) {
+        if (Str_Equals(tag->ag_name, name)) {
             return tag->ag_type;
         }
     }
@@ -817,7 +817,7 @@ Ast_Type *Ast_FindTypedef(const char *name)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
         for (Ast_Typedef *def = scope->as_typedefs; def; def = def->ad_next) {
-            if (strcmp(def->ad_name, name) == 0) {
+            if (Str_Equals(def->ad_name, name)) {
                 return def->ad_type;
             }
         }
@@ -829,7 +829,7 @@ Ast_Type *Ast_FindTypedef(const char *name)
 Ast_Type *Ast_FindTypedefHere(const char *name)
 {
     for (Ast_Typedef *def = Ast_CurScope->as_typedefs; def; def = def->ad_next) {
-        if (strcmp(def->ad_name, name) == 0) {
+        if (Str_Equals(def->ad_name, name)) {
             return def->ad_type;
         }
     }
@@ -851,7 +851,7 @@ bool Ast_FindEnumConst(const char *name, int64_t *value)
 {
     for (Ast_Scope *scope = Ast_CurScope; scope; scope = scope->as_parent) {
         for (Ast_EnumConst *item = scope->as_enums; item; item = item->ae_next) {
-            if (strcmp(item->ae_name, name) == 0) {
+            if (Str_Equals(item->ae_name, name)) {
                 *value = item->ae_value;
                 return true;
             }
@@ -864,7 +864,7 @@ bool Ast_FindEnumConst(const char *name, int64_t *value)
 bool Ast_IsEnumConstHere(const char *name)
 {
     for (Ast_EnumConst *item = Ast_CurScope->as_enums; item; item = item->ae_next) {
-        if (strcmp(item->ae_name, name) == 0) {
+        if (Str_Equals(item->ae_name, name)) {
             return true;
         }
     }

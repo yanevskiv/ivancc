@@ -20,9 +20,6 @@
 #ifndef SEM_H
 #define SEM_H
 
-// Standard headers.
-#include <string.h>
-
 // Project headers.
 #include "util/console/err.h"
 #include "util/str.h"
