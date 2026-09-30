@@ -318,7 +318,7 @@ Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_T
     type->at_ret      = ret;
     type->at_params   = params;
     type->at_nparams  = nparams;
-    type->at_va = va;
+    type->at_va       = va;
     type->at_proto    = proto;
     type->at_complete = AST_TYPE_COMPLETE;
     return type;
@@ -590,7 +590,7 @@ void Ast_PushScope(void)
 {
     Ast_Scope *scope = calloc(1, sizeof(Ast_Scope));
     scope->as_parent = Ast_CurScope;
-    scope->as_vm = Ast_CurScope->as_vm;
+    scope->as_vm     = Ast_CurScope->as_vm;
     Ast_CurScope = scope;
 }
 
