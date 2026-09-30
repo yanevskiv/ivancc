@@ -397,6 +397,8 @@ bool Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, 
             Err_AssertAt(line, rhs != 0, ERR_SEM_DIVISION_BY_ZERO);
             if (sign == AST_TYPE_UNSIGNED) {
                 *value = (int64_t) (kind == AST_NODE_KIND_DIV ? ulhs / urhs : ulhs % urhs);
+            } else if (rhs == -1) {
+                *value = kind == AST_NODE_KIND_DIV ? (int64_t) (0 - ulhs) : 0;
             } else {
                 *value = kind == AST_NODE_KIND_DIV ? lhs / rhs : lhs % rhs;
             }
