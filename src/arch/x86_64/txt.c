@@ -634,7 +634,7 @@ const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
             case '7': {
                 uint32_t value = 0;
 
-                for (size_t digits = 0; digits < TXT_X86_64_ESCAPE_OCTAL_DIGITS; digits++) {
+                for (size_t n = 0; n < TXT_X86_64_ESCAPE_OCTAL_DIGITS; n++) {
                     int32_t digit = Txt_x86_64_Att_DigitValue(*ptr, TXT_X86_64_BASE_OCTAL);
 
                     if (digit < 0) {
@@ -926,9 +926,9 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
         Txt_x86_64_Att_EmitString(args, TXT_X86_64_BARE);
     } else if (Str_Equals(name, ".skip") || Str_Equals(name, ".zero") || Str_Equals(name, ".space")) {
         int64_t count = strtol(args, NULL, 0);
-        size_t size = count > 0 ? (size_t) count : 0;
-        uint8_t *zeros = calloc(size ? size : 1, sizeof(uint8_t));
-        Asm_x86_64_EmitBytes(zeros, size);
+        size_t n = count > 0 ? (size_t) count : 0;
+        uint8_t *zeros = calloc(n ? n : 1, sizeof(uint8_t));
+        Asm_x86_64_EmitBytes(zeros, n);
         free(zeros);
     } else {
         Asm_x86_64_EmitDirective("%s", line);
