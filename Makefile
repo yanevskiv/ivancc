@@ -56,7 +56,8 @@ CORE_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/core/test*.c)))
 BUG_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/bug*.c)))
 EDGE_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/test*.c)))
 LIBC_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/test*.c)))
-TEST_NAMES := $(CORE_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES)
+ERROR_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errors/err*.c)))
+TEST_NAMES := $(CORE_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(ERROR_NAMES)
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
@@ -71,7 +72,7 @@ all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
 clean:
 	rm -rf $(BUILD) $(OUT)
 
-tests: test_core test_bugs test_edge test_libc
+tests: test_core test_bugs test_edge test_libc test_errors
 
 test_core: $(CORE_NAMES)
 
@@ -80,6 +81,8 @@ test_bugs: $(BUG_NAMES)
 test_edge: $(EDGE_NAMES)
 
 test_libc: $(LIBC_NAMES)
+
+test_errors: $(ERROR_NAMES)
 
 # --- tool recipes ---
 $(CC_BIN): $(CC_OBJS) | $(BUILD)/bin
@@ -166,4 +169,4 @@ $(EMU_DIR): | $(BUILD)
 
 -include $(shell find $(OUT) -name '*.d' 2>/dev/null)
 
-.PHONY: all clean tests test_core test_bugs test_edge test_libc $(TEST_NAMES)
+.PHONY: all clean tests test_core test_bugs test_edge test_libc test_errors $(TEST_NAMES)

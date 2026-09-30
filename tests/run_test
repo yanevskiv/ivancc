@@ -153,6 +153,7 @@ setup()
     get_value "${SOURCE}" '(Test) Compiler status' > "${TMP}/expected_compiler_status"
     get_text "${SOURCE}" '(Test) Compiler output' > "${TMP}/expected_compiler_output"
     get_value "${SOURCE}" '(Test) Compiler error' > "${TMP}/expected_compiler_error"
+    get_value "${SOURCE}" '(Test) Compiler warning' > "${TMP}/expected_compiler_warning"
     get_value "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
     get_text "${SOURCE}" '(Test) Output' > "${TMP}/expected_output"
 
@@ -166,6 +167,7 @@ test_declared()
     [ -s "${TMP}/expected_compiler_error" ] && return
     [ -s "${TMP}/expected_compiler_status" ] && return
     [ -s "${TMP}/expected_compiler_output" ] && return
+    [ -s "${TMP}/expected_compiler_warning" ] && return
     [ -s "${TMP}/expected_status" ] && return
     [ -s "${TMP}/expected_output" ] && return
     fail 'No expectation declared'
@@ -208,6 +210,17 @@ test_compiler_output()
     [ "$GOT" = "$EXP" ] || fail 'Compiler printed:\n%s\nbut expected:\n%s' "$GOT" "$EXP"
 }
 
+# Check the compiler's diagnostics against `// (Test) Compiler warning:`.
+test_compiler_warning()
+{
+    EXP="$(cat "${TMP}/expected_compiler_warning")"
+    GOT="$(cat "${RUN}/compiler_error")"
+
+    [ -n "$EXP" ] || return 0
+
+    grep -qF "$EXP" "${RUN}/compiler_error" || fail 'Warned with:\n%s\nbut expected %s' "$GOT" "$EXP"
+}
+
 # Check the exit status against `// (Test) Status:`.
 test_status()
 {
@@ -247,6 +260,7 @@ test_pipeline()
     fi
     test_compiler_status
     test_compiler_output
+    test_compiler_warning
     test_status
     test_output
 }
