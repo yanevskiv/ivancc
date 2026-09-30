@@ -1950,6 +1950,7 @@ void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var
     int32_t size = item->an_type->at_size;
     int32_t offset = (int32_t) item->an_val;
     int64_t val = 0;
+    int64_t addend = 0;
     const char *symbol = NULL;
 
     Err_AssertAt(var->av_line, offset + size <= var->av_type->at_size, ERR_GEN_INIT_TOO_LARGE, var->av_name);
@@ -1957,10 +1958,10 @@ void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var
         Gen_x86_64_EmitFloatConstant(bytes + offset, item, var);
         return;
     }
-    if (Sem_FoldAddr(item->an_lhs, &symbol)) {
+    if (Sem_FoldAddr(item->an_lhs, &symbol, &addend)) {
         Err_AssertAt(var->av_line, size == GEN_X86_64_WORD_SIZE, ERR_GEN_INIT_ADDRESS_WIDTH, var->av_name);
         Err_AssertAt(var->av_line, *naddrs < GEN_X86_64_MAX_ADDRS, ERR_GEN_INIT_TOO_MANY_ADDRESSES, var->av_name, GEN_X86_64_MAX_ADDRS);
-        addrs[(*naddrs)++] = (Gen_x86_64_Addr) { offset, symbol };
+        addrs[(*naddrs)++] = (Gen_x86_64_Addr) { offset, symbol, addend };
         return;
     }
     Err_AssertAt(var->av_line, Sem_Fold(item->an_lhs, &val), ERR_GEN_INIT_NOT_CONSTANT, var->av_name);
@@ -1988,7 +1989,7 @@ void Gen_x86_64_EmitImage(const uint8_t *bytes, int32_t size, const Gen_x86_64_A
         if (addrs[i].ga_offset > at) {
             Asm_x86_64_EmitBytes(bytes + at, addrs[i].ga_offset - at);
         }
-        Asm_x86_64_EmitAddress(addrs[i].ga_symbol);
+        Asm_x86_64_EmitAddress(addrs[i].ga_symbol, addrs[i].ga_addend);
         at = addrs[i].ga_offset + GEN_X86_64_WORD_SIZE;
     }
     if (size > at) {

@@ -186,10 +186,11 @@ void Asm_x86_64_EmitBytes(const void *data, size_t len)
 }
 
 // Emit the eight bytes of an address, copying the label.
-void Asm_x86_64_EmitAddress(const char *label)
+void Asm_x86_64_EmitAddress(const char *label, int64_t addend)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_ADDR);
-    item->ai_label = Str_Clone(label);
+    item->ai_label  = Str_Clone(label);
+    item->ai_addend = addend;
 }
 
 // Emit a raw assembler line from a printf-style format, written with indent.

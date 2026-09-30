@@ -91,6 +91,7 @@ typedef struct Gen_x86_64_Addr Gen_x86_64_Addr;
 struct Gen_x86_64_Addr {
     int32_t     ga_offset; // bytes into the image the address occupies
     const char *ga_symbol; // symbol the address is taken from
+    int64_t     ga_addend; // bytes the address lies past the symbol
 };
 
 // The argument registers and stack bytes the values placed so far have taken.
