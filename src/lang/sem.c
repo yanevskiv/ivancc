@@ -249,6 +249,9 @@ Ast_Type *Sem_FoldType(const Ast_Node *node)
         case AST_NODE_KIND_COND: {
             return Sem_CommonType(Sem_FoldType(node->an_then), Sem_FoldType(node->an_els));
         } break;
+        case AST_NODE_KIND_SIZEOF: {
+            return &Ast_TypeULong;
+        } break;
         default: {
             return &Ast_TypeInt;
         }
@@ -831,12 +834,12 @@ void Sem_Arith(Ast_Node *node)
         Err_AssertAt(node->an_line, node->an_kind == AST_NODE_KIND_SUB, ERR_SEM_ADD_POINTERS);
 
         Ast_Node *diff = Ast_NewBinary(AST_NODE_KIND_SUB, node->an_lhs, node->an_rhs, node->an_line);
-        diff->an_type = &Ast_TypeInt;
+        diff->an_type = &Ast_TypeLong;
 
         node->an_kind = AST_NODE_KIND_DIV;
         node->an_lhs  = diff;
-        node->an_rhs  = Sem_Stride(lhs, node->an_line);
-        node->an_type = &Ast_TypeInt;
+        node->an_rhs  = Sem_Convert(Sem_Stride(lhs, node->an_line), &Ast_TypeLong);
+        node->an_type = &Ast_TypeLong;
         return;
     }
 
@@ -1062,7 +1065,7 @@ void Sem_Annotate(Ast_Node *node)
             node->an_kind = AST_NODE_KIND_NUM;
             node->an_val  = node->an_lhs->an_type->at_size;
             node->an_lhs  = NULL;
-            node->an_type = &Ast_TypeInt;
+            node->an_type = &Ast_TypeULong;
         } break;
 
         case AST_NODE_KIND_VAR:
