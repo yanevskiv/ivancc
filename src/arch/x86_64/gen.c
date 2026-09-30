@@ -50,9 +50,6 @@
 // Largest global a single scalar initializer may fill.
 #define GEN_X86_64_MAX_INIT 8
 
-// Most addresses one global's image may hold.
-#define GEN_X86_64_MAX_ADDRS 256
-
 // The bits of a byte, for splitting an initializer into them.
 #define GEN_X86_64_BYTE_MASK 0xFF
 
@@ -1960,7 +1957,6 @@ void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var
     }
     if (Sem_FoldAddr(item->an_lhs, &symbol, &addend)) {
         Err_AssertAt(var->av_line, size == GEN_X86_64_WORD_SIZE, ERR_GEN_INIT_ADDRESS_WIDTH, var->av_name);
-        Err_AssertAt(var->av_line, *naddrs < GEN_X86_64_MAX_ADDRS, ERR_GEN_INIT_TOO_MANY_ADDRESSES, var->av_name, GEN_X86_64_MAX_ADDRS);
         addrs[(*naddrs)++] = (Gen_x86_64_Addr) { offset, symbol, addend };
         return;
     }
@@ -2002,13 +1998,17 @@ void Gen_x86_64_EmitGlobal(Ast_Var *var)
 {
     int32_t size = var->av_type->at_size;
     int32_t naddrs = 0;
-    Gen_x86_64_Addr addrs[GEN_X86_64_MAX_ADDRS];
+    int32_t nitems = 0;
 
     if (var->av_storage == AST_STORAGE_EXTERN) {
         return;
     }
+    for (Ast_Node *item = var->av_init; item; item = item->an_next) {
+        nitems++;
+    }
 
     uint8_t *bytes = calloc(size ? size : 1, 1);
+    Gen_x86_64_Addr *addrs = calloc(nitems ? nitems : 1, sizeof(*addrs));
     for (Ast_Node *item = var->av_init; item; item = item->an_next) {
         Gen_x86_64_EmitConstant(bytes, item, var, addrs, &naddrs);
     }
@@ -2023,6 +2023,7 @@ void Gen_x86_64_EmitGlobal(Ast_Var *var)
     }
     Asm_x86_64_EmitLabel("%s", var->av_symbol);
     Gen_x86_64_EmitImage(bytes, size, addrs, naddrs);
+    free(addrs);
     free(bytes);
 }
 

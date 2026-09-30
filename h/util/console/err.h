@@ -163,7 +163,6 @@ enum Err_Code {
     ERR_AST_MEMBER_INCOMPLETE,         // member
     ERR_AST_MEMBER_DUPLICATE,          // member
     ERR_AST_AGGREGATE_UNNAMED,
-    ERR_AST_TOO_MANY_STRINGS,          // limit
 
     ERR_SEM_DIVISION_BY_ZERO,
     ERR_SEM_CALL_NOT_FUNCTION,
@@ -212,7 +211,6 @@ enum Err_Code {
     ERR_GEN_CONTINUE_OUTSIDE_LOOP,
     ERR_GEN_INIT_TOO_LARGE,            // name
     ERR_GEN_INIT_ADDRESS_WIDTH,        // name
-    ERR_GEN_INIT_TOO_MANY_ADDRESSES,   // name, limit
     ERR_GEN_INIT_NOT_CONSTANT,         // name
 
     ERR_LINK_MULTIPLE_DEFINITION,      // symbol
