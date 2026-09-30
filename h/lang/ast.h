@@ -356,17 +356,13 @@ struct Ast_Node {
 // A function definition.
 typedef struct Ast_Func Ast_Func;
 struct Ast_Func {
-    Ast_Func        *af_next;       // next function in the program
-    char            *af_name;       // function name
-    Ast_Node        *af_body;       // function body (AST_NODE_KIND_BLOCK)
-    Ast_Type        *af_ret;        // type the function returns
-    Ast_Var         *af_params;     // parameters
-    int32_t          af_nparams;    // number of parameters
-    Ast_TypeVa       af_va;         // whether the parameter list ended in `...`
-    Ast_TypeProto    af_proto;      // whether a prototype declared the parameters
-    bool             af_static;     // true when the function is local to this file
-    Ast_Var         *af_locals;     // every local, including parameters
-    int32_t          af_stack_size; // frame size
+    Ast_Func *af_next;       // next function in the program
+    char     *af_name;       // function name
+    Ast_Node *af_body;       // function body (AST_NODE_KIND_BLOCK)
+    Ast_Type *af_type;       // the FUNC type it was declared or defined with
+    bool      af_static;     // true when the function is local to this file
+    Ast_Var  *af_locals;     // every local, including parameters
+    int32_t   af_stack_size; // frame size
 };
 
 // The finished program, produced by the parser.
@@ -439,6 +435,7 @@ Ast_Var *Ast_FindVar(const char *name);
 Ast_Scope *Ast_SharedScope(void);
 Ast_Var *Ast_FindVarHere(const char *name);
 Ast_Var *Ast_FindGlobal(const char *symbol);
+Ast_Func *Ast_FindFunction(const char *name);
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line);
 void     Ast_DeclareParam(Ast_Var *var);
 void     Ast_DeclarePrototypeParam(Ast_Var *var);

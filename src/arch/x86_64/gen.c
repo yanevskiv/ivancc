@@ -280,7 +280,7 @@ Gen_x86_64_SysV_Loc *Gen_x86_64_SysV_PlaceArgs(Ast_Node *args, Gen_x86_64_SysV_C
 // Return the type an argument arrives as for a parameter.
 const Ast_Type *Gen_x86_64_SysV_PassedType(const Ast_Func *func, const Ast_Var *param)
 {
-    if (func->af_proto != AST_TYPE_PROTO && param->av_type->at_kind == AST_TYPE_KIND_FLOAT) {
+    if (func->af_type->at_proto != AST_TYPE_PROTO && param->av_type->at_kind == AST_TYPE_KIND_FLOAT) {
         return &Ast_TypeDouble;
     }
     return param->av_type;
@@ -358,11 +358,11 @@ void Gen_x86_64_SysV_EmitParams(const Ast_Func *func)
     Gen_x86_64_SysV_Cursor cur;
     Gen_x86_64_SysV_Loc loc;
 
-    Gen_x86_64_SysV_StartCursor(&cur, func->af_ret);
+    Gen_x86_64_SysV_StartCursor(&cur, func->af_type->at_ret);
     if (cur.gc_gpr) {
         Asm_x86_64_EmitMovStore(Gen_x86_64_SysV_ArgReg[0], ASM_X86_64_REG_RBP, Gen_x86_64_SysV_RetPtrOffset, ASM_X86_64_WIDTH_64);
     }
-    for (Ast_Var *param = func->af_params; param; param = param->av_param_next) {
+    for (Ast_Var *param = func->af_type->at_params; param; param = param->av_param_next) {
         const Ast_Type *passed = Gen_x86_64_SysV_PassedType(func, param);
         Gen_x86_64_SysV_Place(passed, &cur, &loc);
         Gen_x86_64_SysV_EmitParam(param, passed, &loc);
@@ -536,8 +536,8 @@ void Gen_x86_64_SysV_CountNamedArgs(const Ast_Func *func, Gen_x86_64_SysV_Cursor
 {
     Gen_x86_64_SysV_Loc loc;
 
-    Gen_x86_64_SysV_StartCursor(cur, func->af_ret);
-    for (Ast_Var *param = func->af_params; param; param = param->av_param_next) {
+    Gen_x86_64_SysV_StartCursor(cur, func->af_type->at_ret);
+    for (Ast_Var *param = func->af_type->at_params; param; param = param->av_param_next) {
         Gen_x86_64_SysV_Place(Gen_x86_64_SysV_PassedType(func, param), cur, &loc);
     }
 }
@@ -1881,9 +1881,9 @@ void Gen_x86_64_AssignTemps(Ast_Node *node, int32_t *offset)
 // Assign each local a stack slot and record the frame size.
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
 {
-    int32_t offset = func->af_va == AST_TYPE_VA ? GEN_X86_64_SYSV_VA_SAVE_SIZE : 0;
+    int32_t offset = func->af_type->at_va == AST_TYPE_VA ? GEN_X86_64_SYSV_VA_SAVE_SIZE : 0;
 
-    if (Gen_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
+    if (Gen_x86_64_SysV_ReturnsInMemory(func->af_type->at_ret)) {
         offset += GEN_X86_64_WORD_SIZE;
         Gen_x86_64_SysV_RetPtrOffset = -offset;
     } else {
@@ -2060,7 +2060,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
             Asm_x86_64_EmitSubImm(func->af_stack_size, ASM_X86_64_REG_RSP);
         }
 
-        if (func->af_va == AST_TYPE_VA) {
+        if (func->af_type->at_va == AST_TYPE_VA) {
             Gen_x86_64_SysV_EmitVaSaveArea();
         }
         Gen_x86_64_SysV_EmitParams(func);
@@ -2070,7 +2070,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         // epilogue
         Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RAX);
         Asm_x86_64_EmitLabel(".L.return.%s", func->af_name);
-        if (Gen_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
+        if (Gen_x86_64_SysV_ReturnsInMemory(func->af_type->at_ret)) {
             Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, Gen_x86_64_SysV_RetPtrOffset, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
         }
         Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RBP, ASM_X86_64_REG_RSP);
