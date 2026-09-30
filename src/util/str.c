@@ -29,7 +29,7 @@ char *Str_Clone(const char *str)
 // Return an owned copy of str from start up to end, or "" out of range.
 char *Str_Slice(const char *str, size_t start, size_t end)
 {
-    if (! str || start > end || end > strlen(str)) {
+    if (! str || start > end || end > strnlen(str, end)) {
         start = end = 0;
         str   = "";
     }
