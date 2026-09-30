@@ -75,11 +75,11 @@ void Par_ResetEnum(void)
 // Empty a parameter list.
 void Par_ClearParams(Par_ParamList *list)
 {
-    list->pl_head     = NULL;
-    list->pl_tail     = NULL;
-    list->pl_count    = 0;
-    list->pl_va = AST_TYPE_FIXED;
-    list->pl_proto    = AST_TYPE_NOPROTO;
+    list->pl_head  = NULL;
+    list->pl_tail  = NULL;
+    list->pl_count = 0;
+    list->pl_va    = AST_TYPE_FIXED;
+    list->pl_proto = AST_TYPE_NOPROTO;
 }
 
 // Append one parameter to a list.
