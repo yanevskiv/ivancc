@@ -564,8 +564,8 @@ bool Sem_FoldFloat(const Ast_Node *node, long double *value)
     return true;
 }
 
-// Fold an address constant to the symbol it names.
-bool Sem_FoldAddr(const Ast_Node *node, const char **symbol)
+// Fold the address of an object with static storage to a symbol and an offset.
+bool Sem_FoldObject(const Ast_Node *node, const char **symbol, int64_t *addend)
 {
     if (! node) {
         return false;
@@ -574,19 +574,78 @@ bool Sem_FoldAddr(const Ast_Node *node, const char **symbol)
     switch (node->an_kind) {
         case AST_NODE_KIND_STR: {
             *symbol = Str_Format(".Lstr%zu", node->an_str_idx);
+            *addend = 0;
         } break;
         case AST_NODE_KIND_VAR:
         case AST_NODE_KIND_COMPOUND: {
             if (! node->an_var->av_global) {
-                return false;  // a local has no address until its frame exists
-            }
-            *symbol = node->an_var->av_symbol;
-        } break;
-        case AST_NODE_KIND_ADDR:
-        case AST_NODE_KIND_CAST: {
-            if (! Sem_FoldAddr(node->an_lhs, symbol)) {
                 return false;
             }
+            *symbol = node->an_var->av_symbol;
+            *addend = 0;
+        } break;
+        case AST_NODE_KIND_MEMBER: {
+            if (! node->an_member || node->an_member->am_bits || ! Sem_FoldObject(node->an_lhs, symbol, addend)) {
+                return false;
+            }
+            *addend += node->an_member->am_offset;
+        } break;
+        case AST_NODE_KIND_DEREF: {
+            return Sem_FoldAddr(node->an_lhs, symbol, addend);
+        } break;
+        default: {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Fold an address constant to the symbol it points into and an offset.
+bool Sem_FoldAddr(const Ast_Node *node, const char **symbol, int64_t *addend)
+{
+    int64_t value = 0;
+
+    if (! node || ! node->an_type) {
+        return false;
+    }
+
+    switch (node->an_kind) {
+        case AST_NODE_KIND_STR:
+        case AST_NODE_KIND_VAR:
+        case AST_NODE_KIND_COMPOUND:
+        case AST_NODE_KIND_MEMBER:
+        case AST_NODE_KIND_DEREF: {
+            return node->an_type->at_kind == AST_TYPE_KIND_ARRAY && Sem_FoldObject(node, symbol, addend);
+        } break;
+        case AST_NODE_KIND_FUNCADDR: {
+            *symbol = node->an_funcname;
+            *addend = 0;
+        } break;
+        case AST_NODE_KIND_ADDR: {
+            if (node->an_lhs->an_kind == AST_NODE_KIND_FUNCADDR) {
+                return Sem_FoldAddr(node->an_lhs, symbol, addend);
+            }
+            return Sem_FoldObject(node->an_lhs, symbol, addend);
+        } break;
+        case AST_NODE_KIND_CAST: {
+            bool wide = Ast_IsInteger(node->an_type) && node->an_type->at_size == Ast_TypeLong.at_size;
+            return (Sem_IsPointer(node->an_type) || wide) && Sem_FoldAddr(node->an_lhs, symbol, addend);
+        } break;
+        case AST_NODE_KIND_ADD:
+        case AST_NODE_KIND_SUB: {
+            bool left = Sem_IsPointer(node->an_lhs->an_type);
+            const Ast_Node *base = left ? node->an_lhs : node->an_rhs;
+            const Ast_Node *offset = left ? node->an_rhs : node->an_lhs;
+            if (! Sem_IsPointer(base->an_type) || ! Sem_FoldAddr(base, symbol, addend) || ! Sem_Fold(offset, &value)) {
+                return false;
+            }
+            *addend += node->an_kind == AST_NODE_KIND_ADD ? value : -value;
+        } break;
+        case AST_NODE_KIND_COND: {
+            if (! Sem_Fold(node->an_cond, &value)) {
+                return false;
+            }
+            return Sem_FoldAddr(value ? node->an_then : node->an_els, symbol, addend);
         } break;
         default: {
             return false;

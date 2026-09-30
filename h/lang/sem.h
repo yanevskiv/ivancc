@@ -63,7 +63,8 @@ long double Sem_RoundFloat(const Ast_Type *type, long double value);
 double    Sem_FoldDoubleOp(Ast_NodeKind kind, double lhs, double rhs);
 long double Sem_FoldFloatOp(Ast_NodeKind kind, const Ast_Type *type, long double lhs, long double rhs);
 bool      Sem_FoldFloat(const Ast_Node *node, long double *value);
-bool      Sem_FoldAddr(const Ast_Node *node, const char **symbol);
+bool      Sem_FoldObject(const Ast_Node *node, const char **symbol, int64_t *addend);
+bool      Sem_FoldAddr(const Ast_Node *node, const char **symbol, int64_t *addend);
 
 // Checks the parser cannot make
 Ast_Type *Sem_FuncAddrType(Ast_Node *node);

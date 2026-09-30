@@ -720,7 +720,7 @@ void Enc_x86_64_BuildObject(void)
                 Enc_x86_64_EmitRaw(item->ai_bytes, item->ai_nbytes);
             } break;
             case ASM_X86_64_ITEM_ADDR: {
-                Enc_x86_64_RecordFixup(item->ai_label, R_X86_64_64, 0);
+                Enc_x86_64_RecordFixup(item->ai_label, R_X86_64_64, item->ai_addend);
                 Enc_x86_64_Emit64(0);
             } break;
             case ASM_X86_64_ITEM_GLOBL: {

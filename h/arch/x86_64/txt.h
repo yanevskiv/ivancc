@@ -80,6 +80,7 @@ bool Txt_x86_64_Att_IsNameChar(char c);
 bool Txt_x86_64_Att_IsLabelStart(char c);
 bool Txt_x86_64_Att_IsTarget(const char *text);
 bool Txt_x86_64_Att_IsAddress(const char *text);
+const char *Txt_x86_64_Att_ScanAddress(const char *text, int64_t *addend);
 const char *Txt_x86_64_Att_ScanReg(const char *p);
 const char *Txt_x86_64_Att_ScanNumber(const char *p, int64_t *out);
 int32_t Txt_x86_64_Att_DigitValue(char c, Txt_x86_64_Base base);
