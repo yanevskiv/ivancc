@@ -87,7 +87,7 @@ void yyerror(const char *s);
 %type <decl> declarator direct_declarator abstract_declarator direct_abstract param_dims
 %type <params> params param_list ident_list
 %type <name> tag_name
-%type <val>     stars array_len
+%type <val>     stars pointer array_len
 %type <kind>    struct_or_union
 %type <qual>    qual
 %type <decor>   array_decor
@@ -264,24 +264,43 @@ spec
 
 /* A type written without a name, as a cast or a sizeof takes. */
 type_name
-    : decl_spec abstract_declarator  { $$ = Par_ApplyDecl($1, $2); }
+    : decl_spec                      { $$ = Par_ApplyDecl($1, Par_NewDecl(NULL)); }
+    | decl_spec abstract_declarator  { $$ = Par_ApplyDecl($1, $2); }
     ;
 
-/* The pointers and arrays a type name wraps its specifier in. */
+/* The pointers, arrays and parameters a type name wraps its specifier in. */
 abstract_declarator
-    : stars direct_abstract
+    : pointer
+        { $$ = Par_NewDecl(NULL);
+          for (int64_t i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
+    | pointer direct_abstract
         { $$ = $2;
           for (int64_t i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
+    | direct_abstract      { $$ = $1; }
     ;
 
 /* An abstract declarator without its leading pointers. */
 direct_abstract
-    : /* empty */          { $$ = Par_NewDecl(NULL); }
-    | LPAREN stars RPAREN
-        { $$ = Par_NewDecl(NULL);
-          for (int64_t i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
+    : LPAREN abstract_declarator RPAREN
+        { $$ = $2; }
+    | LSQUARE expr RSQUARE
+        { $$ = Par_NewDecl(NULL); Par_SetArrayLen(Par_AddDeriv($$, PAR_DERIV_ARRAY, @1), $2); }
     | direct_abstract LSQUARE expr RSQUARE
         { $$ = $1; Par_SetArrayLen(Par_AddDeriv($$, PAR_DERIV_ARRAY, @2), $3); }
+    | LSQUARE RSQUARE
+        { $$ = Par_NewDecl(NULL); Par_AddDeriv($$, PAR_DERIV_ARRAY, @1)->pd_empty = true; }
+    | direct_abstract LSQUARE RSQUARE
+        { $$ = $1; Par_AddDeriv($$, PAR_DERIV_ARRAY, @2)->pd_empty = true; }
+    | LPAREN { Ast_PushScope(); } params RPAREN
+        { Ast_PopScope(); $$ = Par_NewDecl(NULL); Par_AddDeriv($$, PAR_DERIV_FUNCTION, @1)->pd_params = $3; }
+    | direct_abstract LPAREN { Ast_PushScope(); } params RPAREN
+        { Ast_PopScope(); $$ = $1; Par_AddDeriv($$, PAR_DERIV_FUNCTION, @2)->pd_params = $4; }
+    ;
+
+/* A run of one or more pointer stars, each able to carry qualifiers of its own. */
+pointer
+    : stars MUL            { $$ = $1 + 1; }
+    | stars MUL qual_list  { $$ = $1 + 1; }
     ;
 
 /* A name with the pointers, arrays and parameters around it. */
