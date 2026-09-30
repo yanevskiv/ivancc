@@ -790,7 +790,7 @@ void Txt_x86_64_Att_EmitString(const char *args, Txt_x86_64_Terminate terminate)
 // Parse one instruction line ("mnemonic [op[, op]]") into an instruction item.
 void Txt_x86_64_Att_ParseInstr(const char *line)
 {
-    size_t mlen = strcspn(line, " \t");
+    size_t mlen = Str_FindFirst(line, " \t");
     Err_Assert(mlen > 0 && mlen < 32, ERR_TXT_MNEMONIC_MALFORMED, line);
     char mnem[32];
     memcpy(mnem, line, mlen);
@@ -855,7 +855,7 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
 // Parse one directive line, lowering data directives to raw bytes.
 void Txt_x86_64_Att_ParseDirective(const char *line)
 {
-    size_t nlen = strcspn(line, " \t");
+    size_t nlen = Str_FindFirst(line, " \t");
     char name[32];
     if (nlen >= sizeof(name)) {
         nlen = sizeof(name) - 1;
@@ -875,7 +875,7 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
     } else if (Str_Equals(name, ".rodata")) {
         Asm_x86_64_EmitSection(".rodata", ELF_SHT_PROGBITS, ELF_SHF_ALLOC);
     } else if (Str_Equals(name, ".section")) {
-        char *secname = Str_Slice(args, 0, strcspn(args, " ,\t"));
+        char *secname = Str_Slice(args, 0, Str_FindFirst(args, " ,\t"));
         uint32_t type = ELF_SHT_PROGBITS;
         uint64_t flags;
         const char *quote = strchr(args, '"');
@@ -902,7 +902,7 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
         }
         Asm_x86_64_EmitSection(secname, type, flags);
     } else if (Str_Equals(name, ".globl") || Str_Equals(name, ".global")) {
-        char *sym = Str_Slice(args, 0, strcspn(args, " ,\t"));
+        char *sym = Str_Slice(args, 0, Str_FindFirst(args, " ,\t"));
         Asm_x86_64_EmitGlobl("%s", sym);
         Str_Free(sym);
     } else if (Str_Equals(name, ".byte")) {

@@ -101,6 +101,15 @@ bool Str_StartsWith(const char *str, const char *prefix)
     return strncmp(str, prefix, strlen(prefix)) == 0;
 }
 
+// Return the index of str's first character found in chars.
+size_t Str_FindFirst(const char *str, const char *chars)
+{
+    if (! str) {
+        return 0;
+    }
+    return chars ? strcspn(str, chars) : strlen(str);
+}
+
 // Trim leading and trailing whitespace in place.
 char *Str_Trim(char *str)
 {
