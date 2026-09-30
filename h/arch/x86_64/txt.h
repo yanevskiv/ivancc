@@ -45,6 +45,12 @@
 // Number of x87 stack registers.
 #define TXT_X86_64_ST_COUNT 8
 
+// Shortest run of zero bytes written as one `.zero`.
+#define TXT_X86_64_ZERO_RUN_MIN 8
+
+// Most values one `.byte` line holds.
+#define TXT_X86_64_BYTES_PER_LINE 16
+
 // Whether a string directive appends a terminating NUL.
 typedef enum Txt_x86_64_Terminate Txt_x86_64_Terminate;
 enum Txt_x86_64_Terminate {
@@ -63,6 +69,8 @@ enum Txt_x86_64_Base {
 // AT&T syntax writer
 void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
 void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
+size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len);
+void Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len);
 void Txt_x86_64_Att_Write(FILE *out);
 
 // Name-to-value lookups
