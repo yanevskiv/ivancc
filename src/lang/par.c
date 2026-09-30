@@ -49,6 +49,7 @@ static int32_t   Par_OpenLen;
 static Ast_Type   *Par_DeclType;
 static Ast_Storage Par_DeclStorage;
 static char       *Par_DeclName;
+static Ast_Line    Par_DeclLine;
 
 // The type the top-level declarator just read works out to.
 static Ast_Type   *Par_CurDeclType;
@@ -299,6 +300,7 @@ Ast_Node *Par_SizeParams(void)
 // Finish the parameters before a function body opens.
 void Par_BeginBody(void)
 {
+    Err_AssertAt(Par_DeclLine, Par_InFunction, ERR_PAR_BODY_NOT_FUNCTION, Par_DeclName);
     Par_CheckKnrParams();
     Par_CurSizes = Par_SizeParams();
 }
@@ -1407,6 +1409,7 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
     Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
 
     Par_DeclName    = decl->pc_name;
+    Par_DeclLine    = line;
     Par_CurDeclType = type;
     if (type->at_kind != AST_TYPE_KIND_FUNC) {
         Par_InFunction = false;
@@ -1431,7 +1434,6 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
             Ast_DeclareParam(param);
         }
     }
-    (void) line;
 }
 
 // Close a top-level declarator that turned out not to be a function definition.

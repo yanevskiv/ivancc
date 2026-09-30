@@ -121,6 +121,7 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PAR_TYPEDEF_INITIALIZED]       = { "ERR_PAR_TYPEDEF_INITIALIZED",       "a typedef takes no initializer" },
     [ERR_PAR_VLA_INITIALIZED]           = { "ERR_PAR_VLA_INITIALIZED",           "variable-length array '%s' takes no initializer" },
     [ERR_PAR_UNDECLARED]                = { "ERR_PAR_UNDECLARED",                "use of undeclared identifier '%s'" },
+    [ERR_PAR_BODY_NOT_FUNCTION]         = { "ERR_PAR_BODY_NOT_FUNCTION",         "'%s' is not a function and takes no body" },
 
     [ERR_AST_FLEXIBLE_IN_UNION]         = { "ERR_AST_FLEXIBLE_IN_UNION",         "a union cannot have a flexible array member" },
     [ERR_AST_FLEXIBLE_NOT_LAST]         = { "ERR_AST_FLEXIBLE_NOT_LAST",         "flexible array member '%s' must come last" },
