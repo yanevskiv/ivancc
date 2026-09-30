@@ -266,6 +266,7 @@ Ast_Node *Par_SizeExpr(Ast_Type *type, Ast_Line line);
 Ast_Node *Par_WithSizes(Ast_Type *type, Ast_Node *expr, Ast_Line line);
 void      Par_Redeclare(Ast_Var *var, Ast_Line line);
 void      Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_Line line);
+void      Par_CheckRedeclaration(const char *name, const Ast_Type *type, Ast_Line line);
 Ast_Var  *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Node *Par_DefineLocal(Par_Decl *decl, Ast_Var *var, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line);
@@ -273,8 +274,9 @@ void      Par_CompleteTentatives(void);
 
 // Functions
 Ast_Func *Par_FindFunction(const char *name);
-void      Par_AddFunction(Ast_Func *fn);
-void      Par_DeclarePrototype(const char *name, Ast_Type *type);
+Ast_Type *Par_FunctionType(const Ast_Func *fn);
+void      Par_AddFunction(Ast_Func *fn, Ast_Line line);
+void      Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Func *Par_MakeFunction(Ast_Node *body);
 void      Par_BeginExternal(Par_Decl *decl, Ast_Line line);
 void      Par_EndExternal(Ast_Node *init, Ast_Line line);
