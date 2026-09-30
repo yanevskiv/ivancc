@@ -1963,13 +1963,13 @@ void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var
     }
     Err_AssertAt(var->av_line, Sem_Fold(item->an_lhs, &val), ERR_GEN_INIT_NOT_CONSTANT, var->av_name);
 
-    if (item->an_member) {
-        int64_t mask = (((int64_t) 1 << item->an_member->am_bits) - 1) << item->an_member->am_bitoff;
-        val = (val << item->an_member->am_bitoff) & mask;
+    if (item->an_bitfield) {
+        int64_t mask = (((int64_t) 1 << item->an_bitfield->am_bits) - 1) << item->an_bitfield->am_bitoff;
+        val = (val << item->an_bitfield->am_bitoff) & mask;
     }
     for (int32_t i = 0; i < size; i++) {
         uint8_t byte = (val >> (i * ASM_X86_64_BITS_PER_BYTE)) & GEN_X86_64_BYTE_MASK;
-        if (item->an_member) {
+        if (item->an_bitfield) {
             bytes[offset + i] |= byte;
         } else {
             bytes[offset + i] = byte;

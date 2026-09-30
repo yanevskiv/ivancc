@@ -179,10 +179,10 @@ enum Ast_NodeKind {
     AST_NODE_KIND_POSTINC,   // lhs++ or lhs--, stepping by an_step
     AST_NODE_KIND_COND,      // cond ? then : els
     AST_NODE_KIND_COMMA,     // lhs, rhs
-    AST_NODE_KIND_INIT,      // one flattened initializer
-    AST_NODE_KIND_INITLIST,  // a braced initializer list
-    AST_NODE_KIND_DESIGNATOR,// `[an_index]` or `.an_memname` naming where an item lands
-    AST_NODE_KIND_ZERO,      // zero an_size bytes of the object an_lhs addresses
+    AST_NODE_KIND_INIT,      // an initializer item, or a flattened one
+    AST_NODE_KIND_INITLIST,  // a braced initializer, its items in an_items
+    AST_NODE_KIND_DESIGNATOR,// `[an_index]` or `.an_memname` aiming an item
+    AST_NODE_KIND_ZERO,      // zero an_size bytes at the address an_lhs
     AST_NODE_KIND_COMPOUND,  // (type){...}
     AST_NODE_KIND_CALL,      // lhs(args), a FUNCADDR lhs when direct
     AST_NODE_KIND_FUNCADDR,  // a function named as a value
@@ -348,8 +348,10 @@ struct Ast_Node {
     long double  an_fval;      // value of an FNUM
     size_t       an_stridx;    // string table slot of a STR
     Ast_Var     *an_var;       // variable a VAR names or a COMPOUND fills
-    Ast_Node    *an_items;     // flattened initializer a COMPOUND fills
+    Ast_Node    *an_items;     // items of an INITLIST, or a COMPOUND flattened
+    Ast_Node    *an_desig;     // designators aiming an INIT item
     Ast_Member  *an_member;    // resolved member of a MEMBER
+    Ast_Member  *an_bitfield;  // bit-field a flattened INIT stores into
     char        *an_memname;   // member name a MEMBER node was written with
     int32_t      an_tmp;       // frame slot an aggregate return lands in
     int32_t      an_calltmp;   // slot an indirect CALL parks its callee in
