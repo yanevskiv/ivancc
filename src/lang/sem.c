@@ -1073,7 +1073,7 @@ Ast_Node *Sem_FindLabel(Ast_Node *node, const char *name)
     if (! node) {
         return NULL;
     }
-    if (node->an_kind == AST_NODE_KIND_LABEL && Str_Equals(node->an_funcname, name)) {
+    if (node->an_kind == AST_NODE_KIND_LABEL && Str_Equals(node->an_labelname, name)) {
         return node;
     }
 
@@ -1084,16 +1084,17 @@ Ast_Node *Sem_FindLabel(Ast_Node *node, const char *name)
     return found;
 }
 
-// Reject a goto to a label never defined or inside a variably modified scope.
+// Bind each goto to its label, rejecting a missing or VM-scoped one.
 void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
 {
     if (! node) {
         return;
     }
     if (node->an_kind == AST_NODE_KIND_GOTO) {
-        Ast_Node *label = Sem_FindLabel(body, node->an_funcname);
-        Err_AssertAt(node->an_line, label != NULL, ERR_SEM_GOTO_UNDEFINED, node->an_funcname);
-        Err_AssertAt(node->an_line, Ast_ContainsVmScope(node->an_vm, label->an_vm), ERR_SEM_GOTO_INTO_VM_SCOPE, node->an_funcname);
+        Ast_Node *label = Sem_FindLabel(body, node->an_labelname);
+        Err_AssertAt(node->an_line, label != NULL, ERR_SEM_GOTO_UNDEFINED, node->an_labelname);
+        Err_AssertAt(node->an_line, Ast_ContainsVmScope(node->an_vm, label->an_vm), ERR_SEM_GOTO_INTO_VM_SCOPE, node->an_labelname);
+        node->an_target = label;
     }
     Sem_CheckGotos(node->an_lhs, body);
     Sem_CheckGotos(node->an_then, body);

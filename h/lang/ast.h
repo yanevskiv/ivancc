@@ -193,10 +193,10 @@ enum Ast_NodeKind {
     AST_NODE_KIND_FOR,       // for (init; cond; inc) body;
     AST_NODE_KIND_DO,        // do body; while (cond);
     AST_NODE_KIND_SWITCH,    // switch (cond) body;
-    AST_NODE_KIND_CASE,      // case cond: lhs;
-    AST_NODE_KIND_DEFAULT,   // default: lhs;
-    AST_NODE_KIND_GOTO,      // goto an_funcname;
-    AST_NODE_KIND_LABEL,     // an_funcname: lhs;
+    AST_NODE_KIND_CASE,      // case cond: body;
+    AST_NODE_KIND_DEFAULT,   // default: body;
+    AST_NODE_KIND_GOTO,      // goto an_labelname;
+    AST_NODE_KIND_LABEL,     // an_labelname: body;
     AST_NODE_KIND_BREAK,     // break;
     AST_NODE_KIND_CONTINUE,  // continue;
     AST_NODE_KIND_BLOCK,     // { ... }
@@ -321,42 +321,44 @@ struct Ast_Scope {
 
 // A node in the abstract syntax tree.
 struct Ast_Node {
-    Ast_NodeKind an_kind;      // which kind of node this is
-    Ast_NodeKind an_op;        // operation of an OPASSIGN
-    Ast_Type    *an_type;      // type of the value
-    Ast_Line     an_line;      // source line the construct started on
-    Ast_Node    *an_next;      // next node in a statement / argument list
-    Ast_Node    *an_lhs;       // generic left operand
-    Ast_Node    *an_rhs;       // generic right operand
-    Ast_Node    *an_cond;      // test of an IF, loop, COND, SWITCH or CASE
-    Ast_Node    *an_then;      // then branch of an IF or COND
-    Ast_Node    *an_els;       // else branch of an IF or COND
-    Ast_Node    *an_init;      // initializer of a FOR
-    Ast_Node    *an_inc;       // increment of a FOR
-    Ast_Node    *an_body;      // body of a BLOCK, DECL, loop or SWITCH
-    char        *an_funcname;  // a FUNCADDR's function, or a GOTO or LABEL name
-    Ast_Node    *an_args;      // argument list of a CALL
-    Ast_Node    *an_cases;     // cases of a SWITCH, in source order
-    Ast_Node    *an_casenext;  // next case of the switch this one belongs to
-    int32_t      an_label;     // label number a case is emitted with
-    int64_t      an_val;       // value of a NUM or a CASE
-    int64_t      an_step;      // amount a POSTINC steps by
-    int64_t      an_index;     // array index a DESIGNATOR names
-    int32_t      an_offset;    // byte offset an INIT stores at
-    int32_t      an_size;      // bytes a ZERO clears
-    int32_t      an_vladepth;  // variable-length arrays live at a LABEL
-    long double  an_fval;      // value of an FNUM
-    size_t       an_stridx;    // string table slot of a STR
-    Ast_Var     *an_var;       // variable a VAR names or a COMPOUND fills
-    Ast_Node    *an_items;     // items of an INITLIST, or a COMPOUND flattened
-    Ast_Node    *an_desig;     // designators aiming an INIT item
-    Ast_Member  *an_member;    // resolved member of a MEMBER
-    Ast_Member  *an_bitfield;  // bit-field a flattened INIT stores into
-    char        *an_memname;   // member name a MEMBER node was written with
-    int32_t      an_tmp;       // frame slot an aggregate return lands in
-    int32_t      an_calltmp;   // slot an indirect CALL parks its callee in
-    Ast_VmScope *an_vm;        // variably modified scopes a jump or label is in
-    bool         an_initstore; // an ASSIGN that initializes rather than assigns
+    Ast_NodeKind an_kind;       // which kind of node this is
+    Ast_NodeKind an_op;         // operation of an OPASSIGN
+    Ast_Type    *an_type;       // type of the value
+    Ast_Line     an_line;       // source line the construct started on
+    Ast_Node    *an_next;       // next node in a statement / argument list
+    Ast_Node    *an_lhs;        // generic left operand
+    Ast_Node    *an_rhs;        // generic right operand
+    Ast_Node    *an_cond;       // test of an IF, loop, COND, SWITCH or CASE
+    Ast_Node    *an_then;       // then branch of an IF or COND
+    Ast_Node    *an_els;        // else branch of an IF or COND
+    Ast_Node    *an_init;       // initializer of a FOR
+    Ast_Node    *an_inc;        // increment of a FOR
+    Ast_Node    *an_body;       // body of a BLOCK, DECL, loop, SWITCH or label
+    char        *an_funcname;   // function a FUNCADDR names
+    char        *an_labelname;  // label a GOTO jumps to or a LABEL defines
+    Ast_Node    *an_target;     // LABEL a GOTO jumps to
+    Ast_Node    *an_args;       // argument list of a CALL
+    Ast_Node    *an_cases;      // cases of a SWITCH, in source order
+    Ast_Node    *an_casenext;   // next case of the switch this one belongs to
+    int32_t      an_label;      // label number a case is emitted with
+    int64_t      an_val;        // value of a NUM or a CASE
+    int64_t      an_step;       // amount a POSTINC steps by
+    int64_t      an_index;      // array index a DESIGNATOR names
+    int32_t      an_offset;     // byte offset an INIT stores at
+    int32_t      an_size;       // bytes a ZERO clears
+    int32_t      an_vladepth;   // variable-length arrays live at a LABEL
+    long double  an_fval;       // value of an FNUM
+    size_t       an_stridx;     // string table slot of a STR
+    Ast_Var     *an_var;        // variable a VAR names or a COMPOUND fills
+    Ast_Node    *an_items;      // items of an INITLIST, or a COMPOUND flattened
+    Ast_Node    *an_desig;      // designators aiming an INIT item
+    Ast_Member  *an_member;     // resolved member of a MEMBER
+    Ast_Member  *an_bitfield;   // bit-field a flattened INIT stores into
+    char        *an_memname;    // member name a MEMBER node was written with
+    int32_t      an_tmp;        // frame slot an aggregate return lands in
+    int32_t      an_calltmp;    // slot an indirect CALL parks its callee in
+    Ast_VmScope *an_vm;         // variably modified scopes of a jump or label
+    bool         an_initstore;  // an ASSIGN that initializes, not assigns
 };
 
 // A function definition.
