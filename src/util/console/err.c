@@ -135,7 +135,6 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_AST_MEMBER_INCOMPLETE]         = { "ERR_AST_MEMBER_INCOMPLETE",         "member '%s' has an incomplete type" },
     [ERR_AST_MEMBER_DUPLICATE]          = { "ERR_AST_MEMBER_DUPLICATE",          "duplicate member '%s'" },
     [ERR_AST_AGGREGATE_UNNAMED]         = { "ERR_AST_AGGREGATE_UNNAMED",         "an aggregate must declare at least one named member" },
-    [ERR_AST_TOO_MANY_STRINGS]          = { "ERR_AST_TOO_MANY_STRINGS",          "too many string literals (max %d)" },
 
     [ERR_SEM_DIVISION_BY_ZERO]          = { "ERR_SEM_DIVISION_BY_ZERO",          "division by zero in a constant expression" },
     [ERR_SEM_CALL_NOT_FUNCTION]         = { "ERR_SEM_CALL_NOT_FUNCTION",         "called object is not a function or function pointer" },
@@ -184,7 +183,6 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_GEN_CONTINUE_OUTSIDE_LOOP]     = { "ERR_GEN_CONTINUE_OUTSIDE_LOOP",     "continue outside a loop" },
     [ERR_GEN_INIT_TOO_LARGE]            = { "ERR_GEN_INIT_TOO_LARGE",            "initializer for '%s' is larger than it is" },
     [ERR_GEN_INIT_ADDRESS_WIDTH]        = { "ERR_GEN_INIT_ADDRESS_WIDTH",        "initializer for '%s' needs a pointer to hold an address" },
-    [ERR_GEN_INIT_TOO_MANY_ADDRESSES]   = { "ERR_GEN_INIT_TOO_MANY_ADDRESSES",   "initializer for '%s' holds more addresses than %d" },
     [ERR_GEN_INIT_NOT_CONSTANT]         = { "ERR_GEN_INIT_NOT_CONSTANT",         "initializer for '%s' is not a constant" },
 
     [ERR_LINK_MULTIPLE_DEFINITION]      = { "ERR_LINK_MULTIPLE_DEFINITION",      "multiple definition of '%s'" },
