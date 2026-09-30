@@ -962,16 +962,37 @@ Ast_Type *Par_ExprType(Ast_Node *node)
         } break;
         case AST_NODE_KIND_DEREF: {
             Ast_Type *outer = Par_ExprType(node->an_lhs);
-            type = outer ? outer->at_base : NULL;
+            if (outer && outer->at_kind == AST_TYPE_KIND_FUNC) {
+                type = outer;
+            } else {
+                type = outer ? outer->at_base : NULL;
+            }
+        } break;
+        case AST_NODE_KIND_ADDR: {
+            if (node->an_lhs->an_kind == AST_NODE_KIND_FUNCADDR) {
+                type = Par_ExprType(node->an_lhs);
+            }
         } break;
         case AST_NODE_KIND_MEMBER: {
             Ast_Type *outer = Par_ExprType(node->an_lhs);
             Ast_Member *member = outer ? Ast_FindMember(outer, node->an_memname) : NULL;
             type = member ? member->am_type : NULL;
         } break;
-        case AST_NODE_KIND_CALL: {
+        case AST_NODE_KIND_FUNCADDR: {
             Ast_Func *func = Ast_FindFunction(node->an_funcname);
-            type = func ? func->af_type->at_ret : NULL;
+            type = func ? Ast_NewPointer(func->af_type) : NULL;
+        } break;
+        case AST_NODE_KIND_CALL: {
+            if (! node->an_lhs) {
+                Ast_Func *func = Ast_FindFunction(node->an_funcname);
+                type = func ? func->af_type->at_ret : NULL;
+                break;
+            }
+            Ast_Type *callee = Par_ExprType(node->an_lhs);
+            if (callee && callee->at_kind == AST_TYPE_KIND_PTR) {
+                callee = callee->at_base;
+            }
+            type = callee && callee->at_kind == AST_TYPE_KIND_FUNC ? callee->at_ret : NULL;
         } break;
         default: {
             // empty
