@@ -559,7 +559,7 @@ designators
 /* One designator, an array index or a member name. */
 designator
     : LSQUARE array_len RSQUARE
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_val = $2; $$ = n; }
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_index = $2; $$ = n; }
     | DOT IDENT
         { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, @1); n->an_memname = $2; $$ = n; }
     ;

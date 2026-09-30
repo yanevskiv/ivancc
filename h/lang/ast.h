@@ -176,13 +176,13 @@ enum Ast_NodeKind {
     AST_NODE_KIND_OR,        // lhs || rhs
     AST_NODE_KIND_ASSIGN,    // lhs = rhs
     AST_NODE_KIND_OPASSIGN,  // lhs an_op= rhs
-    AST_NODE_KIND_POSTINC,   // lhs++ or lhs--, stepping by an_val
+    AST_NODE_KIND_POSTINC,   // lhs++ or lhs--, stepping by an_step
     AST_NODE_KIND_COND,      // cond ? then : els
     AST_NODE_KIND_COMMA,     // lhs, rhs
     AST_NODE_KIND_INIT,      // one flattened initializer
     AST_NODE_KIND_INITLIST,  // a braced initializer list
-    AST_NODE_KIND_DESIGNATOR,// `[an_val]` or `.an_memname` naming where an item lands
-    AST_NODE_KIND_ZERO,      // zero an_val bytes of the object an_lhs addresses
+    AST_NODE_KIND_DESIGNATOR,// `[an_index]` or `.an_memname` naming where an item lands
+    AST_NODE_KIND_ZERO,      // zero an_size bytes of the object an_lhs addresses
     AST_NODE_KIND_COMPOUND,  // (type){...}
     AST_NODE_KIND_CALL,      // lhs(args), a FUNCADDR lhs when direct
     AST_NODE_KIND_FUNCADDR,  // a function named as a value
@@ -339,7 +339,12 @@ struct Ast_Node {
     Ast_Node    *an_cases;     // cases of a SWITCH, in source order
     Ast_Node    *an_casenext;  // next case of the switch this one belongs to
     int32_t      an_label;     // label number a case is emitted with
-    int64_t      an_val;       // value of a NUM
+    int64_t      an_val;       // value of a NUM or a CASE
+    int64_t      an_step;      // amount a POSTINC steps by
+    int64_t      an_index;     // array index a DESIGNATOR names
+    int32_t      an_offset;    // byte offset an INIT stores at
+    int32_t      an_size;      // bytes a ZERO clears
+    int32_t      an_vladepth;  // variable-length arrays live at a LABEL
     long double  an_fval;      // value of an FNUM
     size_t       an_stridx;    // string table slot of a STR
     Ast_Var     *an_var;       // variable a VAR names or a COMPOUND fills
