@@ -76,8 +76,8 @@ bool      Sem_FoldAddr(const Ast_Node *node, const char **symbol, int64_t *adden
 Ast_Type *Sem_FuncAddrType(Ast_Node *node);
 Ast_Type *Sem_CallType(Ast_Node *node);
 Ast_Type *Sem_CalleeType(Ast_Node *node);
-void      Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVariadic variadic, Ast_TypeProto proto, const char *what);
-void      Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto);
+void      Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVa va, Ast_TypeProto proto, const char *what);
+void      Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeVa va, Ast_TypeProto proto);
 void      Sem_CheckCall(Ast_Node *node);
 
 // Floating assignments rewritten into plain ones

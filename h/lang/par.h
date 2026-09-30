@@ -147,11 +147,11 @@ struct Par_Specs {
 // A parameter list as the grammar collects it.
 typedef struct Par_ParamList Par_ParamList;
 struct Par_ParamList {
-    Ast_Var          *pl_head;
-    Ast_Var          *pl_tail;
-    int32_t           pl_count;
-    Ast_TypeVariadic  pl_variadic; // the list ended in `...`
-    Ast_TypeProto     pl_proto;    // written `()`
+    Ast_Var      *pl_head;
+    Ast_Var      *pl_tail;
+    int32_t       pl_count;
+    Ast_TypeVa    pl_va;    // the list ended in `...`
+    Ast_TypeProto pl_proto; // written `()`
 };
 
 // One derivation and the operands its kind needs.

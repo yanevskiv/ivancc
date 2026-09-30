@@ -24,7 +24,7 @@
 static char            *Par_CurFuncName;
 static Ast_Var         *Par_CurParams;
 static int32_t          Par_CurNumParams;
-static Ast_TypeVariadic Par_CurVariadic;
+static Ast_TypeVa       Par_CurVa;
 static Ast_TypeProto    Par_CurProto;
 static bool             Par_CurStatic;
 static Ast_Type        *Par_CurRetType;
@@ -83,7 +83,7 @@ void Par_ClearParams(Par_ParamList *list)
     list->pl_head     = NULL;
     list->pl_tail     = NULL;
     list->pl_count    = 0;
-    list->pl_variadic = AST_TYPE_FIXED;
+    list->pl_va = AST_TYPE_FIXED;
     list->pl_proto    = AST_TYPE_NOPROTO;
 }
 
@@ -182,7 +182,7 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
         case PAR_DERIV_FUNCTION: {
             Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC && inner->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_FUNCTION_BAD_RETURN);
             Par_NeedFixedSize(inner, deriv->pd_line);
-            return Ast_NewFunction(inner, deriv->pd_params.pl_head, deriv->pd_params.pl_count, deriv->pd_params.pl_variadic, deriv->pd_params.pl_proto);
+            return Ast_NewFunction(inner, deriv->pd_params.pl_head, deriv->pd_params.pl_count, deriv->pd_params.pl_va, deriv->pd_params.pl_proto);
         }
         case PAR_DERIV_COUNT: {
             // empty
@@ -1423,7 +1423,7 @@ Ast_Func *Par_FindFunction(const char *name)
 // Return the type a function was declared with.
 Ast_Type *Par_FunctionType(const Ast_Func *fn)
 {
-    return Ast_NewFunction(fn->af_ret, fn->af_params, fn->af_nparams, fn->af_variadic, fn->af_proto);
+    return Ast_NewFunction(fn->af_ret, fn->af_params, fn->af_nparams, fn->af_va, fn->af_proto);
 }
 
 // Append a function to the program.
@@ -1438,7 +1438,7 @@ void Par_AddFunction(Ast_Func *fn, Ast_Line line)
             seen->af_locals   = fn->af_locals;
             seen->af_params   = fn->af_params;
             seen->af_nparams  = fn->af_nparams;
-            seen->af_variadic = fn->af_variadic;
+            seen->af_va       = fn->af_va;
             if (fn->af_proto == AST_TYPE_PROTO) {
                 seen->af_proto = AST_TYPE_PROTO;
             }
@@ -1466,7 +1466,7 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line)
     fn->af_ret      = type->at_ret;
     fn->af_params   = type->at_params;
     fn->af_nparams  = type->at_nparams;
-    fn->af_variadic = type->at_variadic;
+    fn->af_va       = type->at_va;
     fn->af_proto    = type->at_proto;
     fn->af_static   = Par_DeclStorage == AST_STORAGE_STATIC;
     Par_AddFunction(fn, line);
@@ -1482,7 +1482,7 @@ Ast_Func *Par_MakeFunction(Ast_Node *body)
     fn->af_body     = body;
     fn->af_params   = Par_CurParams;
     fn->af_nparams  = Par_CurNumParams;
-    fn->af_variadic = Par_CurVariadic;
+    fn->af_va       = Par_CurVa;
     fn->af_proto    = Par_CurProto;
     fn->af_static   = Par_CurStatic;
     fn->af_locals   = body ? Ast_CurrentLocals() : NULL;
@@ -1508,7 +1508,7 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
     Par_CurRetType   = type->at_ret;
     Par_CurParams    = type->at_params;
     Par_CurNumParams = type->at_nparams;
-    Par_CurVariadic  = type->at_variadic;
+    Par_CurVa        = type->at_va;
     Par_CurProto     = type->at_proto;
     Par_InFunction   = true;
     Par_CurFuncVar   = NULL;

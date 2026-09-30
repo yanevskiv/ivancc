@@ -309,7 +309,7 @@ bool Ast_IsVm(const Ast_Type *type)
 }
 
 // Build a function type.
-Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto)
+Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVa va, Ast_TypeProto proto)
 {
     Ast_Type *type = calloc(1, sizeof(Ast_Type));
     type->at_kind     = AST_TYPE_KIND_FUNC;
@@ -318,7 +318,7 @@ Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_T
     type->at_ret      = ret;
     type->at_params   = params;
     type->at_nparams  = nparams;
-    type->at_variadic = variadic;
+    type->at_va = va;
     type->at_proto    = proto;
     type->at_complete = AST_TYPE_COMPLETE;
     return type;
@@ -484,7 +484,7 @@ bool Ast_IsCompatibleParams(const Ast_Type *a, const Ast_Type *b)
     if (a->at_proto != AST_TYPE_PROTO || b->at_proto != AST_TYPE_PROTO) {
         return true;
     }
-    if (a->at_nparams != b->at_nparams || a->at_variadic != b->at_variadic) {
+    if (a->at_nparams != b->at_nparams || a->at_va != b->at_va) {
         return false;
     }
     for (const Ast_Var *pa = a->at_params; pa && pb; pa = pa->av_param_next, pb = pb->av_param_next) {
