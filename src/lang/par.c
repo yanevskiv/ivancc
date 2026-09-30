@@ -65,10 +65,10 @@ static int64_t Par_EnumValue;
 static Ast_Type *Par_VaList;
 
 // Record the specifier one declaration's declarators share.
-void Par_SetDeclSpec(Ast_Storage storage, Ast_Type *type)
+void Par_SetDeclSpec(const Par_Specs *specs, Par_StorageUse use, Ast_Line line)
 {
-    Par_DeclStorage = storage;
-    Par_DeclType    = type;
+    Par_DeclStorage = Par_SpecsStorage(specs, use, line);
+    Par_DeclType    = Par_SpecsType(specs, line);
 }
 
 // Start an enumerator list over.
@@ -622,9 +622,24 @@ char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *ou
 // Empty a specifier set.
 void Par_ClearSpecs(Par_Specs *specs)
 {
-    specs->ps_specs = 0;
-    specs->ps_qual  = 0;
-    specs->ps_type  = NULL;
+    specs->ps_specs    = 0;
+    specs->ps_qual     = 0;
+    specs->ps_type     = NULL;
+    specs->ps_storage  = AST_STORAGE_NONE;
+    specs->ps_nstorage = 0;
+    specs->ps_register = false;
+    specs->ps_inline   = false;
+}
+
+// Return the specifier set one storage-class keyword makes.
+Par_Specs Par_StorageSpec(Ast_Storage storage)
+{
+    Par_Specs specs;
+
+    Par_ClearSpecs(&specs);
+    specs.ps_storage  = storage;
+    specs.ps_nstorage = 1;
+    return specs;
 }
 
 // Add one type specifier keyword to a declaration's set.
@@ -648,7 +663,25 @@ void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line)
     if (one->ps_type) {
         into->ps_type = one->ps_type;
     }
-    into->ps_qual |= one->ps_qual;
+    if (one->ps_nstorage) {
+        Err_AssertAt(line, ! into->ps_nstorage, ERR_PAR_STORAGE_REPEATED);
+        into->ps_storage  = one->ps_storage;
+        into->ps_nstorage = one->ps_nstorage;
+        into->ps_register = one->ps_register;
+    }
+    into->ps_qual   |= one->ps_qual;
+    into->ps_inline |= one->ps_inline;
+}
+
+// Return the storage class a declaration's specifiers name, where use allows it.
+Ast_Storage Par_SpecsStorage(const Par_Specs *specs, Par_StorageUse use, Ast_Line line)
+{
+    bool storage = specs->ps_nstorage && ! (use == PAR_STORAGE_REGISTER && specs->ps_register);
+
+    if (use != PAR_STORAGE_ANY) {
+        Err_AssertAt(line, ! storage && ! specs->ps_inline, ERR_PAR_STORAGE_NOT_ALLOWED);
+    }
+    return specs->ps_storage;
 }
 
 // Return the type a declaration's specifier keywords name.
