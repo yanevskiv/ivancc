@@ -33,10 +33,10 @@
 #include "arch/x86_64/load.h"
 
 // Target architecture selected when no -march= is given.
-#define DEFAULT_ARCH "x86_64"
+#define EMU_DEFAULT_ARCH "x86_64"
 
 // Machine-option prefix recognised inside -m (e.g. -march=x86_64).
-#define MARCH_PREFIX "arch="
+#define EMU_MARCH_PREFIX "arch="
 
 // Show usage information and exit.
 static void Emu_Usage(const char *prog)
@@ -46,7 +46,7 @@ static void Emu_Usage(const char *prog)
         "  -d          disassemble instead of running\n"
         "  -i          print what the loader made of the file and stop\n"
         "  -t          trace each instruction to stderr as it runs\n"
-        "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n",
+        "  -march=ARCH target architecture (default: " EMU_DEFAULT_ARCH ")\n",
         prog);
     exit(1);
 }
@@ -83,7 +83,7 @@ static void Emu_Disassemble(const Load_x86_64_Image *img)
 // Main function
 int main(int argc, char **argv)
 {
-    const char *arch = DEFAULT_ARCH;
+    const char *arch = EMU_DEFAULT_ARCH;
     const char *program = NULL;
     bool disasm = false;
     bool info = false;
@@ -93,8 +93,8 @@ int main(int argc, char **argv)
 
     for (int32_t i = 1; i < argc; i++) {
         const char *arg = argv[i];
-        if (Str_StartsWith(arg, "-m" MARCH_PREFIX)) {
-            arch = arg + 2 + strlen(MARCH_PREFIX);
+        if (Str_StartsWith(arg, "-m" EMU_MARCH_PREFIX)) {
+            arch = arg + 2 + strlen(EMU_MARCH_PREFIX);
         } else if (Str_Equals(arg, "-d")) {
             disasm = true;
         } else if (Str_Equals(arg, "-i")) {
@@ -111,7 +111,7 @@ int main(int argc, char **argv)
     if (! program) {
         Emu_Usage(argv[0]);
     }
-    Err_Assert(Str_Equals(arch, DEFAULT_ARCH), ERR_EMU_ARCH_UNSUPPORTED, arch, DEFAULT_ARCH);
+    Err_Assert(Str_Equals(arch, EMU_DEFAULT_ARCH), ERR_EMU_ARCH_UNSUPPORTED, arch, EMU_DEFAULT_ARCH);
 
     Load_x86_64_Image img = {0};
     Err_Assert(Load_x86_64_ReadExec(program, &img), ERR_FILE_ACCESS, program, strerror(errno));
