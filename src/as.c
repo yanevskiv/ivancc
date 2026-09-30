@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 
     for (int32_t i = 1; i < argc; i++) {
         const char *arg = argv[i];
-        if (strcmp(arg, "-o") == 0 && i + 1 < argc) {
+        if (Str_Equals(arg, "-o") && i + 1 < argc) {
             output = argv[++i];
         } else if (arg[0] == '-' && arg[1]) {
             As_Usage(argv[0]);

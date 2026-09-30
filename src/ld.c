@@ -56,11 +56,11 @@ static void Ld_Usage(const char *prog)
 static char *Ld_PlaceName(const char *spec, size_t len)
 {
     char *name = Str_Slice(spec, 0, len);
-    if (strcmp(name, "text") == 0) {
+    if (Str_Equals(name, "text")) {
         Str_Free(name);
         return Str_Clone(".text");
     }
-    if (strcmp(name, "data") == 0 || strcmp(name, "rodata") == 0) {
+    if (Str_Equals(name, "data") || Str_Equals(name, "rodata")) {
         Str_Free(name);
         return Str_Clone(".rodata");
     }
@@ -88,11 +88,11 @@ int main(int argc, char **argv)
 
     for (int32_t i = 1; i < argc; i++) {
         const char *arg = argv[i];
-        if (strcmp(arg, "-o") == 0 && i + 1 < argc) {
+        if (Str_Equals(arg, "-o") && i + 1 < argc) {
             output = argv[++i];
-        } else if (strcmp(arg, "-e") == 0 && i + 1 < argc) {
+        } else if (Str_Equals(arg, "-e") && i + 1 < argc) {
             opts.lo_entry = argv[++i];
-        } else if (strcmp(arg, "-r") == 0) {
+        } else if (Str_Equals(arg, "-r")) {
             opts.lo_relocatable = true;
         } else if (strncmp(arg, "-place=", 7) == 0) {
             Ld_ParsePlace(arg + 7, &opts);

@@ -319,7 +319,7 @@ void Txt_x86_64_Att_Write(FILE *out)
                 fprintf(out, "  .globl %s\n", item->ai_label);
             } break;
             case ASM_X86_64_ITEM_SECTION: {
-                if (strcmp(item->ai_secname, ".text") == 0) {
+                if (Str_Equals(item->ai_secname, ".text")) {
                     fprintf(out, "  .text\n");
                 } else {
                     fprintf(out, "  .section %s\n", item->ai_secname);
@@ -413,19 +413,19 @@ bool Txt_x86_64_Att_IsDirectBranch(int32_t opcode)
 int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
 {
     for (int32_t i = 0; i < ASM_X86_64_REG_COUNT; i++) {
-        if (strcmp(name, Txt_x86_64_Reg64Name[i]) == 0) {
+        if (Str_Equals(name, Txt_x86_64_Reg64Name[i])) {
             *width = ASM_X86_64_WIDTH_64;
             return i;
         }
-        if (strcmp(name, Txt_x86_64_Reg32Name[i]) == 0) {
+        if (Str_Equals(name, Txt_x86_64_Reg32Name[i])) {
             *width = ASM_X86_64_WIDTH_32;
             return i;
         }
-        if (strcmp(name, Txt_x86_64_Reg16Name[i]) == 0) {
+        if (Str_Equals(name, Txt_x86_64_Reg16Name[i])) {
             *width = ASM_X86_64_WIDTH_16;
             return i;
         }
-        if (strcmp(name, Txt_x86_64_Reg8Name[i]) == 0) {
+        if (Str_Equals(name, Txt_x86_64_Reg8Name[i])) {
             *width = ASM_X86_64_WIDTH_8;
             return i;
         }
@@ -437,7 +437,7 @@ int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
 int32_t Txt_x86_64_XmmByName(const char *name)
 {
     for (int32_t i = 0; i < ASM_X86_64_XMM_COUNT; i++) {
-        if (strcmp(name, Txt_x86_64_XmmName[i]) == 0) {
+        if (Str_Equals(name, Txt_x86_64_XmmName[i])) {
             return i;
         }
     }
@@ -462,7 +462,7 @@ bool Txt_x86_64_Att_ParseSt(const char *text, Asm_x86_64_Operand *op)
         return false;
     }
     end = Txt_x86_64_Att_ScanNumber(text + 1, &st);
-    if (! end || strcmp(end, ")") != 0 || st < 0 || st >= TXT_X86_64_ST_COUNT) {
+    if (! Str_Equals(end, ")") || st < 0 || st >= TXT_X86_64_ST_COUNT) {
         return false;
     }
     *op = Asm_x86_64_St((int32_t) st);
@@ -473,7 +473,7 @@ bool Txt_x86_64_Att_ParseSt(const char *text, Asm_x86_64_Operand *op)
 int32_t Txt_x86_64_OpByName(const char *name)
 {
     for (int32_t i = 0; i < ASM_X86_64_OP_COUNT; i++) {
-        if (Txt_x86_64_OpName[i] && strcmp(name, Txt_x86_64_OpName[i]) == 0) {
+        if (Str_Equals(name, Txt_x86_64_OpName[i])) {
             return i;
         }
     }
@@ -703,7 +703,7 @@ bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
     while (Txt_x86_64_Att_IsNameChar(*p)) {
         p++;
     }
-    if (p > text && strcmp(p, "(%rip)") == 0) {
+    if (p > text && Str_Equals(p, "(%rip)")) {
         *op = Asm_x86_64_Rip(Str_Slice(text, 0, (size_t) (p - text)));
         return true;
     }

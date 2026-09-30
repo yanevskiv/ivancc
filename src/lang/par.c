@@ -250,7 +250,7 @@ void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
     Par_NeedName(decl, line);
     Par_TakeArrayDecor(decl, line);
     for (Ast_Var *param = Par_CurDeclType->at_params; param; param = param->av_param_next) {
-        if (param->av_name && strcmp(param->av_name, decl->pc_name) == 0) {
+        if (Str_Equals(param->av_name, decl->pc_name)) {
             Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
             param->av_type = Par_AdjustParam(type);
             Par_KeepVmType(param, type);
@@ -1534,7 +1534,7 @@ void Par_EndFunction(Ast_Node *body)
 // Return the array __func__ names in the function being defined.
 Ast_Var *Par_FindFuncName(const char *name, Ast_Line line)
 {
-    if (! Par_InFunction || strcmp(name, PAR_FUNC_NAME) != 0) {
+    if (! Par_InFunction || ! Str_Equals(name, PAR_FUNC_NAME)) {
         return NULL;
     }
     if (Par_CurFuncVar) {
