@@ -1521,7 +1521,9 @@ Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
 {
     Err_AssertAt(line, type->at_complete, ERR_PAR_SIZEOF_INCOMPLETE);
     if (! Ast_IsVla(type)) {
-        return Ast_NewNum(type->at_size, line);
+        Ast_Node *num = Ast_NewNum(type->at_size, line);
+        num->an_type = &Ast_TypeULong;
+        return num;
     }
     Ast_Node *size = Par_SizeExpr(type, line);
     Ast_Node *bytes = Ast_NewVarNode(type->at_vsize, line);
