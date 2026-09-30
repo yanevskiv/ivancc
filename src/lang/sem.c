@@ -1128,7 +1128,7 @@ void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
     if (node->an_kind == AST_NODE_KIND_GOTO) {
         Ast_Node *label = Sem_FindLabel(body, node->an_funcname);
         Err_AssertAt(node->an_line, label != NULL, ERR_SEM_GOTO_UNDEFINED, node->an_funcname);
-        Err_AssertAt(node->an_line, Ast_ContainsVarmodScope(node->an_varmod, label->an_varmod), ERR_SEM_GOTO_INTO_VARMOD_SCOPE, node->an_funcname);
+        Err_AssertAt(node->an_line, Ast_ContainsVmScope(node->an_vm, label->an_vm), ERR_SEM_GOTO_INTO_VM_SCOPE, node->an_funcname);
     }
     Sem_CheckGotos(node->an_lhs, body);
     Sem_CheckGotos(node->an_then, body);
@@ -1151,7 +1151,7 @@ void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
         for (Ast_Node *seen = sw->an_cases; seen; seen = seen->an_case_next) {
             Err_AssertAt(node->an_line, seen->an_kind != node->an_kind || (node->an_kind != AST_NODE_KIND_DEFAULT && seen->an_val != node->an_val), ERR_SEM_CASE_DUPLICATE);
         }
-        Err_AssertAt(node->an_line, Ast_ContainsVarmodScope(sw->an_varmod, node->an_varmod), ERR_SEM_CASE_INTO_VARMOD_SCOPE);
+        Err_AssertAt(node->an_line, Ast_ContainsVmScope(sw->an_vm, node->an_vm), ERR_SEM_CASE_INTO_VM_SCOPE);
         if (*tail) {
             (*tail)->an_case_next = node;
         } else {

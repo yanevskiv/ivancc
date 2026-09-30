@@ -1,4 +1,4 @@
-// (Test) Compiler error: [ERR_SEM_CASE_INTO_VARMOD_SCOPE]
+// (Test) Compiler error: [ERR_SEM_CASE_INTO_VM_SCOPE]
 // Can't jump from a switch into the scope of a variable-length array.
 
 int f(int n)
