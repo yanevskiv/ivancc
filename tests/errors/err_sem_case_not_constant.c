@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_CASE_NOT_CONSTANT]
-// A case label that is a variable.
+// Can't have a case label known only at run time.
 
 int f(int n)
 {
@@ -8,10 +8,5 @@ int f(int n)
             return 1;
         } break;
     }
-    return 0;
-}
-
-int main(void)
-{
     return 0;
 }

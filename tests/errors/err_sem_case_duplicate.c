@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_CASE_DUPLICATE]
-// Two case labels of one switch with the same value.
+// Can't have two case labels with the same value.
 
 int f(int n)
 {
@@ -11,10 +11,5 @@ int f(int n)
             return 2;
         } break;
     }
-    return 0;
-}
-
-int main(void)
-{
     return 0;
 }

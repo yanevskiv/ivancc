@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_PAR_FUNCTION_REDEFINED]
-// A function given two bodies.
+// Can't give one function two bodies.
 
 int f(void)
 {
@@ -9,9 +9,4 @@ int f(void)
 int f(void)
 {
     return 1;
-}
-
-int main(void)
-{
-    return 0;
 }

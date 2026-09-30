@@ -1,9 +1,4 @@
 // (Test) Compiler error: [ERR_PAR_SPEC_INVALID]
-// Type specifiers that name no type together.
+// Can't combine `short` and `char`.
 
 short char x;
-
-int main(void)
-{
-    return 0;
-}

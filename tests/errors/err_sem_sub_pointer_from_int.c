@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_SUB_POINTER_FROM_INT]
-// A pointer subtracted from an integer.
+// Can't subtract a pointer from an integer.
 
 int main(void)
 {

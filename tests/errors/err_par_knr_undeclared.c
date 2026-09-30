@@ -1,12 +1,7 @@
 // (Test) Compiler error: [ERR_PAR_KNR_UNDECLARED]
-// An old-style parameter the declaration list never declares.
+// Can't leave an old-style parameter undeclared.
 
 int f(a)
-{
-    return 0;
-}
-
-int main(void)
 {
     return 0;
 }

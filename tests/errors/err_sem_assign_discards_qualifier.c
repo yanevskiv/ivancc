@@ -1,5 +1,6 @@
 // (Test) Compiler error: [ERR_SEM_ASSIGN_DISCARDS_QUALIFIER]
-// A pointer to `const int` stored in a plain `int *`.
+// Can't store a pointer to `const int` in an `int *`.
+// Note: gcc only warns.
 
 const int c = 1;
 

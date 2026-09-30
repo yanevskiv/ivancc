@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_CALL_NOT_FUNCTION]
-// A call of an `int`.
+// Can't call an `int`.
 
 int main(void)
 {

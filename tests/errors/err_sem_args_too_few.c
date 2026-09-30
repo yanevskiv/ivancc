@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_ARGS_TOO_FEW]
-// A variadic function called without its one named argument.
+// Can't call a variadic function without its named arguments.
 
 int g(int a, ...);
 

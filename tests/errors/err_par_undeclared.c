@@ -1,12 +1,7 @@
 // (Test) Compiler error: [ERR_PAR_UNDECLARED]
-// A name used with no declaration in scope.
+// Can't use a name that was never declared.
 
 int f(void)
 {
     return y;
-}
-
-int main(void)
-{
-    return 0;
 }

@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_MEMBER_INCOMPLETE]
-// A member of an object whose struct is declared but never defined.
+// Can't access a member of an incomplete type.
 
 struct T;
 extern struct T t;

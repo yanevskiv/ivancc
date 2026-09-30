@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_GEN_BREAK_OUTSIDE_LOOP]
-// A break with no loop or switch around it.
+// Can't break outside a loop or a switch.
 
 int main(void)
 {

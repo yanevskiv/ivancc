@@ -1,9 +1,4 @@
 // (Test) Compiler error: [ERR_PAR_OBJECT_INCOMPLETE]
-// An object of a struct declared but never defined.
+// Can't define an object of an incomplete type.
 
 struct S s;
-
-int main(void)
-{
-    return 0;
-}

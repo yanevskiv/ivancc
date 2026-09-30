@@ -1,10 +1,5 @@
 // (Test) Compiler error: [ERR_PAR_BITFIELD_NOT_CONSTANT]
-// A bit-field width that is a variable.
+// Can't have a bit-field width known only at run time.
 
 int n;
 struct S { int a : n; };
-
-int main(void)
-{
-    return 0;
-}

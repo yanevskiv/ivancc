@@ -1,9 +1,4 @@
 // (Test) Compiler error: [ERR_PAR_INIT_ARRAY_UNBRACED]
-// An array initialized by a bare number.
+// Can't initialize an array without braces.
 
 int a[2] = 1;
-
-int main(void)
-{
-    return 0;
-}
