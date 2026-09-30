@@ -77,6 +77,7 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PAR_DECL_UNNAMED]              = { "ERR_PAR_DECL_UNNAMED",              "this declaration needs a name" },
     [ERR_PAR_ARRAY_OF_FUNCTIONS]        = { "ERR_PAR_ARRAY_OF_FUNCTIONS",        "an array of functions is not a type" },
     [ERR_PAR_ARRAY_LEN_NOT_CONSTANT]    = { "ERR_PAR_ARRAY_LEN_NOT_CONSTANT",    "an array length is not a constant" },
+    [ERR_PAR_ARRAY_LEN_NOT_POSITIVE]    = { "ERR_PAR_ARRAY_LEN_NOT_POSITIVE",    "an array length must be greater than zero" },
     [ERR_PAR_ARRAY_DECOR_NOT_PARAM]     = { "ERR_PAR_ARRAY_DECOR_NOT_PARAM",     "'static' and qualifiers in an array declarator are only allowed on a parameter" },
     [ERR_PAR_ARRAY_DECOR_NOT_OUTERMOST] = { "ERR_PAR_ARRAY_DECOR_NOT_OUTERMOST", "'static' and qualifiers are only allowed on a parameter's outermost array" },
     [ERR_PAR_ARRAY_STATIC_NO_LEN]       = { "ERR_PAR_ARRAY_STATIC_NO_LEN",       "'static' in an array declarator needs a length" },
