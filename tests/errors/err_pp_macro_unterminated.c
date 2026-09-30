@@ -1,11 +1,6 @@
 // (Test) Compiler error: [ERR_PP_MACRO_UNTERMINATED]
-// A macro call whose argument list never closes.
+// Can't leave a macro call's argument list open.
 
 #define F(x) x
 
 int y = F(1;
-
-int main(void)
-{
-    return 0;
-}

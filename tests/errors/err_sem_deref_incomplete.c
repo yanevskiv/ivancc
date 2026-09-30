@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_DEREF_INCOMPLETE]
-// A pointer to a struct declared but never defined, dereferenced.
+// Can't dereference a pointer to an incomplete type.
 
 struct T;
 

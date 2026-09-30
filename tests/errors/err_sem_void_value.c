@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_VOID_VALUE]
-// The result of a `void` function used as a value.
+// Can't use the result of a `void` function as a value.
 
 void g(void);
 

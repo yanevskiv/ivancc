@@ -1,12 +1,7 @@
 // (Test) Compiler error: [ERR_SEM_RETURN_NO_VALUE]
-// An `int` function returning nothing.
+// Can't return nothing from an `int` function.
 
 int f(void)
 {
     return;
-}
-
-int main(void)
-{
-    return 0;
 }

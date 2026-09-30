@@ -1,6 +1,6 @@
 // (Test) Compiler warning: [ERR_PP_WARNING_DIRECTIVE]
 // (Test) Status: 0
-// #warning prints its message and the compile carries on.
+// Shouldn't reach a #warning. The compile carries on past it.
 
 #warning carry on
 

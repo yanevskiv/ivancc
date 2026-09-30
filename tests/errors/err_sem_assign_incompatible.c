@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_ASSIGN_INCOMPATIBLE]
-// An `int` initialized by a struct.
+// Can't initialize an `int` with a struct.
 
 struct S { int a; } s;
 

@@ -1,10 +1,5 @@
 // (Test) Compiler error: [ERR_PP_EXPR_EMPTY]
-// An #if with nothing to evaluate.
+// Can't have an #if with no expression.
 
 #if
 #endif
-
-int main(void)
-{
-    return 0;
-}

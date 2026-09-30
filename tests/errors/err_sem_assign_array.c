@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_ASSIGN_ARRAY]
-// One array assigned to another.
+// Can't assign to an array.
 
 int a[2];
 int b[2];

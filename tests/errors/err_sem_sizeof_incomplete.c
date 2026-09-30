@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_SIZEOF_INCOMPLETE]
-// `sizeof` of an object whose struct is declared but never defined.
+// Can't take the `sizeof` of an object of incomplete type.
 
 struct T;
 extern struct T t;
