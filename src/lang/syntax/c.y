@@ -182,7 +182,7 @@ params
     : /* empty */          { Par_ClearParams(&$$); }
     | param_list           { $$ = $1; }
     | param_list COMMA ELLIPSIS
-        { $$ = $1; $$.pl_variadic = AST_TYPE_VARIADIC; }
+        { $$ = $1; $$.pl_va = AST_TYPE_VA; }
     | ident_list           { $$ = $1; }
     ;
 

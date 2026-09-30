@@ -771,7 +771,7 @@ Ast_Type *Sem_FuncAddrType(Ast_Node *node)
     if (! func) {
         return Ast_NewPointer(&Ast_TypeInt);
     }
-    return Ast_NewPointer(Ast_NewFunction(func->af_ret, func->af_params, func->af_nparams, func->af_variadic, func->af_proto));
+    return Ast_NewPointer(Ast_NewFunction(func->af_ret, func->af_params, func->af_nparams, func->af_va, func->af_proto));
 }
 
 // Give a call the type its callee returns.
@@ -798,14 +798,14 @@ Ast_Type *Sem_CalleeType(Ast_Node *node)
 }
 
 // Check a call's argument count.
-void Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVariadic variadic, Ast_TypeProto proto, const char *what)
+void Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVa va, Ast_TypeProto proto, const char *what)
 {
     int32_t given = Sem_CountNodes(node->an_args);
 
     if (proto == AST_TYPE_NOPROTO) {
         return;
     }
-    if (variadic == AST_TYPE_VARIADIC) {
+    if (va == AST_TYPE_VA) {
         Err_AssertAt(node->an_line, given >= want, ERR_SEM_ARGS_TOO_FEW, what, given, want);
         return;
     }
@@ -813,10 +813,10 @@ void Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVariadic variadic, Ast
 }
 
 // Convert a call's arguments to the types its parameters name.
-void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto)
+void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeVa va, Ast_TypeProto proto)
 {
     int32_t i = 0;
-    int32_t from = proto == AST_TYPE_PROTO && variadic == AST_TYPE_VARIADIC ? nparams : 0;
+    int32_t from = proto == AST_TYPE_PROTO && va == AST_TYPE_VA ? nparams : 0;
     Ast_Node head = {0};
     Ast_Node *tail = &head;
     Ast_Node *arg = node->an_args;
@@ -845,8 +845,8 @@ void Sem_CheckCall(Ast_Node *node)
 {
     if (node->an_lhs) {
         Ast_Type *type = Sem_CalleeType(node);
-        Sem_CheckArity(node, type->at_nparams, type->at_variadic, type->at_proto, "a call through a function pointer");
-        Sem_ConvertArgs(node, type->at_params, type->at_nparams, type->at_variadic, type->at_proto);
+        Sem_CheckArity(node, type->at_nparams, type->at_va, type->at_proto, "a call through a function pointer");
+        Sem_ConvertArgs(node, type->at_params, type->at_nparams, type->at_va, type->at_proto);
         return;
     }
     Ast_Func *func = Sem_FindFunc(node->an_funcname);
@@ -854,9 +854,9 @@ void Sem_CheckCall(Ast_Node *node)
         return;
     }
     char *what = Str_Format("'%s'", node->an_funcname);
-    Sem_CheckArity(node, func->af_nparams, func->af_variadic, func->af_proto, what);
+    Sem_CheckArity(node, func->af_nparams, func->af_va, func->af_proto, what);
     Str_Free(what);
-    Sem_ConvertArgs(node, func->af_params, func->af_nparams, func->af_variadic, func->af_proto);
+    Sem_ConvertArgs(node, func->af_params, func->af_nparams, func->af_va, func->af_proto);
 }
 
 // Declare a nameless local of the function being analysed.
@@ -1366,7 +1366,7 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_VA_START: {
-            Err_AssertAt(node->an_line, Sem_CurFunc->af_variadic != AST_TYPE_FIXED, ERR_SEM_VA_START_FIXED);
+            Err_AssertAt(node->an_line, Sem_CurFunc->af_va != AST_TYPE_FIXED, ERR_SEM_VA_START_FIXED);
             node->an_type = &Ast_TypeInt;
         } break;
 

@@ -1881,7 +1881,7 @@ void Gen_x86_64_AssignTemps(Ast_Node *node, int32_t *offset)
 // Assign each local a stack slot and record the frame size.
 void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
 {
-    int32_t offset = func->af_variadic == AST_TYPE_VARIADIC ? GEN_X86_64_SYSV_VA_SAVE_SIZE : 0;
+    int32_t offset = func->af_va == AST_TYPE_VA ? GEN_X86_64_SYSV_VA_SAVE_SIZE : 0;
 
     if (Gen_x86_64_SysV_ReturnsInMemory(func->af_ret)) {
         offset += GEN_X86_64_WORD_SIZE;
@@ -2060,7 +2060,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
             Asm_x86_64_EmitSubImm(func->af_stack_size, ASM_X86_64_REG_RSP);
         }
 
-        if (func->af_variadic == AST_TYPE_VARIADIC) {
+        if (func->af_va == AST_TYPE_VA) {
             Gen_x86_64_SysV_EmitVaSaveArea();
         }
         Gen_x86_64_SysV_EmitParams(func);

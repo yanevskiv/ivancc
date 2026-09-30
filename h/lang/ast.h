@@ -109,10 +109,10 @@ enum Ast_TypeAlign {
 };
 
 // Whether a function's parameter list ended in `...`.
-typedef enum Ast_TypeVariadic Ast_TypeVariadic;
-enum Ast_TypeVariadic {
+typedef enum Ast_TypeVa Ast_TypeVa;
+enum Ast_TypeVa {
     AST_TYPE_FIXED,
-    AST_TYPE_VARIADIC
+    AST_TYPE_VA
 };
 
 // Whether a function was declared with a prototype.
@@ -237,7 +237,7 @@ struct Ast_Type {
     Ast_Type        *at_ret;      // return type of a FUNC
     Ast_Var         *at_params;   // parameters of a FUNC
     int32_t          at_nparams;  // number of parameters a FUNC declares
-    Ast_TypeVariadic at_variadic; // whether a FUNC's parameter list ended in `...`
+    Ast_TypeVa       at_va;       // whether a FUNC's parameter list ended in `...`
     Ast_TypeProto    at_proto;    // whether a FUNC was declared with a prototype
 };
 
@@ -362,7 +362,7 @@ struct Ast_Func {
     Ast_Type        *af_ret;        // type the function returns
     Ast_Var         *af_params;     // parameters
     int32_t          af_nparams;    // number of parameters
-    Ast_TypeVariadic af_variadic;   // whether the parameter list ended in `...`
+    Ast_TypeVa       af_va;         // whether the parameter list ended in `...`
     Ast_TypeProto    af_proto;      // whether a prototype declared the parameters
     bool             af_static;     // true when the function is local to this file
     Ast_Var         *af_locals;     // every local, including parameters
@@ -408,7 +408,7 @@ Ast_Type *Ast_SizeArray(const Ast_Type *type, int32_t len);
 Ast_Type *Ast_NewVla(Ast_Type *base, Ast_Node *len);
 bool      Ast_IsVla(const Ast_Type *type);
 bool      Ast_IsVm(const Ast_Type *type);
-Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto);
+Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVa va, Ast_TypeProto proto);
 Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, Ast_Line line);
 int32_t   Ast_PlaceBitfield(Ast_Member *member, int32_t bits);
