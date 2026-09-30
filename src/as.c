@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 
     char *outbuf = NULL;
     if (! output) {
-        output = outbuf = Str_ChangeOrAppendExt(input, ".o");
+        output = outbuf = Str_ModifyExtension(input, ".o");
     }
 
     As_Assemble(input, output);

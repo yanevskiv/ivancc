@@ -239,7 +239,7 @@ static char *Cc_DefaultTarget(const char *input, const char *output, Cc_DependMo
     }
 
     const char *slash = strrchr(input, '/');
-    char *object = Str_ChangeOrAppendExt(slash ? slash + 1 : input, ".o");
+    char *object = Str_ModifyExtension(slash ? slash + 1 : input, ".o");
     char *target = Pp_EscapeMake(object);
 
     Str_Free(object);
@@ -252,7 +252,7 @@ static char *Cc_DefaultDependFile(const char *input, const char *output, Cc_Depe
     if (mode == CC_DEPEND_INSTEAD) {
         return Str_Clone(output);
     }
-    return Str_ChangeOrAppendExt(Str_Equals(output, STDOUT_NAME) ? input : output, ".d");
+    return Str_ModifyExtension(Str_Equals(output, STDOUT_NAME) ? input : output, ".d");
 }
 
 // Write the dependency rule.
@@ -473,9 +473,9 @@ int main(int argc, char **argv)
         if (emit_pp || dep.cd_mode == CC_DEPEND_INSTEAD) {
             output = STDOUT_NAME;
         } else if (emit_text) {
-            output = outbuf = Str_ChangeOrAppendExt(input, ".s");
+            output = outbuf = Str_ModifyExtension(input, ".s");
         } else if (emit_obj) {
-            output = outbuf = Str_ChangeOrAppendExt(input, ".o");
+            output = outbuf = Str_ModifyExtension(input, ".o");
         } else {
             output = outbuf = Str_Clone(DEFAULT_OUTPUT);
         }

@@ -43,7 +43,7 @@ char *Str_Clone(const char *str);
 char *Str_Slice(const char *str, size_t start, size_t end);
 char *Str_Format(const char *fmt, ...);
 char *Str_FormatVa(const char *fmt, va_list ap);
-char *Str_ChangeOrAppendExt(const char *input, const char *suffix);
+char *Str_ModifyExtension(const char *input, const char *suffix);
 bool Str_Equals(const char *a, const char *b);
 bool Str_StartsWith(const char *str, const char *prefix);
 char *Str_Trim(char *str);
