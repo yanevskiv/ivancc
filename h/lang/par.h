@@ -275,8 +275,6 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 void      Par_CompleteTentatives(void);
 
 // Functions
-Ast_Func *Par_FindFunction(const char *name);
-Ast_Type *Par_FunctionType(const Ast_Func *fn);
 void      Par_AddFunction(Ast_Func *fn, Ast_Line line);
 void      Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Func *Par_MakeFunction(Ast_Node *body);
