@@ -168,10 +168,13 @@ static Ast_Type *Ast_IntTypes[AST_TYPE_KIND_COUNT][2] = {
 };
 
 // Table of interned string literals.
-static Ast_Str Ast_Strings[AST_MAX_STRINGS];
+static Ast_Str *Ast_Strings;
 
 // Number of entries currently used in Ast_Strings.
 static size_t Ast_NumStrings;
+
+// Number of entries Ast_Strings has room for.
+static size_t Ast_CapStrings;
 
 // The last global declared.
 static Ast_Var *Ast_GlobalsTail;
@@ -870,7 +873,10 @@ void Ast_DeclareEnumConst(const char *name, int64_t value)
 // Intern a decoded string literal of len bytes and return its table slot.
 size_t Ast_AddString(char *str, size_t len, size_t width)
 {
-    Err_Assert(Ast_NumStrings < AST_MAX_STRINGS, ERR_AST_TOO_MANY_STRINGS, AST_MAX_STRINGS);
+    if (Ast_NumStrings == Ast_CapStrings) {
+        Ast_CapStrings = Ast_CapStrings ? Ast_CapStrings * 2 : AST_STRINGS_FIRST_CAP;
+        Ast_Strings = realloc(Ast_Strings, Ast_CapStrings * sizeof(*Ast_Strings));
+    }
     Ast_Strings[Ast_NumStrings].as_data  = str;
     Ast_Strings[Ast_NumStrings].as_len   = len;
     Ast_Strings[Ast_NumStrings].as_width = width;

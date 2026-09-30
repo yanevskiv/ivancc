@@ -31,8 +31,8 @@
 #include "util/console/err.h"
 #include "util/str.h"
 
-// Maximum number of distinct string literals in one translation unit.
-#define AST_MAX_STRINGS 1024
+// Slots the string literal table starts with before it grows.
+#define AST_STRINGS_FIRST_CAP 64
 
 // Bits in a byte, for placing a bitfield inside the unit that holds it.
 #define AST_BITS_PER_BYTE 8
