@@ -122,10 +122,12 @@ void Str_Free(char *str)
     }
 }
 
-// Split str on sep into a list of owned pieces.
-Str_List Str_Split(const char *str, const char *sep)
+// Split str on sep into a NULL-terminated array of owned pieces.
+char **Str_Tokenize(const char *str, const char *sep)
 {
-    Str_List list = { NULL, 0 };
+    size_t cap = 10;
+    size_t count = 0;
+    char **tokens = malloc(cap * sizeof(*tokens));
     size_t seplen = strlen(sep);
 
     const char *start = str;
@@ -133,24 +135,31 @@ Str_List Str_Split(const char *str, const char *sep)
         const char *hit = strstr(start, sep);
         size_t len = hit ? (size_t) (hit - start) : strlen(start);
 
-        list.sl_items = realloc(list.sl_items, (list.sl_count + 1) * sizeof(*list.sl_items));
-        list.sl_items[list.sl_count++] = Str_Slice(start, 0, len);
+        if (count == cap) {
+            cap *= 2;
+            tokens = realloc(tokens, cap * sizeof(*tokens));
+        }
+        char *token = malloc(len + 1);
+        memcpy(token, start, len);
+        token[len] = '\0';
+        tokens[count++] = token;
 
         if (! hit) {
             break;
         }
         start = hit + seplen;
     }
-    return list;
+
+    tokens = realloc(tokens, (count + 1) * sizeof(*tokens));
+    tokens[count] = NULL;
+    return tokens;
 }
 
-// Free a list and its pieces.
-void Str_ListFree(Str_List *list)
+// Free a NULL-terminated array of tokens and the tokens.
+void Str_FreeTokens(char **tokens)
 {
-    for (size_t i = 0; i < list->sl_count; i++) {
-        Str_Free(list->sl_items[i]);
+    for (char **iter = tokens; *iter; iter++) {
+        Str_Free(*iter);
     }
-    free(list->sl_items);
-    list->sl_items = NULL;
-    list->sl_count = 0;
+    free(tokens);
 }
