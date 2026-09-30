@@ -35,6 +35,9 @@ static Ast_Node        *Par_CurSizes;
 // Serial number of the next compound literal's object.
 static int32_t Par_CompoundCount;
 
+// Serial number of the next block-scope static's symbol.
+static int32_t Par_StaticCount;
+
 // Serial number of the next local a variable-length array's size lands in.
 static int32_t Par_SizeCount;
 
@@ -1265,7 +1268,7 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
     if (Par_DeclStorage != AST_STORAGE_STATIC) {
         return Ast_DeclareVar(name, type, line);
     }
-    char *symbol = Str_Format("%s.%s", Par_CurFuncName, name);
+    char *symbol = Str_Format("%s.%s.%d", Par_CurFuncName, name, Par_StaticCount++);
     Ast_Var *var = Ast_DeclareStaticLocal(name, symbol, type, line);
     var->av_storage = AST_STORAGE_STATIC;
     return var;
