@@ -38,6 +38,8 @@ int32_t   Sem_CountNodes(Ast_Node *list);
 // Type and expression queries
 bool      Sem_IsPointer(const Ast_Type *type);
 bool      Sem_IsLvalue(const Ast_Node *node);
+bool      Sem_HoldsConst(const Ast_Type *type);
+bool      Sem_IsModifiable(const Ast_Type *type);
 bool      Sem_IsAggregate(const Ast_Type *type);
 const char *Sem_TypeName(const Ast_Type *type);
 Ast_Type *Sem_Decay(Ast_Type *type);

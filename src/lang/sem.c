@@ -66,6 +66,31 @@ bool Sem_IsLvalue(const Ast_Node *node)
         || node->an_kind == AST_NODE_KIND_COMPOUND;
 }
 
+// Return whether a type is const or holds a const member or element.
+bool Sem_HoldsConst(const Ast_Type *type)
+{
+    if (type->at_qual & AST_QUAL_CONST) {
+        return true;
+    }
+    if (type->at_kind == AST_TYPE_KIND_ARRAY) {
+        return Sem_HoldsConst(type->at_base);
+    }
+    if (Sem_IsAggregate(type)) {
+        for (const Ast_Member *member = type->at_members; member; member = member->am_next) {
+            if (Sem_HoldsConst(member->am_type)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Return whether an lvalue of this type may be stored to.
+bool Sem_IsModifiable(const Ast_Type *type)
+{
+    return type->at_kind != AST_TYPE_KIND_ARRAY && ! Sem_HoldsConst(type);
+}
+
 // Return whether this is a struct or union.
 bool Sem_IsAggregate(const Ast_Type *type)
 {
@@ -1108,7 +1133,7 @@ void Sem_Annotate(Ast_Node *node)
             Err_AssertAt(node->an_line, type->at_complete, ERR_SEM_MEMBER_INCOMPLETE, Sem_TypeName(type));
             node->an_member = Ast_FindMember(type, node->an_memname);
             Err_AssertAt(node->an_line, node->an_member, ERR_SEM_MEMBER_UNKNOWN, node->an_memname, Sem_TypeName(type));
-            node->an_type = node->an_member->am_type;
+            node->an_type = Ast_Qualify(node->an_member->am_type, node->an_member->am_type->at_qual | type->at_qual);
         } break;
 
         case AST_NODE_KIND_CAST: {
@@ -1136,6 +1161,7 @@ void Sem_Annotate(Ast_Node *node)
         case AST_NODE_KIND_ASSIGN: {
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
             Err_AssertAt(node->an_line, node->an_lhs->an_type->at_kind != AST_TYPE_KIND_ARRAY, ERR_SEM_ASSIGN_ARRAY);
+            Err_AssertAt(node->an_line, node->an_initstore || Sem_IsModifiable(node->an_lhs->an_type), ERR_SEM_ASSIGN_CONST);
             Err_AssertAt(node->an_line, ! Sem_IsAggregate(node->an_lhs->an_type) || Sem_SameType(node->an_lhs->an_type, node->an_rhs->an_type), ERR_SEM_ASSIGN_AGGREGATE_MISMATCH);
             node->an_type = node->an_lhs->an_type;
             node->an_rhs  = Sem_Convert(node->an_rhs, node->an_type);
@@ -1143,6 +1169,7 @@ void Sem_Annotate(Ast_Node *node)
 
         case AST_NODE_KIND_OPASSIGN: {
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
+            Err_AssertAt(node->an_line, Sem_IsModifiable(node->an_lhs->an_type), ERR_SEM_ASSIGN_CONST);
             if (Sem_NeedsFloatAssign(node)) {
                 Sem_LowerOpAssign(node);
                 break;
@@ -1157,6 +1184,7 @@ void Sem_Annotate(Ast_Node *node)
         case AST_NODE_KIND_POSTINC: {
             Ast_Type *type = node->an_lhs->an_type;
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
+            Err_AssertAt(node->an_line, Sem_IsModifiable(type), ERR_SEM_ASSIGN_CONST);
             if (Sem_NeedsFloatAssign(node) || (Sem_IsPointer(type) && Ast_IsVla(type->at_base))) {
                 Sem_LowerPostInc(node);
                 break;
