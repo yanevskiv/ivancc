@@ -65,7 +65,7 @@ char *Str_FormatVa(const char *fmt, va_list ap)
 }
 
 // Change or append a file extension ('main.c' -> 'main.s').
-char *Str_ChangeOrAppendExt(const char *input, const char *suffix)
+char *Str_ModifyExtension(const char *input, const char *suffix)
 {
     const char *slash = strrchr(input, '/');
     const char *dot = strrchr(input, '.');
