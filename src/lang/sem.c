@@ -158,7 +158,8 @@ Ast_Node *Sem_Convert(Ast_Node *node, Ast_Type *type)
     if (! node || ! node->an_type || Sem_SameType(node->an_type, type)) {
         return node;
     }
-    if (! Ast_IsArithmetic(node->an_type) || ! Ast_IsArithmetic(type)) {
+    bool test = type->at_kind == AST_TYPE_KIND_BOOL && Sem_IsPointer(node->an_type);
+    if (! test && (! Ast_IsArithmetic(node->an_type) || ! Ast_IsArithmetic(type))) {
         return node;
     }
     if (type->at_kind == AST_TYPE_KIND_BOOL) {
