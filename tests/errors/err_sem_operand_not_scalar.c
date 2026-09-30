@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_OPERAND_NOT_SCALAR]
-// A struct tested for truth by `!`.
+// Can't test a struct for truth.
 
 struct S { int a; } s;
 

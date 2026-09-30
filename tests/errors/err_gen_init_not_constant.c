@@ -1,10 +1,5 @@
 // (Test) Compiler error: [ERR_GEN_INIT_NOT_CONSTANT]
-// A file-scope object initialized by another object's value.
+// Can't initialize a file-scope object with a value known only at run time.
 
 int x;
 int y = x;
-
-int main(void)
-{
-    return 0;
-}

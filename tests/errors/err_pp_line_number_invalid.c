@@ -1,9 +1,4 @@
 // (Test) Compiler error: [ERR_PP_LINE_NUMBER_INVALID]
-// A #line whose line number is a name.
+// Can't give #line a line number that is not a number.
 
 #line x
-
-int main(void)
-{
-    return 0;
-}

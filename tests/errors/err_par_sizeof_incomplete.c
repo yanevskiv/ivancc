@@ -1,10 +1,5 @@
 // (Test) Compiler error: [ERR_PAR_SIZEOF_INCOMPLETE]
-// `sizeof` of a struct declared but never defined.
+// Can't take the `sizeof` of an incomplete type.
 
 struct S;
 unsigned long n = sizeof(struct S);
-
-int main(void)
-{
-    return 0;
-}

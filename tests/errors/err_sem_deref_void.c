@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_SEM_DEREF_VOID]
-// A `void *` dereferenced for its value.
+// Can't dereference a `void *` for its value.
 
 int main(void)
 {

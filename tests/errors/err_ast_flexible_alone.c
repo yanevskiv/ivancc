@@ -1,9 +1,4 @@
 // (Test) Compiler error: [ERR_AST_FLEXIBLE_ALONE]
-// A struct whose only member is a flexible array.
+// Can't have a flexible array member as a struct's only member.
 
 struct S { int d[]; };
-
-int main(void)
-{
-    return 0;
-}

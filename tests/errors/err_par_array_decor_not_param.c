@@ -1,9 +1,4 @@
 // (Test) Compiler error: [ERR_PAR_ARRAY_DECOR_NOT_PARAM]
-// `static` inside the brackets of an array that is no parameter.
+// Can't put `static` in the brackets of an array that is not a parameter.
 
 int a[static 3];
-
-int main(void)
-{
-    return 0;
-}

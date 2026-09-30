@@ -1,9 +1,4 @@
 // (Test) Compiler error: [ERR_PP_ERROR_DIRECTIVE]
-// #error stops the compile with its message.
+// Can't compile past an #error.
 
 #error stop here
-
-int main(void)
-{
-    return 0;
-}

@@ -1,9 +1,4 @@
 // (Test) Compiler error: [ERR_PAR_VOID_SIGNED]
-// `unsigned` applied to `void`.
+// Can't have an `unsigned void`.
 
 unsigned void f(void);
-
-int main(void)
-{
-    return 0;
-}

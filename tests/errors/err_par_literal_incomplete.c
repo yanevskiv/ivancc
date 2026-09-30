@@ -1,5 +1,5 @@
 // (Test) Compiler error: [ERR_PAR_LITERAL_INCOMPLETE]
-// A compound literal of a struct declared but never defined.
+// Can't have a compound literal of an incomplete type.
 
 struct S;
 
