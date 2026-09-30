@@ -317,6 +317,7 @@ struct Ast_Scope {
     Ast_Tag         *as_tags;     // struct, union and enum tags declared here
     Ast_Typedef     *as_typedefs; // typedef names declared here
     Ast_EnumConst   *as_enums;    // enumeration constants declared here
+    bool             as_params;   // holds a function definition's parameters
 };
 
 // A node in the abstract syntax tree.
@@ -413,6 +414,9 @@ int32_t   Ast_PlaceBitfield(Ast_Member *member, int32_t bits);
 Ast_Member *Ast_NamedMembers(Ast_Member *members);
 void      Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line);
 Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name);
+bool      Ast_IsCompatible(const Ast_Type *a, const Ast_Type *b);
+bool      Ast_IsCompatibleUnqualified(const Ast_Type *a, const Ast_Type *b);
+bool      Ast_IsCompatibleParams(const Ast_Type *a, const Ast_Type *b);
 
 // Node construction
 Ast_Node *Ast_NewNode(Ast_NodeKind kind, Ast_Line line);
@@ -431,6 +435,8 @@ void     Ast_EndScope(void);
 void     Ast_PushScope(void);
 void     Ast_PopScope(void);
 Ast_Var *Ast_FindVar(const char *name);
+Ast_Scope *Ast_SharedScope(void);
+Ast_Var *Ast_FindVarHere(const char *name);
 Ast_Var *Ast_FindGlobal(const char *symbol);
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line);
 void     Ast_DeclareParam(Ast_Var *var);
@@ -448,8 +454,10 @@ Ast_Type *Ast_FindTag(const char *name);
 Ast_Type *Ast_FindTagHere(const char *name);
 void      Ast_DeclareTag(const char *name, Ast_Type *type);
 Ast_Type *Ast_FindTypedef(const char *name);
+Ast_Type *Ast_FindTypedefHere(const char *name);
 void      Ast_DeclareTypedef(const char *name, Ast_Type *type);
 bool      Ast_FindEnumConst(const char *name, int64_t *value);
+bool      Ast_IsEnumConstHere(const char *name);
 void      Ast_DeclareEnumConst(const char *name, int64_t value);
 
 // String literal interning

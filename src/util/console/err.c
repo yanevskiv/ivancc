@@ -124,6 +124,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PAR_VLA_INITIALIZED]           = { "ERR_PAR_VLA_INITIALIZED",           "variable-length array '%s' takes no initializer" },
     [ERR_PAR_UNDECLARED]                = { "ERR_PAR_UNDECLARED",                "use of undeclared identifier '%s'" },
     [ERR_PAR_BODY_NOT_FUNCTION]         = { "ERR_PAR_BODY_NOT_FUNCTION",         "'%s' is not a function and takes no body" },
+    [ERR_PAR_REDECLARED]                = { "ERR_PAR_REDECLARED",                "redeclaration of '%s' in the same scope" },
+    [ERR_PAR_CONFLICTING_TYPES]         = { "ERR_PAR_CONFLICTING_TYPES",         "conflicting types for '%s'" },
+    [ERR_PAR_FUNCTION_REDEFINED]        = { "ERR_PAR_FUNCTION_REDEFINED",        "redefinition of function '%s'" },
 
     [ERR_AST_FLEXIBLE_IN_UNION]         = { "ERR_AST_FLEXIBLE_IN_UNION",         "a union cannot have a flexible array member" },
     [ERR_AST_FLEXIBLE_NOT_LAST]         = { "ERR_AST_FLEXIBLE_NOT_LAST",         "flexible array member '%s' must come last" },
