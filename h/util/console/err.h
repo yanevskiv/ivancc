@@ -255,9 +255,20 @@ enum Err_Code {
     ERR_CODE_COUNT
 };
 
-// A diagnostic's name and message format.
+// How a diagnostic is reported by default.
+typedef enum Err_Level Err_Level;
+enum Err_Level {
+    ERR_LEVEL_FATAL,    // an error that stays one
+    ERR_LEVEL_ERROR,    // an error that may become a warning
+    ERR_LEVEL_PEDANTIC, // a warning that -pedantic-errors makes an error
+    ERR_LEVEL_WARNING,  // a warning that -Werror makes an error
+    ERR_LEVEL_COUNT
+};
+
+// A diagnostic's level, name and message format.
 typedef struct Err_Entry Err_Entry;
 struct Err_Entry {
+    Err_Level   ee_level;
     const char *ee_name;
     const char *ee_format;
 };
