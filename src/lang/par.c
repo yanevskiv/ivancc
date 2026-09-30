@@ -1448,7 +1448,7 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
     Par_DeclName    = decl->pc_name;
     Par_DeclLine    = line;
     Par_CurDeclType = type;
-    if (type->at_kind != AST_TYPE_KIND_FUNC) {
+    if (type->at_kind != AST_TYPE_KIND_FUNC || Par_DeclStorage == AST_STORAGE_TYPEDEF) {
         Par_InFunction = false;
         return;
     }
