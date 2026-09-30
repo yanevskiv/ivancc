@@ -28,9 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Project headers.
-#include "util/console/err.h"
-
 // A list of owned strings, as produced by Str_Split.
 typedef struct Str_List Str_List;
 struct Str_List {
