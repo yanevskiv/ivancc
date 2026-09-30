@@ -994,10 +994,12 @@ void Sem_Arith(Ast_Node *node)
     Ast_Type *rhs = node->an_rhs->an_type;
 
     if (! Sem_IsPointer(lhs) && ! Sem_IsPointer(rhs)) {
+        Sem_NeedArithmetic(node);
         Sem_UsualArith(node);
         return;
     }
     Err_AssertAt(node->an_line, ! Ast_IsFloating(lhs) && ! Ast_IsFloating(rhs), ERR_SEM_POINTER_FLOATING);
+    Err_AssertAt(node->an_line, (Sem_IsPointer(lhs) || Ast_IsInteger(lhs)) && (Sem_IsPointer(rhs) || Ast_IsInteger(rhs)), ERR_SEM_OPERAND_NOT_INTEGER);
 
     if (Sem_IsPointer(lhs) && Sem_IsPointer(rhs)) {
         Err_AssertAt(node->an_line, node->an_kind == AST_NODE_KIND_SUB, ERR_SEM_ADD_POINTERS);
@@ -1030,6 +1032,53 @@ void Sem_NeedInteger(const Ast_Node *node)
     bool rhs = node->an_rhs && Ast_IsFloating(node->an_rhs->an_type);
 
     Err_AssertAt(node->an_line, ! lhs && ! rhs, ERR_SEM_OPERAND_FLOATING);
+
+    bool ilhs = ! node->an_lhs || Ast_IsInteger(node->an_lhs->an_type);
+    bool irhs = ! node->an_rhs || Ast_IsInteger(node->an_rhs->an_type);
+    Err_AssertAt(node->an_line, ilhs && irhs, ERR_SEM_OPERAND_NOT_INTEGER);
+}
+
+// Reject an operand of an operator that takes only numbers.
+void Sem_NeedArithmetic(const Ast_Node *node)
+{
+    bool lhs = ! node->an_lhs || Ast_IsArithmetic(node->an_lhs->an_type);
+    bool rhs = ! node->an_rhs || Ast_IsArithmetic(node->an_rhs->an_type);
+
+    Err_AssertAt(node->an_line, lhs && rhs, ERR_SEM_OPERAND_NOT_ARITHMETIC);
+}
+
+// Return whether a value of this type is a number or a pointer.
+bool Sem_IsScalar(const Ast_Type *type)
+{
+    return Ast_IsArithmetic(type) || Sem_IsPointer(type) || type->at_kind == AST_TYPE_KIND_FUNC;
+}
+
+// Reject an operand tested for truth that is neither a number nor a pointer.
+void Sem_NeedScalar(const Ast_Node *operand, Ast_Line line)
+{
+    Err_AssertAt(line, ! operand || ! operand->an_type || Sem_IsScalar(operand->an_type), ERR_SEM_OPERAND_NOT_SCALAR);
+}
+
+// Reject operands a compound assignment's operator cannot take.
+void Sem_CheckOpAssign(const Ast_Node *node)
+{
+    const Ast_Type *lhs = node->an_lhs->an_type;
+    const Ast_Type *rhs = node->an_rhs->an_type;
+
+    switch (node->an_op) {
+        case AST_NODE_KIND_ADD:
+        case AST_NODE_KIND_SUB: {
+            bool step = lhs->at_kind == AST_TYPE_KIND_PTR && Ast_IsInteger(rhs);
+            Err_AssertAt(node->an_line, step || (Ast_IsArithmetic(lhs) && Ast_IsArithmetic(rhs)), ERR_SEM_OPERAND_NOT_ARITHMETIC);
+        } break;
+        case AST_NODE_KIND_MUL:
+        case AST_NODE_KIND_DIV: {
+            Sem_NeedArithmetic(node);
+        } break;
+        default: {
+            Sem_NeedInteger(node);
+        }
+    }
 }
 
 // Reject a cast between a floating type and a non-arithmetic one.
@@ -1041,6 +1090,7 @@ void Sem_CheckCast(Ast_Node *node)
     if (! from || to->at_kind == AST_TYPE_KIND_VOID) {
         return;
     }
+    Err_AssertAt(node->an_line, Sem_IsScalar(to) && Sem_IsScalar(from), ERR_SEM_CAST_NOT_SCALAR);
     Err_AssertAt(node->an_line, ! Ast_IsFloating(to) || Ast_IsArithmetic(from), ERR_SEM_CAST_FLOATING);
     Err_AssertAt(node->an_line, ! Ast_IsFloating(from) || Ast_IsArithmetic(to), ERR_SEM_CAST_FLOATING);
     if (to->at_kind == AST_TYPE_KIND_BOOL) {
@@ -1131,6 +1181,8 @@ void Sem_Annotate(Ast_Node *node)
 
         case AST_NODE_KIND_AND:
         case AST_NODE_KIND_OR: {
+            Sem_NeedScalar(node->an_lhs, node->an_line);
+            Sem_NeedScalar(node->an_rhs, node->an_line);
             node->an_lhs = Sem_Truth(node->an_lhs);
             node->an_rhs = Sem_Truth(node->an_rhs);
             node->an_type = &Ast_TypeInt;
@@ -1138,6 +1190,7 @@ void Sem_Annotate(Ast_Node *node)
 
         case AST_NODE_KIND_MUL:
         case AST_NODE_KIND_DIV: {
+            Sem_NeedArithmetic(node);
             Sem_UsualArith(node);
         } break;
 
@@ -1153,7 +1206,10 @@ void Sem_Annotate(Ast_Node *node)
         case AST_NODE_KIND_NE:
         case AST_NODE_KIND_LT:
         case AST_NODE_KIND_LE: {
+            Sem_NeedScalar(node->an_lhs, node->an_line);
+            Sem_NeedScalar(node->an_rhs, node->an_line);
             if (! Sem_IsPointer(node->an_lhs->an_type) && ! Sem_IsPointer(node->an_rhs->an_type)) {
+                Sem_NeedArithmetic(node);
                 Sem_UsualArith(node);
             }
             node->an_type = &Ast_TypeInt;
@@ -1170,11 +1226,13 @@ void Sem_Annotate(Ast_Node *node)
             if (node->an_kind == AST_NODE_KIND_BITNOT) {
                 Sem_NeedInteger(node);
             }
+            Sem_NeedArithmetic(node);
             node->an_lhs = Sem_Convert(node->an_lhs, Sem_Promote(node->an_lhs->an_type));
             node->an_type = node->an_lhs->an_type;
         } break;
 
         case AST_NODE_KIND_NOT: {
+            Sem_NeedScalar(node->an_lhs, node->an_line);
             node->an_lhs = Sem_Truth(node->an_lhs);
             node->an_type = &Ast_TypeInt;
         } break;
@@ -1254,6 +1312,7 @@ void Sem_Annotate(Ast_Node *node)
         case AST_NODE_KIND_OPASSIGN: {
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
             Err_AssertAt(node->an_line, Sem_IsModifiable(node->an_lhs->an_type), ERR_SEM_ASSIGN_CONST);
+            Sem_CheckOpAssign(node);
             if (Sem_NeedsFloatAssign(node)) {
                 Sem_LowerOpAssign(node);
                 break;
@@ -1269,6 +1328,7 @@ void Sem_Annotate(Ast_Node *node)
             Ast_Type *type = node->an_lhs->an_type;
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
             Err_AssertAt(node->an_line, Sem_IsModifiable(type), ERR_SEM_ASSIGN_CONST);
+            Err_AssertAt(node->an_line, Ast_IsArithmetic(type) || type->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_OPERAND_NOT_ARITHMETIC);
             if (Sem_NeedsFloatAssign(node) || (Sem_IsPointer(type) && Ast_IsVla(type->at_base))) {
                 Sem_LowerPostInc(node);
                 break;
@@ -1280,6 +1340,7 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_COND: {
+            Sem_NeedScalar(node->an_cond, node->an_line);
             node->an_cond = Sem_Truth(node->an_cond);
             if (! Ast_IsArithmetic(node->an_then->an_type) || ! Ast_IsArithmetic(node->an_els->an_type)) {
                 node->an_type = Sem_CondType(node);
@@ -1335,6 +1396,7 @@ void Sem_Annotate(Ast_Node *node)
         case AST_NODE_KIND_IF:
         case AST_NODE_KIND_FOR:
         case AST_NODE_KIND_DO: {
+            Sem_NeedScalar(node->an_cond, node->an_line);
             node->an_cond = Sem_Truth(node->an_cond);
         } break;
 

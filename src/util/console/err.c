@@ -170,6 +170,10 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_SEM_POINTER_FLOATING]          = { "ERR_SEM_POINTER_FLOATING",          "pointer arithmetic needs an integer, not a floating operand" },
     [ERR_SEM_OPERAND_FLOATING]          = { "ERR_SEM_OPERAND_FLOATING",          "this operator needs integer operands, not floating ones" },
     [ERR_SEM_CAST_FLOATING]             = { "ERR_SEM_CAST_FLOATING",             "cannot convert between a floating type and a non-arithmetic one" },
+    [ERR_SEM_OPERAND_NOT_ARITHMETIC]    = { "ERR_SEM_OPERAND_NOT_ARITHMETIC",    "this operator takes only arithmetic operands" },
+    [ERR_SEM_OPERAND_NOT_INTEGER]       = { "ERR_SEM_OPERAND_NOT_INTEGER",       "this operator takes only integer operands" },
+    [ERR_SEM_OPERAND_NOT_SCALAR]        = { "ERR_SEM_OPERAND_NOT_SCALAR",        "a value tested for truth must be a number or a pointer" },
+    [ERR_SEM_CAST_NOT_SCALAR]           = { "ERR_SEM_CAST_NOT_SCALAR",           "a cast converts only a number or a pointer, to one or to void" },
 
     [ERR_GEN_NOT_LVALUE]                = { "ERR_GEN_NOT_LVALUE",                "not an lvalue" },
     [ERR_GEN_UNEXPECTED_OPASSIGN]       = { "ERR_GEN_UNEXPECTED_OPASSIGN",       "unexpected compound assignment %d" },
