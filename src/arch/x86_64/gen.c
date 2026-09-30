@@ -1406,7 +1406,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             Gen_x86_64_EmitFNum(node);
         } break;
         case AST_NODE_KIND_STR: {
-            Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, ".Lstr%d", node->an_str_idx);
+            Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, ".Lstr%d", node->an_stridx);
         } break;
         case AST_NODE_KIND_VAR:
         case AST_NODE_KIND_DEREF:
@@ -1742,7 +1742,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Gen_x86_64_EmitExpr(node->an_cond);
             Gen_x86_64_EmitCast(node->an_cond->an_type);
             Ast_Node *deflt = NULL;
-            for (Ast_Node *c = node->an_cases; c; c = c->an_case_next) {
+            for (Ast_Node *c = node->an_cases; c; c = c->an_casenext) {
                 c->an_label = Gen_x86_64_Count();
                 if (c->an_kind == AST_NODE_KIND_DEFAULT) {
                     deflt = c;

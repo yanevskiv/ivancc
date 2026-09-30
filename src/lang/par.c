@@ -1009,7 +1009,7 @@ bool Par_IsStringInit(const Ast_Type *type, const Ast_Node *init)
 void Par_FlattenString(Ast_Type *type, int32_t base, Ast_Node *init, Ast_Node **tail, Ast_Line line)
 {
     Ast_Type *elem = type->at_base;
-    Ast_Str *str = Ast_StringAt(init->an_str_idx);
+    Ast_Str *str = Ast_StringAt(init->an_stridx);
     int32_t width = (int32_t) str->as_width;
     int32_t len = (int32_t) (str->as_len / str->as_width);
     int32_t count = len + 1;
@@ -1540,7 +1540,7 @@ Ast_Var *Par_FindFuncName(const char *name, Ast_Line line)
     char *symbol = Str_Format("%s.%s", Par_CurFuncName, PAR_FUNC_NAME);
     Ast_Type *type = Ast_NewUnsizedArray(Ast_Qualify(&Ast_TypeChar, AST_QUAL_CONST));
 
-    str->an_str_idx = Ast_AddString(Str_Clone(Par_CurFuncName), strlen(Par_CurFuncName), AST_TYPE_SIZE_CHAR);
+    str->an_stridx = Ast_AddString(Str_Clone(Par_CurFuncName), strlen(Par_CurFuncName), AST_TYPE_SIZE_CHAR);
     Par_CurFuncVar = Ast_DeclareGlobal(symbol, type, line);
     Par_CurFuncVar->av_storage = AST_STORAGE_STATIC;
     Par_CurFuncVar->av_init = Par_FlattenInit(&Par_CurFuncVar->av_type, str, line);

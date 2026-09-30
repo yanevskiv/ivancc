@@ -669,7 +669,7 @@ bool Sem_FoldObject(const Ast_Node *node, const char **symbol, int64_t *addend)
 
     switch (node->an_kind) {
         case AST_NODE_KIND_STR: {
-            *symbol = Str_Format(".Lstr%zu", node->an_str_idx);
+            *symbol = Str_Format(".Lstr%zu", node->an_stridx);
             *addend = 0;
         } break;
         case AST_NODE_KIND_VAR:
@@ -1113,12 +1113,12 @@ void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
         node->an_val = Sem_Truncate(sw->an_cond->an_type, node->an_val);
     }
     if (node->an_kind == AST_NODE_KIND_CASE || node->an_kind == AST_NODE_KIND_DEFAULT) {
-        for (Ast_Node *seen = sw->an_cases; seen; seen = seen->an_case_next) {
+        for (Ast_Node *seen = sw->an_cases; seen; seen = seen->an_casenext) {
             Err_AssertAt(node->an_line, seen->an_kind != node->an_kind || (node->an_kind != AST_NODE_KIND_DEFAULT && seen->an_val != node->an_val), ERR_SEM_CASE_DUPLICATE);
         }
         Err_AssertAt(node->an_line, Ast_ContainsVmScope(sw->an_vm, node->an_vm), ERR_SEM_CASE_INTO_VM_SCOPE);
         if (*tail) {
-            (*tail)->an_case_next = node;
+            (*tail)->an_casenext = node;
         } else {
             sw->an_cases = node;
         }
@@ -1210,7 +1210,7 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_STR: {
-            Ast_Str *str = Ast_StringAt(node->an_str_idx);
+            Ast_Str *str = Ast_StringAt(node->an_stridx);
             Ast_Type *elem = str->as_width > AST_TYPE_SIZE_CHAR ? &Ast_TypeInt : &Ast_TypeChar;
             node->an_type = Ast_NewArray(elem, (int32_t) (str->as_len / str->as_width + 1));
         } break;
