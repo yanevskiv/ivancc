@@ -145,7 +145,7 @@ Pp_File *Pp_OpenFile(const char *path, uint32_t dir)
     }
 
     size_t len = 0;
-    char *raw = Fs_FileGetContents(path, &len);
+    char *raw = Pp_FileGetContents(path, &len);
 
     Err_Assert(raw, ERR_FILE_ACCESS, path, strerror(errno));
 
@@ -153,6 +153,38 @@ Pp_File *Pp_OpenFile(const char *path, uint32_t dir)
 
     free(raw);
     return file;
+}
+
+// Read the whole file at path.
+char *Pp_FileGetContents(const char *path, size_t *len)
+{
+    FILE *file = fopen(path, "rb");
+    if (! file) {
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    if (size < 0) {
+        fclose(file);
+        return NULL;
+    }
+
+    char *buf = malloc((size_t) size + 1);
+
+    if (fread(buf, 1, (size_t) size, file) != (size_t) size) {
+        free(buf);
+        fclose(file);
+        return NULL;
+    }
+    fclose(file);
+
+    buf[size] = '\0';
+    if (len) {
+        *len = (size_t) size;
+    }
+    return buf;
 }
 
 // Pre-pass and tokenize text as the file at path.
@@ -1064,7 +1096,7 @@ char *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Include ki
     char *name = Str_Format("%.*s", (int) operand->pt_len - 2, operand->pt_text + 1);
     uint32_t first = 0;
 
-    if (name[0] == '/' && Fs_FileExists(name)) {
+    if (name[0] == '/' && Pp_FileExists(name)) {
         *dir = PP_DIR_NONE;
         return name;
     }
@@ -1076,7 +1108,7 @@ char *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Include ki
         char *path = Pp_JoinPath(base, name);
 
         Str_Free(base);
-        if (Fs_FileExists(path)) {
+        if (Pp_FileExists(path)) {
             Str_Free(name);
             *dir = from->pf_dir;
             return path;
@@ -1086,7 +1118,7 @@ char *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Include ki
     for (uint32_t i = first; i < Pp_NumDirs; i++) {
         char *path = Pp_JoinPath(Pp_Dirs[i], name);
 
-        if (Fs_FileExists(path)) {
+        if (Pp_FileExists(path)) {
             Str_Free(name);
             *dir = i;
             return path;
@@ -1096,6 +1128,18 @@ char *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Include ki
 
     Err_RaiseAt(operand->pt_line, ERR_PP_INCLUDE_NOT_FOUND, name);
     return NULL;
+}
+
+// True if the file at path can be read.
+bool Pp_FileExists(const char *path)
+{
+    FILE *file = fopen(path, "rb");
+
+    if (! file) {
+        return false;
+    }
+    fclose(file);
+    return true;
 }
 
 // Return where a file's lines are before any #line.

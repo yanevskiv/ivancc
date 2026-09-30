@@ -36,7 +36,6 @@
 #include "util/console/err.h"
 #include "util/console/log.h"
 #include "util/buf.h"
-#include "util/fs.h"
 #include "util/str.h"
 #include "lang/ast.h"
 #include "lang/par.h"
@@ -386,6 +385,7 @@ struct Pp_Expr {
 // Files
 Pp_File        *Pp_FindFile(const char *path);
 Pp_File        *Pp_OpenFile(const char *path, uint32_t dir);
+char           *Pp_FileGetContents(const char *path, size_t *len);
 Pp_File        *Pp_OpenText(const char *path, const char *raw, size_t len, uint32_t dir);
 Pp_File        *Pp_OpenPragma(const Pp_Token *str, Ast_Line line);
 const Pp_Token *Pp_FindGuard(const Pp_File *file);
@@ -447,6 +447,7 @@ char     *Pp_DirName(const char *path);
 char     *Pp_JoinPath(const char *dir, const char *name);
 Pp_Token *Pp_HeaderFromTokens(const Pp_Token *list, Ast_Line line);
 char     *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Include kind, uint32_t *dir);
+bool      Pp_FileExists(const char *path);
 
 // Line map
 Pp_Place    Pp_FilePlace(const Pp_File *file);
