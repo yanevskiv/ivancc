@@ -481,7 +481,7 @@ int main(int argc, char **argv)
         }
     }
 
-    // Front end: build the AST
+    // Phase: front end
     Buf *text = Buf_New();
     char *sysdir = Cc_GetIncludeDir();
     Pp_Options pp_opts = {
@@ -517,7 +517,7 @@ int main(int argc, char **argv)
     Buf_Free(text);
     Sem_Analyze(Ast_Program);
 
-    // Back end: emit assembly text or a freestanding executable
+    // Phase: back end
     FILE *out = Cc_OpenOutput(output, emit_text ? "w" : "wb");
     if (emit_text) {
         Cc_x86_64_WriteText(out, Ast_Program);

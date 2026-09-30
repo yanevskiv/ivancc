@@ -400,7 +400,7 @@ void Enc_x86_64_EmitMov(const Asm_x86_64_Item *item)
     }
 }
 
-// Emit `<prefix> 0F <opcode>` pairing reg with the register rm, REX.W at 64 bits.
+// Emit `<prefix> 0F <opcode>` between the registers reg and rm.
 void Enc_x86_64_EmitSseRR(Enc_x86_64_Opcode prefix, Asm_x86_64_Width width, Enc_x86_64_Opcode2 opcode, uint8_t reg, uint8_t rm)
 {
     if (prefix) {
