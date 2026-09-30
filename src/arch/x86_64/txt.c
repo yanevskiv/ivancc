@@ -297,7 +297,11 @@ void Txt_x86_64_Att_Write(FILE *out)
                 }
             } break;
             case ASM_X86_64_ITEM_ADDR: {
-                fprintf(out, "  .quad %s\n", item->ai_label);
+                if (item->ai_addend) {
+                    fprintf(out, "  .quad %s%+lld\n", item->ai_label, (long long) item->ai_addend);
+                } else {
+                    fprintf(out, "  .quad %s\n", item->ai_label);
+                }
             } break;
             case ASM_X86_64_ITEM_DIRECTIVE: {
                 fprintf(out, "  %s\n", item->ai_text);
@@ -476,7 +480,31 @@ bool Txt_x86_64_Att_IsTarget(const char *text)
 // True if text names a symbol a .quad can hold.
 bool Txt_x86_64_Att_IsAddress(const char *text)
 {
-    return Txt_x86_64_Att_IsNameStart(text[0]) && Txt_x86_64_Att_IsTarget(text);
+    int64_t addend = 0;
+    return Txt_x86_64_Att_ScanAddress(text, &addend) != NULL;
+}
+
+// Scan a symbol and the offset a `.quad` adds to it.
+const char *Txt_x86_64_Att_ScanAddress(const char *text, int64_t *addend)
+{
+    const char *name = text;
+    const char *end = NULL;
+
+    *addend = 0;
+    if (! Txt_x86_64_Att_IsNameStart(*text)) {
+        return NULL;
+    }
+    while (Txt_x86_64_Att_IsNameChar(*name)) {
+        name++;
+    }
+    if (*name == '\0') {
+        return name;
+    }
+    if (*name != '+' && *name != '-') {
+        return NULL;
+    }
+    end = Txt_x86_64_Att_ScanNumber(*name == '+' ? name + 1 : name, addend);
+    return end && *end == '\0' ? name : NULL;
 }
 
 // Scan a register name, or return NULL where none stands.
@@ -702,8 +730,13 @@ bool Txt_x86_64_Att_EmitAddress(const char *text, size_t width)
     if (! Txt_x86_64_Att_IsNameStart(text[0])) {
         return false;
     }
-    Err_Assert(width == 8 && Txt_x86_64_Att_IsAddress(text), ERR_TXT_QUAD_NOT_ADDRESS, text);
-    Asm_x86_64_EmitAddress(text);
+    int64_t addend = 0;
+    const char *end = Txt_x86_64_Att_ScanAddress(text, &addend);
+
+    Err_Assert(width == 8 && end, ERR_TXT_QUAD_NOT_ADDRESS, text);
+    char *name = Str_Slice(text, 0, (size_t) (end - text));
+    Asm_x86_64_EmitAddress(name, addend);
+    Str_Free(name);
     return true;
 }
 

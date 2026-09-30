@@ -209,7 +209,8 @@ struct Asm_x86_64_Item {
     Asm_x86_64_Op        ai_op;       // INSTR
     Asm_x86_64_Operand   ai_dst;      // INSTR
     Asm_x86_64_Operand   ai_src;      // INSTR
-    const char          *ai_label;    // LABEL / GLOBL
+    const char          *ai_label;    // LABEL / GLOBL / ADDR
+    int64_t              ai_addend;   // ADDR
     const char          *ai_text;     // DIRECTIVE
     const char          *ai_secname;  // SECTION
     uint32_t             ai_sectype;  // SECTION
@@ -239,7 +240,7 @@ void Asm_x86_64_EmitLabel(const char *name, ...);
 void Asm_x86_64_EmitSection(const char *name, uint32_t type, uint64_t flags);
 void Asm_x86_64_EmitGlobl(const char *name, ...);
 void Asm_x86_64_EmitBytes(const void *data, size_t len);
-void Asm_x86_64_EmitAddress(const char *label);
+void Asm_x86_64_EmitAddress(const char *label, int64_t addend);
 void Asm_x86_64_EmitDirective(const char *text, ...);
 
 // Register-to-register
