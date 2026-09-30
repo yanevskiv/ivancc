@@ -505,12 +505,12 @@ bool Txt_x86_64_Att_IsLabelStart(char ch)
 // True if text names a branch target.
 bool Txt_x86_64_Att_IsTarget(const char *text)
 {
-    const char *cursor = text;
+    const char *ptr = text;
 
-    while (Txt_x86_64_Att_IsNameChar(*cursor)) {
-        cursor++;
+    while (Txt_x86_64_Att_IsNameChar(*ptr)) {
+        ptr++;
     }
-    return cursor > text && *cursor == '\0';
+    return ptr > text && *ptr == '\0';
 }
 
 // Scan a symbol and the offset a `.quad` adds to it.
@@ -539,43 +539,43 @@ const char *Txt_x86_64_Att_ScanAddress(const char *text, int64_t *addend)
 // Scan a register name, or return NULL where none stands.
 const char *Txt_x86_64_Att_ScanReg(const char *text)
 {
-    const char *cursor = text;
+    const char *ptr = text;
 
-    if (! isalpha((uint8_t) *cursor)) {
+    if (! isalpha((uint8_t) *ptr)) {
         return NULL;
     }
-    while (isalnum((uint8_t) *cursor)) {
-        cursor++;
+    while (isalnum((uint8_t) *ptr)) {
+        ptr++;
     }
-    return cursor;
+    return ptr;
 }
 
 // Scan a decimal, octal or hex integer, or return NULL where none stands.
 const char *Txt_x86_64_Att_ScanNumber(const char *text, int64_t *value)
 {
-    const char *cursor = text;
+    const char *ptr = text;
 
-    if (*cursor == '-') {
-        cursor++;
+    if (*ptr == '-') {
+        ptr++;
     }
-    if (Str_StartsWith(cursor, TXT_X86_64_HEX_PREFIX) || Str_StartsWith(cursor, TXT_X86_64_HEX_PREFIX_UPPER)) {
-        cursor += strlen(TXT_X86_64_HEX_PREFIX);
-        if (! isxdigit((uint8_t) *cursor)) {
+    if (Str_StartsWith(ptr, TXT_X86_64_HEX_PREFIX) || Str_StartsWith(ptr, TXT_X86_64_HEX_PREFIX_UPPER)) {
+        ptr += strlen(TXT_X86_64_HEX_PREFIX);
+        if (! isxdigit((uint8_t) *ptr)) {
             return NULL;
         }
-        while (isxdigit((uint8_t) *cursor)) {
-            cursor++;
+        while (isxdigit((uint8_t) *ptr)) {
+            ptr++;
         }
     } else {
-        if (! isdigit((uint8_t) *cursor)) {
+        if (! isdigit((uint8_t) *ptr)) {
             return NULL;
         }
-        while (isdigit((uint8_t) *cursor)) {
-            cursor++;
+        while (isdigit((uint8_t) *ptr)) {
+            ptr++;
         }
     }
     *value = strtol(text, NULL, 0);
-    return cursor;
+    return ptr;
 }
 
 // Return the value of a digit in base, or -1 when it is not one.
@@ -594,17 +594,17 @@ int32_t Txt_x86_64_Att_DigitValue(char ch, Txt_x86_64_Base base)
 // Decode the quoted string at text.
 const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
 {
-    const char *cursor = text;
+    const char *ptr = text;
 
-    for (cursor++; *cursor != '"'; cursor++) {
-        Err_Assert(*cursor != '\0', ERR_TXT_STRING_UNTERMINATED, text);
-        if (*cursor != '\\') {
-            Buf_PutByte(bytes, *cursor);
+    for (ptr++; *ptr != '"'; ptr++) {
+        Err_Assert(*ptr != '\0', ERR_TXT_STRING_UNTERMINATED, text);
+        if (*ptr != '\\') {
+            Buf_PutByte(bytes, *ptr);
             continue;
         }
-        cursor++;
-        Err_Assert(*cursor != '\0', ERR_TXT_STRING_UNTERMINATED, text);
-        switch (*cursor) {
+        ptr++;
+        Err_Assert(*ptr != '\0', ERR_TXT_STRING_UNTERMINATED, text);
+        switch (*ptr) {
             case 'b': {
                 Buf_PutByte(bytes, '\b');
             } break;
@@ -622,7 +622,7 @@ const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
             } break;
             case '\\':
             case '"': {
-                Buf_PutByte(bytes, *cursor);
+                Buf_PutByte(bytes, *ptr);
             } break;
             case '0':
             case '1':
@@ -635,33 +635,33 @@ const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
                 uint32_t value = 0;
 
                 for (size_t digits = 0; digits < TXT_X86_64_ESCAPE_OCTAL_DIGITS; digits++) {
-                    int32_t digit = Txt_x86_64_Att_DigitValue(*cursor, TXT_X86_64_BASE_OCTAL);
+                    int32_t digit = Txt_x86_64_Att_DigitValue(*ptr, TXT_X86_64_BASE_OCTAL);
 
                     if (digit < 0) {
                         break;
                     }
                     value = value * TXT_X86_64_BASE_OCTAL + (uint32_t) digit;
-                    cursor++;
+                    ptr++;
                 }
-                cursor--;
+                ptr--;
                 Buf_PutByte(bytes, (char) value);
             } break;
             case 'x':
             case 'X': {
                 uint32_t value = 0;
 
-                while (Txt_x86_64_Att_DigitValue(cursor[1], TXT_X86_64_BASE_HEX) >= 0) {
-                    cursor++;
-                    value = value * TXT_X86_64_BASE_HEX + (uint32_t) Txt_x86_64_Att_DigitValue(*cursor, TXT_X86_64_BASE_HEX);
+                while (Txt_x86_64_Att_DigitValue(ptr[1], TXT_X86_64_BASE_HEX) >= 0) {
+                    ptr++;
+                    value = value * TXT_X86_64_BASE_HEX + (uint32_t) Txt_x86_64_Att_DigitValue(*ptr, TXT_X86_64_BASE_HEX);
                 }
                 Buf_PutByte(bytes, (char) value);
             } break;
             default: {
-                Err_Raise(ERR_TXT_ESCAPE_UNKNOWN, *cursor);
+                Err_Raise(ERR_TXT_ESCAPE_UNKNOWN, *ptr);
             } break;
         }
     }
-    return cursor + 1;
+    return ptr + 1;
 }
 
 // Parse one AT&T operand into op.
@@ -670,7 +670,7 @@ bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
     int64_t imm = 0;
     int64_t disp = 0;
     const char *end;
-    const char *cursor = text;
+    const char *ptr = text;
     Asm_x86_64_Width width;
 
     if (Txt_x86_64_Att_ParseSt(text, op)) {
@@ -700,20 +700,20 @@ bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
         }
     }
 
-    while (Txt_x86_64_Att_IsNameChar(*cursor)) {
-        cursor++;
+    while (Txt_x86_64_Att_IsNameChar(*ptr)) {
+        ptr++;
     }
-    if (cursor > text && Str_Equals(cursor, TXT_X86_64_RIP_SUFFIX)) {
-        *op = Asm_x86_64_Rip(Str_Slice(text, 0, (size_t) (cursor - text)));
+    if (ptr > text && Str_Equals(ptr, TXT_X86_64_RIP_SUFFIX)) {
+        *op = Asm_x86_64_Rip(Str_Slice(text, 0, (size_t) (ptr - text)));
         return true;
     }
 
-    cursor = Txt_x86_64_Att_ScanNumber(text, &disp);
-    if (! cursor) {
-        cursor = text;
+    ptr = Txt_x86_64_Att_ScanNumber(text, &disp);
+    if (! ptr) {
+        ptr = text;
     }
-    if (Str_StartsWith(cursor, TXT_X86_64_MEM_PREFIX)) {
-        const char *basename = cursor + strlen(TXT_X86_64_MEM_PREFIX);
+    if (Str_StartsWith(ptr, TXT_X86_64_MEM_PREFIX)) {
+        const char *basename = ptr + strlen(TXT_X86_64_MEM_PREFIX);
         end = Txt_x86_64_Att_ScanReg(basename);
         if (Str_Equals(end, ")")) {
             char *name = Str_Slice(basename, 0, (size_t) (end - basename));
@@ -939,11 +939,11 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
 void Txt_x86_64_Att_ParseLine(char *line)
 {
     bool quoted = false;
-    for (char *cursor = line; *cursor; cursor++) {
-        if (*cursor == '"') {
+    for (char *ptr = line; *ptr; ptr++) {
+        if (*ptr == '"') {
             quoted = ! quoted;
-        } else if (*cursor == '#' && ! quoted) {
-            *cursor = '\0';
+        } else if (*ptr == '#' && ! quoted) {
+            *ptr = '\0';
             break;
         }
     }
@@ -953,22 +953,22 @@ void Txt_x86_64_Att_ParseLine(char *line)
         return;
     }
 
-    char *cursor = text;
-    if (Txt_x86_64_Att_IsLabelStart(*cursor)) {
-        while (Txt_x86_64_Att_IsNameChar(*cursor)) {
-            cursor++;
+    char *ptr = text;
+    if (Txt_x86_64_Att_IsLabelStart(*ptr)) {
+        while (Txt_x86_64_Att_IsNameChar(*ptr)) {
+            ptr++;
         }
     }
-    if (cursor > text && *cursor == ':') {
-        char *name = Str_Slice(text, 0, (size_t) (cursor - text));
+    if (ptr > text && *ptr == ':') {
+        char *name = Str_Slice(text, 0, (size_t) (ptr - text));
         Asm_x86_64_EmitLabel("%s", name);
         Str_Free(name);
-        cursor++;
-        while (*cursor && strchr(TXT_X86_64_BLANKS, *cursor)) {
-            cursor++;
+        ptr++;
+        while (*ptr && strchr(TXT_X86_64_BLANKS, *ptr)) {
+            ptr++;
         }
-        if (*cursor) {
-            Txt_x86_64_Att_ParseLine(cursor);
+        if (*ptr) {
+            Txt_x86_64_Att_ParseLine(ptr);
         }
     } else if (text[0] == '.') {
         Txt_x86_64_Att_ParseDirective(text);
