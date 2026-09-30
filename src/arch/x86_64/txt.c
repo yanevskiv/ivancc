@@ -737,9 +737,9 @@ bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op)
 // Emit a .byte/.word/.long/.quad list, little-endian or as an address.
 void Txt_x86_64_Att_EmitInts(const char *args, size_t width)
 {
-    Str_List parts = Str_Split(args, ",");
-    for (size_t i = 0; i < parts.sl_count; i++) {
-        char *text = Str_Trim(parts.sl_items[i]);
+    char **parts = Str_Tokenize(args, ",");
+    for (char **iter = parts; *iter; iter++) {
+        char *text = Str_Trim(*iter);
         if (! *text) {
             continue;
         }
@@ -753,7 +753,7 @@ void Txt_x86_64_Att_EmitInts(const char *args, size_t width)
         }
         Asm_x86_64_EmitBytes(bytes, width);
     }
-    Str_ListFree(&parts);
+    Str_FreeTokens(parts);
 }
 
 // Emit a `.quad` item that names a symbol.
@@ -813,9 +813,9 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
         rest++;
     }
     if (*rest) {
-        Str_List parts = Str_Split(rest, ",");
-        for (size_t i = 0; i < parts.sl_count; i++) {
-            char *text = Str_Trim(parts.sl_items[i]);
+        char **parts = Str_Tokenize(rest, ",");
+        for (char **iter = parts; *iter; iter++) {
+            char *text = Str_Trim(*iter);
             if (! *text) {
                 continue;
             }
@@ -829,7 +829,7 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
             Err_Assert(Txt_x86_64_Att_ParseOperand(op_name, &ops[n_ops]), ERR_TXT_OPERAND_MALFORMED, text);
             n_ops++;
         }
-        Str_ListFree(&parts);
+        Str_FreeTokens(parts);
     }
 
     if (Txt_x86_64_Att_IsDirectBranch(opcode)) {
@@ -974,9 +974,9 @@ void Txt_x86_64_Att_ParseLine(char *line)
 void Txt_x86_64_Att_Parse(const char *text)
 {
     Asm_x86_64_Reset();
-    Str_List lines = Str_Split(text, "\n");
-    for (size_t i = 0; i < lines.sl_count; i++) {
-        Txt_x86_64_Att_ParseLine(lines.sl_items[i]);
+    char **lines = Str_Tokenize(text, "\n");
+    for (char **iter = lines; *iter; iter++) {
+        Txt_x86_64_Att_ParseLine(*iter);
     }
-    Str_ListFree(&lines);
+    Str_FreeTokens(lines);
 }
