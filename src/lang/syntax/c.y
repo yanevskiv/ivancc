@@ -65,7 +65,7 @@ void yyerror(const char *s);
 %token <name> TYPEDEF_NAME
 %token SWITCH CASE DEFAULT GOTO
 %token STATIC EXTERN REGISTER AUTO INLINE
-%token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END
+%token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END BUILTIN_VA_COPY
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
@@ -687,6 +687,8 @@ primary
     /* va_end has nothing to undo. */
     | BUILTIN_VA_END LPAREN expr RPAREN
         { $$ = $3; }
+    | BUILTIN_VA_COPY LPAREN expr COMMA expr RPAREN
+        { $$ = Par_VaCopy($3, $5, @1); }
     ;
 
 /* One string literal, or several written next to each other. */

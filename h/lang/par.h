@@ -232,6 +232,7 @@ Ast_Type   *Par_SpecType(Par_Spec specs, Ast_Line line);
 Ast_Type   *Par_SpecsType(const Par_Specs *specs, Ast_Line line);
 Ast_Type   *Par_VaListType(void);
 Ast_Node   *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line);
+Ast_Node   *Par_VaCopy(Ast_Node *dst, Ast_Node *src, Ast_Line line);
 
 // Aggregates
 Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail);
