@@ -85,6 +85,7 @@ BEXP    [pP][+-]?{DIGIT}+
 "union"                 return UNION;
 "enum"                  return ENUM;
 "typedef"               return TYPEDEF;
+"__asm__"               return ASM;
 "__builtin_va_list"     return BUILTIN_VA_LIST;
 "__builtin_va_start"    return BUILTIN_VA_START;
 "__builtin_va_arg"      return BUILTIN_VA_ARG;

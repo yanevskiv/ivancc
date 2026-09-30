@@ -1384,6 +1384,7 @@ void Sem_Annotate(Ast_Node *node)
         case AST_NODE_KIND_DECL:
         case AST_NODE_KIND_VLA:
         case AST_NODE_KIND_EXPR_STMT:
+        case AST_NODE_KIND_ASM:
         case AST_NODE_KIND_INIT:
         case AST_NODE_KIND_INITLIST:
         case AST_NODE_KIND_DESIGNATOR:
