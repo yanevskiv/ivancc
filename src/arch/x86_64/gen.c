@@ -839,7 +839,7 @@ void Gen_x86_64_EmitCast(const Ast_Type *type)
         case AST_TYPE_KIND_STRUCT:
         case AST_TYPE_KIND_UNION:
         case AST_TYPE_KIND_COUNT: {
-            // already as wide as a register
+            // empty
         } break;
     }
 }
@@ -1040,7 +1040,7 @@ void Gen_x86_64_EmitIntToX87(const Ast_Type *from)
         return;
     }
 
-    // fildq read the top bit as a sign, so add 2^64 back when it was set
+    // Phase: wide unsigned
     Asm_x86_64_EmitMovImm(GEN_X86_64_SIGN_SHIFT, ASM_X86_64_REG_RCX);
     Asm_x86_64_EmitShr(ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitMovImm(GEN_X86_64_FLOAT_TWO_TO_64, ASM_X86_64_REG_RCX);
@@ -1092,7 +1092,7 @@ void Gen_x86_64_EmitX87ToInt(const Ast_Type *to)
         return;
     }
 
-    // take 2^63 off a value that reaches it, and put the top bit back after
+    // Phase: wide unsigned
     Asm_x86_64_EmitMovImm(GEN_X86_64_FLOAT_TWO_TO_63, ASM_X86_64_REG_RAX);
     Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RSP, 0, ASM_X86_64_WIDTH_64);
     Asm_x86_64_EmitX87Mem(ASM_X86_64_OP_FLDS, ASM_X86_64_REG_RSP, 0);
@@ -2040,7 +2040,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
 {
     for (Ast_Func *func = prog; func; func = func->af_next) {
         if (! func->af_body) {
-            continue;  // a prototype emits nothing
+            continue;
         }
         Gen_x86_64_AssignLvarOffsets(func);
         Gen_x86_64_CurrFunc = func;
@@ -2053,7 +2053,7 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         }
         Asm_x86_64_EmitLabel(func->af_name);
 
-        // prologue
+        // Phase: prologue
         Asm_x86_64_EmitPush(ASM_X86_64_REG_RBP);
         Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RSP, ASM_X86_64_REG_RBP);
         if (func->af_stack_size) {
@@ -2065,9 +2065,10 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
         }
         Gen_x86_64_SysV_EmitParams(func);
 
+        // Phase: body
         Gen_x86_64_EmitStmt(func->af_body);
 
-        // epilogue
+        // Phase: epilogue
         Asm_x86_64_EmitMovImm(0, ASM_X86_64_REG_RAX);
         Asm_x86_64_EmitLabel(".L.return.%s", func->af_name);
         if (Gen_x86_64_SysV_ReturnsInMemory(func->af_type->at_ret)) {

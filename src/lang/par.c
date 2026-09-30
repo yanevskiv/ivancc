@@ -679,7 +679,7 @@ void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line)
     into->ps_inline |= one->ps_inline;
 }
 
-// Return the storage class a declaration's specifiers name, where use allows it.
+// Return the storage class a declaration's specifiers name.
 Ast_Storage Par_SpecsStorage(const Par_Specs *specs, Par_StorageUse use, Ast_Line line)
 {
     bool storage = specs->ps_nstorage && ! (use == PAR_STORAGE_REGISTER && specs->ps_register);
@@ -1266,15 +1266,16 @@ Ast_Node *Par_WithSizes(Ast_Type *type, Ast_Node *expr, Ast_Line line)
 void Par_Redeclare(Ast_Var *var, Ast_Line line)
 {
     switch (Par_DeclStorage) {
-    case AST_STORAGE_EXTERN:
-        break;
-    case AST_STORAGE_STATIC:
-        Err_AssertAt(line, var->av_storage == AST_STORAGE_STATIC, ERR_PAR_OBJECT_LINKAGE, var->av_name);
-        break;
-    default:
-        Err_AssertAt(line, var->av_storage != AST_STORAGE_STATIC, ERR_PAR_OBJECT_LINKAGE, var->av_name);
-        var->av_storage = AST_STORAGE_NONE;
-        break;
+        case AST_STORAGE_EXTERN: {
+            // empty
+        } break;
+        case AST_STORAGE_STATIC: {
+            Err_AssertAt(line, var->av_storage == AST_STORAGE_STATIC, ERR_PAR_OBJECT_LINKAGE, var->av_name);
+        } break;
+        default: {
+            Err_AssertAt(line, var->av_storage != AST_STORAGE_STATIC, ERR_PAR_OBJECT_LINKAGE, var->av_name);
+            var->av_storage = AST_STORAGE_NONE;
+        } break;
     }
 }
 
@@ -1317,7 +1318,7 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
     }
 }
 
-// Refuse a second declaration of a name in one block, but for agreeing externs and typedefs.
+// Refuse a second declaration of a name in one block.
 void Par_CheckRedeclaration(const char *name, const Ast_Type *type, Ast_Line line)
 {
     Ast_Var *var = Ast_FindVarHere(name);
