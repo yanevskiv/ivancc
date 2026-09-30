@@ -218,7 +218,7 @@ Elf_Sec *Elf_Section_Add(Elf *elf, const char *name, uint32_t type, uint64_t fla
 Elf_Sec *Elf_Section_Find(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < elf->elf_nsecs; i++) {
-        if (Str_Equals(elf->elf_secs[i]->sec_name, name)) {
+        if (strcmp(elf->elf_secs[i]->sec_name, name) == 0) {
             return elf->elf_secs[i];
         }
     }
@@ -281,7 +281,7 @@ Elf_Sym *Elf_Symbol_Add(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value
 Elf_Sym *Elf_Symbol_Find(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < elf->elf_nsyms; i++) {
-        if (Str_Equals(elf->elf_syms[i]->sym_name, name)) {
+        if (strcmp(elf->elf_syms[i]->sym_name, name) == 0) {
             return elf->elf_syms[i];
         }
     }
