@@ -478,6 +478,7 @@ void Gen_x86_64_SysV_EmitCallResult(Ast_Node *node)
 void Gen_x86_64_SysV_EmitCall(Ast_Node *node)
 {
     Gen_x86_64_SysV_Cursor cur;
+    bool direct = node->an_lhs->an_kind == AST_NODE_KIND_FUNCADDR;
 
     Gen_x86_64_SysV_StartCursor(&cur, node->an_type);
     Gen_x86_64_SysV_Loc *locs = Gen_x86_64_SysV_PlaceArgs(node->an_args, &cur);
@@ -490,7 +491,7 @@ void Gen_x86_64_SysV_EmitCall(Ast_Node *node)
         Gen_x86_64_Depth++;
     }
 
-    if (node->an_lhs) {
+    if (! direct) {
         Gen_x86_64_EmitExpr(node->an_lhs);
         Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RBP, node->an_calltmp, ASM_X86_64_WIDTH_64);
     }
@@ -505,11 +506,11 @@ void Gen_x86_64_SysV_EmitCall(Ast_Node *node)
     }
 
     Asm_x86_64_EmitMovImm8(cur.gc_sse, ASM_X86_64_REG_RAX);
-    if (node->an_lhs) {
+    if (direct) {
+        Asm_x86_64_EmitCall(node->an_lhs->an_funcname);
+    } else {
         Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, node->an_calltmp, ASM_X86_64_REG_R11, ASM_X86_64_WIDTH_64);
         Asm_x86_64_EmitCallReg(ASM_X86_64_REG_R11);
-    } else {
-        Asm_x86_64_EmitCall(node->an_funcname);
     }
 
     if (nStack + nAlignPad > 0) {
@@ -1861,7 +1862,7 @@ void Gen_x86_64_AssignTemps(Ast_Node *node, int32_t *offset)
         *offset = Gen_x86_64_AlignTo(*offset + Gen_x86_64_SlotSize(node->an_type), node->an_type->at_align);
         node->an_tmp = -*offset;
     }
-    if (node->an_kind == AST_NODE_KIND_CALL && node->an_lhs) {
+    if (node->an_kind == AST_NODE_KIND_CALL && node->an_lhs->an_kind != AST_NODE_KIND_FUNCADDR) {
         *offset = Gen_x86_64_AlignTo(*offset + GEN_X86_64_WORD_SIZE, GEN_X86_64_WORD_SIZE);
         node->an_calltmp = -*offset;
     }

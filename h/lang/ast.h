@@ -184,7 +184,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_DESIGNATOR,// `[an_val]` or `.an_memname` naming where an item lands
     AST_NODE_KIND_ZERO,      // zero an_val bytes of the object an_lhs addresses
     AST_NODE_KIND_COMPOUND,  // (type){...}
-    AST_NODE_KIND_CALL,      // function call
+    AST_NODE_KIND_CALL,      // lhs(args), a FUNCADDR lhs when direct
     AST_NODE_KIND_FUNCADDR,  // a function named as a value
     AST_NODE_KIND_VA_START,  // __builtin_va_start(lhs, last)
     AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs, T)
@@ -334,7 +334,7 @@ struct Ast_Node {
     Ast_Node    *an_init;     // initialiser of AST_NODE_KIND_FOR
     Ast_Node    *an_inc;      // increment of AST_NODE_KIND_FOR
     Ast_Node    *an_body;     // statement list for AST_NODE_KIND_BLOCK / FOR body
-    char        *an_funcname; // callee of a CALL, or the label a GOTO names
+    char        *an_funcname; // a FUNCADDR's function, or a GOTO or LABEL name
     Ast_Node    *an_args;     // argument list for AST_NODE_KIND_CALL
     Ast_Node    *an_cases;    // cases of AST_NODE_KIND_SWITCH, in source order
     Ast_Node    *an_case_next; // next case of the switch this one belongs to

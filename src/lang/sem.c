@@ -753,15 +753,11 @@ bool Sem_FoldAddr(const Ast_Node *node, const char **symbol, int64_t *addend)
 // Give a call the type its callee returns.
 Ast_Type *Sem_CallType(Ast_Node *node)
 {
-    if (! node->an_lhs) {
-        Ast_Func *func = Ast_FindFunction(node->an_funcname);
-        return func ? func->af_type->at_ret : &Ast_TypeInt;
-    }
     Ast_Type *type = Sem_CalleeType(node);
     return type ? type->at_ret : &Ast_TypeInt;
 }
 
-// Unwrap the function type an indirect call's callee names.
+// Unwrap the function type a call's callee names.
 Ast_Type *Sem_CalleeType(Ast_Node *node)
 {
     Ast_Type *type = node->an_lhs->an_type;
@@ -819,18 +815,10 @@ void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeV
 // Check a call and convert its arguments.
 void Sem_CheckCall(Ast_Node *node)
 {
-    if (node->an_lhs) {
-        Ast_Type *type = Sem_CalleeType(node);
-        Sem_CheckArity(node, type->at_nparams, type->at_va, type->at_proto, "a call through a function pointer");
-        Sem_ConvertArgs(node, type->at_params, type->at_nparams, type->at_va, type->at_proto);
-        return;
-    }
-    Ast_Func *func = Ast_FindFunction(node->an_funcname);
-    if (! func) {
-        return;
-    }
-    Ast_Type *type = func->af_type;
-    char *what = Str_Format("'%s'", node->an_funcname);
+    Ast_Type *type = Sem_CalleeType(node);
+    bool direct = node->an_lhs->an_kind == AST_NODE_KIND_FUNCADDR;
+    char *what = direct ? Str_Format("'%s'", node->an_lhs->an_funcname) : Str_Clone("a call through a function pointer");
+
     Sem_CheckArity(node, type->at_nparams, type->at_va, type->at_proto, what);
     Str_Free(what);
     Sem_ConvertArgs(node, type->at_params, type->at_nparams, type->at_va, type->at_proto);
