@@ -177,6 +177,89 @@ Ast_Node *Sem_Truth(Ast_Node *node)
     return Sem_NewBinary(AST_NODE_KIND_NE, node, Ast_NewFNum(0, node->an_type, node->an_line), node->an_line);
 }
 
+// Return the type a value of this type has once arrays and functions decay.
+Ast_Type *Sem_ValueType(Ast_Type *type)
+{
+    if (type->at_kind == AST_TYPE_KIND_FUNC) {
+        return Ast_NewPointer(type);
+    }
+    return Sem_Decay(type);
+}
+
+// Return whether a node is a null pointer constant.
+bool Sem_IsNullPointer(const Ast_Node *node)
+{
+    int64_t value = 0;
+    const Ast_Type *type = node->an_type;
+
+    if (! type) {
+        return false;
+    }
+    if (node->an_kind == AST_NODE_KIND_CAST && type->at_kind == AST_TYPE_KIND_PTR && type->at_base->at_kind == AST_TYPE_KIND_VOID) {
+        return Sem_IsNullPointer(node->an_lhs);
+    }
+    return Ast_IsInteger(type) && Sem_Fold(node, &value) && value == 0;
+}
+
+// Refuse a value that simple assignment cannot convert to type to.
+void Sem_CheckAssign(const Ast_Type *to, const Ast_Node *from, const char *what, Ast_Line line)
+{
+    if (! from->an_type) {
+        return;
+    }
+    Err_AssertAt(line, from->an_type->at_kind != AST_TYPE_KIND_VOID, ERR_SEM_VOID_VALUE);
+
+    const Ast_Type *type = Sem_ValueType(from->an_type);
+    if (Ast_IsArithmetic(to) && Ast_IsArithmetic(type)) {
+        return;
+    }
+    if (to->at_kind == AST_TYPE_KIND_BOOL && type->at_kind == AST_TYPE_KIND_PTR) {
+        return;
+    }
+    if (Sem_IsAggregate(to) || Sem_IsAggregate(type)) {
+        Err_AssertAt(line, Ast_IsCompatibleUnqualified(to, type), ERR_SEM_ASSIGN_INCOMPATIBLE, what);
+        return;
+    }
+    if (to->at_kind == AST_TYPE_KIND_PTR && Sem_IsNullPointer(from)) {
+        return;
+    }
+    Err_AssertAt(line, to->at_kind == AST_TYPE_KIND_PTR && type->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_ASSIGN_INCOMPATIBLE, what);
+
+    const Ast_Type *want = to->at_base;
+    const Ast_Type *have = type->at_base;
+    bool voids = want->at_kind == AST_TYPE_KIND_VOID || have->at_kind == AST_TYPE_KIND_VOID;
+    Err_AssertAt(line, voids || Ast_IsCompatibleUnqualified(want, have), ERR_SEM_ASSIGN_INCOMPATIBLE, what);
+    Err_AssertAt(line, ! (have->at_qual & ~want->at_qual), ERR_SEM_ASSIGN_DISCARDS_QUALIFIER, what);
+}
+
+// Return the type a conditional with an operand that is not arithmetic yields.
+Ast_Type *Sem_CondType(const Ast_Node *node)
+{
+    Ast_Type *then = Sem_ValueType(node->an_then->an_type);
+    Ast_Type *els = Sem_ValueType(node->an_els->an_type);
+
+    if (then->at_kind == AST_TYPE_KIND_VOID || els->at_kind == AST_TYPE_KIND_VOID) {
+        Err_AssertAt(node->an_line, then->at_kind == els->at_kind, ERR_SEM_COND_MISMATCH);
+        return then;
+    }
+    if (Sem_IsAggregate(then) || Sem_IsAggregate(els)) {
+        Err_AssertAt(node->an_line, Ast_IsCompatibleUnqualified(then, els), ERR_SEM_COND_MISMATCH);
+        return then;
+    }
+    if (then->at_kind == AST_TYPE_KIND_PTR && Sem_IsNullPointer(node->an_els)) {
+        return then;
+    }
+    if (els->at_kind == AST_TYPE_KIND_PTR && Sem_IsNullPointer(node->an_then)) {
+        return els;
+    }
+    Err_AssertAt(node->an_line, then->at_kind == AST_TYPE_KIND_PTR && els->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_COND_MISMATCH);
+    if (els->at_base->at_kind == AST_TYPE_KIND_VOID) {
+        return els;
+    }
+    Err_AssertAt(node->an_line, then->at_base->at_kind == AST_TYPE_KIND_VOID || Ast_IsCompatibleUnqualified(then->at_base, els->at_base), ERR_SEM_COND_MISMATCH);
+    return then;
+}
+
 // Wrap a node in the cast that converts it to type.
 Ast_Node *Sem_Convert(Ast_Node *node, Ast_Type *type)
 {
@@ -741,6 +824,7 @@ void Sem_ConvertArgs(Ast_Node *node, Ast_Var *params, int32_t nparams, Ast_TypeV
         Ast_Node *next = arg->an_next;
         arg->an_next = NULL;
         if (param && param->av_type) {
+            Sem_CheckAssign(param->av_type, arg, "argument passing", arg->an_line);
             arg = Sem_Convert(arg, param->av_type);
         } else if (i >= from && arg->an_type) {
             arg = Sem_Convert(arg, Sem_PromoteArg(arg->an_type));
@@ -1162,7 +1246,7 @@ void Sem_Annotate(Ast_Node *node)
             Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
             Err_AssertAt(node->an_line, node->an_lhs->an_type->at_kind != AST_TYPE_KIND_ARRAY, ERR_SEM_ASSIGN_ARRAY);
             Err_AssertAt(node->an_line, node->an_initstore || Sem_IsModifiable(node->an_lhs->an_type), ERR_SEM_ASSIGN_CONST);
-            Err_AssertAt(node->an_line, ! Sem_IsAggregate(node->an_lhs->an_type) || Sem_SameType(node->an_lhs->an_type, node->an_rhs->an_type), ERR_SEM_ASSIGN_AGGREGATE_MISMATCH);
+            Sem_CheckAssign(node->an_lhs->an_type, node->an_rhs, node->an_initstore ? "initialization" : "assignment", node->an_line);
             node->an_type = node->an_lhs->an_type;
             node->an_rhs  = Sem_Convert(node->an_rhs, node->an_type);
         } break;
@@ -1198,7 +1282,7 @@ void Sem_Annotate(Ast_Node *node)
         case AST_NODE_KIND_COND: {
             node->an_cond = Sem_Truth(node->an_cond);
             if (! Ast_IsArithmetic(node->an_then->an_type) || ! Ast_IsArithmetic(node->an_els->an_type)) {
-                node->an_type = node->an_then->an_type;
+                node->an_type = Sem_CondType(node);
                 break;
             }
             node->an_type = Sem_CommonType(node->an_then->an_type, node->an_els->an_type);
@@ -1238,9 +1322,14 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_RETURN: {
-            if (node->an_lhs && Sem_CurFunc->af_ret) {
-                node->an_lhs = Sem_Convert(node->an_lhs, Sem_CurFunc->af_ret);
+            Ast_Type *ret = Sem_CurFunc->af_ret;
+            if (ret->at_kind == AST_TYPE_KIND_VOID) {
+                Err_AssertAt(node->an_line, ! node->an_lhs || node->an_lhs->an_type->at_kind == AST_TYPE_KIND_VOID, ERR_SEM_RETURN_VALUE_IN_VOID);
+                break;
             }
+            Err_AssertAt(node->an_line, node->an_lhs, ERR_SEM_RETURN_NO_VALUE);
+            Sem_CheckAssign(ret, node->an_lhs, "return", node->an_line);
+            node->an_lhs = Sem_Convert(node->an_lhs, ret);
         } break;
 
         case AST_NODE_KIND_IF:
@@ -1301,6 +1390,7 @@ void Sem_AnalyzeGlobals(void)
     for (Ast_Var *var = Ast_Globals; var; var = var->av_next) {
         for (Ast_Node *item = var->av_init; item; item = item->an_next) {
             Sem_Node(item->an_lhs);
+            Sem_CheckAssign(item->an_type, item->an_lhs, "initialization", item->an_line);
             if (Ast_IsArithmetic(item->an_type)) {
                 item->an_lhs = Sem_Convert(item->an_lhs, item->an_type);
             }
