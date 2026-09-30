@@ -1085,7 +1085,7 @@ Ast_Node *Sem_FindLabel(Ast_Node *node, const char *name)
     if (! node) {
         return NULL;
     }
-    if (node->an_kind == AST_NODE_KIND_LABEL && strcmp(node->an_funcname, name) == 0) {
+    if (node->an_kind == AST_NODE_KIND_LABEL && Str_Equals(node->an_funcname, name)) {
         return node;
     }
 

@@ -25,10 +25,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 // Project headers.
 #include "util/object/elf.h"
+#include "util/str.h"
 #include "arch/x86_64/asm.h"
 
 // A rel32 fixup targets its exact site.

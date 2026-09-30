@@ -28,6 +28,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Project headers.
+#include "util/str.h"
+
 // Format
 // Object file types (e_type).
 #define ELF_ET_REL  1

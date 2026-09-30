@@ -95,11 +95,11 @@ int main(int argc, char **argv)
         const char *arg = argv[i];
         if (Str_StartsWith(arg, "-m" MARCH_PREFIX)) {
             arch = arg + 2 + strlen(MARCH_PREFIX);
-        } else if (strcmp(arg, "-d") == 0) {
+        } else if (Str_Equals(arg, "-d")) {
             disasm = true;
-        } else if (strcmp(arg, "-i") == 0) {
+        } else if (Str_Equals(arg, "-i")) {
             info = true;
-        } else if (strcmp(arg, "-t") == 0) {
+        } else if (Str_Equals(arg, "-t")) {
             trace = EMU_X86_64_TRACE;
         } else if (arg[0] == '-' && arg[1]) {
             Emu_Usage(argv[0]);
