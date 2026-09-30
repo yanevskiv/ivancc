@@ -36,6 +36,10 @@
 // Name of the array that holds a function's own name.
 #define PAR_FUNC_NAME "__func__"
 
+// The asm qualifiers as a diagnostic names them.
+#define PAR_ASM_VOLATILE_NAME "volatile"
+#define PAR_ASM_INLINE_NAME   "inline"
+
 // All bits of one byte set.
 #define PAR_BYTE_MASK 0xFF
 
@@ -66,6 +70,14 @@ enum Par_ArrayDecor {
     PAR_ARRAY_NONE   = 0,      // plain brackets
     PAR_ARRAY_STATIC = 1 << 0, // `static` before the length
     PAR_ARRAY_QUAL   = 1 << 1  // one or more qualifiers
+};
+
+// The qualifiers an asm statement was written with.
+typedef enum Par_AsmQual Par_AsmQual;
+enum Par_AsmQual {
+    PAR_ASM_QUAL_NONE     = 0,
+    PAR_ASM_QUAL_VOLATILE = 1 << 0,
+    PAR_ASM_QUAL_INLINE   = 1 << 1
 };
 
 // One type specifier keyword.
@@ -290,7 +302,9 @@ Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line);
 Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line);
 
 // Statements
-Ast_Node *Par_NewJump(Ast_NodeKind kind, Ast_Line line);
+Ast_Node   *Par_NewJump(Ast_NodeKind kind, Ast_Line line);
+Par_AsmQual Par_AddAsmQual(Par_AsmQual quals, Par_AsmQual qual, Ast_Line line);
+Ast_Node   *Par_NewAsm(Ast_Str text, Ast_Line line);
 
 // Parsing
 void Par_ParseText(const char *text, size_t len);

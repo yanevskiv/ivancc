@@ -204,6 +204,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_VLA,       // allocate an_var, an array of an_lhs bytes
     AST_NODE_KIND_VSIZE,     // an_var = an_lhs elements of an_rhs bytes
     AST_NODE_KIND_EXPR_STMT, // expression used as a statement
+    AST_NODE_KIND_ASM,       // __asm__ (an_asm);
     AST_NODE_KIND_NOP,       // empty statement / bare declaration
     AST_NODE_KIND_COUNT      // number of kinds
 };
@@ -337,6 +338,7 @@ struct Ast_Node {
     char        *an_funcname;   // function a FUNCADDR names
     char        *an_labelname;  // label a GOTO jumps to or a LABEL defines
     Ast_Node    *an_target;     // LABEL a GOTO jumps to
+    char        *an_asm;        // template of an ASM
     Ast_Node    *an_args;       // argument list of a CALL
     Ast_Node    *an_cases;      // cases of a SWITCH, in source order
     Ast_Node    *an_casenext;   // next case of the switch this one belongs to
@@ -378,6 +380,9 @@ extern Ast_Func *Ast_Program;
 
 // Every variable declared at file scope.
 extern Ast_Var *Ast_Globals;
+
+// Every asm written at file scope.
+extern Ast_Node *Ast_FileAsms;
 
 // Primitive types
 extern Ast_Type Ast_TypeVoid;
@@ -433,6 +438,7 @@ Ast_Node *Ast_NewVarNode(Ast_Var *var, Ast_Line line);
 Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, Ast_Line line);
 Ast_Node *Ast_NewPostInc(Ast_Node *lhs, int64_t step, Ast_Line line);
 Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, Ast_Line line);
+void      Ast_AddFileAsm(Ast_Node *node);
 
 // Variable scopes
 void     Ast_BeginScope(void);

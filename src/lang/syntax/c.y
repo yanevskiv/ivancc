@@ -42,6 +42,7 @@ void yyerror(const char *s);
     Ast_TypeKind    kind;
     Ast_Qual        qual;
     Par_ArrayDecor  decor;
+    Par_AsmQual     asmqual;
     Par_Num         num;
     Par_FNum        fnum;
     Par_Specs       specs;
@@ -65,6 +66,7 @@ void yyerror(const char *s);
 %token <name> TYPEDEF_NAME
 %token SWITCH CASE DEFAULT GOTO
 %token STATIC EXTERN REGISTER AUTO INLINE
+%token ASM
 %token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END BUILTIN_VA_COPY
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
@@ -91,6 +93,7 @@ void yyerror(const char *s);
 %type <kind>    struct_or_union
 %type <qual>    qual qual_list
 %type <decor>   array_decor
+%type <asmqual> asm_quals
 
 /* Lowest precedence first. */
 %nonassoc LOWER_THAN_ELSE
@@ -126,6 +129,8 @@ external_decl
     : spec_seq
         { Par_SetDeclSpec(&$1, PAR_STORAGE_ANY, @1); }
       external_tail
+    | ASM LPAREN string RPAREN SEMI
+        { Ast_AddFileAsm(Par_NewAsm($3, @1)); }
     ;
 
 /* The rest of an external declaration after its specifier. */
@@ -482,6 +487,15 @@ stmt
     | decl SEMI            { $$ = $1; }
     | expr_comma SEMI      { $$ = Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, $1, @1); }
     | SEMI                 { $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
+    | ASM asm_quals LPAREN string RPAREN SEMI
+        { $$ = Par_NewAsm($4, @1); }
+    ;
+
+/* The qualifiers of an asm statement. */
+asm_quals
+    : /* empty */          { $$ = PAR_ASM_QUAL_NONE; }
+    | asm_quals VOLATILE   { $$ = Par_AddAsmQual($1, PAR_ASM_QUAL_VOLATILE, @2); }
+    | asm_quals INLINE     { $$ = Par_AddAsmQual($1, PAR_ASM_QUAL_INLINE, @2); }
     ;
 
 /* A for-loop's first clause. */

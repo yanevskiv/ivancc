@@ -57,6 +57,9 @@
 // Most operands an instruction takes.
 #define TXT_X86_64_OPERANDS_MAX 2
 
+// The character that ends a statement before the end of its line.
+#define TXT_X86_64_SEPARATOR ';'
+
 // Characters that separate a line's fields.
 #define TXT_X86_64_BLANKS " \t"
 
@@ -127,6 +130,7 @@ void Txt_x86_64_Att_EmitString(const char *args, Txt_x86_64_Terminate terminate)
 void Txt_x86_64_Att_ParseInstr(const char *line);
 void Txt_x86_64_Att_ParseDirective(const char *line);
 void Txt_x86_64_Att_ParseLine(char *line);
+void Txt_x86_64_Att_ParseText(const char *text);
 void Txt_x86_64_Att_Parse(const char *text);
 
 #endif // TXT_X86_64_H

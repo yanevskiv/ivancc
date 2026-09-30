@@ -154,6 +154,8 @@ enum Err_Code {
     ERR_PAR_REDECLARED,                // can't declare one name twice in a scope
     ERR_PAR_CONFLICTING_TYPES,         // can't declare one name with two different types
     ERR_PAR_FUNCTION_REDEFINED,        // can't give one function two bodies
+    ERR_PAR_ASM_QUALIFIER_DUPLICATE,   // can't repeat an asm qualifier
+    ERR_PAR_ASM_WIDE_STRING,           // can't write an asm template as a wide string
 
     ERR_AST_FLEXIBLE_IN_UNION,         // can't have a flexible array member in a union
     ERR_AST_FLEXIBLE_NOT_LAST,         // can't have a member after a flexible array member

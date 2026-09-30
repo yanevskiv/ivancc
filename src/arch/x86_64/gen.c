@@ -1802,6 +1802,9 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
         case AST_NODE_KIND_EXPR_STMT: {
             Gen_x86_64_EmitExpr(node->an_lhs);
         } break;
+        case AST_NODE_KIND_ASM: {
+            Txt_x86_64_Att_ParseText(node->an_asm);
+        } break;
         case AST_NODE_KIND_ZERO: {
             Gen_x86_64_EmitAddr(node->an_lhs);
             Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
@@ -2074,9 +2077,19 @@ void Gen_x86_64_EmitFunctions(Ast_Func *prog)
     }
 }
 
+// Emit every asm written at file scope.
+void Gen_x86_64_EmitFileAsms(void)
+{
+    for (Ast_Node *iter = Ast_FileAsms; iter; iter = iter->an_next) {
+        Asm_x86_64_EmitSection(".text", ELF_SHT_PROGBITS, ELF_SHF_ALLOC | ELF_SHF_EXECINSTR);
+        Txt_x86_64_Att_ParseText(iter->an_asm);
+    }
+}
+
 // Emit the .text section.
 void Gen_x86_64_EmitTextSection(Ast_Func *prog)
 {
+    Gen_x86_64_EmitFileAsms();
     Asm_x86_64_EmitSection(".text", ELF_SHT_PROGBITS, ELF_SHF_ALLOC | ELF_SHF_EXECINSTR);
     Gen_x86_64_EmitFunctions(prog);
 }
