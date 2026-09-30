@@ -466,13 +466,13 @@ stmt
     | SWITCH LPAREN expr_comma RPAREN { $<node>$ = Par_NewJump(AST_NODE_KIND_SWITCH, @1); } stmt
         { Ast_Node *n = $<node>5; n->an_cond = $3; n->an_body = $6; $$ = n; }
     | CASE expr COLON { $<node>$ = Par_NewJump(AST_NODE_KIND_CASE, @1); } stmt
-        { Ast_Node *n = $<node>4; n->an_cond = $2; n->an_lhs = $5; $$ = n; }
+        { Ast_Node *n = $<node>4; n->an_cond = $2; n->an_body = $5; $$ = n; }
     | DEFAULT COLON { $<node>$ = Par_NewJump(AST_NODE_KIND_DEFAULT, @1); } stmt
-        { Ast_Node *n = $<node>3; n->an_lhs = $4; $$ = n; }
+        { Ast_Node *n = $<node>3; n->an_body = $4; $$ = n; }
     | GOTO IDENT SEMI
-        { Ast_Node *n = Par_NewJump(AST_NODE_KIND_GOTO, @1); n->an_funcname = $2; $$ = n; }
+        { Ast_Node *n = Par_NewJump(AST_NODE_KIND_GOTO, @1); n->an_labelname = $2; $$ = n; }
     | IDENT COLON { $<node>$ = Par_NewJump(AST_NODE_KIND_LABEL, @1); } stmt
-        { Ast_Node *n = $<node>3; n->an_funcname = $1; n->an_lhs = $4; $$ = n; }
+        { Ast_Node *n = $<node>3; n->an_labelname = $1; n->an_body = $4; $$ = n; }
     | BREAK SEMI           { $$ = Ast_NewNode(AST_NODE_KIND_BREAK, @1); }
     | CONTINUE SEMI        { $$ = Ast_NewNode(AST_NODE_KIND_CONTINUE, @1); }
     | WHILE LPAREN expr RPAREN stmt

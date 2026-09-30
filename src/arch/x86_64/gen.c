@@ -1293,11 +1293,11 @@ int32_t Gen_x86_64_MarkLabels(Ast_Node *node, int32_t depth)
         } break;
         case AST_NODE_KIND_LABEL: {
             node->an_vladepth = depth;
-            depth = Gen_x86_64_MarkLabels(node->an_lhs, depth);
+            depth = Gen_x86_64_MarkLabels(node->an_body, depth);
         } break;
         case AST_NODE_KIND_CASE:
         case AST_NODE_KIND_DEFAULT: {
-            depth = Gen_x86_64_MarkLabels(node->an_lhs, depth);
+            depth = Gen_x86_64_MarkLabels(node->an_body, depth);
         } break;
         case AST_NODE_KIND_BLOCK: {
             for (Ast_Node *stmt = node->an_body; stmt; stmt = stmt->an_next) {
@@ -1770,16 +1770,15 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
         case AST_NODE_KIND_CASE:
         case AST_NODE_KIND_DEFAULT: {
             Asm_x86_64_EmitLabel(".L.case.%d", node->an_label);
-            Gen_x86_64_EmitStmt(node->an_lhs);
+            Gen_x86_64_EmitStmt(node->an_body);
         } break;
         case AST_NODE_KIND_LABEL: {
-            Asm_x86_64_EmitLabel(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_funcname);
-            Gen_x86_64_EmitStmt(node->an_lhs);
+            Asm_x86_64_EmitLabel(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_labelname);
+            Gen_x86_64_EmitStmt(node->an_body);
         } break;
         case AST_NODE_KIND_GOTO: {
-            Ast_Node *label = Sem_FindLabel(Gen_x86_64_CurrFunc->af_body, node->an_funcname);
-            Gen_x86_64_EmitVlaRestore(label->an_vladepth);
-            Asm_x86_64_EmitJmp(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_funcname);
+            Gen_x86_64_EmitVlaRestore(node->an_target->an_vladepth);
+            Asm_x86_64_EmitJmp(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_labelname);
         } break;
         case AST_NODE_KIND_BREAK: {
             Err_AssertAt(node->an_line, Gen_x86_64_BreakId >= 0, ERR_GEN_BREAK_OUTSIDE_LOOP);
