@@ -247,7 +247,7 @@ void Gen_x86_64_SysV_Place(const Ast_Type *type, Gen_x86_64_SysV_Cursor *cur, Ge
     }
 
     if (Gen_x86_64_SysV_InMemory(type) || cur->gc_gpr + gpr > GEN_X86_64_SYSV_MAX_REG_ARGS || cur->gc_sse + sse > GEN_X86_64_SYSV_MAX_SSE_ARGS) {
-        cur->gc_stack = Gen_x86_64_AlignTo(cur->gc_stack, type->at_align > GEN_X86_64_SYSV_EIGHTBYTE ? GEN_X86_64_SYSV_STACK_ALIGN : GEN_X86_64_SYSV_EIGHTBYTE);
+        cur->gc_stack = Ast_AlignTo(cur->gc_stack, type->at_align > GEN_X86_64_SYSV_EIGHTBYTE ? GEN_X86_64_SYSV_STACK_ALIGN : GEN_X86_64_SYSV_EIGHTBYTE);
         loc->gl_gpr   = -1;
         loc->gl_sse   = -1;
         loc->gl_stack = cur->gc_stack;
@@ -701,12 +701,6 @@ void Gen_x86_64_EmitPop(Asm_x86_64_Reg reg)
     Gen_x86_64_Depth--;
 }
 
-// Round n up to the nearest multiple of align.
-int32_t Gen_x86_64_AlignTo(int32_t n, int32_t align)
-{
-    return (n + align - 1) / align * align;
-}
-
 // Return the frame bytes a local reserves.
 int32_t Gen_x86_64_SlotSize(const Ast_Type *type)
 {
@@ -716,7 +710,7 @@ int32_t Gen_x86_64_SlotSize(const Ast_Type *type)
     if (! Sem_IsAggregate(type)) {
         return type->at_size;
     }
-    return Gen_x86_64_AlignTo(type->at_size, GEN_X86_64_WORD_SIZE);
+    return Ast_AlignTo(type->at_size, GEN_X86_64_WORD_SIZE);
 }
 
 // Return the address multiple a local's frame slot sits on.
@@ -1858,11 +1852,11 @@ void Gen_x86_64_AssignTemps(Ast_Node *node, int32_t *offset)
         return;
     }
     if (Gen_x86_64_NeedsTemp(node)) {
-        *offset = Gen_x86_64_AlignTo(*offset + Gen_x86_64_SlotSize(node->an_type), node->an_type->at_align);
+        *offset = Ast_AlignTo(*offset + Gen_x86_64_SlotSize(node->an_type), node->an_type->at_align);
         node->an_tmp = -*offset;
     }
     if (node->an_kind == AST_NODE_KIND_CALL && node->an_lhs->an_kind != AST_NODE_KIND_FUNCADDR) {
-        *offset = Gen_x86_64_AlignTo(*offset + GEN_X86_64_WORD_SIZE, GEN_X86_64_WORD_SIZE);
+        *offset = Ast_AlignTo(*offset + GEN_X86_64_WORD_SIZE, GEN_X86_64_WORD_SIZE);
         node->an_calltmp = -*offset;
     }
 
@@ -1892,15 +1886,15 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
 
     for (Ast_Var *var = func->af_locals; var; var = var->av_next) {
         offset += Gen_x86_64_SlotSize(var->av_type);
-        offset = Gen_x86_64_AlignTo(offset, Gen_x86_64_SlotAlign(var->av_type));
+        offset = Ast_AlignTo(offset, Gen_x86_64_SlotAlign(var->av_type));
         var->av_offset = -offset;
     }
     Gen_x86_64_AssignTemps(func->af_body, &offset);
-    func->af_stack_size = Gen_x86_64_AlignTo(offset, GEN_X86_64_SYSV_STACK_ALIGN);
+    func->af_stack_size = Ast_AlignTo(offset, GEN_X86_64_SYSV_STACK_ALIGN);
 }
 
 // Emit the .rodata section holding all string literals.
-void Gen_x86_64_EmitDataSection(void)
+void Gen_x86_64_EmitStrings(void)
 {
     size_t count = Ast_StringCount();
     if (count == 0) {
@@ -2095,7 +2089,7 @@ void Gen_x86_64_BuildProgram(Ast_Func *prog)
     Gen_x86_64_LabelId = 0;
 
     Asm_x86_64_EmitDirective(".file \"cc\"");
-    Gen_x86_64_EmitDataSection();
+    Gen_x86_64_EmitStrings();
     Gen_x86_64_EmitGlobals();
     Gen_x86_64_EmitTextSection(prog);
     Asm_x86_64_EmitDirective(".section .note.GNU-stack,\"\",@progbits");
