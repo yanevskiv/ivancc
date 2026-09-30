@@ -44,32 +44,32 @@
 #include "arch/x86_64/txt.h"
 
 // Permission bits for the executables cc writes (rwxr-xr-x).
-#define ELF_MODE 0755
+#define CC_ELF_MODE 0755
 
 // Default output name for a freestanding executable.
-#define DEFAULT_OUTPUT "a.out"
+#define CC_DEFAULT_OUTPUT "a.out"
 
 // Output name that means standard output rather than a file.
-#define STDOUT_NAME "-"
+#define CC_STDOUT_NAME "-"
 
 // The one language standard --std accepts.
-#define DEFAULT_STD "c99"
+#define CC_DEFAULT_STD "c99"
 
 // Target architecture selected when no -march= is given.
-#define DEFAULT_ARCH "x86_64"
+#define CC_DEFAULT_ARCH "x86_64"
 
 // Runtime target selected when no -mtarget= is given.
-#define DEFAULT_TARGET "linux"
+#define CC_DEFAULT_TARGET "linux"
 
 // Machine-option prefixes recognised inside -m (e.g. -march=x86_64).
-#define MARCH_PREFIX "arch="
-#define MTARGET_PREFIX "target="
+#define CC_MARCH_PREFIX "arch="
+#define CC_MTARGET_PREFIX "target="
 
 // Where the runtime objects sit relative to the directory holding this binary.
-#define RUNTIME_DIR "/../lib/"
+#define CC_RUNTIME_DIR "/../lib/"
 
 // Where the system headers sit relative to the directory holding this binary.
-#define INCLUDE_DIR "/../include"
+#define CC_INCLUDE_DIR "/../include"
 
 
 // Values getopt_long returns for the options with no short form.
@@ -85,6 +85,15 @@ enum Cc_Option {
     CC_OPTION_MF,
     CC_OPTION_MT,
     CC_OPTION_MQ
+};
+
+// Where a run stops.
+typedef enum Cc_Mode Cc_Mode;
+enum Cc_Mode {
+    CC_MODE_PP,     // -E
+    CC_MODE_TEXT,   // -S
+    CC_MODE_OBJECT, // -c
+    CC_MODE_EXEC
 };
 
 // What a run does with its dependency rule.
@@ -117,7 +126,7 @@ static void Cc_ShowUsage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [options] INPUT.c\n"
-        "  -o OUTPUT   write output to OUTPUT (default: " DEFAULT_OUTPUT ", " STDOUT_NAME " is stdout)\n"
+        "  -o OUTPUT   write output to OUTPUT (default: " CC_DEFAULT_OUTPUT ", " CC_STDOUT_NAME " is stdout)\n"
         "  -S          write assembly text instead of an executable\n"
         "  -c          write a relocatable object (.o) instead of an executable\n"
         "  -E          write the preprocessed text instead of an executable\n"
@@ -134,9 +143,9 @@ static void Cc_ShowUsage(const char *prog)
         "  --MF=F      write the rule to F\n"
         "  --MT=T      name the rule's target T\n"
         "  --MQ=T      name the rule's target T, escaped for make\n"
-        "  --std=STD   language standard (only " DEFAULT_STD ")\n"
-        "  -march=ARCH target architecture (default: " DEFAULT_ARCH ")\n"
-        "  -mtarget=T  runtime to link against (default: " DEFAULT_TARGET ")\n"
+        "  --std=STD   language standard (only " CC_DEFAULT_STD ")\n"
+        "  -march=ARCH target architecture (default: " CC_DEFAULT_ARCH ")\n"
+        "  -mtarget=T  runtime to link against (default: " CC_DEFAULT_TARGET ")\n"
         "  -B DIR      read the runtime objects from DIR\n",
         prog);
     exit(1);
@@ -179,7 +188,7 @@ static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
 
     char *exedir = Cc_GetExeDir();
     Err_Assert(exedir, ERR_CC_RUNTIME_NOT_FOUND);
-    char *dir = Str_Format("%s" RUNTIME_DIR "%s", exedir, target);
+    char *dir = Str_Format("%s" CC_RUNTIME_DIR "%s", exedir, target);
     Str_Free(exedir);
     return dir;
 }
@@ -193,7 +202,7 @@ static char *Cc_GetIncludeDir(void)
         return NULL;
     }
 
-    char *dir = Str_Format("%s" INCLUDE_DIR, exedir);
+    char *dir = Str_Format("%s" CC_INCLUDE_DIR, exedir);
 
     Str_Free(exedir);
     return dir;
@@ -202,7 +211,7 @@ static char *Cc_GetIncludeDir(void)
 // Open the output stream.
 static FILE *Cc_OpenOutput(const char *output, const char *mode)
 {
-    if (Str_Equals(output, STDOUT_NAME)) {
+    if (Str_Equals(output, CC_STDOUT_NAME)) {
         return stdout;
     }
 
@@ -234,7 +243,7 @@ static void Cc_AddTarget(Cc_Depend *dep, char *target)
 // Return the target a rule gets when no --MT or --MQ names one.
 static char *Cc_DefaultTarget(const char *input, const char *output, Cc_DependMode mode)
 {
-    if (mode == CC_DEPEND_BESIDE && ! Str_Equals(output, STDOUT_NAME)) {
+    if (mode == CC_DEPEND_BESIDE && ! Str_Equals(output, CC_STDOUT_NAME)) {
         return Pp_EscapeMake(output);
     }
 
@@ -252,7 +261,7 @@ static char *Cc_DefaultDependFile(const char *input, const char *output, Cc_Depe
     if (mode == CC_DEPEND_INSTEAD) {
         return Str_Clone(output);
     }
-    return Str_ModifyExtension(Str_Equals(output, STDOUT_NAME) ? input : output, ".d");
+    return Str_ModifyExtension(Str_Equals(output, CC_STDOUT_NAME) ? input : output, ".d");
 }
 
 // Write the dependency rule.
@@ -326,16 +335,14 @@ static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, c
 int main(int argc, char **argv)
 {
     const char *output = NULL;
-    const char *arch = DEFAULT_ARCH;
-    const char *target = DEFAULT_TARGET;
+    const char *arch = CC_DEFAULT_ARCH;
+    const char *target = CC_DEFAULT_TARGET;
     const char *prefix = NULL;
     const char **incdirs = NULL;
     size_t nincdirs = 0;
     Buf *forced = Buf_New();
     Buf *cmdline = Buf_New();
-    bool emit_text = false;
-    bool emit_obj = false;
-    bool emit_pp = false;
+    Cc_Mode mode = CC_MODE_EXEC;
     Pp_Markers markers = PP_MARKERS_EMIT;
     Cc_Depend dep = {
         .cd_mode     = CC_DEPEND_NONE,
@@ -370,13 +377,17 @@ int main(int argc, char **argv)
                 output = optarg;
             } break;
             case 'S': {
-                emit_text = true;
+                if (mode > CC_MODE_TEXT) {
+                    mode = CC_MODE_TEXT;
+                }
             } break;
             case 'c': {
-                emit_obj = true;
+                if (mode > CC_MODE_OBJECT) {
+                    mode = CC_MODE_OBJECT;
+                }
             } break;
             case 'E': {
-                emit_pp = true;
+                mode = CC_MODE_PP;
             } break;
             case 'P': {
                 markers = PP_MARKERS_OMIT;
@@ -385,10 +396,10 @@ int main(int argc, char **argv)
                 prefix = optarg;
             } break;
             case 'm': {
-                if (Str_StartsWith(optarg, MARCH_PREFIX)) {
-                    arch = optarg + strlen(MARCH_PREFIX);
-                } else if (Str_StartsWith(optarg, MTARGET_PREFIX)) {
-                    target = optarg + strlen(MTARGET_PREFIX);
+                if (Str_StartsWith(optarg, CC_MARCH_PREFIX)) {
+                    arch = optarg + strlen(CC_MARCH_PREFIX);
+                } else if (Str_StartsWith(optarg, CC_MTARGET_PREFIX)) {
+                    target = optarg + strlen(CC_MTARGET_PREFIX);
                 }
             } break;
             case 'I': {
@@ -402,7 +413,7 @@ int main(int argc, char **argv)
                 Pp_PutUndef(cmdline, optarg);
             } break;
             case CC_OPTION_STD: {
-                Err_Assert(Str_Equals(optarg, DEFAULT_STD), ERR_CC_STD_UNSUPPORTED, optarg, DEFAULT_STD);
+                Err_Assert(Str_Equals(optarg, CC_DEFAULT_STD), ERR_CC_STD_UNSUPPORTED, optarg, CC_DEFAULT_STD);
             } break;
             case CC_OPTION_INCLUDE: {
                 Pp_PutInclude(forced, optarg);
@@ -461,7 +472,7 @@ int main(int argc, char **argv)
 
     Buf_PutBytes(cmdline, Buf_Data(forced), Buf_Len(forced));
     Buf_Free(forced);
-    Err_Assert(Str_Equals(arch, DEFAULT_ARCH), ERR_CC_ARCH_UNSUPPORTED, arch, DEFAULT_ARCH);
+    Err_Assert(Str_Equals(arch, CC_DEFAULT_ARCH), ERR_CC_ARCH_UNSUPPORTED, arch, CC_DEFAULT_ARCH);
 
     if (optind >= argc) {
         Cc_ShowUsage(argv[0]);
@@ -470,14 +481,14 @@ int main(int argc, char **argv)
 
     char *outbuf = NULL;
     if (! output) {
-        if (emit_pp || dep.cd_mode == CC_DEPEND_INSTEAD) {
-            output = STDOUT_NAME;
-        } else if (emit_text) {
+        if (mode == CC_MODE_PP || dep.cd_mode == CC_DEPEND_INSTEAD) {
+            output = CC_STDOUT_NAME;
+        } else if (mode == CC_MODE_TEXT) {
             output = outbuf = Str_ModifyExtension(input, ".s");
-        } else if (emit_obj) {
+        } else if (mode == CC_MODE_OBJECT) {
             output = outbuf = Str_ModifyExtension(input, ".o");
         } else {
-            output = outbuf = Str_Clone(DEFAULT_OUTPUT);
+            output = outbuf = Str_Clone(CC_DEFAULT_OUTPUT);
         }
     }
 
@@ -505,7 +516,7 @@ int main(int argc, char **argv)
         Str_Free(outbuf);
         return 0;
     }
-    if (emit_pp) {
+    if (mode == CC_MODE_PP) {
         FILE *out = Cc_OpenOutput(output, "w");
         Pp_Write(out, text, markers);
         Cc_CloseOutput(out);
@@ -518,18 +529,18 @@ int main(int argc, char **argv)
     Sem_Analyze(Ast_Program);
 
     // Phase: back end
-    FILE *out = Cc_OpenOutput(output, emit_text ? "w" : "wb");
-    if (emit_text) {
+    FILE *out = Cc_OpenOutput(output, mode == CC_MODE_TEXT ? "w" : "wb");
+    if (mode == CC_MODE_TEXT) {
         Cc_x86_64_WriteText(out, Ast_Program);
-    } else if (emit_obj) {
+    } else if (mode == CC_MODE_OBJECT) {
         Cc_x86_64_WriteObject(out, Ast_Program);
     } else {
         Cc_x86_64_WriteExec(out, Ast_Program, prefix, target);
     }
     Cc_CloseOutput(out);
 
-    if (! emit_text && ! emit_obj && ! Str_Equals(output, STDOUT_NAME)) {
-        chmod(output, ELF_MODE);
+    if (mode == CC_MODE_EXEC && ! Str_Equals(output, CC_STDOUT_NAME)) {
+        chmod(output, CC_ELF_MODE);
     }
 
     Str_Free(outbuf);
