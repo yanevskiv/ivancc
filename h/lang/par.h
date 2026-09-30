@@ -216,9 +216,9 @@ Ast_Str  Par_WidenString(Ast_Str str, size_t width);
 Ast_Str  Par_ConcatStrings(Ast_Str left, Ast_Str right);
 
 // Escape sequences
-int32_t  Par_DigitValue(char c);
-uint64_t Par_ScanDigits(const char *p, size_t len, size_t *pos, Par_Base base, size_t count);
-uint64_t Par_GetElement(const char *p, size_t width);
+int32_t  Par_DigitValue(char ch);
+uint64_t Par_ScanDigits(const char *text, size_t len, size_t *pos, Par_Base base, size_t count);
+uint64_t Par_GetElement(const char *data, size_t width);
 void     Par_PutElement(char *buf, size_t *len, size_t width, uint64_t value);
 void     Par_PutEscape(char *buf, size_t *len, size_t width, uint64_t value, Ast_Line line);
 void     Par_PutUtf8(char *buf, size_t *len, uint64_t value);
