@@ -31,8 +31,7 @@
 // The least value that no longer fits a signed 64-bit integer.
 #define SEM_TWO_TO_63 9223372036854775808.0L
 
-// Lookups over the program being analysed
-Ast_Func *Sem_FindFunc(const char *name);
+// Node lists
 int32_t   Sem_CountNodes(Ast_Node *list);
 
 // Type and expression queries
@@ -73,7 +72,6 @@ bool      Sem_FoldObject(const Ast_Node *node, const char **symbol, int64_t *add
 bool      Sem_FoldAddr(const Ast_Node *node, const char **symbol, int64_t *addend);
 
 // Checks the parser cannot make
-Ast_Type *Sem_FuncAddrType(Ast_Node *node);
 Ast_Type *Sem_CallType(Ast_Node *node);
 Ast_Type *Sem_CalleeType(Ast_Node *node);
 void      Sem_CheckArity(Ast_Node *node, int32_t want, Ast_TypeVa va, Ast_TypeProto proto, const char *what);

@@ -21,16 +21,11 @@
 #include "lang/par.h"
 
 // State for the function definition currently being parsed.
-static char            *Par_CurFuncName;
-static Ast_Var         *Par_CurParams;
-static int32_t          Par_CurNumParams;
-static Ast_TypeVa       Par_CurVa;
-static Ast_TypeProto    Par_CurProto;
-static bool             Par_CurStatic;
-static Ast_Type        *Par_CurRetType;
-static bool             Par_InFunction;
-static Ast_Var         *Par_CurFuncVar;
-static Ast_Node        *Par_CurSizes;
+static char     *Par_CurFuncName;
+static bool      Par_CurStatic;
+static bool      Par_InFunction;
+static Ast_Var  *Par_CurFuncVar;
+static Ast_Node *Par_CurSizes;
 
 // Serial number of the next compound literal's object.
 static int32_t Par_CompoundCount;
@@ -254,7 +249,7 @@ void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
 {
     Par_NeedName(decl, line);
     Par_TakeArrayDecor(decl, line);
-    for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
+    for (Ast_Var *param = Par_CurDeclType->at_params; param; param = param->av_param_next) {
         if (param->av_name && strcmp(param->av_name, decl->pc_name) == 0) {
             Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
             param->av_type = Par_AdjustParam(type);
@@ -268,7 +263,7 @@ void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
 // Reject an old-style parameter the declaration list never typed.
 void Par_CheckKnrParams(void)
 {
-    for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
+    for (Ast_Var *param = Par_CurDeclType->at_params; param; param = param->av_param_next) {
         Err_AssertAt(param->av_line, param->av_type, ERR_PAR_KNR_UNDECLARED, param->av_name);
     }
 }
@@ -299,7 +294,7 @@ Ast_Node *Par_SizeParams(void)
 {
     Ast_Node *sizes = NULL;
 
-    for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
+    for (Ast_Var *param = Par_CurDeclType->at_params; param; param = param->av_param_next) {
         Ast_Node *size = param->av_vmtype ? Par_SizeExpr(param->av_vmtype, param->av_line) : NULL;
         if (size) {
             sizes = sizes ? Ast_NewBinary(AST_NODE_KIND_COMMA, sizes, size, param->av_line) : size;
@@ -975,8 +970,8 @@ Ast_Type *Par_ExprType(Ast_Node *node)
             type = member ? member->am_type : NULL;
         } break;
         case AST_NODE_KIND_CALL: {
-            Ast_Func *func = Par_FindFunction(node->an_funcname);
-            type = func ? func->af_ret : NULL;
+            Ast_Func *func = Ast_FindFunction(node->an_funcname);
+            type = func ? func->af_type->at_ret : NULL;
         } break;
         default: {
             // empty
@@ -1282,7 +1277,7 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
     if (! Ast_IsUnsized(type)) {
         Par_CheckComplete(name, type, line);
     }
-    Err_AssertAt(line, ! Par_FindFunction(name), ERR_PAR_CONFLICTING_TYPES, name);
+    Err_AssertAt(line, ! Ast_FindFunction(name), ERR_PAR_CONFLICTING_TYPES, name);
 
     Ast_Var *var = Ast_FindGlobal(name);
     if (var) {
@@ -1409,39 +1404,19 @@ void Par_CompleteTentatives(void)
     }
 }
 
-// Find a function already declared or defined under name.
-Ast_Func *Par_FindFunction(const char *name)
-{
-    for (Ast_Func *fn = Par_ProgHead; fn; fn = fn->af_next) {
-        if (strcmp(fn->af_name, name) == 0) {
-            return fn;
-        }
-    }
-    return NULL;
-}
-
-// Return the type a function was declared with.
-Ast_Type *Par_FunctionType(const Ast_Func *fn)
-{
-    return Ast_NewFunction(fn->af_ret, fn->af_params, fn->af_nparams, fn->af_va, fn->af_proto);
-}
-
 // Append a function to the program.
 void Par_AddFunction(Ast_Func *fn, Ast_Line line)
 {
-    Ast_Func *seen = Par_FindFunction(fn->af_name);
+    Ast_Func *seen = Ast_FindFunction(fn->af_name);
     if (seen) {
-        Err_AssertAt(line, Ast_IsCompatible(Par_FunctionType(seen), Par_FunctionType(fn)), ERR_PAR_CONFLICTING_TYPES, fn->af_name);
+        Ast_Type *type = fn->af_type;
+        Err_AssertAt(line, Ast_IsCompatible(seen->af_type, type), ERR_PAR_CONFLICTING_TYPES, fn->af_name);
         Err_AssertAt(line, ! seen->af_body || ! fn->af_body, ERR_PAR_FUNCTION_REDEFINED, fn->af_name);
         if (fn->af_body) {
-            seen->af_body     = fn->af_body;
-            seen->af_locals   = fn->af_locals;
-            seen->af_params   = fn->af_params;
-            seen->af_nparams  = fn->af_nparams;
-            seen->af_va       = fn->af_va;
-            if (fn->af_proto == AST_TYPE_PROTO) {
-                seen->af_proto = AST_TYPE_PROTO;
-            }
+            Ast_TypeProto proto = type->at_proto == AST_TYPE_PROTO ? AST_TYPE_PROTO : seen->af_type->at_proto;
+            seen->af_body   = fn->af_body;
+            seen->af_locals = fn->af_locals;
+            seen->af_type   = Ast_NewFunction(seen->af_type->at_ret, type->at_params, type->at_nparams, type->at_va, proto);
         }
         return;
     }
@@ -1462,13 +1437,9 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line)
     Ast_Func *fn = calloc(1, sizeof(Ast_Func));
 
     Err_AssertAt(line, ! Ast_FindGlobal(name), ERR_PAR_CONFLICTING_TYPES, name);
-    fn->af_name     = (char *) name;
-    fn->af_ret      = type->at_ret;
-    fn->af_params   = type->at_params;
-    fn->af_nparams  = type->at_nparams;
-    fn->af_va       = type->at_va;
-    fn->af_proto    = type->at_proto;
-    fn->af_static   = Par_DeclStorage == AST_STORAGE_STATIC;
+    fn->af_name   = (char *) name;
+    fn->af_type   = type;
+    fn->af_static = Par_DeclStorage == AST_STORAGE_STATIC;
     Par_AddFunction(fn, line);
 }
 
@@ -1477,15 +1448,11 @@ Ast_Func *Par_MakeFunction(Ast_Node *body)
 {
     Ast_Func *fn = calloc(1, sizeof(Ast_Func));
 
-    fn->af_name     = Par_CurFuncName;
-    fn->af_ret      = Par_CurRetType;
-    fn->af_body     = body;
-    fn->af_params   = Par_CurParams;
-    fn->af_nparams  = Par_CurNumParams;
-    fn->af_va       = Par_CurVa;
-    fn->af_proto    = Par_CurProto;
-    fn->af_static   = Par_CurStatic;
-    fn->af_locals   = body ? Ast_CurrentLocals() : NULL;
+    fn->af_name   = Par_CurFuncName;
+    fn->af_type   = Par_CurDeclType;
+    fn->af_body   = body;
+    fn->af_static = Par_CurStatic;
+    fn->af_locals = body ? Ast_CurrentLocals() : NULL;
     return fn;
 }
 
@@ -1503,15 +1470,10 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
         return;
     }
 
-    Par_CurStatic    = Par_DeclStorage == AST_STORAGE_STATIC;
-    Par_CurFuncName  = decl->pc_name;
-    Par_CurRetType   = type->at_ret;
-    Par_CurParams    = type->at_params;
-    Par_CurNumParams = type->at_nparams;
-    Par_CurVa        = type->at_va;
-    Par_CurProto     = type->at_proto;
-    Par_InFunction   = true;
-    Par_CurFuncVar   = NULL;
+    Par_CurStatic   = Par_DeclStorage == AST_STORAGE_STATIC;
+    Par_CurFuncName = decl->pc_name;
+    Par_InFunction  = true;
+    Par_CurFuncVar  = NULL;
 
     Par_DeclarePrototype(decl->pc_name, type, line);
 
@@ -1587,7 +1549,7 @@ Ast_Node *Par_Designator(char *name, Ast_Line line)
         return Ast_NewVarNode(var, line);
     }
 
-    Ast_Func *fn = Par_FindFunction(name);
+    Ast_Func *fn = Ast_FindFunction(name);
     Err_AssertAt(line, fn, ERR_PAR_UNDECLARED, name);
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_FUNCADDR, line);
     node->an_funcname = name;

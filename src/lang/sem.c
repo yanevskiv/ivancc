@@ -20,25 +20,11 @@
 // Module header.
 #include "lang/sem.h"
 
-// The program being analysed.
-static Ast_Func *Sem_Prog;
-
 // The function whose body is being analysed.
 static Ast_Func *Sem_CurFunc;
 
 // Serial number of the next temporary a rewrite declares.
 static int32_t Sem_TempCount;
-
-// Return the function of that name defined in this program.
-Ast_Func *Sem_FindFunc(const char *name)
-{
-    for (Ast_Func *func = Sem_Prog; func; func = func->af_next) {
-        if (strcmp(func->af_name, name) == 0) {
-            return func;
-        }
-    }
-    return NULL;
-}
 
 // Return the length of a node list.
 int32_t Sem_CountNodes(Ast_Node *list)
@@ -764,22 +750,12 @@ bool Sem_FoldAddr(const Ast_Node *node, const char **symbol, int64_t *addend)
     return true;
 }
 
-// Give a function named as a value the pointer type it decays to.
-Ast_Type *Sem_FuncAddrType(Ast_Node *node)
-{
-    Ast_Func *func = Sem_FindFunc(node->an_funcname);
-    if (! func) {
-        return Ast_NewPointer(&Ast_TypeInt);
-    }
-    return Ast_NewPointer(Ast_NewFunction(func->af_ret, func->af_params, func->af_nparams, func->af_va, func->af_proto));
-}
-
 // Give a call the type its callee returns.
 Ast_Type *Sem_CallType(Ast_Node *node)
 {
     if (! node->an_lhs) {
-        Ast_Func *func = Sem_FindFunc(node->an_funcname);
-        return func && func->af_ret ? func->af_ret : &Ast_TypeInt;
+        Ast_Func *func = Ast_FindFunction(node->an_funcname);
+        return func ? func->af_type->at_ret : &Ast_TypeInt;
     }
     Ast_Type *type = Sem_CalleeType(node);
     return type ? type->at_ret : &Ast_TypeInt;
@@ -849,14 +825,15 @@ void Sem_CheckCall(Ast_Node *node)
         Sem_ConvertArgs(node, type->at_params, type->at_nparams, type->at_va, type->at_proto);
         return;
     }
-    Ast_Func *func = Sem_FindFunc(node->an_funcname);
+    Ast_Func *func = Ast_FindFunction(node->an_funcname);
     if (! func) {
         return;
     }
+    Ast_Type *type = func->af_type;
     char *what = Str_Format("'%s'", node->an_funcname);
-    Sem_CheckArity(node, func->af_nparams, func->af_va, func->af_proto, what);
+    Sem_CheckArity(node, type->at_nparams, type->at_va, type->at_proto, what);
     Str_Free(what);
-    Sem_ConvertArgs(node, func->af_params, func->af_nparams, func->af_va, func->af_proto);
+    Sem_ConvertArgs(node, type->at_params, type->at_nparams, type->at_va, type->at_proto);
 }
 
 // Declare a nameless local of the function being analysed.
@@ -1362,11 +1339,12 @@ void Sem_Annotate(Ast_Node *node)
             node->an_type = Sem_CallType(node);
         } break;
         case AST_NODE_KIND_FUNCADDR: {
-            node->an_type = Sem_FuncAddrType(node);
+            Ast_Func *func = Ast_FindFunction(node->an_funcname);
+            node->an_type = Ast_NewPointer(func ? func->af_type : &Ast_TypeInt);
         } break;
 
         case AST_NODE_KIND_VA_START: {
-            Err_AssertAt(node->an_line, Sem_CurFunc->af_va != AST_TYPE_FIXED, ERR_SEM_VA_START_FIXED);
+            Err_AssertAt(node->an_line, Sem_CurFunc->af_type->at_va != AST_TYPE_FIXED, ERR_SEM_VA_START_FIXED);
             node->an_type = &Ast_TypeInt;
         } break;
 
@@ -1385,7 +1363,7 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_RETURN: {
-            Ast_Type *ret = Sem_CurFunc->af_ret;
+            Ast_Type *ret = Sem_CurFunc->af_type->at_ret;
             if (ret->at_kind == AST_TYPE_KIND_VOID) {
                 Err_AssertAt(node->an_line, ! node->an_lhs || node->an_lhs->an_type->at_kind == AST_TYPE_KIND_VOID, ERR_SEM_RETURN_VALUE_IN_VOID);
                 break;
@@ -1465,7 +1443,6 @@ void Sem_AnalyzeGlobals(void)
 // Annotate every node with its type and reject what the grammar cannot.
 void Sem_Analyze(Ast_Func *prog)
 {
-    Sem_Prog = prog;
     Sem_CurFunc = NULL;
     Sem_AnalyzeGlobals();
 

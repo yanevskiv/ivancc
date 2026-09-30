@@ -646,6 +646,17 @@ Ast_Var *Ast_FindGlobal(const char *symbol)
     return NULL;
 }
 
+// Find a function already declared or defined under name.
+Ast_Func *Ast_FindFunction(const char *name)
+{
+    for (Ast_Func *fn = Ast_Program; fn; fn = fn->af_next) {
+        if (strcmp(fn->af_name, name) == 0) {
+            return fn;
+        }
+    }
+    return NULL;
+}
+
 // Declare a variable in the innermost scope, shadowing a name from above.
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line)
 {
