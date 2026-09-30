@@ -983,11 +983,6 @@ Ast_Type *Par_ExprType(Ast_Node *node)
             type = func ? Ast_NewPointer(func->af_type) : NULL;
         } break;
         case AST_NODE_KIND_CALL: {
-            if (! node->an_lhs) {
-                Ast_Func *func = Ast_FindFunction(node->an_funcname);
-                type = func ? func->af_type->at_ret : NULL;
-                break;
-            }
             Ast_Type *callee = Par_ExprType(node->an_lhs);
             if (callee && callee->at_kind == AST_TYPE_KIND_PTR) {
                 callee = callee->at_base;
@@ -1577,17 +1572,13 @@ Ast_Node *Par_Designator(char *name, Ast_Line line)
     return node;
 }
 
-// Build a call, direct or through a pointer.
+// Build a call through its callee.
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line)
 {
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_CALL, line);
 
+    node->an_lhs  = callee;
     node->an_args = args;
-    if (callee->an_kind == AST_NODE_KIND_FUNCADDR) {
-        node->an_funcname = callee->an_funcname;
-    } else {
-        node->an_lhs = callee;
-    }
     return node;
 }
 
