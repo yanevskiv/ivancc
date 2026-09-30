@@ -669,7 +669,7 @@ primary
     : NUM                  { $$ = Ast_NewNum($1.pn_val, @1); $$->an_type = $1.pn_type; }
     | FNUM                 { $$ = Ast_NewFNum($1.pf_val, $1.pf_type, @1); }
     | string               { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_STR, @1);
-                             n->an_str_idx = Ast_AddString($1.as_data, $1.as_len, $1.as_width); $$ = n; }
+                             n->an_stridx = Ast_AddString($1.as_data, $1.as_len, $1.as_width); $$ = n; }
     | IDENT
         { int64_t val;
           if (Ast_FindEnumConst($1, &val)) { $$ = Ast_NewNum(val, @1); }
