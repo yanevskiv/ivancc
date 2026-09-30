@@ -373,13 +373,13 @@ bool Pp_IsHashHash(const Pp_Token *tok)
 // True if a file's next token is an include's operand.
 bool Pp_ExpectsHeaderName(const Pp_File *file)
 {
-    size_t ntokens = file->pf_ntokens;
+    size_t n = file->pf_ntokens;
 
-    if (ntokens < 2 || ! Pp_IsDirective(&file->pf_tokens[ntokens - 2])) {
+    if (n < 2 || ! Pp_IsDirective(&file->pf_tokens[n - 2])) {
         return false;
     }
 
-    const Pp_Token *name = &file->pf_tokens[ntokens - 1];
+    const Pp_Token *name = &file->pf_tokens[n - 1];
 
     return ! (name->pt_flags & PP_FLAG_BOL) && (Pp_TokenEquals(name, "include") || Pp_TokenEquals(name, "include_next"));
 }
@@ -726,7 +726,7 @@ const Pp_Token *Pp_ReadToken(Pp_Reader *rd)
 // Read a call's arguments up to its closing parenthesis.
 Pp_Arg *Pp_ReadArgs(Pp_Reader *rd, const Pp_Macro *macro, const Pp_Token *name, const Pp_Token **close)
 {
-    size_t arg = 0;
+    size_t n = 0;
     size_t given = 0;
     size_t depth = 0;
     size_t required = macro->ma_variadic ? macro->ma_nparams - 1 : macro->ma_nparams;
@@ -741,9 +741,9 @@ Pp_Arg *Pp_ReadArgs(Pp_Reader *rd, const Pp_Macro *macro, const Pp_Token *name, 
             *close = tok;
             break;
         }
-        if (depth == 0 && Pp_TokenEquals(tok, ",") && ! (macro->ma_variadic && arg + 1 == macro->ma_nparams)) {
-            arg++;
-            tail = arg <= macro->ma_nparams ? &args[arg].pa_raw : NULL;
+        if (depth == 0 && Pp_TokenEquals(tok, ",") && ! (macro->ma_variadic && n + 1 == macro->ma_nparams)) {
+            n++;
+            tail = n <= macro->ma_nparams ? &args[n].pa_raw : NULL;
             continue;
         }
         if (Pp_TokenEquals(tok, "(")) {
@@ -757,8 +757,8 @@ Pp_Arg *Pp_ReadArgs(Pp_Reader *rd, const Pp_Macro *macro, const Pp_Token *name, 
         }
     }
 
-    given = arg + 1;
-    if (macro->ma_nparams == 0 && arg == 0 && ! args[0].pa_raw) {
+    given = n + 1;
+    if (macro->ma_nparams == 0 && n == 0 && ! args[0].pa_raw) {
         given = 0;
     }
     Err_AssertAt(name->pt_line, macro->ma_variadic ? given >= required : given == required, ERR_PP_MACRO_ARGS_COUNT, macro->ma_name, required, given);
@@ -1262,7 +1262,7 @@ void Pp_Write(FILE *out, const Buf *text, Pp_Markers markers)
 
     for (size_t pos = 0; pos < len; line++) {
         const char *end = memchr(data + pos, '\n', len - pos);
-        size_t linelen = end ? (size_t) (end - (data + pos)) + 1 : len - pos;
+        size_t n = end ? (size_t) (end - (data + pos)) + 1 : len - pos;
 
         if (markers == PP_MARKERS_EMIT && next < Pp_MapLen && Pp_Map[next].pm_output == line) {
             const Pp_MapEntry *entry = &Pp_Map[next++];
@@ -1275,8 +1275,8 @@ void Pp_Write(FILE *out, const Buf *text, Pp_Markers markers)
             fputc('\n', out);
             Str_Free(name);
         }
-        fwrite(data + pos, 1, linelen, out);
-        pos += linelen;
+        fwrite(data + pos, 1, n, out);
+        pos += n;
     }
 }
 
@@ -1436,17 +1436,17 @@ size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
 void Pp_CheckBody(const Pp_Macro *def, Ast_Line line)
 {
     size_t param = 0;
-    size_t nbody = def->ma_nbody;
+    size_t n = def->ma_nbody;
 
-    if (nbody > 0) {
-        Err_AssertAt(line, ! Pp_IsHashHash(&def->ma_body[0]) && ! Pp_IsHashHash(&def->ma_body[nbody - 1]), ERR_PP_PASTE_AT_EDGE);
+    if (n > 0) {
+        Err_AssertAt(line, ! Pp_IsHashHash(&def->ma_body[0]) && ! Pp_IsHashHash(&def->ma_body[n - 1]), ERR_PP_PASTE_AT_EDGE);
     }
-    for (size_t i = 0; i < nbody; i++) {
+    for (size_t i = 0; i < n; i++) {
         const Pp_Token *tok = &def->ma_body[i];
 
         Err_AssertAt(line, def->ma_variadic || ! Pp_TokenEquals(tok, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
         if (def->ma_kind == PP_MACRO_FUNCTION && Pp_IsHash(tok)) {
-            Err_AssertAt(line, i + 1 < nbody && Pp_FindParam(def, &def->ma_body[i + 1], &param), ERR_PP_STRINGIZE_NOT_PARAM);
+            Err_AssertAt(line, i + 1 < n && Pp_FindParam(def, &def->ma_body[i + 1], &param), ERR_PP_STRINGIZE_NOT_PARAM);
         }
     }
 }
@@ -2054,16 +2054,16 @@ Pp_Value Pp_Shift(Pp_Op op, Pp_Value val, Pp_Value count)
     bool back = ! count.pv_unsigned && (intmax_t) count.pv_bits < 0;
     bool fill = ! val.pv_unsigned && (intmax_t) val.pv_bits < 0;
     bool left = (op == PP_OP_SHL) != back;
-    uintmax_t bits = back ? -count.pv_bits : count.pv_bits;
+    uintmax_t n = back ? -count.pv_bits : count.pv_bits;
 
-    if (bits >= PP_VALUE_BITS) {
+    if (n >= PP_VALUE_BITS) {
         val.pv_bits = (! left && fill) ? UINTMAX_MAX : 0;
     } else if (left) {
-        val.pv_bits <<= bits;
+        val.pv_bits <<= n;
     } else if (fill) {
-        val.pv_bits = ~(~val.pv_bits >> bits);
+        val.pv_bits = ~(~val.pv_bits >> n);
     } else {
-        val.pv_bits >>= bits;
+        val.pv_bits >>= n;
     }
     return val;
 }
@@ -2156,7 +2156,7 @@ char *Pp_EscapeMake(const char *name)
 
     for (const char *ptr = name; *ptr; ptr++) {
         if (*ptr == ' ' || *ptr == '\t') {
-            for (const char *slash = ptr; slash > name && slash[-1] == '\\'; slash--) {
+            for (const char *q = ptr; q > name && q[-1] == '\\'; q--) {
                 Buf_PutByte(text, '\\');
             }
             Buf_PutByte(text, '\\');
