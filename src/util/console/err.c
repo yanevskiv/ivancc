@@ -29,13 +29,6 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "%s: %s"
     },
 
-    // Args: [start, end, length]
-    [ERR_STR_SLICE_OUT_OF_RANGE] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_STR_SLICE_OUT_OF_RANGE",
-        .ee_format = "slice [%zu, %zu) of a string of %zu bytes"
-    },
-
     // Args: none
     [ERR_PP_COMMENT_UNTERMINATED] = {
         .ee_level  = ERR_LEVEL_FATAL,

@@ -26,12 +26,13 @@ char *Str_Clone(const char *str)
     return str ? Str_Slice(str, 0, strlen(str)) : NULL;
 }
 
-// Return an owned copy of the bytes of str from start up to end.
+// Return an owned copy of str from start up to end, or "" out of range.
 char *Str_Slice(const char *str, size_t start, size_t end)
 {
-    size_t len = strlen(str);
-
-    Err_Assert(start <= end && end <= len, ERR_STR_SLICE_OUT_OF_RANGE, start, end, len);
+    if (! str || start > end || end > strlen(str)) {
+        start = end = 0;
+        str   = "";
+    }
 
     size_t want = end - start;
     char *out = malloc(want + 1);
@@ -91,9 +92,12 @@ bool Str_Equals(const char *a, const char *b)
     return strcmp(a, b) == 0;
 }
 
-// Test whether str begins with prefix.
+// Test whether str begins with prefix, false when either is NULL.
 bool Str_StartsWith(const char *str, const char *prefix)
 {
+    if (! str || ! prefix) {
+        return false;
+    }
     return strncmp(str, prefix, strlen(prefix)) == 0;
 }
 
