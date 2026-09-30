@@ -173,6 +173,7 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
             if (deriv->pd_vlen) {
                 return Ast_NewVla(inner, deriv->pd_vlen);
             }
+            Err_AssertAt(deriv->pd_line, deriv->pd_len > 0, ERR_PAR_ARRAY_LEN_NOT_POSITIVE);
             if (Ast_IsVla(inner)) {
                 return Ast_NewVla(inner, Ast_NewNum(deriv->pd_len, deriv->pd_line));
             }
