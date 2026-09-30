@@ -152,6 +152,9 @@ enum Err_Code {
     ERR_PAR_VLA_INITIALIZED,           // name
     ERR_PAR_UNDECLARED,                // identifier
     ERR_PAR_BODY_NOT_FUNCTION,         // name
+    ERR_PAR_REDECLARED,                // name
+    ERR_PAR_CONFLICTING_TYPES,         // name
+    ERR_PAR_FUNCTION_REDEFINED,        // name
 
     ERR_AST_FLEXIBLE_IN_UNION,
     ERR_AST_FLEXIBLE_NOT_LAST,         // member

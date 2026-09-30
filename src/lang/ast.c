@@ -434,6 +434,64 @@ Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name)
     return NULL;
 }
 
+// Return whether two types are compatible.
+bool Ast_IsCompatible(const Ast_Type *a, const Ast_Type *b)
+{
+    return a->at_qual == b->at_qual && Ast_IsCompatibleUnqualified(a, b);
+}
+
+// Return whether two types are compatible but for their outermost qualifiers.
+bool Ast_IsCompatibleUnqualified(const Ast_Type *a, const Ast_Type *b)
+{
+    if (a == b) {
+        return true;
+    }
+    if (a->at_kind != b->at_kind) {
+        return false;
+    }
+
+    switch (a->at_kind) {
+        case AST_TYPE_KIND_PTR: {
+            return Ast_IsCompatible(a->at_base, b->at_base);
+        } break;
+        case AST_TYPE_KIND_ARRAY: {
+            bool fixed = ! Ast_IsUnsized(a) && ! Ast_IsUnsized(b) && ! Ast_IsVla(a) && ! Ast_IsVla(b);
+            return Ast_IsCompatible(a->at_base, b->at_base) && (! fixed || a->at_len == b->at_len);
+        } break;
+        case AST_TYPE_KIND_FUNC: {
+            return Ast_IsCompatible(a->at_ret, b->at_ret) && Ast_IsCompatibleParams(a, b);
+        } break;
+        case AST_TYPE_KIND_STRUCT:
+        case AST_TYPE_KIND_UNION: {
+            bool tags = a->at_tag && b->at_tag ? strcmp(a->at_tag, b->at_tag) == 0 : a->at_tag == b->at_tag;
+            bool open = ! a->at_complete || ! b->at_complete;
+            return tags && (open || a->at_members == b->at_members);
+        } break;
+        default: {
+            return a->at_sign == b->at_sign;
+        }
+    }
+}
+
+// Return whether two function types' parameter lists are compatible.
+bool Ast_IsCompatibleParams(const Ast_Type *a, const Ast_Type *b)
+{
+    const Ast_Var *pb = b->at_params;
+
+    if (a->at_proto != AST_TYPE_PROTO || b->at_proto != AST_TYPE_PROTO) {
+        return true;
+    }
+    if (a->at_nparams != b->at_nparams || a->at_variadic != b->at_variadic) {
+        return false;
+    }
+    for (const Ast_Var *pa = a->at_params; pa && pb; pa = pa->av_param_next, pb = pb->av_param_next) {
+        if (! Ast_IsCompatibleUnqualified(pa->av_type, pb->av_type)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // Allocate a zeroed node of the given kind.
 Ast_Node *Ast_NewNode(Ast_NodeKind kind, Ast_Line line)
 {
@@ -515,6 +573,7 @@ void Ast_BeginScope(void)
     Ast_Locals   = NULL;
     Ast_CurScope = &Ast_FileScope;
     Ast_PushScope();
+    Ast_CurScope->as_params = true;
 }
 
 // Leave a function.
@@ -551,6 +610,28 @@ Ast_Var *Ast_FindVar(const char *name)
     return Ast_FindGlobal(name);
 }
 
+// Return the parameters' scope a function body's outermost block shares.
+Ast_Scope *Ast_SharedScope(void)
+{
+    Ast_Scope *outer = Ast_CurScope->as_parent;
+    return outer && outer->as_params ? outer : NULL;
+}
+
+// Look up a variable declared in the innermost scope.
+Ast_Var *Ast_FindVarHere(const char *name)
+{
+    Ast_Scope *scopes[] = { Ast_CurScope, Ast_SharedScope() };
+
+    for (size_t i = 0; i < sizeof(scopes) / sizeof(scopes[0]) && scopes[i]; i++) {
+        for (Ast_Var *var = scopes[i]->as_vars; var; var = var->av_scope_next) {
+            if (strcmp(var->av_name, name) == 0) {
+                return var;
+            }
+        }
+    }
+    return NULL;
+}
+
 // Find a file-scope variable by the symbol it takes.
 Ast_Var *Ast_FindGlobal(const char *symbol)
 {
@@ -565,12 +646,6 @@ Ast_Var *Ast_FindGlobal(const char *symbol)
 // Declare a variable in the innermost scope, shadowing a name from above.
 Ast_Var *Ast_DeclareVar(const char *name, Ast_Type *type, Ast_Line line)
 {
-    for (Ast_Var *var = Ast_CurScope->as_vars; var; var = var->av_scope_next) {
-        if (strcmp(var->av_name, name) == 0) {
-            return var;
-        }
-    }
-
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
     var->av_name   = Str_Clone(name);
     var->av_symbol = var->av_name;
@@ -736,6 +811,17 @@ Ast_Type *Ast_FindTypedef(const char *name)
     return NULL;
 }
 
+// Look up a typedef name declared in the innermost scope.
+Ast_Type *Ast_FindTypedefHere(const char *name)
+{
+    for (Ast_Typedef *def = Ast_CurScope->as_typedefs; def; def = def->ad_next) {
+        if (strcmp(def->ad_name, name) == 0) {
+            return def->ad_type;
+        }
+    }
+    return NULL;
+}
+
 // Bind a typedef name to a type in the innermost scope.
 void Ast_DeclareTypedef(const char *name, Ast_Type *type)
 {
@@ -755,6 +841,17 @@ bool Ast_FindEnumConst(const char *name, int64_t *value)
                 *value = item->ae_value;
                 return true;
             }
+        }
+    }
+    return false;
+}
+
+// Return whether an enumeration constant is declared in the innermost scope.
+bool Ast_IsEnumConstHere(const char *name)
+{
+    for (Ast_EnumConst *item = Ast_CurScope->as_enums; item; item = item->ae_next) {
+        if (strcmp(item->ae_name, name) == 0) {
+            return true;
         }
     }
     return false;

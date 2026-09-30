@@ -865,6 +865,7 @@ Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line li
 void Par_AddEnumConst(const char *name, Ast_Node *value, Ast_Line line)
 {
     Err_AssertAt(line, ! value || Sem_Fold(value, &Par_EnumValue), ERR_PAR_ENUM_NOT_CONSTANT, name);
+    Err_AssertAt(line, ! Ast_IsEnumConstHere(name) && ! Ast_FindVarHere(name) && ! Ast_FindTypedefHere(name), ERR_PAR_REDECLARED, name);
     Ast_DeclareEnumConst(name, Par_EnumValue++);
 }
 
@@ -1261,15 +1262,17 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
         return;
     }
     if (type->at_kind == AST_TYPE_KIND_FUNC) {
-        Par_DeclarePrototype(name, type);
+        Par_DeclarePrototype(name, type, line);
         return;
     }
     if (! Ast_IsUnsized(type)) {
         Par_CheckComplete(name, type, line);
     }
+    Err_AssertAt(line, ! Par_FindFunction(name), ERR_PAR_CONFLICTING_TYPES, name);
 
     Ast_Var *var = Ast_FindGlobal(name);
     if (var) {
+        Err_AssertAt(line, Ast_IsCompatible(var->av_type, type), ERR_PAR_CONFLICTING_TYPES, name);
         Par_Redeclare(var, line);
     } else {
         var = Ast_DeclareGlobal(name, type, line);
@@ -1289,6 +1292,21 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
     }
 }
 
+// Refuse a second declaration of a name in one block, but for agreeing externs and typedefs.
+void Par_CheckRedeclaration(const char *name, const Ast_Type *type, Ast_Line line)
+{
+    Ast_Var *var = Ast_FindVarHere(name);
+    Ast_Type *def = Ast_FindTypedefHere(name);
+    bool externs = var && var->av_storage == AST_STORAGE_EXTERN && Par_DeclStorage == AST_STORAGE_EXTERN;
+    bool typedefs = def && ! var && Par_DeclStorage == AST_STORAGE_TYPEDEF;
+
+    if (externs || typedefs) {
+        Err_AssertAt(line, Ast_IsCompatible(var ? var->av_type : def, type), ERR_PAR_CONFLICTING_TYPES, name);
+        return;
+    }
+    Err_AssertAt(line, ! var && ! def && ! Ast_IsEnumConstHere(name), ERR_PAR_REDECLARED, name);
+}
+
 // Declare a variable inside a function.
 Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
 {
@@ -1298,12 +1316,13 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
     if (Par_DeclStorage == AST_STORAGE_STATIC) {
         Err_AssertAt(line, ! Ast_IsVla(type), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
     }
+    Par_CheckRedeclaration(name, type, line);
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
         Ast_DeclareTypedef(name, type);
         return NULL;
     }
     if (type->at_kind == AST_TYPE_KIND_FUNC) {
-        Par_DeclarePrototype(name, type);
+        Par_DeclarePrototype(name, type, line);
         return NULL;
     }
     if (! Ast_IsUnsized(type)) {
@@ -1387,11 +1406,19 @@ Ast_Func *Par_FindFunction(const char *name)
     return NULL;
 }
 
+// Return the type a function was declared with.
+Ast_Type *Par_FunctionType(const Ast_Func *fn)
+{
+    return Ast_NewFunction(fn->af_ret, fn->af_params, fn->af_nparams, fn->af_variadic, fn->af_proto);
+}
+
 // Append a function to the program.
-void Par_AddFunction(Ast_Func *fn)
+void Par_AddFunction(Ast_Func *fn, Ast_Line line)
 {
     Ast_Func *seen = Par_FindFunction(fn->af_name);
     if (seen) {
+        Err_AssertAt(line, Ast_IsCompatible(Par_FunctionType(seen), Par_FunctionType(fn)), ERR_PAR_CONFLICTING_TYPES, fn->af_name);
+        Err_AssertAt(line, ! seen->af_body || ! fn->af_body, ERR_PAR_FUNCTION_REDEFINED, fn->af_name);
         if (fn->af_body) {
             seen->af_body     = fn->af_body;
             seen->af_locals   = fn->af_locals;
@@ -1416,10 +1443,11 @@ void Par_AddFunction(Ast_Func *fn)
 }
 
 // Record a prototype a declarator spelled out.
-void Par_DeclarePrototype(const char *name, Ast_Type *type)
+void Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line)
 {
     Ast_Func *fn = calloc(1, sizeof(Ast_Func));
 
+    Err_AssertAt(line, ! Ast_FindGlobal(name), ERR_PAR_CONFLICTING_TYPES, name);
     fn->af_name     = (char *) name;
     fn->af_ret      = type->at_ret;
     fn->af_params   = type->at_params;
@@ -1427,7 +1455,7 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type)
     fn->af_variadic = type->at_variadic;
     fn->af_proto    = type->at_proto;
     fn->af_static   = Par_DeclStorage == AST_STORAGE_STATIC;
-    Par_AddFunction(fn);
+    Par_AddFunction(fn, line);
 }
 
 // Build the function the parser has just read.
@@ -1471,7 +1499,7 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
     Par_InFunction   = true;
     Par_CurFuncVar   = NULL;
 
-    Par_DeclarePrototype(decl->pc_name, type);
+    Par_DeclarePrototype(decl->pc_name, type, line);
 
     Ast_BeginScope();
     for (Ast_Var *param = type->at_params; param; param = param->av_param_next) {
@@ -1485,7 +1513,7 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
 void Par_EndExternal(Ast_Node *init, Ast_Line line)
 {
     if (Par_InFunction) {
-        Par_AddFunction(Par_MakeFunction(NULL));
+        Par_AddFunction(Par_MakeFunction(NULL), line);
         Ast_EndScope();
         Par_InFunction = false;
         return;
@@ -1501,7 +1529,7 @@ void Par_EndFunction(Ast_Node *body)
         stmt->an_next = body->an_body;
         body->an_body = stmt;
     }
-    Par_AddFunction(Par_MakeFunction(body));
+    Par_AddFunction(Par_MakeFunction(body), Par_DeclLine);
     Ast_EndScope();
     Par_InFunction = false;
 }
