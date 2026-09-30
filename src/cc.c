@@ -142,10 +142,12 @@ static void Cc_ShowUsage(const char *prog)
     exit(1);
 }
 
-// Remove the output file after an error.
+// Remove the output file after an error, if it is a regular file.
 static void Cc_RemoveOutput(void)
 {
-    if (Err_Status() != ERR_SUCCESS && Cc_OutputPath) {
+    struct stat st;
+
+    if (Err_Status() != ERR_SUCCESS && Cc_OutputPath && stat(Cc_OutputPath, &st) == 0 && S_ISREG(st.st_mode)) {
         remove(Cc_OutputPath);
     }
 }
