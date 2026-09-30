@@ -662,7 +662,7 @@ void Asm_x86_64_EmitCvtToSse(Asm_x86_64_Op op, Asm_x86_64_Reg src, Asm_x86_64_Xm
     item->ai_src = Asm_x86_64_Reg64(src);
 }
 
-// Emit a truncating conversion from an SSE register into a 64-bit integer register.
+// Emit a truncating conversion from an SSE into a 64-bit integer register.
 void Asm_x86_64_EmitCvtFromSse(Asm_x86_64_Op op, Asm_x86_64_Xmm src, Asm_x86_64_Reg dst)
 {
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);

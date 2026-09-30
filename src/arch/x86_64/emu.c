@@ -186,7 +186,7 @@ void Emu_x86_64_WriteDev(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value)
             cpu->ec_status = value & EMU_X86_64_MASK_8;
         } break;
         default: {
-            // the status register is read-only, and the rest is unassigned
+            // empty
         } break;
     }
 }

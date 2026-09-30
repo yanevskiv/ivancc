@@ -311,7 +311,7 @@ int64_t Sem_Truncate(const Ast_Type *type, int64_t value)
         case AST_TYPE_KIND_STRUCT:
         case AST_TYPE_KIND_UNION:
         case AST_TYPE_KIND_COUNT: {
-            // already as wide as the value is held
+            // empty
         } break;
     }
     return value;
@@ -495,7 +495,7 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
         } break;
         case AST_NODE_KIND_SIZEOF: {
             if (! node->an_lhs->an_type) {
-                return false;  // the Sem_ pass has not typed the operand yet
+                return false;
             }
             if (Ast_IsVla(node->an_lhs->an_type)) {
                 return false;
@@ -1103,7 +1103,7 @@ void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
     Sem_CheckGotos(node->an_next, body);
 }
 
-// Attach every case and default of a switch to it, each case converted to its type.
+// Attach every case and default of a switch to it.
 void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
 {
     if (! node || node->an_kind == AST_NODE_KIND_SWITCH) {
@@ -1144,7 +1144,7 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_FNUM: {
-            // the parser already set an_type from the literal's suffix
+            // empty
         } break;
 
         case AST_NODE_KIND_AND:
@@ -1338,7 +1338,7 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_VA_ARG: {
-            // the parser already set an_type from the type it names
+            // empty
         } break;
 
         case AST_NODE_KIND_CASE: {
@@ -1437,7 +1437,7 @@ void Sem_Analyze(Ast_Func *prog)
 
     for (Ast_Func *func = prog; func; func = func->af_next) {
         if (! func->af_body) {
-            continue;  // a prototype declares a signature and nothing to walk
+            continue;
         }
         Sem_CurFunc = func;
         Sem_Node(func->af_body);
