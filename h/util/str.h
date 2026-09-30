@@ -28,13 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// A list of owned strings, as produced by Str_Split.
-typedef struct Str_List Str_List;
-struct Str_List {
-    char **sl_items;
-    size_t sl_count;
-};
-
 // String utility functions
 char *Str_Clone(const char *str);
 char *Str_Slice(const char *str, size_t start, size_t end);
@@ -47,7 +40,7 @@ char *Str_Trim(char *str);
 void Str_Free(char *str);
 
 // String splitting
-Str_List Str_Split(const char *str, const char *sep);
-void Str_ListFree(Str_List *list);
+char **Str_Tokenize(const char *str, const char *sep);
+void Str_FreeTokens(char **tokens);
 
 #endif // STR_H
