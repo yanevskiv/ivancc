@@ -422,15 +422,15 @@ Ast_Str Par_StringLiteral(const char *body, size_t len, size_t width, Ast_Line l
 // Re-encode a string literal into elements of the given width.
 Ast_Str Par_WidenString(Ast_Str str, size_t width)
 {
-    size_t written = 0;
+    size_t n = 0;
     Ast_Str out;
 
     out.as_data  = calloc(str.as_len / str.as_width + 1, width);
     out.as_width = width;
     for (size_t i = 0; i < str.as_len; i += str.as_width) {
-        Par_PutElement(out.as_data, &written, width, Par_GetElement(str.as_data + i, str.as_width));
+        Par_PutElement(out.as_data, &n, width, Par_GetElement(str.as_data + i, str.as_width));
     }
-    out.as_len = written;
+    out.as_len = n;
     return out;
 }
 
@@ -474,7 +474,7 @@ uint64_t Par_ScanDigits(const char *text, size_t len, size_t *pos, Par_Base base
 {
     uint64_t value = 0;
 
-    for (size_t digits = 0; digits < count && *pos < len; digits++) {
+    for (size_t n = 0; n < count && *pos < len; n++) {
         int32_t digit = Par_DigitValue(text[*pos]);
         if (digit < 0 || digit >= (int32_t) base) {
             break;
@@ -521,31 +521,31 @@ void Par_PutUtf8(char *buf, size_t *len, uint64_t value)
         return;
     }
 
-    size_t nbytes = PAR_UTF8_LEN_TWO;
+    size_t n = PAR_UTF8_LEN_TWO;
 
     if (value >= PAR_UTF8_MAX_THREE) {
-        nbytes = PAR_UTF8_LEN_FOUR;
+        n = PAR_UTF8_LEN_FOUR;
     } else if (value >= PAR_UTF8_MAX_TWO) {
-        nbytes = PAR_UTF8_LEN_THREE;
+        n = PAR_UTF8_LEN_THREE;
     }
 
-    uint64_t lead = (PAR_BYTE_MASK << (AST_BITS_PER_BYTE - nbytes)) & PAR_BYTE_MASK;
+    uint64_t lead = (PAR_BYTE_MASK << (AST_BITS_PER_BYTE - n)) & PAR_BYTE_MASK;
 
-    Par_PutElement(buf, len, AST_TYPE_SIZE_CHAR, lead | (value >> ((nbytes - 1) * PAR_UTF8_SHIFT)));
-    for (size_t remaining = nbytes - 1; remaining > 0; remaining--) {
-        Par_PutElement(buf, len, AST_TYPE_SIZE_CHAR, PAR_UTF8_CONT | ((value >> ((remaining - 1) * PAR_UTF8_SHIFT)) & PAR_UTF8_MASK));
+    Par_PutElement(buf, len, AST_TYPE_SIZE_CHAR, lead | (value >> ((n - 1) * PAR_UTF8_SHIFT)));
+    for (size_t k = n - 1; k > 0; k--) {
+        Par_PutElement(buf, len, AST_TYPE_SIZE_CHAR, PAR_UTF8_CONT | ((value >> ((k - 1) * PAR_UTF8_SHIFT)) & PAR_UTF8_MASK));
     }
 }
 
 // Decode a literal body into elements of width bytes.
 char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *out_len, Ast_Line line)
 {
-    size_t written = 0;
+    size_t n = 0;
     char *buf = calloc(len + 1, width);
 
     for (size_t i = 0; i < len; i++) {
         if (body[i] != '\\' || i + 1 == len) {
-            Par_PutElement(buf, &written, width, (uint8_t) body[i]);
+            Par_PutElement(buf, &n, width, (uint8_t) body[i]);
             continue;
         }
 
@@ -553,37 +553,37 @@ char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *ou
 
         switch (body[i + 1]) {
             case 'a': {
-                Par_PutElement(buf, &written, width, '\a');
+                Par_PutElement(buf, &n, width, '\a');
             } break;
             case 'b': {
-                Par_PutElement(buf, &written, width, '\b');
+                Par_PutElement(buf, &n, width, '\b');
             } break;
             case 'f': {
-                Par_PutElement(buf, &written, width, '\f');
+                Par_PutElement(buf, &n, width, '\f');
             } break;
             case 'n': {
-                Par_PutElement(buf, &written, width, '\n');
+                Par_PutElement(buf, &n, width, '\n');
             } break;
             case 'r': {
-                Par_PutElement(buf, &written, width, '\r');
+                Par_PutElement(buf, &n, width, '\r');
             } break;
             case 't': {
-                Par_PutElement(buf, &written, width, '\t');
+                Par_PutElement(buf, &n, width, '\t');
             } break;
             case 'v': {
-                Par_PutElement(buf, &written, width, '\v');
+                Par_PutElement(buf, &n, width, '\v');
             } break;
             case '\\': {
-                Par_PutElement(buf, &written, width, '\\');
+                Par_PutElement(buf, &n, width, '\\');
             } break;
             case '\'': {
-                Par_PutElement(buf, &written, width, '\'');
+                Par_PutElement(buf, &n, width, '\'');
             } break;
             case '"': {
-                Par_PutElement(buf, &written, width, '"');
+                Par_PutElement(buf, &n, width, '"');
             } break;
             case '?': {
-                Par_PutElement(buf, &written, width, '?');
+                Par_PutElement(buf, &n, width, '?');
             } break;
             case '0':
             case '1':
@@ -594,13 +594,13 @@ char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *ou
             case '6':
             case '7': {
                 pos = i + 1;
-                Par_PutEscape(buf, &written, width, Par_ScanDigits(body, len, &pos, PAR_BASE_OCTAL, PAR_MAX_OCTAL_DIGITS), line);
+                Par_PutEscape(buf, &n, width, Par_ScanDigits(body, len, &pos, PAR_BASE_OCTAL, PAR_MAX_OCTAL_DIGITS), line);
             } break;
             case 'x': {
                 size_t start = pos;
                 uint64_t value = Par_ScanDigits(body, len, &pos, PAR_BASE_HEX, PAR_MAX_HEX_DIGITS);
                 Err_AssertAt(line, pos != start, ERR_PAR_ESCAPE_HEX_EMPTY);
-                Par_PutEscape(buf, &written, width, value, line);
+                Par_PutEscape(buf, &n, width, value, line);
             } break;
             case 'u':
             case 'U': {
@@ -609,9 +609,9 @@ char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *ou
                 uint64_t value = Par_ScanDigits(body, len, &pos, PAR_BASE_HEX, count);
                 Err_AssertAt(line, pos - start == count, ERR_PAR_ESCAPE_UCN_INCOMPLETE);
                 if (width > AST_TYPE_SIZE_CHAR) {
-                    Par_PutEscape(buf, &written, width, value, line);
+                    Par_PutEscape(buf, &n, width, value, line);
                 } else {
-                    Par_PutUtf8(buf, &written, value);
+                    Par_PutUtf8(buf, &n, value);
                 }
             } break;
             default: {
@@ -621,7 +621,7 @@ char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *ou
         i = pos - 1;
     }
 
-    *out_len = written;
+    *out_len = n;
     return buf;
 }
 
