@@ -52,8 +52,6 @@ enum Err_Code {
 
     ERR_FILE_ACCESS,                   // can't open, read or write a file
 
-    ERR_STR_SLICE_OUT_OF_RANGE,        // can't slice a string out of range
-
     ERR_PP_COMMENT_UNTERMINATED,       // can't leave a comment open at the end of the file
     ERR_PP_DIRECTIVE_UNKNOWN,          // can't use a directive the preprocessor does not know
     ERR_PP_EXTRA_TOKENS,               // shouldn't put tokens after a directive that takes none
