@@ -1292,7 +1292,7 @@ int32_t Gen_x86_64_MarkLabels(Ast_Node *node, int32_t depth)
             }
         } break;
         case AST_NODE_KIND_LABEL: {
-            node->an_val = depth;
+            node->an_vladepth = depth;
             depth = Gen_x86_64_MarkLabels(node->an_lhs, depth);
         } break;
         case AST_NODE_KIND_CASE:
@@ -1474,13 +1474,13 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
             if (bits) {
                 Gen_x86_64_EmitBitfieldLoad(bits);
                 Gen_x86_64_EmitPush();
-                Asm_x86_64_EmitAddImm(node->an_val, ASM_X86_64_REG_RAX);
+                Asm_x86_64_EmitAddImm(node->an_step, ASM_X86_64_REG_RAX);
                 Gen_x86_64_EmitBitfieldStore(bits);
                 Gen_x86_64_EmitPop(ASM_X86_64_REG_RAX);
             } else {
                 Gen_x86_64_EmitLoadFrom(ASM_X86_64_REG_RDI, 0, ASM_X86_64_REG_RAX, node->an_type);
                 Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
-                Asm_x86_64_EmitAddImm(node->an_val, ASM_X86_64_REG_RCX);
+                Asm_x86_64_EmitAddImm(node->an_step, ASM_X86_64_REG_RCX);
                 Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, 0, width);
             }
         } break;
@@ -1778,7 +1778,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
         } break;
         case AST_NODE_KIND_GOTO: {
             Ast_Node *label = Sem_FindLabel(Gen_x86_64_CurrFunc->af_body, node->an_funcname);
-            Gen_x86_64_EmitVlaRestore((int32_t) label->an_val);
+            Gen_x86_64_EmitVlaRestore(label->an_vladepth);
             Asm_x86_64_EmitJmp(".L.user.%s.%s", Gen_x86_64_CurrFunc->af_name, node->an_funcname);
         } break;
         case AST_NODE_KIND_BREAK: {
@@ -1812,7 +1812,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
         case AST_NODE_KIND_ZERO: {
             Gen_x86_64_EmitAddr(node->an_lhs);
             Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI);
-            Gen_x86_64_EmitZero((int32_t) node->an_val);
+            Gen_x86_64_EmitZero(node->an_size);
         } break;
         case AST_NODE_KIND_NOP: {
             // empty
@@ -1946,7 +1946,7 @@ void Gen_x86_64_EmitFloatConstant(uint8_t *bytes, const Ast_Node *item, const As
 void Gen_x86_64_EmitConstant(uint8_t *bytes, const Ast_Node *item, const Ast_Var *var, Gen_x86_64_Addr *addrs, int32_t *naddrs)
 {
     int32_t size = item->an_type->at_size;
-    int32_t offset = (int32_t) item->an_val;
+    int32_t offset = item->an_offset;
     int64_t val = 0;
     int64_t addend = 0;
     const char *symbol = NULL;

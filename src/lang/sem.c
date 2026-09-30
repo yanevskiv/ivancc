@@ -921,7 +921,7 @@ void Sem_LowerPostInc(Ast_Node *node)
 {
     Ast_Var *ptr = NULL;
     Ast_Line line = node->an_line;
-    Ast_Node *step = Ast_NewNum(node->an_val, line);
+    Ast_Node *step = Ast_NewNum(node->an_step, line);
     Ast_Var *old = Sem_NewTemp(node->an_lhs->an_type, line);
     Ast_Node *set = Sem_PinLvalue(node->an_lhs, &ptr);
 
@@ -1301,7 +1301,7 @@ void Sem_Annotate(Ast_Node *node)
                 break;
             }
             if (Sem_IsPointer(type)) {
-                node->an_val *= type->at_base->at_size;
+                node->an_step *= type->at_base->at_size;
             }
             node->an_type = type;
         } break;

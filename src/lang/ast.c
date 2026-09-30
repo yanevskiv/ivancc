@@ -558,7 +558,7 @@ Ast_Node *Ast_NewOpAssign(Ast_NodeKind op, Ast_Node *lhs, Ast_Node *rhs, Ast_Lin
 Ast_Node *Ast_NewPostInc(Ast_Node *lhs, int64_t step, Ast_Line line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_POSTINC, lhs, line);
-    node->an_val = step;
+    node->an_step = step;
     return node;
 }
 

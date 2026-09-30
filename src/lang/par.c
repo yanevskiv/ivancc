@@ -900,7 +900,7 @@ Ast_Node *Par_InitStore(Ast_Var *var, int32_t off, Ast_Type *type, Ast_Member *b
 Ast_Node *Par_InitAt(int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_INIT, value, line);
-    node->an_val    = off;
+    node->an_offset = off;
     node->an_type   = type;
     node->an_member = bits;
     return node;
@@ -917,8 +917,8 @@ void Par_Designate(Ast_Type *type, Ast_Node *desig, int32_t *index, Ast_Member *
     }
 
     Err_AssertAt(line, type->at_kind == AST_TYPE_KIND_ARRAY, ERR_PAR_DESIG_NOT_ARRAY);
-    Err_AssertAt(line, desig->an_val >= 0 && (desig->an_val < type->at_len || type == Par_OpenArray), ERR_PAR_DESIG_OUT_OF_RANGE, (long) desig->an_val);
-    *index = (int32_t) desig->an_val;
+    Err_AssertAt(line, desig->an_index >= 0 && (desig->an_index < type->at_len || type == Par_OpenArray), ERR_PAR_DESIG_OUT_OF_RANGE, (long) desig->an_index);
+    *index = (int32_t) desig->an_index;
 }
 
 // Step a type and offset into the subobject one designator selected.
@@ -1116,7 +1116,7 @@ void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init,
 {
     if (init->an_kind == AST_NODE_KIND_COMPOUND && init->an_type == type) {
         for (Ast_Node *item = init->an_items; item; item = item->an_next) {
-            (*tail)->an_next = Par_InitAt(base + (int32_t) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
+            (*tail)->an_next = Par_InitAt(base + item->an_offset, item->an_type, item->an_member, item->an_lhs, line);
             *tail = (*tail)->an_next;
         }
         return;
@@ -1166,11 +1166,11 @@ Ast_Node *Par_FlattenInit(Ast_Type **type, Ast_Node *init, Ast_Line line)
 Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, Ast_Line line)
 {
     Ast_Node *zero = Ast_NewUnary(AST_NODE_KIND_ZERO, Ast_NewVarNode(var, line), line);
-    zero->an_val = var->av_type->at_size;
+    zero->an_size = var->av_type->at_size;
 
     Ast_Node *tail = zero;
     for (Ast_Node *item = flat; item; item = item->an_next) {
-        tail->an_next = Par_InitStore(var, (int32_t) item->an_val, item->an_type, item->an_member, item->an_lhs, line);
+        tail->an_next = Par_InitStore(var, item->an_offset, item->an_type, item->an_member, item->an_lhs, line);
         tail = tail->an_next;
     }
     return zero;
