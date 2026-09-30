@@ -729,6 +729,20 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "redefinition of function '%s'"
     },
 
+    // Args: [qualifier]
+    [ERR_PAR_ASM_QUALIFIER_DUPLICATE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ASM_QUALIFIER_DUPLICATE",
+        .ee_format = "duplicate 'asm' qualifier '%s'"
+    },
+
+    // Args: none
+    [ERR_PAR_ASM_WIDE_STRING] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ASM_WIDE_STRING",
+        .ee_format = "a wide string is invalid in this context"
+    },
+
     // Args: none
     [ERR_AST_FLEXIBLE_IN_UNION] = {
         .ee_level  = ERR_LEVEL_FATAL,
@@ -1228,14 +1242,14 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
 
     // Args: [string]
     [ERR_TXT_STRING_UNTERMINATED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_level  = ERR_LEVEL_ERROR,
         .ee_name   = "ERR_TXT_STRING_UNTERMINATED",
         .ee_format = "missing closing quote in '%s'"
     },
 
     // Args: [character]
     [ERR_TXT_ESCAPE_UNKNOWN] = {
-        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_level  = ERR_LEVEL_ERROR,
         .ee_name   = "ERR_TXT_ESCAPE_UNKNOWN",
         .ee_format = "unknown escape sequence '\\%c'"
     },

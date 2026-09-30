@@ -1604,3 +1604,19 @@ Ast_Node *Par_NewJump(Ast_NodeKind kind, Ast_Line line)
     node->an_vm = Ast_CurrentVmScope();
     return node;
 }
+
+// Add one qualifier to an asm statement's set.
+Par_AsmQual Par_AddAsmQual(Par_AsmQual quals, Par_AsmQual qual, Ast_Line line)
+{
+    Err_AssertAt(line, ! (quals & qual), ERR_PAR_ASM_QUALIFIER_DUPLICATE, qual == PAR_ASM_QUAL_VOLATILE ? PAR_ASM_VOLATILE_NAME : PAR_ASM_INLINE_NAME);
+    return quals | qual;
+}
+
+// Make an asm node from its template.
+Ast_Node *Par_NewAsm(Ast_Str text, Ast_Line line)
+{
+    Err_AssertAt(line, text.as_width == AST_TYPE_SIZE_CHAR, ERR_PAR_ASM_WIDE_STRING);
+    Ast_Node *node = Ast_NewNode(AST_NODE_KIND_ASM, line);
+    node->an_asm = text.as_data;
+    return node;
+}

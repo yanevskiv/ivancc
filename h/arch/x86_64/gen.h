@@ -32,6 +32,7 @@
 #include "lang/ast.h"
 #include "lang/sem.h"
 #include "arch/x86_64/asm.h"
+#include "arch/x86_64/txt.h"
 
 // Bytes in one eightbyte, the unit the SysV ABI classifies an argument in.
 #define GEN_X86_64_SYSV_EIGHTBYTE 8
@@ -214,6 +215,7 @@ void Gen_x86_64_EmitGlobals(void);
 
 // Text section
 void Gen_x86_64_EmitFunctions(Ast_Func *prog);
+void Gen_x86_64_EmitFileAsms(void);
 void Gen_x86_64_EmitTextSection(Ast_Func *prog);
 
 // Top-level code generation

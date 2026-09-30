@@ -26,6 +26,9 @@ Ast_Func *Ast_Program;
 // Every variable declared at file scope.
 Ast_Var *Ast_Globals;
 
+// Every asm written at file scope.
+Ast_Node *Ast_FileAsms;
+
 // The incomplete type.
 Ast_Type Ast_TypeVoid = {
     .at_kind     = AST_TYPE_KIND_VOID,
@@ -178,6 +181,9 @@ static size_t Ast_CapStrings;
 
 // The last global declared.
 static Ast_Var *Ast_GlobalsTail;
+
+// The last asm written at file scope.
+static Ast_Node *Ast_FileAsmsTail;
 
 // The outermost scope.
 static Ast_Scope Ast_FileScope;
@@ -568,6 +574,17 @@ Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, Ast_Line line)
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_MEMBER, lhs, line);
     node->an_memname = Str_Clone(name);
     return node;
+}
+
+// Append an asm to those written at file scope.
+void Ast_AddFileAsm(Ast_Node *node)
+{
+    if (Ast_FileAsmsTail) {
+        Ast_FileAsmsTail->an_next = node;
+    } else {
+        Ast_FileAsms = node;
+    }
+    Ast_FileAsmsTail = node;
 }
 
 // Start a fresh function.

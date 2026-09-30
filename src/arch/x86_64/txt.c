@@ -938,6 +938,7 @@ void Txt_x86_64_Att_ParseDirective(const char *line)
 // Parse one line.
 void Txt_x86_64_Att_ParseLine(char *line)
 {
+    char *rest = NULL;
     bool quoted = false;
     for (char *ptr = line; *ptr; ptr++) {
         if (*ptr == '"') {
@@ -945,14 +946,14 @@ void Txt_x86_64_Att_ParseLine(char *line)
         } else if (*ptr == '#' && ! quoted) {
             *ptr = '\0';
             break;
+        } else if (*ptr == TXT_X86_64_SEPARATOR && ! quoted) {
+            *ptr = '\0';
+            rest = ptr + 1;
+            break;
         }
     }
 
     char *text = Str_Trim(line);
-    if (*text == '\0') {
-        return;
-    }
-
     char *ptr = text;
     if (Txt_x86_64_Att_IsLabelStart(*ptr)) {
         while (Txt_x86_64_Att_IsNameChar(*ptr)) {
@@ -972,18 +973,27 @@ void Txt_x86_64_Att_ParseLine(char *line)
         }
     } else if (text[0] == '.') {
         Txt_x86_64_Att_ParseDirective(text);
-    } else {
+    } else if (*text != '\0') {
         Txt_x86_64_Att_ParseInstr(text);
     }
+    if (rest) {
+        Txt_x86_64_Att_ParseLine(rest);
+    }
+}
+
+// Parse AT&T-syntax assembly text onto the end of the instruction list.
+void Txt_x86_64_Att_ParseText(const char *text)
+{
+    char **lines = Str_Tokenize(text, "\n");
+    for (char **iter = lines; *iter; iter++) {
+        Txt_x86_64_Att_ParseLine(*iter);
+    }
+    Str_FreeTokens(lines);
 }
 
 // Parse AT&T-syntax assembly text into the instruction list.
 void Txt_x86_64_Att_Parse(const char *text)
 {
     Asm_x86_64_Reset();
-    char **lines = Str_Tokenize(text, "\n");
-    for (char **iter = lines; *iter; iter++) {
-        Txt_x86_64_Att_ParseLine(*iter);
-    }
-    Str_FreeTokens(lines);
+    Txt_x86_64_Att_ParseText(text);
 }
