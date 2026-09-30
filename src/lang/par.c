@@ -1294,6 +1294,10 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
         Ast_DeclareTypedef(name, type);
         return NULL;
     }
+    if (type->at_kind == AST_TYPE_KIND_FUNC) {
+        Par_DeclarePrototype(name, type);
+        return NULL;
+    }
     if (! Ast_IsUnsized(type)) {
         Par_CheckComplete(name, type, line);
     }
