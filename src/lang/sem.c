@@ -913,13 +913,16 @@ void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
     Sem_CheckGotos(node->an_next, body);
 }
 
-// Attach every case and default of a switch to it.
+// Attach every case and default of a switch to it, each case converted to its type.
 void Sem_CollectCases(Ast_Node *node, Ast_Node *sw, Ast_Node **tail)
 {
     if (! node || node->an_kind == AST_NODE_KIND_SWITCH) {
         return;
     }
 
+    if (node->an_kind == AST_NODE_KIND_CASE) {
+        node->an_val = Sem_Truncate(sw->an_cond->an_type, node->an_val);
+    }
     if (node->an_kind == AST_NODE_KIND_CASE || node->an_kind == AST_NODE_KIND_DEFAULT) {
         for (Ast_Node *seen = sw->an_cases; seen; seen = seen->an_case_next) {
             Err_AssertAt(node->an_line, seen->an_kind != node->an_kind || (node->an_kind != AST_NODE_KIND_DEFAULT && seen->an_val != node->an_val), ERR_SEM_CASE_DUPLICATE);
@@ -1139,6 +1142,7 @@ void Sem_Annotate(Ast_Node *node)
 
         case AST_NODE_KIND_SWITCH: {
             Ast_Node *tail = NULL;
+            node->an_cond = Sem_Convert(node->an_cond, Sem_Promote(node->an_cond->an_type));
             Sem_CollectCases(node->an_body, node, &tail);
         } break;
 

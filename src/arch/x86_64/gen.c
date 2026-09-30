@@ -1742,6 +1742,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Gen_x86_64_BreakVla = Gen_x86_64_VlaDepth;
 
             Gen_x86_64_EmitExpr(node->an_cond);
+            Gen_x86_64_EmitCast(node->an_cond->an_type);
             Ast_Node *deflt = NULL;
             for (Ast_Node *c = node->an_cases; c; c = c->an_case_next) {
                 c->an_label = Gen_x86_64_Count();
@@ -1749,7 +1750,12 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
                     deflt = c;
                     continue;
                 }
-                Asm_x86_64_EmitCmpImm(c->an_val, ASM_X86_64_REG_RAX);
+                if (c->an_val >= INT32_MIN && c->an_val <= INT32_MAX) {
+                    Asm_x86_64_EmitCmpImm(c->an_val, ASM_X86_64_REG_RAX);
+                } else {
+                    Asm_x86_64_EmitMovImm(c->an_val, ASM_X86_64_REG_RCX);
+                    Asm_x86_64_EmitCmp(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+                }
                 Asm_x86_64_EmitJe(".L.case.%d", c->an_label);
             }
             if (deflt) {
