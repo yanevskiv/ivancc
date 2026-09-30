@@ -160,6 +160,7 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_SEM_NOT_ASSIGNABLE]            = { "ERR_SEM_NOT_ASSIGNABLE",            "expression is not assignable" },
     [ERR_SEM_ASSIGN_ARRAY]              = { "ERR_SEM_ASSIGN_ARRAY",              "cannot assign to an array" },
     [ERR_SEM_ASSIGN_AGGREGATE_MISMATCH] = { "ERR_SEM_ASSIGN_AGGREGATE_MISMATCH", "cannot assign a value of a different struct or union type" },
+    [ERR_SEM_ASSIGN_CONST]              = { "ERR_SEM_ASSIGN_CONST",              "cannot store to a read-only object or an array" },
     [ERR_SEM_VA_START_FIXED]            = { "ERR_SEM_VA_START_FIXED",            "__builtin_va_start outside a variadic function" },
     [ERR_SEM_POINTER_FLOATING]          = { "ERR_SEM_POINTER_FLOATING",          "pointer arithmetic needs an integer, not a floating operand" },
     [ERR_SEM_OPERAND_FLOATING]          = { "ERR_SEM_OPERAND_FLOATING",          "this operator needs integer operands, not floating ones" },

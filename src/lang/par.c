@@ -132,6 +132,16 @@ Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, Ast_Line line)
     return deriv;
 }
 
+// Append a run of stars to a declarator, the star nearest the name first.
+void Par_AddPointers(Par_Decl *decl, const Par_Deriv *star)
+{
+    if (! star) {
+        return;
+    }
+    Par_AddPointers(decl, star->pd_next);
+    Par_AddDeriv(decl, PAR_DERIV_POINTER, star->pd_line)->pd_qual = star->pd_qual;
+}
+
 // Give an array derivation the length an expression computes.
 void Par_SetArrayLen(Par_Deriv *deriv, Ast_Node *len)
 {
@@ -149,7 +159,7 @@ Ast_Type *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv)
     Ast_Type *inner = Par_ApplyDerivs(base, deriv->pd_next);
     switch (deriv->pd_kind) {
         case PAR_DERIV_POINTER: {
-            return Ast_NewPointer(inner);
+            return Ast_Qualify(Ast_NewPointer(inner), deriv->pd_qual);
         }
         case PAR_DERIV_ARRAY: {
             Err_AssertAt(deriv->pd_line, inner->at_kind != AST_TYPE_KIND_FUNC, ERR_PAR_ARRAY_OF_FUNCTIONS);
@@ -885,7 +895,9 @@ Ast_Node *Par_InitStore(Ast_Var *var, int32_t off, Ast_Type *type, Ast_Member *b
     if (bits) {
         slot = Ast_NewMemberNode(slot, bits->am_name, line);
     }
-    return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, Ast_NewBinary(AST_NODE_KIND_ASSIGN, slot, value, line), line);
+    Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, slot, value, line);
+    assign->an_initstore = true;
+    return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
 }
 
 // Record one flattened initializer at a byte offset.
@@ -1157,6 +1169,7 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line)
 {
     if (init->an_kind != AST_NODE_KIND_INITLIST && var->av_type->at_kind != AST_TYPE_KIND_ARRAY) {
         Ast_Node *assign = Ast_NewBinary(AST_NODE_KIND_ASSIGN, Ast_NewVarNode(var, line), init, line);
+        assign->an_initstore = true;
         return Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, assign, line);
     }
     return Par_InitFlat(var, Par_FlattenInit(&var->av_type, init, line), line);

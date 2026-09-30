@@ -350,6 +350,7 @@ struct Ast_Node {
     int32_t      an_tmp;      // frame slot an aggregate return lands in
     int32_t      an_calltmp;  // frame slot an indirect CALL parks its callee in
     Ast_VarmodScope *an_varmod; // varmod names in scope at a jump or label
+    bool         an_initstore; // an ASSIGN that initializes rather than assigns
 };
 
 // A function definition.
