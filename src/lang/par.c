@@ -900,9 +900,9 @@ Ast_Node *Par_InitStore(Ast_Var *var, int32_t off, Ast_Type *type, Ast_Member *b
 Ast_Node *Par_InitAt(int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line)
 {
     Ast_Node *node = Ast_NewUnary(AST_NODE_KIND_INIT, value, line);
-    node->an_offset = off;
-    node->an_type   = type;
-    node->an_member = bits;
+    node->an_offset   = off;
+    node->an_type     = type;
+    node->an_bitfield = bits;
     return node;
 }
 
@@ -1062,12 +1062,12 @@ void Par_FlattenList(Ast_Type *type, int32_t base, Ast_Node **item, Ast_Node **t
     while (*item) {
         Ast_Node *iter = *item;
 
-        if (iter->an_cond) {
+        if (iter->an_desig) {
             if (braced == PAR_LIST_UNBRACED) {
                 return;
             }
             int32_t off = base;
-            Ast_Node *desig = iter->an_cond;
+            Ast_Node *desig = iter->an_desig;
             Ast_Type *slot = type;
 
             Par_Designate(type, desig, &index, &member, line);
@@ -1081,7 +1081,7 @@ void Par_FlattenList(Ast_Type *type, int32_t base, Ast_Node **item, Ast_Node **t
                 bits = next->an_memname && inner->am_bits ? inner : NULL;
             }
 
-            iter->an_cond = NULL;
+            iter->an_desig = NULL;
             Par_Flatten(slot, off, bits, iter->an_lhs, tail, line);
             *item = iter->an_next;
             if (desig->an_memname) {
@@ -1116,7 +1116,7 @@ void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init,
 {
     if (init->an_kind == AST_NODE_KIND_COMPOUND && init->an_type == type) {
         for (Ast_Node *item = init->an_items; item; item = item->an_next) {
-            (*tail)->an_next = Par_InitAt(base + item->an_offset, item->an_type, item->an_member, item->an_lhs, line);
+            (*tail)->an_next = Par_InitAt(base + item->an_offset, item->an_type, item->an_bitfield, item->an_lhs, line);
             *tail = (*tail)->an_next;
         }
         return;
@@ -1133,13 +1133,13 @@ void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init,
         return;
     }
 
-    Ast_Node *item = init->an_body;
+    Ast_Node *item = init->an_items;
     if (type->at_kind != AST_TYPE_KIND_ARRAY && ! Sem_IsAggregate(type)) {
         Err_AssertAt(line, item, ERR_PAR_INIT_EMPTY);
         Par_Flatten(type, base, bits, item->an_lhs, tail, line);
         return;
     }
-    if (item && ! item->an_cond && ! item->an_next && Par_IsStringInit(type, item->an_lhs)) {
+    if (item && ! item->an_desig && ! item->an_next && Par_IsStringInit(type, item->an_lhs)) {
         Par_FlattenString(type, base, item->an_lhs, tail, line);
         return;
     }
@@ -1170,7 +1170,7 @@ Ast_Node *Par_InitFlat(Ast_Var *var, Ast_Node *flat, Ast_Line line)
 
     Ast_Node *tail = zero;
     for (Ast_Node *item = flat; item; item = item->an_next) {
-        tail->an_next = Par_InitStore(var, item->an_offset, item->an_type, item->an_member, item->an_lhs, line);
+        tail->an_next = Par_InitStore(var, item->an_offset, item->an_type, item->an_bitfield, item->an_lhs, line);
         tail = tail->an_next;
     }
     return zero;
@@ -1194,7 +1194,7 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line)
     Par_NeedFixedSize(type, line);
 
     Ast_Node *list = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
-    list->an_body = items;
+    list->an_items = items;
 
     char *name = Str_Format(".compound.%d", Par_CompoundCount++);
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_COMPOUND, line);

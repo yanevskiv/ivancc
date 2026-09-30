@@ -521,7 +521,7 @@ local_decl
 initializer
     : expr                       { $$ = $1; }
     | LBRACE init_body RBRACE
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_INITLIST, @1); n->an_body = $2; $$ = n; }
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_INITLIST, @1); n->an_items = $2; $$ = n; }
     ;
 
 /* The items between an initializer's braces, with an optional trailing comma. */
@@ -544,7 +544,7 @@ init_list
 init_item
     : initializer                { $$ = Ast_NewUnary(AST_NODE_KIND_INIT, $1, @1); }
     | designators ASSIGN initializer
-        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $3, @1); n->an_cond = $1; $$ = n; }
+        { Ast_Node *n = Ast_NewUnary(AST_NODE_KIND_INIT, $3, @1); n->an_desig = $1; $$ = n; }
     ;
 
 /* The designators aiming one initializer item. */
