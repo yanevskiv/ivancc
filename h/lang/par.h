@@ -85,6 +85,15 @@ enum Par_Spec {
     PAR_SPEC_DOUBLE   = 1 << 10
 };
 
+// The storage-class and function specifiers a place in the grammar allows.
+typedef enum Par_StorageUse Par_StorageUse;
+enum Par_StorageUse {
+    PAR_STORAGE_FORBIDDEN, // a member or a type name
+    PAR_STORAGE_REGISTER,  // a parameter, which may be `register`
+    PAR_STORAGE_ANY,       // a declaration
+    PAR_STORAGE_COUNT      // number of uses
+};
+
 // One step of a declarator, collected walking outward from the name.
 typedef enum Par_DerivKind Par_DerivKind;
 enum Par_DerivKind {
@@ -123,12 +132,16 @@ struct Par_FNum {
     Ast_Type   *pf_type;
 };
 
-// The type specifiers and qualifiers one declaration wrote.
+// The specifiers and qualifiers one declaration wrote.
 typedef struct Par_Specs Par_Specs;
 struct Par_Specs {
-    Par_Spec  ps_specs; // the type specifier keywords seen
-    Ast_Qual  ps_qual;  // the qualifier keywords seen
-    Ast_Type *ps_type;  // the type a struct, union, enum or typedef name named
+    Par_Spec    ps_specs;    // the type specifier keywords seen
+    Ast_Qual    ps_qual;     // the qualifier keywords seen
+    Ast_Type   *ps_type;     // the type a struct, union, enum or typedef name named
+    Ast_Storage ps_storage;  // the storage class seen, NONE for `auto` and `register`
+    int32_t     ps_nstorage; // the storage-class keywords seen
+    bool        ps_register; // the storage class seen was `register`
+    bool        ps_inline;   // `inline` was seen
 };
 
 // A parameter list as the grammar collects it.
@@ -167,7 +180,7 @@ struct Par_Decl {
 };
 
 // Shared declaration state
-void Par_SetDeclSpec(Ast_Storage storage, Ast_Type *type);
+void Par_SetDeclSpec(const Par_Specs *specs, Par_StorageUse use, Ast_Line line);
 void Par_ResetEnum(void);
 
 // Parameter lists
@@ -210,13 +223,15 @@ void     Par_PutUtf8(char *buf, size_t *len, uint64_t value);
 char    *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *out_len, Ast_Line line);
 
 // Types
-void      Par_ClearSpecs(Par_Specs *specs);
-Par_Spec  Par_AddSpec(Par_Spec specs, Par_Spec spec, Ast_Line line);
-void      Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line);
-Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line);
-Ast_Type *Par_SpecsType(const Par_Specs *specs, Ast_Line line);
-Ast_Type *Par_VaListType(void);
-Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line);
+void        Par_ClearSpecs(Par_Specs *specs);
+Par_Specs   Par_StorageSpec(Ast_Storage storage);
+Par_Spec    Par_AddSpec(Par_Spec specs, Par_Spec spec, Ast_Line line);
+void        Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line);
+Ast_Storage Par_SpecsStorage(const Par_Specs *specs, Par_StorageUse use, Ast_Line line);
+Ast_Type   *Par_SpecType(Par_Spec specs, Ast_Line line);
+Ast_Type   *Par_SpecsType(const Par_Specs *specs, Ast_Line line);
+Ast_Type   *Par_VaListType(void);
+Ast_Node   *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line);
 
 // Aggregates
 Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail);

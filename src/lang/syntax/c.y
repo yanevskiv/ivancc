@@ -41,7 +41,6 @@ void yyerror(const char *s);
     int64_t         val;
     Ast_TypeKind    kind;
     Ast_Qual        qual;
-    Ast_Storage     storage;
     Par_ArrayDecor  decor;
     Par_Num         num;
     Par_FNum        fnum;
@@ -83,7 +82,7 @@ void yyerror(const char *s);
 %type <decl> member_declarators member_declarator
 %type <node> enumerator_opt
 %type <member> members member_decl
-%type <type> type_name decl_spec
+%type <type> type_name decl_spec param_spec
 %type <specs> spec_seq spec named_type
 %type <decl> declarator direct_declarator abstract_declarator direct_abstract param_dims
 %type <params> params param_list ident_list
@@ -91,7 +90,6 @@ void yyerror(const char *s);
 %type <val>     stars array_len
 %type <kind>    struct_or_union
 %type <qual>    qual
-%type <storage> storage
 %type <decor>   array_decor
 
 /* Lowest precedence first. */
@@ -125,8 +123,8 @@ translation_unit
 
 /* A file-scope declaration or function definition. */
 external_decl
-    : storage decl_spec
-        { Par_SetDeclSpec($1, $2); }
+    : spec_seq
+        { Par_SetDeclSpec(&$1, PAR_STORAGE_ANY, @1); }
       external_tail
     ;
 
@@ -164,24 +162,13 @@ knr_decls
 
 /* One old-style parameter declaration. */
 knr_decl
-    : storage decl_spec { Par_SetDeclSpec($1, $2); } knr_declarators SEMI
+    : spec_seq { Par_SetDeclSpec(&$1, PAR_STORAGE_REGISTER, @1); } knr_declarators SEMI
     ;
 
 /* The parameter names one old-style declaration types. */
 knr_declarators
     : declarator                       { Par_SetKnrParam($1, @1); }
     | knr_declarators COMMA declarator { Par_SetKnrParam($3, @3); }
-    ;
-
-/* A storage class. */
-storage
-    : /* empty */          { $$ = AST_STORAGE_NONE; }
-    | STATIC               { $$ = AST_STORAGE_STATIC; }
-    | EXTERN               { $$ = AST_STORAGE_EXTERN; }
-    | TYPEDEF              { $$ = AST_STORAGE_TYPEDEF; }
-    | REGISTER             { $$ = AST_STORAGE_NONE; }
-    | AUTO                 { $$ = AST_STORAGE_NONE; }
-    | INLINE               { $$ = AST_STORAGE_NONE; }
     ;
 
 /* One file-scope declarator, with an optional initializer. */
@@ -216,9 +203,9 @@ param_list
 
 /* One prototype parameter, named or not. */
 param
-    : decl_spec declarator
+    : param_spec declarator
         { $$ = Par_MakeParam($1, $2, @1); }
-    | decl_spec stars param_dims
+    | param_spec stars param_dims
         { Par_Decl *d = $3;
           for (int64_t i = 0; i < $2; i++) { Par_AddDeriv(d, PAR_DERIV_POINTER, @2); }
           $$ = Par_MakeAnonParam(Par_ApplyDecl($1, d), @1); }
@@ -235,9 +222,16 @@ param_dims
 
 /* ---- types --------------------------------------------------------- */
 
-/* The type every declarator in a declaration shares. */
+/* The type a member declaration or a type name opens with. */
 decl_spec
-    : spec_seq             { $$ = Par_SpecsType(&$1, @1); }
+    : spec_seq
+        { Par_SpecsStorage(&$1, PAR_STORAGE_FORBIDDEN, @1); $$ = Par_SpecsType(&$1, @1); }
+    ;
+
+/* The type a parameter opens with. */
+param_spec
+    : spec_seq
+        { Par_SpecsStorage(&$1, PAR_STORAGE_REGISTER, @1); $$ = Par_SpecsType(&$1, @1); }
     ;
 
 /* The specifiers and qualifiers a declaration opens with. */
@@ -260,6 +254,12 @@ spec
     | VOID                 { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_VOID; }
     | qual                 { Par_ClearSpecs(&$$); $$.ps_qual = $1; }
     | named_type           { $$ = $1; }
+    | STATIC               { $$ = Par_StorageSpec(AST_STORAGE_STATIC); }
+    | EXTERN               { $$ = Par_StorageSpec(AST_STORAGE_EXTERN); }
+    | TYPEDEF              { $$ = Par_StorageSpec(AST_STORAGE_TYPEDEF); }
+    | AUTO                 { $$ = Par_StorageSpec(AST_STORAGE_NONE); }
+    | REGISTER             { $$ = Par_StorageSpec(AST_STORAGE_NONE); $$.ps_register = true; }
+    | INLINE               { Par_ClearSpecs(&$$); $$.ps_inline = true; }
     ;
 
 /* A type written without a name, as a cast or a sizeof takes. */
@@ -478,8 +478,8 @@ for_init
 
 /* A block-scope declaration. */
 decl
-    : storage decl_spec { Par_SetDeclSpec($1, $2); } decl_body
-        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DECL, @2); n->an_body = $4; $$ = n; }
+    : spec_seq { Par_SetDeclSpec(&$1, PAR_STORAGE_ANY, @1); } decl_body
+        { Ast_Node *n = Ast_NewNode(AST_NODE_KIND_DECL, @1); n->an_body = $3; $$ = n; }
     ;
 
 /* The declarators a block-scope declaration names. */
