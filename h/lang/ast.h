@@ -321,34 +321,34 @@ struct Ast_Scope {
 
 // A node in the abstract syntax tree.
 struct Ast_Node {
-    Ast_NodeKind an_kind;     // which kind of node this is
-    Ast_NodeKind an_op;       // operation of AST_NODE_KIND_OPASSIGN
-    Ast_Type    *an_type;     // type of the value
-    Ast_Line     an_line;     // source line the construct started on
-    Ast_Node    *an_next;     // next node in a statement / argument list
-    Ast_Node    *an_lhs;      // generic left operand
-    Ast_Node    *an_rhs;      // generic right operand
-    Ast_Node    *an_cond;     // condition of AST_NODE_KIND_IF / AST_NODE_KIND_FOR
-    Ast_Node    *an_then;     // then branch of AST_NODE_KIND_IF
-    Ast_Node    *an_els;      // else branch of AST_NODE_KIND_IF
-    Ast_Node    *an_init;     // initialiser of AST_NODE_KIND_FOR
-    Ast_Node    *an_inc;      // increment of AST_NODE_KIND_FOR
-    Ast_Node    *an_body;     // statement list for AST_NODE_KIND_BLOCK / FOR body
-    char        *an_funcname; // a FUNCADDR's function, or a GOTO or LABEL name
-    Ast_Node    *an_args;     // argument list for AST_NODE_KIND_CALL
-    Ast_Node    *an_cases;    // cases of AST_NODE_KIND_SWITCH, in source order
-    Ast_Node    *an_case_next; // next case of the switch this one belongs to
-    int32_t      an_label;    // label number a case is emitted with
-    int64_t      an_val;      // integer value for AST_NODE_KIND_NUM
-    long double  an_fval;     // value for AST_NODE_KIND_FNUM
-    size_t       an_str_idx;  // string table slot for AST_NODE_KIND_STR
-    Ast_Var     *an_var;      // variable a VAR names, or the object a COMPOUND fills
-    Ast_Node    *an_items;    // flattened initializer a COMPOUND fills
-    Ast_Member  *an_member;   // resolved member of AST_NODE_KIND_MEMBER
-    char        *an_memname;  // member name a MEMBER node was written with
-    int32_t      an_tmp;      // frame slot an aggregate return lands in
-    int32_t      an_calltmp;  // frame slot an indirect CALL parks its callee in
-    Ast_VmScope *an_vm;       // variably modified scopes a jump or label is in
+    Ast_NodeKind an_kind;      // which kind of node this is
+    Ast_NodeKind an_op;        // operation of an OPASSIGN
+    Ast_Type    *an_type;      // type of the value
+    Ast_Line     an_line;      // source line the construct started on
+    Ast_Node    *an_next;      // next node in a statement / argument list
+    Ast_Node    *an_lhs;       // generic left operand
+    Ast_Node    *an_rhs;       // generic right operand
+    Ast_Node    *an_cond;      // test of an IF, loop, COND, SWITCH or CASE
+    Ast_Node    *an_then;      // then branch of an IF or COND
+    Ast_Node    *an_els;       // else branch of an IF or COND
+    Ast_Node    *an_init;      // initializer of a FOR
+    Ast_Node    *an_inc;       // increment of a FOR
+    Ast_Node    *an_body;      // body of a BLOCK, DECL, loop or SWITCH
+    char        *an_funcname;  // a FUNCADDR's function, or a GOTO or LABEL name
+    Ast_Node    *an_args;      // argument list of a CALL
+    Ast_Node    *an_cases;     // cases of a SWITCH, in source order
+    Ast_Node    *an_casenext;  // next case of the switch this one belongs to
+    int32_t      an_label;     // label number a case is emitted with
+    int64_t      an_val;       // value of a NUM
+    long double  an_fval;      // value of an FNUM
+    size_t       an_stridx;    // string table slot of a STR
+    Ast_Var     *an_var;       // variable a VAR names or a COMPOUND fills
+    Ast_Node    *an_items;     // flattened initializer a COMPOUND fills
+    Ast_Member  *an_member;    // resolved member of a MEMBER
+    char        *an_memname;   // member name a MEMBER node was written with
+    int32_t      an_tmp;       // frame slot an aggregate return lands in
+    int32_t      an_calltmp;   // slot an indirect CALL parks its callee in
+    Ast_VmScope *an_vm;        // variably modified scopes a jump or label is in
     bool         an_initstore; // an ASSIGN that initializes rather than assigns
 };
 
