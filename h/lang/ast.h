@@ -275,7 +275,7 @@ struct Ast_Var {
     bool         av_global;     // true when the variable lives in .data or .bss
     Ast_Storage  av_storage;    // storage class the declaration asked for
     Ast_Node    *av_init;       // initializer of a global, or NULL
-    Ast_Type    *av_varmodtype; // a varmod parameter's type before adjustment
+    Ast_Type    *av_vmtype;     // a variably modified parameter's declared type
 };
 
 // A struct, union or enum tag.
@@ -303,16 +303,16 @@ struct Ast_Typedef {
 };
 
 // The scope of one variably modified name, inside those declared before it.
-typedef struct Ast_VarmodScope Ast_VarmodScope;
-struct Ast_VarmodScope {
-    Ast_VarmodScope *vs_outer; // the variably modified name declared before it
+typedef struct Ast_VmScope Ast_VmScope;
+struct Ast_VmScope {
+    Ast_VmScope *vs_outer; // the variably modified name declared before it
 };
 
 // One lexical scope: what was declared directly inside a pair of braces.
 typedef struct Ast_Scope Ast_Scope;
 struct Ast_Scope {
     Ast_Scope       *as_parent;   // the scope this one is nested in
-    Ast_VarmodScope *as_varmod;   // innermost variably modified name in scope
+    Ast_VmScope     *as_vm;       // innermost variably modified name in scope
     Ast_Var         *as_vars;     // declared here, innermost names first
     Ast_Tag         *as_tags;     // struct, union and enum tags declared here
     Ast_Typedef     *as_typedefs; // typedef names declared here
@@ -349,7 +349,7 @@ struct Ast_Node {
     char        *an_memname;  // member name a MEMBER node was written with
     int32_t      an_tmp;      // frame slot an aggregate return lands in
     int32_t      an_calltmp;  // frame slot an indirect CALL parks its callee in
-    Ast_VarmodScope *an_varmod; // varmod names in scope at a jump or label
+    Ast_VmScope *an_vm;       // variably modified scopes a jump or label is in
     bool         an_initstore; // an ASSIGN that initializes rather than assigns
 };
 
@@ -407,7 +407,7 @@ bool      Ast_IsUnsized(const Ast_Type *type);
 Ast_Type *Ast_SizeArray(const Ast_Type *type, int32_t len);
 Ast_Type *Ast_NewVla(Ast_Type *base, Ast_Node *len);
 bool      Ast_IsVla(const Ast_Type *type);
-bool      Ast_IsVariablyModified(const Ast_Type *type);
+bool      Ast_IsVm(const Ast_Type *type);
 Ast_Type *Ast_NewFunction(Ast_Type *ret, Ast_Var *params, int32_t nparams, Ast_TypeVariadic variadic, Ast_TypeProto proto);
 Ast_Type *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, Ast_Line line);
@@ -446,9 +446,9 @@ Ast_Var *Ast_DeclareGlobal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_DeclareStaticLocal(const char *name, const char *symbol, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_DeclareExternLocal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Var *Ast_CurrentLocals(void);
-void     Ast_OpenVarmodScope(void);
-Ast_VarmodScope *Ast_CurrentVarmodScope(void);
-bool     Ast_ContainsVarmodScope(const Ast_VarmodScope *scope, const Ast_VarmodScope *outer);
+void     Ast_OpenVmScope(void);
+Ast_VmScope *Ast_CurrentVmScope(void);
+bool     Ast_ContainsVmScope(const Ast_VmScope *scope, const Ast_VmScope *outer);
 
 // Tags and typedef names
 Ast_Type *Ast_FindTag(const char *name);

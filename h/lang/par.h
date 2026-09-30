@@ -203,7 +203,7 @@ Ast_Var   *Par_MakeKnrParam(char *name, Ast_Line line);
 void       Par_SetKnrParam(Par_Decl *decl, Ast_Line line);
 void       Par_CheckKnrParams(void);
 Ast_Var   *Par_MakeAnonParam(Ast_Type *type, Ast_Line line);
-void       Par_KeepVarmodType(Ast_Var *param, Ast_Type *type);
+void       Par_KeepVmType(Ast_Var *param, Ast_Type *type);
 Ast_Node  *Par_SizeParams(void);
 void       Par_BeginBody(void);
 

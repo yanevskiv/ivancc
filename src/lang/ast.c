@@ -297,7 +297,7 @@ bool Ast_IsVla(const Ast_Type *type)
 }
 
 // Return whether this type has a variable-length array anywhere in it.
-bool Ast_IsVariablyModified(const Ast_Type *type)
+bool Ast_IsVm(const Ast_Type *type)
 {
     if (Ast_IsVla(type)) {
         return true;
@@ -305,7 +305,7 @@ bool Ast_IsVariablyModified(const Ast_Type *type)
     if (type->at_kind != AST_TYPE_KIND_PTR && type->at_kind != AST_TYPE_KIND_ARRAY) {
         return false;
     }
-    return Ast_IsVariablyModified(type->at_base);
+    return Ast_IsVm(type->at_base);
 }
 
 // Build a function type.
@@ -590,7 +590,7 @@ void Ast_PushScope(void)
 {
     Ast_Scope *scope = calloc(1, sizeof(Ast_Scope));
     scope->as_parent = Ast_CurScope;
-    scope->as_varmod = Ast_CurScope->as_varmod;
+    scope->as_vm = Ast_CurScope->as_vm;
     Ast_CurScope = scope;
 }
 
@@ -743,21 +743,21 @@ Ast_Var *Ast_CurrentLocals(void)
 }
 
 // Start the scope of a variably modified name just declared.
-void Ast_OpenVarmodScope(void)
+void Ast_OpenVmScope(void)
 {
-    Ast_VarmodScope *scope = calloc(1, sizeof(Ast_VarmodScope));
-    scope->vs_outer = Ast_CurScope->as_varmod;
-    Ast_CurScope->as_varmod = scope;
+    Ast_VmScope *scope = calloc(1, sizeof(Ast_VmScope));
+    scope->vs_outer = Ast_CurScope->as_vm;
+    Ast_CurScope->as_vm = scope;
 }
 
 // Return the innermost variably modified name's scope, or NULL.
-Ast_VarmodScope *Ast_CurrentVarmodScope(void)
+Ast_VmScope *Ast_CurrentVmScope(void)
 {
-    return Ast_CurScope->as_varmod;
+    return Ast_CurScope->as_vm;
 }
 
 // Return whether outer is scope or a scope it is nested in.
-bool Ast_ContainsVarmodScope(const Ast_VarmodScope *scope, const Ast_VarmodScope *outer)
+bool Ast_ContainsVmScope(const Ast_VmScope *scope, const Ast_VmScope *outer)
 {
     for (; scope != outer; scope = scope->vs_outer) {
         if (! scope) {

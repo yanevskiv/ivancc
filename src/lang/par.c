@@ -232,7 +232,7 @@ Ast_Var *Par_MakeParam(Ast_Type *base, Par_Decl *decl, Ast_Line line)
     var->av_name = decl->pc_name;
     var->av_type = Par_AdjustParam(type);
     var->av_line = line;
-    Par_KeepVarmodType(var, type);
+    Par_KeepVmType(var, type);
     if (var->av_name) {
         Ast_DeclarePrototypeParam(var);
     }
@@ -258,7 +258,7 @@ void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
         if (param->av_name && strcmp(param->av_name, decl->pc_name) == 0) {
             Ast_Type *type = Par_ApplyDecl(Par_DeclType, decl);
             param->av_type = Par_AdjustParam(type);
-            Par_KeepVarmodType(param, type);
+            Par_KeepVmType(param, type);
             return;
         }
     }
@@ -282,15 +282,15 @@ Ast_Var *Par_MakeAnonParam(Ast_Type *type, Ast_Line line)
     Ast_Var *var = calloc(1, sizeof(Ast_Var));
     var->av_type = Par_AdjustParam(type);
     var->av_line = line;
-    Par_KeepVarmodType(var, type);
+    Par_KeepVmType(var, type);
     return var;
 }
 
 // Keep a variably modified parameter's type for sizing on entry.
-void Par_KeepVarmodType(Ast_Var *param, Ast_Type *type)
+void Par_KeepVmType(Ast_Var *param, Ast_Type *type)
 {
-    if (Ast_IsVariablyModified(type)) {
-        param->av_varmodtype = type;
+    if (Ast_IsVm(type)) {
+        param->av_vmtype = type;
     }
 }
 
@@ -300,7 +300,7 @@ Ast_Node *Par_SizeParams(void)
     Ast_Node *sizes = NULL;
 
     for (Ast_Var *param = Par_CurParams; param; param = param->av_param_next) {
-        Ast_Node *size = param->av_varmodtype ? Par_SizeExpr(param->av_varmodtype, param->av_line) : NULL;
+        Ast_Node *size = param->av_vmtype ? Par_SizeExpr(param->av_vmtype, param->av_line) : NULL;
         if (size) {
             sizes = sizes ? Ast_NewBinary(AST_NODE_KIND_COMMA, sizes, size, param->av_line) : size;
         }
@@ -1211,7 +1211,7 @@ void Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line)
 // Reject a variably modified type where only a fixed-size type may go.
 void Par_NeedFixedSize(const Ast_Type *type, Ast_Line line)
 {
-    Err_AssertAt(line, ! Ast_IsVariablyModified(type), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+    Err_AssertAt(line, ! Ast_IsVm(type), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
 }
 
 // Build the expression that sizes a type's variable-length arrays.
@@ -1387,8 +1387,8 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
     Ast_Node *size = Par_SizeExpr(type, line);
     Ast_Node *stmt = Par_DefineLocal(decl, var, init, line);
 
-    if (Ast_IsVariablyModified(type)) {
-        Ast_OpenVarmodScope();
+    if (Ast_IsVm(type)) {
+        Ast_OpenVmScope();
     }
     if (! size) {
         return stmt;
@@ -1626,6 +1626,6 @@ Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
 Ast_Node *Par_NewJump(Ast_NodeKind kind, Ast_Line line)
 {
     Ast_Node *node = Ast_NewNode(kind, line);
-    node->an_varmod = Ast_CurrentVarmodScope();
+    node->an_vm = Ast_CurrentVmScope();
     return node;
 }

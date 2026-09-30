@@ -828,9 +828,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [label]
-    [ERR_SEM_GOTO_INTO_VARMOD_SCOPE] = {
+    [ERR_SEM_GOTO_INTO_VM_SCOPE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_SEM_GOTO_INTO_VARMOD_SCOPE",
+        .ee_name   = "ERR_SEM_GOTO_INTO_VM_SCOPE",
         .ee_format = "goto '%s' jumps into the scope of a variably modified name"
     },
 
@@ -842,9 +842,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_SEM_CASE_INTO_VARMOD_SCOPE] = {
+    [ERR_SEM_CASE_INTO_VM_SCOPE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_SEM_CASE_INTO_VARMOD_SCOPE",
+        .ee_name   = "ERR_SEM_CASE_INTO_VM_SCOPE",
         .ee_format = "switch jumps into the scope of a variably modified name"
     },
 

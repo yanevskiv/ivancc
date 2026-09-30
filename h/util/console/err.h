@@ -171,9 +171,9 @@ enum Err_Code {
     ERR_SEM_ADD_POINTERS,              // can't add two pointers
     ERR_SEM_SUB_POINTER_FROM_INT,      // can't subtract a pointer from an integer
     ERR_SEM_GOTO_UNDEFINED,            // can't goto a label that is never defined
-    ERR_SEM_GOTO_INTO_VARMOD_SCOPE,    // can't goto into the scope of a variable-length array
+    ERR_SEM_GOTO_INTO_VM_SCOPE,        // can't goto into the scope of a variable-length array
     ERR_SEM_CASE_DUPLICATE,            // can't have two case labels with the same value
-    ERR_SEM_CASE_INTO_VARMOD_SCOPE,    // can't jump from a switch into the scope of a variable-length array
+    ERR_SEM_CASE_INTO_VM_SCOPE,        // can't jump from a switch into the scope of a variable-length array
     ERR_SEM_CASE_NOT_CONSTANT,         // can't have a case label known only at run time
     ERR_SEM_ADDRESS_NOT_LVALUE,        // can't take the address of a value that is not an lvalue
     ERR_SEM_ADDRESS_BITFIELD,          // can't take the address of a bit-field
