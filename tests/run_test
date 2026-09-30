@@ -38,7 +38,7 @@ fail()
 }
 
 # Echo the value of a `// <key>:` line in a file.
-get_value()
+get_line()
 {
     head -n "$HEAD_LINES" "$1" \
         | sed -n "s@^// $2:[[:space:]]*@@Ip" \
@@ -55,7 +55,7 @@ get_text()
 }
 
 # Compile the test with ivancc, failing on a timeout or a crash.
-compile()
+stage_compile()
 {
     timeout "$TIMEOUT" "${BIN}/ivancc" "$@" $(cat "${TMP}/compiler_flags") "$NAME" >"${RUN}/compiler_output" 2>"${RUN}/compiler_error"
     echo $? > "${RUN}/compiler_status"
@@ -66,7 +66,7 @@ compile()
 }
 
 # True if the compile succeeded as expected, failing on an unexpected failure.
-compiled()
+stage_compile_ok()
 {
     [ -s "${TMP}/expected_compiler_error" ] && return 1
     [ -s "${TMP}/expected_compiler_status" ] || grep -qx 0 "${RUN}/compiler_status" || fail '%s' "$(cat "${RUN}/compiler_error")"
@@ -74,7 +74,7 @@ compiled()
 }
 
 # Run a build step after the compiler, failing if it fails.
-build_step()
+stage_build()
 {
     TOOL="$1"
     shift
@@ -86,13 +86,13 @@ build_step()
 }
 
 # True if the test expects something of the program.
-wants_run()
+stage_run_ok()
 {
     [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ]
 }
 
 # Run the program and record its output and status.
-run()
+stage_run()
 {
     timeout "$TIMEOUT" "$@" >"${RUN}/output" 2>&1
     echo $? > "${RUN}/status"
@@ -101,40 +101,40 @@ run()
 # Build an executable with ivancc alone, and run it natively.
 pipeline_ivancc()
 {
-    compile -o "${RUN}/a.out"
-    compiled || return 0
-    wants_run || return 0
-    run "${RUN}/a.out"
+    stage_compile -o "${RUN}/a.out"
+    stage_compile_ok || return 0
+    stage_run_ok || return 0
+    stage_run "${RUN}/a.out"
 }
 
 # Build through assembly text and ivanas, link with gcc, and run natively.
 pipeline_ivanas()
 {
-    compile -S -o "${RUN}/a.s"
-    compiled || return 0
-    build_step ivanas "${BIN}/ivanas" -o "${RUN}/a.o" "${RUN}/a.s"
-    build_step gcc gcc -nostdlib -static -no-pie -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.o"
-    wants_run || return 0
-    run "${RUN}/a.out"
+    stage_compile -S -o "${RUN}/a.s"
+    stage_compile_ok || return 0
+    stage_build ivanas "${BIN}/ivanas" -o "${RUN}/a.o" "${RUN}/a.s"
+    stage_build gcc gcc -nostdlib -static -no-pie -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.o"
+    stage_run_ok || return 0
+    stage_run "${RUN}/a.out"
 }
 
 # Build an object, link it with ivanld, and run it natively.
 pipeline_ivanld()
 {
-    compile -c -o "${RUN}/a.o"
-    compiled || return 0
-    build_step ivanld "${BIN}/ivanld" -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.o"
-    wants_run || return 0
-    run "${RUN}/a.out"
+    stage_compile -c -o "${RUN}/a.o"
+    stage_compile_ok || return 0
+    stage_build ivanld "${BIN}/ivanld" -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.o"
+    stage_run_ok || return 0
+    stage_run "${RUN}/a.out"
 }
 
 # Build for ivanemu, and run it under the emulator.
 pipeline_ivanemu()
 {
-    compile -mtarget=ivanemu -o "${RUN}/a.out"
-    compiled || return 0
-    wants_run || return 0
-    run "${BIN}/ivanemu" "${RUN}/a.out"
+    stage_compile -mtarget=ivanemu -o "${RUN}/a.out"
+    stage_compile_ok || return 0
+    stage_run_ok || return 0
+    stage_run "${BIN}/ivanemu" "${RUN}/a.out"
 }
 
 # Read the test's expectations, and enter its directory.
@@ -149,12 +149,12 @@ setup()
     TMP=$(mktemp -d) || error "cannot create a temporary directory"
     trap 'rm -rf "$TMP"' EXIT INT TERM
 
-    get_value "${SOURCE}" '(Test) Compiler flags' > "${TMP}/compiler_flags"
-    get_value "${SOURCE}" '(Test) Compiler status' > "${TMP}/expected_compiler_status"
+    get_line "${SOURCE}" '(Test) Compiler flags' > "${TMP}/compiler_flags"
+    get_line "${SOURCE}" '(Test) Compiler status' > "${TMP}/expected_compiler_status"
     get_text "${SOURCE}" '(Test) Compiler output' > "${TMP}/expected_compiler_output"
-    get_value "${SOURCE}" '(Test) Compiler error' > "${TMP}/expected_compiler_error"
-    get_value "${SOURCE}" '(Test) Compiler warning' > "${TMP}/expected_compiler_warning"
-    get_value "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
+    get_line "${SOURCE}" '(Test) Compiler error' > "${TMP}/expected_compiler_error"
+    get_line "${SOURCE}" '(Test) Compiler warning' > "${TMP}/expected_compiler_warning"
+    get_line "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
     get_text "${SOURCE}" '(Test) Output' > "${TMP}/expected_output"
 
     NAME="$(basename -- "$SOURCE")"
