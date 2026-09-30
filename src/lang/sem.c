@@ -222,19 +222,46 @@ int64_t Sem_Truncate(const Ast_Type *type, int64_t value)
     return value;
 }
 
-// Return the signedness an operator's operands fold with.
-Ast_TypeSign Sem_FoldSign(const Ast_Node *node)
+// Return the type a constant expression folds to.
+Ast_Type *Sem_FoldType(const Ast_Node *node)
 {
-    const Ast_Type *lhs = node->an_lhs ? node->an_lhs->an_type : NULL;
-    const Ast_Type *rhs = node->an_rhs ? node->an_rhs->an_type : NULL;
+    if (node->an_type) {
+        return node->an_type;
+    }
 
-    if (lhs && Ast_IsInteger(lhs) && lhs->at_sign == AST_TYPE_UNSIGNED && lhs->at_kind >= AST_TYPE_KIND_INT) {
-        return AST_TYPE_UNSIGNED;
+    switch (node->an_kind) {
+        case AST_NODE_KIND_NEG:
+        case AST_NODE_KIND_BITNOT:
+        case AST_NODE_KIND_SHL:
+        case AST_NODE_KIND_SHR: {
+            return Sem_Promote(Sem_FoldType(node->an_lhs));
+        } break;
+        case AST_NODE_KIND_ADD:
+        case AST_NODE_KIND_SUB:
+        case AST_NODE_KIND_MUL:
+        case AST_NODE_KIND_DIV:
+        case AST_NODE_KIND_MOD:
+        case AST_NODE_KIND_BITAND:
+        case AST_NODE_KIND_BITOR:
+        case AST_NODE_KIND_BITXOR: {
+            return Sem_CommonType(Sem_FoldType(node->an_lhs), Sem_FoldType(node->an_rhs));
+        } break;
+        case AST_NODE_KIND_COND: {
+            return Sem_CommonType(Sem_FoldType(node->an_then), Sem_FoldType(node->an_els));
+        } break;
+        default: {
+            return &Ast_TypeInt;
+        }
     }
-    if (rhs && Ast_IsInteger(rhs) && rhs->at_sign == AST_TYPE_UNSIGNED && rhs->at_kind >= AST_TYPE_KIND_INT) {
-        return AST_TYPE_UNSIGNED;
+}
+
+// Return the type an operator's operands fold in.
+Ast_Type *Sem_FoldOperandType(const Ast_Node *node)
+{
+    if (! node->an_rhs || node->an_kind == AST_NODE_KIND_SHL || node->an_kind == AST_NODE_KIND_SHR) {
+        return Sem_Promote(Sem_FoldType(node->an_lhs));
     }
-    return AST_TYPE_SIGNED;
+    return Sem_CommonType(Sem_FoldType(node->an_lhs), Sem_FoldType(node->an_rhs));
 }
 
 // Apply one operator to folded operands.
@@ -245,13 +272,13 @@ bool Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, 
 
     switch (kind) {
         case AST_NODE_KIND_ADD: {
-            *value = lhs + rhs;
+            *value = (int64_t) (ulhs + urhs);
         } break;
         case AST_NODE_KIND_SUB: {
-            *value = lhs - rhs;
+            *value = (int64_t) (ulhs - urhs);
         } break;
         case AST_NODE_KIND_MUL: {
-            *value = lhs * rhs;
+            *value = (int64_t) (ulhs * urhs);
         } break;
         case AST_NODE_KIND_DIV:
         case AST_NODE_KIND_MOD: {
@@ -272,7 +299,7 @@ bool Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, 
             *value = lhs ^ rhs;
         } break;
         case AST_NODE_KIND_SHL: {
-            *value = lhs << rhs;
+            *value = (int64_t) (ulhs << rhs);
         } break;
         case AST_NODE_KIND_SHR: {
             *value = sign == AST_TYPE_UNSIGNED ? (int64_t) (ulhs >> rhs) : lhs >> rhs;
@@ -296,7 +323,7 @@ bool Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, 
             *value = lhs || rhs;
         } break;
         case AST_NODE_KIND_NEG: {
-            *value = -lhs;
+            *value = (int64_t) (0 - ulhs);
         } break;
         case AST_NODE_KIND_NOT: {
             *value = ! lhs;
@@ -395,7 +422,8 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
             if (! Sem_Fold(node->an_lhs, &lhs)) {
                 return false;
             }
-            if (! Sem_FoldOp(node->an_kind, lhs, 0, Sem_FoldSign(node), node->an_line, value)) {
+            Ast_Type *type = Sem_FoldOperandType(node);
+            if (! Sem_FoldOp(node->an_kind, Sem_Truncate(type, lhs), 0, type->at_sign, node->an_line, value)) {
                 return false;
             }
         } break;
@@ -403,11 +431,13 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
             if (! Sem_Fold(node->an_lhs, &lhs) || ! Sem_Fold(node->an_rhs, &rhs)) {
                 return false;
             }
-            if (! Sem_FoldOp(node->an_kind, lhs, rhs, Sem_FoldSign(node), node->an_line, value)) {
+            Ast_Type *type = Sem_FoldOperandType(node);
+            if (! Sem_FoldOp(node->an_kind, Sem_Truncate(type, lhs), Sem_Truncate(type, rhs), type->at_sign, node->an_line, value)) {
                 return false;
             }
         } break;
     }
+    *value = Sem_Truncate(Sem_FoldType(node), *value);
     return true;
 }
 
