@@ -776,6 +776,14 @@ Ast_Node *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line)
     return Par_WithSizes(type, node, line);
 }
 
+// Build the copy of one argument cursor into another.
+Ast_Node *Par_VaCopy(Ast_Node *dst, Ast_Node *src, Ast_Line line)
+{
+    Ast_Node *to = Ast_NewUnary(AST_NODE_KIND_DEREF, dst, line);
+    Ast_Node *from = Ast_NewUnary(AST_NODE_KIND_DEREF, src, line);
+    return Ast_NewBinary(AST_NODE_KIND_ASSIGN, to, from, line);
+}
+
 // Join two member lists, keeping declaration order.
 Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail)
 {
