@@ -84,12 +84,12 @@ void yyerror(const char *s);
 %type <member> members member_decl
 %type <type> type_name decl_spec param_spec
 %type <specs> spec_seq spec named_type
-%type <decl> declarator direct_declarator abstract_declarator direct_abstract param_dims
+%type <decl> declarator direct_declarator abstract_declarator direct_abstract param_dims stars pointer
 %type <params> params param_list ident_list
 %type <name> tag_name
-%type <val>     stars pointer array_len
+%type <val>     array_len
 %type <kind>    struct_or_union
-%type <qual>    qual
+%type <qual>    qual qual_list
 %type <decor>   array_decor
 
 /* Lowest precedence first. */
@@ -206,8 +206,7 @@ param
     : param_spec declarator
         { $$ = Par_MakeParam($1, $2, @1); }
     | param_spec stars param_dims
-        { Par_Decl *d = $3;
-          for (int64_t i = 0; i < $2; i++) { Par_AddDeriv(d, PAR_DERIV_POINTER, @2); }
+        { Par_Decl *d = $3; Par_AddPointers(d, $2->pc_head);
           $$ = Par_MakeAnonParam(Par_ApplyDecl($1, d), @1); }
     ;
 
@@ -271,11 +270,9 @@ type_name
 /* The pointers, arrays and parameters a type name wraps its specifier in. */
 abstract_declarator
     : pointer
-        { $$ = Par_NewDecl(NULL);
-          for (int64_t i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
+        { $$ = Par_NewDecl(NULL); Par_AddPointers($$, $1->pc_head); }
     | pointer direct_abstract
-        { $$ = $2;
-          for (int64_t i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
+        { $$ = $2; Par_AddPointers($$, $1->pc_head); }
     | direct_abstract      { $$ = $1; }
     ;
 
@@ -299,15 +296,14 @@ direct_abstract
 
 /* A run of one or more pointer stars, each able to carry qualifiers of its own. */
 pointer
-    : stars MUL            { $$ = $1 + 1; }
-    | stars MUL qual_list  { $$ = $1 + 1; }
+    : stars MUL            { $$ = $1; Par_AddDeriv($$, PAR_DERIV_POINTER, @2); }
+    | stars MUL qual_list  { $$ = $1; Par_AddDeriv($$, PAR_DERIV_POINTER, @2)->pd_qual = $3; }
     ;
 
 /* A name with the pointers, arrays and parameters around it. */
 declarator
     : stars direct_declarator
-        { $$ = $2;
-          for (int64_t i = 0; i < $1; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @1); } }
+        { $$ = $2; Par_AddPointers($$, $1->pc_head); }
     ;
 
 /* A declarator without its leading pointers. */
@@ -316,8 +312,7 @@ direct_declarator
     | LPAREN declarator RPAREN               { $$ = $2; }
     /* An unnamed declarator. */
     | LPAREN stars RPAREN
-        { $$ = Par_NewDecl(NULL); $$->pc_line = @1;
-          for (int64_t i = 0; i < $2; i++) { Par_AddDeriv($$, PAR_DERIV_POINTER, @2); } }
+        { $$ = Par_NewDecl(NULL); $$->pc_line = @1; Par_AddPointers($$, $2->pc_head); }
     | direct_declarator LSQUARE array_decor expr RSQUARE
         { $$ = $1; Par_Deriv *d = Par_AddDeriv($$, PAR_DERIV_ARRAY, @2); Par_SetArrayLen(d, $4); d->pd_decor = $3; }
     | direct_declarator LSQUARE array_decor RSQUARE
@@ -340,8 +335,8 @@ array_decor
 
 /* One or more type qualifiers. */
 qual_list
-    : qual
-    | qual_list qual
+    : qual                 { $$ = $1; }
+    | qual_list qual       { $$ = $1 | $2; }
     ;
 
 /* One type qualifier. */
@@ -431,9 +426,9 @@ enumerator_opt
 
 /* A run of pointer stars, each able to carry qualifiers of its own. */
 stars
-    : /* empty */          { $$ = 0; }
-    | stars MUL            { $$ = $1 + 1; }
-    | stars MUL qual_list  { $$ = $1 + 1; }
+    : /* empty */          { $$ = Par_NewDecl(NULL); }
+    | stars MUL            { $$ = $1; Par_AddDeriv($$, PAR_DERIV_POINTER, @2); }
+    | stars MUL qual_list  { $$ = $1; Par_AddDeriv($$, PAR_DERIV_POINTER, @2)->pd_qual = $3; }
     ;
 
 /* ---- statements ---------------------------------------------------- */

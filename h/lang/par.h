@@ -159,6 +159,7 @@ typedef struct Par_Deriv Par_Deriv;
 struct Par_Deriv {
     Par_Deriv     *pd_next;
     Par_DerivKind  pd_kind;
+    Ast_Qual       pd_qual;   // qualifiers written after a POINTER's star
     int64_t        pd_len;    // element count of an ARRAY
     Ast_Node      *pd_vlen;   // run-time element count of an ARRAY, or NULL
     bool           pd_empty;  // the ARRAY was written `[]`
@@ -191,6 +192,7 @@ void  Par_PushParam(Par_ParamList *list, Ast_Var *var);
 Par_Decl  *Par_NewDecl(char *name);
 void       Par_NeedName(Par_Decl *decl, Ast_Line line);
 Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, Ast_Line line);
+void       Par_AddPointers(Par_Decl *decl, const Par_Deriv *star);
 void       Par_SetArrayLen(Par_Deriv *deriv, Ast_Node *len);
 Ast_Type  *Par_ApplyDerivs(Ast_Type *base, Par_Deriv *deriv);
 Ast_Type  *Par_ApplyDecl(Ast_Type *base, Par_Decl *decl);
