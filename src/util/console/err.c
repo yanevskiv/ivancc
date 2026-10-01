@@ -743,6 +743,48 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "invalid application of 'sizeof' to an incomplete type"
     },
 
+    // Args: [member]
+    [ERR_PAR_OFFSETOF_NOT_AGGREGATE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_OFFSETOF_NOT_AGGREGATE",
+        .ee_format = "request for member '%s' in something not a structure or union"
+    },
+
+    // Args: [type]
+    [ERR_PAR_OFFSETOF_NOT_COMPLETE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_OFFSETOF_NOT_COMPLETE",
+        .ee_format = "'%s' is an incomplete type"
+    },
+
+    // Args: [member, type]
+    [ERR_PAR_OFFSETOF_NO_MEMBER] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_OFFSETOF_NO_MEMBER",
+        .ee_format = "no member named '%s' in '%s'"
+    },
+
+    // Args: [member]
+    [ERR_PAR_OFFSETOF_BITFIELD] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_OFFSETOF_BITFIELD",
+        .ee_format = "cannot apply 'offsetof' to bit-field '%s'"
+    },
+
+    // Args: none
+    [ERR_PAR_OFFSETOF_THROUGH_POINTER] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_OFFSETOF_THROUGH_POINTER",
+        .ee_format = "cannot apply 'offsetof' to a non constant address"
+    },
+
+    // Args: none
+    [ERR_PAR_OFFSETOF_NOT_ARRAY] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_OFFSETOF_NOT_ARRAY",
+        .ee_format = "subscripted value is not an array"
+    },
+
     // Args: none
     [ERR_PAR_TYPEDEF_INITIALIZED] = {
         .ee_level  = ERR_LEVEL_FATAL,

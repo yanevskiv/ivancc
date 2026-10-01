@@ -1600,6 +1600,66 @@ Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
     return size ? Ast_NewBinary(AST_NODE_KIND_COMMA, size, bytes, line) : bytes;
 }
 
+// Append a member or an index to the steps __builtin_offsetof walks.
+Ast_Node *Par_AddOffsetStep(Ast_Node *head, char *name, Ast_Node *index, Ast_Line line)
+{
+    Ast_Node *step = Ast_NewNode(AST_NODE_KIND_DESIGNATOR, line);
+    step->an_memname = name;
+    step->an_lhs     = index;
+    if (! head) {
+        return step;
+    }
+    Ast_Node *last = head;
+    while (last->an_next) {
+        last = last->an_next;
+    }
+    last->an_next = step;
+    return head;
+}
+
+// Build the offset __builtin_offsetof yields, a constant when its indices are.
+Ast_Node *Par_OffsetOf(Ast_Type *type, Ast_Node *steps, Ast_Line line)
+{
+    Ast_Node *null = Ast_NewUnary(AST_NODE_KIND_CAST, Ast_NewNum(0, line), line);
+    null->an_type = Ast_NewPointer(type);
+
+    Ast_Node *object = Ast_NewUnary(AST_NODE_KIND_DEREF, null, line);
+    bool constant = true;
+    int64_t off = 0;
+
+    for (Ast_Node *iter = steps; iter; iter = iter->an_next) {
+        if (iter->an_memname) {
+            Err_AssertAt(iter->an_line, Sem_IsAggregate(type), ERR_PAR_OFFSETOF_NOT_AGGREGATE, iter->an_memname);
+            Err_AssertAt(iter->an_line, type->at_complete, ERR_PAR_OFFSETOF_NOT_COMPLETE, Sem_TypeName(type));
+            Ast_Member *member = Ast_FindMember(type, iter->an_memname);
+            Err_AssertAt(iter->an_line, member, ERR_PAR_OFFSETOF_NO_MEMBER, iter->an_memname, Sem_TypeName(type));
+            Err_AssertAt(iter->an_line, ! member->am_bits, ERR_PAR_OFFSETOF_BITFIELD, iter->an_memname);
+            off += member->am_offset;
+            type = member->am_type;
+            object = Ast_NewMemberNode(object, iter->an_memname, iter->an_line);
+            continue;
+        }
+
+        int64_t index = 0;
+
+        Err_AssertAt(iter->an_line, type->at_kind != AST_TYPE_KIND_PTR, ERR_PAR_OFFSETOF_THROUGH_POINTER);
+        Err_AssertAt(iter->an_line, type->at_kind == AST_TYPE_KIND_ARRAY, ERR_PAR_OFFSETOF_NOT_ARRAY);
+        constant = constant && Sem_Fold(iter->an_lhs, &index);
+        off += index * type->at_base->at_size;
+        type = type->at_base;
+        object = Ast_NewUnary(AST_NODE_KIND_DEREF, Ast_NewBinary(AST_NODE_KIND_ADD, object, iter->an_lhs, iter->an_line), iter->an_line);
+    }
+
+    if (! constant) {
+        Ast_Node *addr = Ast_NewUnary(AST_NODE_KIND_CAST, Ast_NewUnary(AST_NODE_KIND_ADDR, object, line), line);
+        addr->an_type = &Ast_TypeULong;
+        return addr;
+    }
+    Ast_Node *num = Ast_NewNum(off, line);
+    num->an_type = &Ast_TypeULong;
+    return num;
+}
+
 // Build a jump or a jump's target, noting the variably modified names in scope.
 Ast_Node *Par_NewJump(Ast_NodeKind kind, Ast_Line line)
 {

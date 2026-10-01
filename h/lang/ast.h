@@ -181,7 +181,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_COMMA,     // lhs, rhs
     AST_NODE_KIND_INIT,      // an initializer item, or a flattened one
     AST_NODE_KIND_INITLIST,  // a braced initializer, its items in an_items
-    AST_NODE_KIND_DESIGNATOR,// `[an_index]` or `.an_memname` aiming an item
+    AST_NODE_KIND_DESIGNATOR,// `[an_index]` or `.an_memname` aiming an item, or an offsetof's `[an_lhs]`
     AST_NODE_KIND_ZERO,      // zero an_size bytes at the address an_lhs
     AST_NODE_KIND_COMPOUND,  // (type){...}
     AST_NODE_KIND_CALL,      // lhs(args), a FUNCADDR lhs when direct

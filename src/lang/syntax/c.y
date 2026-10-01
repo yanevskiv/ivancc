@@ -68,6 +68,7 @@ void yyerror(const char *s);
 %token STATIC EXTERN REGISTER AUTO INLINE
 %token ASM
 %token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END BUILTIN_VA_COPY
+%token BUILTIN_OFFSETOF
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
@@ -78,7 +79,7 @@ void yyerror(const char *s);
 %type <node> stmt stmt_list compound_stmt decl decl_body local_list local_decl
 %type <node> for_init expr expr_comma expr_opt args arg_list
 %type <node> initializer init_body init_list init_item designators designator
-%type <node> cast unary postfix primary
+%type <node> cast unary postfix primary offsetof_desig
 %type <str>  string
 %type <var>  param
 %type <decl> member_declarators member_declarator
@@ -698,6 +699,19 @@ primary
         { $$ = $3; }
     | BUILTIN_VA_COPY LPAREN expr COMMA expr RPAREN
         { $$ = Par_VaCopy($3, $5, @1); }
+    | BUILTIN_OFFSETOF LPAREN type_name COMMA offsetof_desig RPAREN
+        { $$ = Par_OffsetOf($3, $5, @1); }
+    ;
+
+/* The members and indices __builtin_offsetof walks, `a->b` being `a[0].b`. */
+offsetof_desig
+    : IDENT                { $$ = Par_AddOffsetStep(NULL, $1, NULL, @1); }
+    | offsetof_desig DOT IDENT
+        { $$ = Par_AddOffsetStep($1, $3, NULL, @2); }
+    | offsetof_desig ARROW IDENT
+        { $$ = Par_AddOffsetStep(Par_AddOffsetStep($1, NULL, Ast_NewNum(0, @2), @2), $3, NULL, @2); }
+    | offsetof_desig LSQUARE expr_comma RSQUARE
+        { $$ = Par_AddOffsetStep($1, NULL, $3, @2); }
     ;
 
 /* One string literal, or several written next to each other. */
