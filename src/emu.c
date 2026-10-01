@@ -19,10 +19,12 @@
 
 // Standard headers.
 #include <errno.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 
 // Project headers.
 #include "util/console/err.h"
@@ -37,6 +39,9 @@
 
 // Machine-option prefix recognised inside -m (e.g. -march=x86_64).
 #define EMU_MARCH_PREFIX "arch="
+
+// The status a shell reports for a death by signal, less the signal.
+#define EMU_SIGNAL_STATUS_BASE 128
 
 // Show usage information and exit.
 static void Emu_Usage(const char *prog)
@@ -80,6 +85,23 @@ static void Emu_Disassemble(const Load_x86_64_Image *img)
     }
 }
 
+// Die by the signal a program faulted with as the program would have died.
+static void Emu_Raise(int32_t sig)
+{
+    struct sigaction act = {0};
+    struct rlimit core = {0};
+    sigset_t set;
+
+    act.sa_handler = SIG_DFL;
+    sigaction(sig, &act, NULL);
+    setrlimit(RLIMIT_CORE, &core);
+    sigemptyset(&set);
+    sigaddset(&set, sig);
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+    raise(sig);
+    exit(EMU_SIGNAL_STATUS_BASE + sig);
+}
+
 // Main function
 int main(int argc, char **argv)
 {
@@ -118,14 +140,18 @@ int main(int argc, char **argv)
     Err_Assert(img.li_machine == ELF_EM_X86_64, ERR_EMU_ARCH_NOT_X86_64, program);
 
     int32_t status = 0;
+    int32_t sig = 0;
     if (info) {
         Emu_ShowImage(&img);
     } else if (disasm) {
         Emu_Disassemble(&img);
     } else {
-        status = Emu_x86_64_Run(&img, trace);
+        status = Emu_x86_64_Run(&img, trace, &sig);
     }
 
     Load_x86_64_Free(&img);
+    if (sig) {
+        Emu_Raise(sig);
+    }
     return status;
 }
