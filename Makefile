@@ -51,13 +51,13 @@ LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/link.o
 
 SYS_HEADERS := $(patsubst libc/include/%,$(BUILD)/include/%,$(shell find libc/include -name '*.h' 2>/dev/null))
 
-TEST_TOOL  := tests/run_test
-CORE_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/core/test*.c)))
-BUG_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/bug*.c)))
-EDGE_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/edge*.c)))
-LIBC_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/test*.c)))
-ERROR_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errors/err*.c)))
-TEST_NAMES := $(CORE_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(ERROR_NAMES)
+TEST_TOOL    := tests/run_test
+SYNTAX_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/syntax/syntax*.c)))
+BUG_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/bug*.c)))
+EDGE_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/edge*.c)))
+LIBC_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/test*.c)))
+ERROR_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errors/err*.c)))
+TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(ERROR_NAMES)
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
@@ -72,9 +72,9 @@ all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
 clean:
 	rm -rf $(BUILD) $(OUT)
 
-tests: test_core test_bugs test_edge test_libc test_errors
+tests: test_syntax test_bugs test_edge test_libc test_errors
 
-test_core: $(CORE_NAMES)
+test_syntax: $(SYNTAX_NAMES)
 
 test_bugs: $(BUG_NAMES)
 
@@ -169,4 +169,4 @@ $(EMU_DIR): | $(BUILD)
 
 -include $(shell find $(OUT) -name '*.d' 2>/dev/null)
 
-.PHONY: all clean tests test_core test_bugs test_edge test_libc test_errors $(TEST_NAMES)
+.PHONY: all clean tests test_syntaxtest_bugs test_edge test_libc test_errors $(TEST_NAMES)
