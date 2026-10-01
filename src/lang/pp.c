@@ -147,7 +147,7 @@ Pp_File *Pp_OpenFile(const char *path, uint32_t dir)
     size_t len = 0;
     char *raw = Pp_FileGetContents(path, &len);
 
-    Err_Assert(raw, ERR_FILE_ACCESS, path, strerror(errno));
+    Err_Assert(raw, ERR_PP_FILE_NOT_READABLE, path, strerror(errno));
 
     Pp_File *file = Pp_OpenText(path, raw, len, dir);
 
@@ -1092,7 +1092,7 @@ Pp_Token *Pp_HeaderFromTokens(const Pp_Token *list, Ast_Line line)
         }
         Buf_PutBytes(name, tok->pt_text, tok->pt_len);
     }
-    Err_AssertAt(line, tok, ERR_PP_INCLUDE_MALFORMED);
+    Err_AssertAt(line, tok, ERR_PP_INCLUDE_NOT_TERMINATED);
     Buf_PutByte(name, '>');
     operand->pt_len = Buf_Len(name);
     operand->pt_text = Buf_Release(name);
@@ -1408,6 +1408,12 @@ void Pp_RunDefine(const Pp_File *file, size_t pos)
     Pp_DefineMacro(name, &def);
 }
 
+// Reject `__VA_ARGS__` where a macro may not name it.
+void Pp_CheckVaArgs(const Pp_Macro *def, const Pp_Token *tok, Ast_Line line)
+{
+    Err_AssertAt(line, def->ma_variadic || ! Pp_TokenEquals(tok, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
+}
+
 // Read a macro's parameter list.
 size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
 {
@@ -1421,11 +1427,11 @@ size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
         size_t dup = 0;
         const Pp_Token *param = &tokens[pos];
 
-        Err_AssertAt(line, pos + 1 < end, ERR_PP_MACRO_PARAMS_MALFORMED);
+        Err_AssertAt(line, pos + 1 < end, ERR_PP_MACRO_PARAMS_NOT_TERMINATED);
         if (Pp_TokenEquals(param, "...")) {
             def->ma_variadic = true;
         } else {
-            Err_AssertAt(line, param->pt_kind == PP_TOKEN_IDENT, ERR_PP_MACRO_PARAMS_MALFORMED);
+            Err_AssertAt(line, param->pt_kind == PP_TOKEN_IDENT, ERR_PP_MACRO_PARAM_NOT_NAME);
             Pp_CheckVaArgs(def, param, line);
             Err_AssertAt(line, ! Pp_FindParam(def, param, &dup), ERR_PP_MACRO_PARAM_DUPLICATE, (int) param->pt_len, param->pt_text);
         }
@@ -1437,12 +1443,6 @@ size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
         }
         Err_AssertAt(line, ! def->ma_variadic && Pp_TokenEquals(&tokens[pos - 1], ","), ERR_PP_MACRO_PARAMS_MALFORMED);
     }
-}
-
-// Reject `__VA_ARGS__` where a macro may not name it.
-void Pp_CheckVaArgs(const Pp_Macro *def, const Pp_Token *tok, Ast_Line line)
-{
-    Err_AssertAt(line, def->ma_variadic || ! Pp_TokenEquals(tok, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
 }
 
 // Check a replacement list against the constraints of 6.10.3.
@@ -1650,7 +1650,7 @@ size_t Pp_RunEndif(const Pp_File *file, size_t pos)
 // Check that a directive continues an open conditional.
 void Pp_CheckCond(const Pp_Token *name)
 {
-    Err_AssertAt(name->pt_line, Pp_Conds, ERR_PP_COND_WITHOUT_IF, (int) name->pt_len, name->pt_text);
+    Err_AssertAt(name->pt_line, Pp_Conds, ERR_PP_ELSE_WITHOUT_IF, (int) name->pt_len, name->pt_text);
     Err_AssertAt(name->pt_line, ! Pp_Conds->pc_else, ERR_PP_COND_AFTER_ELSE, (int) name->pt_len, name->pt_text);
 }
 

@@ -23,9 +23,9 @@
 // Every diagnostic's level, name and message format.
 static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     // Args: [path, reason]
-    [ERR_FILE_ACCESS] = {
+    [ERR_PP_FILE_NOT_READABLE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_FILE_ACCESS",
+        .ee_name   = "ERR_PP_FILE_NOT_READABLE",
         .ee_format = "%s: %s"
     },
 
@@ -57,6 +57,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "#include expects \"FILENAME\" or <FILENAME>"
     },
 
+    // Args: none
+    [ERR_PP_INCLUDE_NOT_TERMINATED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PP_INCLUDE_NOT_TERMINATED",
+        .ee_format = "missing terminating > character"
+    },
+
     // Args: [name]
     [ERR_PP_INCLUDE_NOT_FOUND] = {
         .ee_level  = ERR_LEVEL_FATAL,
@@ -86,10 +93,24 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
+    [ERR_PP_MACRO_PARAMS_NOT_TERMINATED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PP_MACRO_PARAMS_NOT_TERMINATED",
+        .ee_format = "missing ')' in macro parameter list"
+    },
+
+    // Args: none
+    [ERR_PP_MACRO_PARAM_NOT_NAME] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PP_MACRO_PARAM_NOT_NAME",
+        .ee_format = "expected a parameter name in macro parameter list"
+    },
+
+    // Args: none
     [ERR_PP_MACRO_PARAMS_MALFORMED] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_PP_MACRO_PARAMS_MALFORMED",
-        .ee_format = "invalid macro parameter list"
+        .ee_format = "expected ',' or ')' in macro parameter list"
     },
 
     // Args: [name length, name]
@@ -152,6 +173,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     [ERR_PP_COND_WITHOUT_IF] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_PP_COND_WITHOUT_IF",
+        .ee_format = "#%.*s without #if"
+    },
+
+    // Args: [directive length, directive]
+    [ERR_PP_ELSE_WITHOUT_IF] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PP_ELSE_WITHOUT_IF",
         .ee_format = "#%.*s without #if"
     },
 
@@ -407,6 +435,20 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "'[*]' is allowed only in a prototype's parameters"
     },
 
+    // Args: none
+    [ERR_PAR_VLA_OUTSIDE_FUNCTION] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_VLA_OUTSIDE_FUNCTION",
+        .ee_format = "a variable-length array is sized outside a function"
+    },
+
+    // Args: none
+    [ERR_PAR_VLA_STATIC] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_VLA_STATIC",
+        .ee_format = "storage size of a static object is not constant"
+    },
+
     // Args: [name]
     [ERR_PAR_ARRAY_ASSUMED_ONE] = {
         .ee_level  = ERR_LEVEL_WARNING,
@@ -568,6 +610,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "enumerator '%s' is not a constant"
     },
 
+    // Args: [name]
+    [ERR_PAR_ENUM_REDECLARED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ENUM_REDECLARED",
+        .ee_format = "redeclaration of enumerator '%s'"
+    },
+
     // Args: [member]
     [ERR_PAR_DESIG_NOT_AGGREGATE] = {
         .ee_level  = ERR_LEVEL_FATAL,
@@ -594,6 +643,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_PAR_DESIG_OUT_OF_RANGE",
         .ee_format = "initializer index %ld is outside the array"
+    },
+
+    // Args: none
+    [ERR_PAR_DESIG_NOT_CONSTANT] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_DESIG_NOT_CONSTANT",
+        .ee_format = "nonconstant array index in initializer"
     },
 
     // Args: [array length]
@@ -720,6 +776,34 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_PAR_CONFLICTING_TYPES",
         .ee_format = "conflicting types for '%s'"
+    },
+
+    // Args: [name]
+    [ERR_PAR_LOCAL_CONFLICTING_TYPES] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_LOCAL_CONFLICTING_TYPES",
+        .ee_format = "conflicting types for '%s'"
+    },
+
+    // Args: [name]
+    [ERR_PAR_FUNCTION_CONFLICTING_TYPES] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_FUNCTION_CONFLICTING_TYPES",
+        .ee_format = "conflicting types for function '%s'"
+    },
+
+    // Args: [name]
+    [ERR_PAR_FUNCTION_AS_OBJECT] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_FUNCTION_AS_OBJECT",
+        .ee_format = "function '%s' redeclared as an object"
+    },
+
+    // Args: [name]
+    [ERR_PAR_OBJECT_AS_FUNCTION] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_OBJECT_AS_FUNCTION",
+        .ee_format = "object '%s' redeclared as a function"
     },
 
     // Args: [name]
@@ -940,6 +1024,20 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
+    [ERR_SEM_OPASSIGN_NOT_ASSIGNABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_SEM_OPASSIGN_NOT_ASSIGNABLE",
+        .ee_format = "the left operand of a compound assignment is not assignable"
+    },
+
+    // Args: none
+    [ERR_SEM_INCDEC_NOT_ASSIGNABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_SEM_INCDEC_NOT_ASSIGNABLE",
+        .ee_format = "the operand of '++' or '--' is not assignable"
+    },
+
+    // Args: none
     [ERR_SEM_ASSIGN_ARRAY] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_SEM_ASSIGN_ARRAY",
@@ -953,11 +1051,39 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "cannot store to a read-only object or an array"
     },
 
+    // Args: none
+    [ERR_SEM_OPASSIGN_CONST] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_SEM_OPASSIGN_CONST",
+        .ee_format = "cannot store to a read-only object with a compound assignment"
+    },
+
+    // Args: none
+    [ERR_SEM_INCDEC_CONST] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_SEM_INCDEC_CONST",
+        .ee_format = "cannot increment or decrement a read-only object"
+    },
+
     // Args: [context]
     [ERR_SEM_ASSIGN_NOT_COMPATIBLE] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_SEM_ASSIGN_NOT_COMPATIBLE",
         .ee_format = "incompatible types in %s"
+    },
+
+    // Args: [context]
+    [ERR_SEM_ASSIGN_NOT_POINTER] = {
+        .ee_level  = ERR_LEVEL_ERROR,
+        .ee_name   = "ERR_SEM_ASSIGN_NOT_POINTER",
+        .ee_format = "%s mixes a pointer with a value that is not one"
+    },
+
+    // Args: [context]
+    [ERR_SEM_ASSIGN_POINTEE_NOT_COMPATIBLE] = {
+        .ee_level  = ERR_LEVEL_ERROR,
+        .ee_name   = "ERR_SEM_ASSIGN_POINTEE_NOT_COMPATIBLE",
+        .ee_format = "incompatible pointer types in %s"
     },
 
     // Args: [context]
@@ -979,6 +1105,27 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_SEM_COND_MISMATCH",
         .ee_format = "the operands of '?:' have incompatible types"
+    },
+
+    // Args: none
+    [ERR_SEM_COND_VOID_MISMATCH] = {
+        .ee_level  = ERR_LEVEL_ERROR,
+        .ee_name   = "ERR_SEM_COND_VOID_MISMATCH",
+        .ee_format = "only one operand of '?:' is void"
+    },
+
+    // Args: none
+    [ERR_SEM_COND_NOT_POINTER] = {
+        .ee_level  = ERR_LEVEL_ERROR,
+        .ee_name   = "ERR_SEM_COND_NOT_POINTER",
+        .ee_format = "pointer/integer type mismatch in '?:'"
+    },
+
+    // Args: none
+    [ERR_SEM_COND_POINTEE_NOT_COMPATIBLE] = {
+        .ee_level  = ERR_LEVEL_ERROR,
+        .ee_name   = "ERR_SEM_COND_POINTEE_NOT_COMPATIBLE",
+        .ee_format = "pointer type mismatch in '?:'"
     },
 
     // Args: none
@@ -1010,6 +1157,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
+    [ERR_SEM_POINTER_OFFSET_NOT_INTEGER] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_SEM_POINTER_OFFSET_NOT_INTEGER",
+        .ee_format = "pointer arithmetic needs an integer operand"
+    },
+
+    // Args: none
     [ERR_SEM_OPERAND_FLOATING] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_SEM_OPERAND_FLOATING",
@@ -1028,6 +1182,20 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_SEM_OPERAND_NOT_ARITHMETIC",
         .ee_format = "this operator takes only arithmetic operands"
+    },
+
+    // Args: none
+    [ERR_SEM_OPASSIGN_NOT_ARITHMETIC] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_SEM_OPASSIGN_NOT_ARITHMETIC",
+        .ee_format = "this compound assignment takes only arithmetic operands"
+    },
+
+    // Args: none
+    [ERR_SEM_INCDEC_NOT_ARITHMETIC] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_SEM_INCDEC_NOT_ARITHMETIC",
+        .ee_format = "'++' and '--' take only arithmetic or pointer operands"
     },
 
     // Args: none
@@ -1056,6 +1224,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_GEN_NOT_LVALUE",
         .ee_format = "not an lvalue"
+    },
+
+    // Args: none
+    [ERR_GEN_RESULT_NOT_LVALUE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_GEN_RESULT_NOT_LVALUE",
+        .ee_format = "the result is not an lvalue"
     },
 
     // Args: [operator kind]
@@ -1112,6 +1287,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_GEN_INIT_NOT_CONSTANT",
         .ee_format = "initializer for '%s' is not a constant"
+    },
+
+    // Args: [name]
+    [ERR_GEN_INIT_FLOAT_NOT_CONSTANT] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_GEN_INIT_FLOAT_NOT_CONSTANT",
+        .ee_format = "initializer for '%s' is not a floating constant"
     },
 
     // Args: [symbol]
@@ -1261,6 +1443,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "unsupported architecture '%s' (only %s is supported)"
     },
 
+    // Args: [path, reason]
+    [ERR_CC_OUTPUT_NOT_WRITEABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CC_OUTPUT_NOT_WRITEABLE",
+        .ee_format = "%s: %s"
+    },
+
     // Args: none
     [ERR_CC_RUNTIME_NOT_FOUND] = {
         .ee_level  = ERR_LEVEL_FATAL,
@@ -1275,6 +1464,27 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "unsupported standard '%s' (only %s is supported)"
     },
 
+    // Args: [path, reason]
+    [ERR_AS_INPUT_NOT_READABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AS_INPUT_NOT_READABLE",
+        .ee_format = "%s: %s"
+    },
+
+    // Args: [path, reason]
+    [ERR_AS_OUTPUT_NOT_WRITEABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AS_OUTPUT_NOT_WRITEABLE",
+        .ee_format = "%s: %s"
+    },
+
+    // Args: [path, reason]
+    [ERR_AS_OUTPUT_WRITE_FAILED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AS_OUTPUT_WRITE_FAILED",
+        .ee_format = "%s: %s"
+    },
+
     // Args: [placement]
     [ERR_LD_PLACE_MALFORMED] = {
         .ee_level  = ERR_LEVEL_FATAL,
@@ -1282,11 +1492,25 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "malformed -place (expected SEC@ADDR): '%s'"
     },
 
+    // Args: [path, reason]
+    [ERR_LD_OUTPUT_NOT_WRITEABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LD_OUTPUT_NOT_WRITEABLE",
+        .ee_format = "%s: %s"
+    },
+
     // Args: [architecture, supported architecture]
     [ERR_EMU_ARCH_NOT_SUPPORTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_EMU_ARCH_NOT_SUPPORTED",
         .ee_format = "unsupported architecture '%s' (only %s is supported)"
+    },
+
+    // Args: [path, reason]
+    [ERR_EMU_PROGRAM_NOT_READABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_PROGRAM_NOT_READABLE",
+        .ee_format = "%s: %s"
     },
 
     // Args: [path]
@@ -1331,11 +1555,102 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "undecodable instruction at 0x%llx"
     },
 
-    // Args: [opcode map, instruction address]
+    // Args: [instruction address]
     [ERR_EMU_OPCODE_NOT_IMPLEMENTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_EMU_OPCODE_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented %s opcode at 0x%llx"
+        .ee_format = "unimplemented one-byte opcode at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_TWO_BYTE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_TWO_BYTE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented two-byte opcode at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_GROUP1_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_GROUP1_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 1 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_GROUP2_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_GROUP2_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 2 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_GROUP3_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_GROUP3_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 3 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_GROUP5_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_GROUP5_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 5 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_SSE_DOUBLE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_SSE_DOUBLE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented scalar double SSE operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_SSE_SINGLE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_SSE_SINGLE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented scalar single SSE operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_X87_MEM_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_X87_MEM_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented x87 memory operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_X87_D9_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_X87_D9_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented D9 x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_X87_DE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_X87_DE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented DE x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_X87_DF_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_X87_DF_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented DF x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_X87_DD_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_X87_DD_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented DD x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_X87_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_X87_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented x87 opcode at 0x%llx"
     },
 
     // Args: [instruction address]

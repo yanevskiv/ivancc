@@ -217,7 +217,7 @@ static FILE *Cc_OpenOutput(const char *output, const char *mode)
 
     FILE *out = fopen(output, mode);
 
-    Err_Assert(out, ERR_FILE_ACCESS, output, strerror(errno));
+    Err_Assert(out, ERR_CC_OUTPUT_NOT_WRITEABLE, output, strerror(errno));
     Cc_OutputPath = output;
     return out;
 }

@@ -1,4 +1,4 @@
-// (Test) Compiler error: [ERR_SEM_OPERAND_NOT_ARITHMETIC]
+// (Test) Compiler error: [ERR_SEM_INCDEC_NOT_ARITHMETIC]
 // `++` takes a number or a pointer, not a struct.
 
 struct S { int a; };
