@@ -1541,18 +1541,11 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "write to unmapped memory at 0x%llx from %%rip = 0x%llx"
     },
 
-    // Args: [address, instruction address]
-    [ERR_EMU_SYSCALL_NOT_MAPPED] = {
+    // Args: [instruction address]
+    [ERR_EMU_FETCH_NOT_MAPPED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_SYSCALL_NOT_MAPPED",
-        .ee_format = "syscall buffer in unmapped memory at 0x%llx from %%rip = 0x%llx"
-    },
-
-    // Args: [syscall number, instruction address]
-    [ERR_EMU_SYSCALL_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_SYSCALL_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented syscall %llu from %%rip = 0x%llx"
+        .ee_name   = "ERR_EMU_FETCH_NOT_MAPPED",
+        .ee_format = "instruction fetch from unmapped memory at 0x%llx"
     },
 
     // Args: [instruction address]
@@ -1665,6 +1658,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_EMU_DIVIDE_BY_ZERO",
         .ee_format = "divide by zero at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_EMU_QUOTIENT_TOO_LARGE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_QUOTIENT_TOO_LARGE",
+        .ee_format = "quotient too large for its register at 0x%llx"
     }
 };
 

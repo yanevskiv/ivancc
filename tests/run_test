@@ -94,7 +94,7 @@ stage_run_ok()
 # Run the program and record its output and status.
 stage_run()
 {
-    timeout "$TIMEOUT" "$@" >"${RUN}/output" 2>&1
+    { timeout "$TIMEOUT" "$@" >"${RUN}/output" 2>&1; } 2>/dev/null
     echo $? > "${RUN}/status"
 }
 

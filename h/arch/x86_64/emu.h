@@ -21,6 +21,7 @@
 #define EMU_X86_64_H
 
 // Standard headers.
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -87,6 +88,15 @@
 #define EMU_X86_64_SYS_WRITE 1
 #define EMU_X86_64_SYS_EXIT  60
 
+// Linux errno values a failed syscall returns negated in %rax.
+#define EMU_X86_64_ERRNO_FAULT 14
+#define EMU_X86_64_ERRNO_NOSYS 38
+
+// Linux signals a fault ends the program with.
+#define EMU_X86_64_SIG_ILL  4
+#define EMU_X86_64_SIG_FPE  8
+#define EMU_X86_64_SIG_SEGV 11
+
 // SSE registers, and the 64-bit lanes each holds.
 #define EMU_X86_64_XMM_COUNT 16
 #define EMU_X86_64_XMM_LANES 2
@@ -102,16 +112,10 @@
 #define EMU_X86_64_INDEFINITE_32 ((uint64_t) 1 << 31)
 #define EMU_X86_64_INDEFINITE_64 ((uint64_t) 1 << 63)
 
-// Exit status reserved for a fault in the machine rather than in the program.
-#define EMU_X86_64_STATUS_FAULT 125
-
 // The type a `%llx` conversion takes.
 typedef unsigned long long Emu_TypeULLong;
 
-// The signed double-width dividend an idiv consumes.
-typedef __int128 Emu_TypeInt128;
-
-// The unsigned double-width dividend a div consumes.
+// The double-width dividend a div or an idiv consumes.
 typedef unsigned __int128 Emu_TypeUInt128;
 
 // Registers, numbered as ModRM and REX number them.
@@ -190,6 +194,7 @@ struct Emu_x86_64_Cpu {
     bool     ec_pf;      // the result's low byte had even parity, or a comparison was unordered
     bool     ec_halted;  // the program asked to stop, or faulted
     int32_t  ec_status;  // the status it stopped with
+    int32_t  ec_signal;  // the signal a fault ended it with, or 0
     uint64_t ec_xmm[EMU_X86_64_XMM_COUNT][EMU_X86_64_XMM_LANES];
     long double ec_st[EMU_X86_64_ST_COUNT];
     int32_t  ec_top;     // the x87 register %st names
@@ -198,7 +203,7 @@ struct Emu_x86_64_Cpu {
 
 // Running
 void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Load_x86_64_Image *img);
-void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, Err_Code code, ...);
+void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, int32_t sig, Err_Code code, ...);
 uint64_t Emu_x86_64_ReadReg(const Emu_x86_64_Cpu *cpu, Emu_x86_64_Reg reg, Emu_x86_64_OperandWidth width);
 void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, Emu_x86_64_Reg reg, uint64_t value, Emu_x86_64_OperandWidth width);
 bool Emu_x86_64_IsDevice(uint64_t addr);
@@ -224,8 +229,9 @@ long double Emu_x86_64_StPop(Emu_x86_64_Cpu *cpu);
 void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu);
+void Emu_x86_64_Divide(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Emu_x86_64_OperandWidth width);
 void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace);
-int32_t Emu_x86_64_Run(const Load_x86_64_Image *img, Emu_x86_64_Trace trace);
+int32_t Emu_x86_64_Run(const Load_x86_64_Image *img, Emu_x86_64_Trace trace, int32_t *sig);
 
 // Decoding
 int64_t Emu_x86_64_ReadImm(const uint8_t *p, size_t n);

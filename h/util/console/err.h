@@ -279,8 +279,7 @@ enum Err_Code {
     ERR_EMU_ARCH_NOT_X86_64,               // can't run an executable that is not for x86_64
     ERR_EMU_READ_NOT_MAPPED,               // can't read unmapped memory
     ERR_EMU_WRITE_NOT_MAPPED,              // can't write to unmapped memory
-    ERR_EMU_SYSCALL_NOT_MAPPED,            // can't pass a syscall a buffer in unmapped memory
-    ERR_EMU_SYSCALL_NOT_IMPLEMENTED,       // can't make a syscall the emulator does not implement
+    ERR_EMU_FETCH_NOT_MAPPED,              // can't run an instruction from unmapped memory
     ERR_EMU_OPCODE_NOT_DECODABLE,          // can't run an instruction that does not decode
     ERR_EMU_OPCODE_NOT_IMPLEMENTED,        // can't run a one-byte opcode the emulator does not implement
     ERR_EMU_TWO_BYTE_NOT_IMPLEMENTED,      // can't run a two-byte opcode the emulator does not implement
@@ -297,6 +296,7 @@ enum Err_Code {
     ERR_EMU_X87_DD_NOT_IMPLEMENTED,        // can't run a DD x87 operation the emulator does not implement
     ERR_EMU_X87_NOT_IMPLEMENTED,           // can't run an x87 opcode the emulator does not implement
     ERR_EMU_DIVIDE_BY_ZERO,                // can't divide by zero
+    ERR_EMU_QUOTIENT_TOO_LARGE,            // can't divide when the quotient overflows its register
 
     ERR_CODE_COUNT
 };
