@@ -109,16 +109,19 @@ void Emu_x86_64_Init(Emu_x86_64_Cpu *cpu, const Load_x86_64_Image *img)
     cpu->ec_reg[EMU_X86_64_REG_RSP] = img->li_stack;
 }
 
-// Report a fault against the instruction that caused it and stop the program.
-void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, Err_Code code, ...)
+// Report the first fault of a program and stop it with the fault's signal.
+void Emu_x86_64_Fault(Emu_x86_64_Cpu *cpu, int32_t sig, Err_Code code, ...)
 {
     va_list ap;
 
+    if (cpu->ec_halted) {
+        return;
+    }
     va_start(ap, code);
     Err_ShowVa(LOG_SEVERITY_ERROR, LOG_LINE_NONE, code, ap);
     va_end(ap);
     cpu->ec_halted = true;
-    cpu->ec_status = EMU_X86_64_STATUS_FAULT;
+    cpu->ec_signal = sig;
 }
 
 // Read a register at the given width.
@@ -196,7 +199,7 @@ const uint8_t *Emu_x86_64_ReadAt(Emu_x86_64_Cpu *cpu, uint64_t addr, size_t size
 {
     const uint8_t *ptr = Load_x86_64_At(cpu->ec_img, addr, size);
     if (! ptr) {
-        Emu_x86_64_Fault(cpu, ERR_EMU_READ_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+        Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_SEGV, ERR_EMU_READ_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
     }
     return ptr;
 }
@@ -206,7 +209,7 @@ uint8_t *Emu_x86_64_WriteAt(Emu_x86_64_Cpu *cpu, uint64_t addr, size_t size)
 {
     uint8_t *ptr = Load_x86_64_At(cpu->ec_img, addr, size);
     if (! ptr) {
-        Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+        Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_SEGV, ERR_EMU_WRITE_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
     }
     return ptr;
 }
@@ -420,7 +423,7 @@ void Emu_x86_64_StepSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
                         r = x / y;
                     } break;
                     default: {
-                        Emu_x86_64_Fault(cpu, ERR_EMU_SSE_DOUBLE_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
+                        Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_SSE_DOUBLE_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                     }
                 }
                 dst[0] = Fp_DoubleBits(r);
@@ -442,7 +445,7 @@ void Emu_x86_64_StepSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
                         r = x / y;
                     } break;
                     default: {
-                        Emu_x86_64_Fault(cpu, ERR_EMU_SSE_SINGLE_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
+                        Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_SSE_SINGLE_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                     }
                 }
                 dst[0] = (dst[0] & ~(uint64_t) EMU_X86_64_MASK_32) | Fp_FloatBits(r);
@@ -512,7 +515,7 @@ void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uin
             Fp_EncodeExtended(Emu_x86_64_StPop(cpu), p);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, ERR_EMU_X87_MEM_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
+            Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_X87_MEM_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
         }
     }
 }
@@ -533,7 +536,7 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
     switch (insn->ei_op) {
         case ENC_X86_64_OPCODE_X87_D9: {
             if (form != ENC_X86_64_X87_FCHS || i != 0) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_X87_D9_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_X87_D9_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                 return;
             }
             *top = -*top;
@@ -553,7 +556,7 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
                     *sti = *sti / *top;
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, ERR_EMU_X87_DE_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
+                    Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_X87_DE_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                     return;
                 }
             }
@@ -561,7 +564,7 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
         } break;
         case ENC_X86_64_OPCODE_X87_DF: {
             if (form != ENC_X86_64_X87_FUCOMIP) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_X87_DF_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_X87_DF_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                 return;
             }
             Emu_x86_64_FlagsCompare(cpu, *top, *sti);
@@ -569,43 +572,80 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
         } break;
         case ENC_X86_64_OPCODE_X87_DD: {
             if (form != ENC_X86_64_X87_FSTP) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_X87_DD_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_X87_DD_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                 return;
             }
             *sti = *top;
             Emu_x86_64_StPop(cpu);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, ERR_EMU_X87_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
+            Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_X87_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
         }
     }
 }
 
-// Answer a syscall: the two the runtime makes, and nothing else.
+// Answer a syscall as Linux does and fail the ones it lacks with ENOSYS.
 void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
 {
-    uint64_t nr = cpu->ec_reg[EMU_X86_64_REG_RAX];
-    switch (nr) {
+    uint64_t *rax = &cpu->ec_reg[EMU_X86_64_REG_RAX];
+    switch (*rax) {
         case EMU_X86_64_SYS_WRITE: {
             uint64_t fd = cpu->ec_reg[EMU_X86_64_REG_RDI];
             uint64_t buf = cpu->ec_reg[EMU_X86_64_REG_RSI];
             uint64_t len = cpu->ec_reg[EMU_X86_64_REG_RDX];
             const uint8_t *p = Load_x86_64_At(cpu->ec_img, buf, len);
-            if (! p) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_SYSCALL_NOT_MAPPED, (Emu_TypeULLong) buf, (Emu_TypeULLong) cpu->ec_rip);
-                return;
+            if (! p && len) {
+                *rax = -(uint64_t) EMU_X86_64_ERRNO_FAULT;
+            } else {
+                ssize_t n = write((int) fd, p, (size_t) len);
+                *rax = n < 0 ? -(uint64_t) errno : (uint64_t) n;
             }
-            ssize_t n = write((int) fd, p, (size_t) len);
-            cpu->ec_reg[EMU_X86_64_REG_RAX] = n < 0 ? EMU_X86_64_MASK_64 : (uint64_t) n;
         } break;
         case EMU_X86_64_SYS_EXIT: {
             cpu->ec_halted = true;
             cpu->ec_status = cpu->ec_reg[EMU_X86_64_REG_RDI] & EMU_X86_64_MASK_8;
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, ERR_EMU_SYSCALL_NOT_IMPLEMENTED, (Emu_TypeULLong) nr, (Emu_TypeULLong) cpu->ec_rip);
+            *rax = -(uint64_t) EMU_X86_64_ERRNO_NOSYS;
         }
     }
+}
+
+// Divide %rdx:%rax by an r/m operand at its width as the hardware does.
+void Emu_x86_64_Divide(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Emu_x86_64_OperandWidth width)
+{
+    bool is_signed = (insn->ei_reg & ENC_X86_64_REG_MASK) == ENC_X86_64_GRP_IDIV;
+    uint64_t sign = (uint64_t) 1 << (width - 1);
+    uint64_t mask = sign | (sign - 1);
+    uint64_t d = Emu_x86_64_ReadRm(cpu, insn, next, width);
+    if (d == 0) {
+        Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_FPE, ERR_EMU_DIVIDE_BY_ZERO, (Emu_TypeULLong) rip);
+        return;
+    }
+
+    // Phase: divide the magnitudes
+    uint64_t hi = Emu_x86_64_ReadReg(cpu, EMU_X86_64_REG_RDX, width);
+    uint64_t lo = Emu_x86_64_ReadReg(cpu, EMU_X86_64_REG_RAX, width);
+    Emu_TypeUInt128 num = ((Emu_TypeUInt128) hi << width) | lo;
+    bool num_neg = is_signed && (hi & sign);
+    bool d_neg = is_signed && (d & sign);
+    if (num_neg && width < EMU_X86_64_WIDTH_64) {
+        num |= ~(((Emu_TypeUInt128) 1 << (2 * width)) - 1);
+    }
+    Emu_TypeUInt128 num_mag = num_neg ? -num : num;
+    uint64_t d_mag = d_neg ? -d & mask : d;
+    Emu_TypeUInt128 q = num_mag / d_mag;
+    uint64_t r = (uint64_t) (num_mag % d_mag);
+
+    // Phase: fault on a quotient the width cannot hold
+    bool q_neg = num_neg != d_neg;
+    uint64_t limit = ! is_signed ? mask : (q_neg ? sign : sign - 1);
+    if (q > limit) {
+        Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_FPE, ERR_EMU_QUOTIENT_TOO_LARGE, (Emu_TypeULLong) rip);
+        return;
+    }
+    Emu_x86_64_WriteReg(cpu, EMU_X86_64_REG_RAX, q_neg ? -(uint64_t) q : (uint64_t) q, width);
+    Emu_x86_64_WriteReg(cpu, EMU_X86_64_REG_RDX, num_neg ? -r : r, width);
 }
 
 // Execute the instruction at %rip and leave %rip on the next one.
@@ -616,8 +656,12 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
     const uint8_t *code = Load_x86_64_At(cpu->ec_img, rip, sizeof(*code));
     Emu_x86_64_Insn insn;
 
-    if (! code || ! Emu_x86_64_Decode(code, avail, &insn)) {
-        Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_DECODABLE, (Emu_TypeULLong) rip);
+    if (! code) {
+        Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_SEGV, ERR_EMU_FETCH_NOT_MAPPED, (Emu_TypeULLong) rip);
+        return;
+    }
+    if (! Emu_x86_64_Decode(code, avail, &insn)) {
+        Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_OPCODE_NOT_DECODABLE, (Emu_TypeULLong) rip);
         return;
     }
     if (trace == EMU_X86_64_TRACE) {
@@ -710,7 +754,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                 Emu_x86_64_WriteReg(cpu, insn.ei_reg, (uint64_t) (int64_t) (int16_t) b, width);
             } break;
             default: {
-                Emu_x86_64_Fault(cpu, ERR_EMU_TWO_BYTE_NOT_IMPLEMENTED,(Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_TWO_BYTE_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
             }
         }
         return;
@@ -764,7 +808,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     Emu_x86_64_WriteRm(cpu, &insn, next, a >> count, width);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, ERR_EMU_GROUP2_NOT_IMPLEMENTED,(Emu_TypeULLong) rip);
+                    Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_GROUP2_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                 }
             }
         } break;
@@ -794,8 +838,9 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
             Emu_x86_64_WriteReg(cpu, insn.ei_reg, Emu_x86_64_RmAddr(cpu, &insn, next), width);
         } break;
         case ENC_X86_64_OPCODE_CQO: {
-            int64_t rax = (int64_t) cpu->ec_reg[EMU_X86_64_REG_RAX];
-            cpu->ec_reg[EMU_X86_64_REG_RDX] = rax < 0 ? EMU_X86_64_MASK_64 : 0;
+            uint64_t a = Emu_x86_64_ReadReg(cpu, EMU_X86_64_REG_RAX, width);
+            bool neg = (a >> (width - 1)) & 1;
+            Emu_x86_64_WriteReg(cpu, EMU_X86_64_REG_RDX, neg ? EMU_X86_64_MASK_64 : 0, width);
         } break;
         case ENC_X86_64_OPCODE_MOV_R8_IMM8: {
             Emu_x86_64_WriteReg(cpu, insn.ei_rm, insn.ei_imm, EMU_X86_64_WIDTH_8);
@@ -834,13 +879,13 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     Emu_x86_64_FlagsSub(cpu, a, b, width);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, ERR_EMU_GROUP1_NOT_IMPLEMENTED,(Emu_TypeULLong) rip);
+                    Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_GROUP1_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                 }
             }
         } break;
         case ENC_X86_64_OPCODE_GRP5_RM: {
             if ((insn.ei_reg & ENC_X86_64_REG_MASK) != ENC_X86_64_GRP_CALL) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_GROUP5_NOT_IMPLEMENTED,(Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_GROUP5_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                 return;
             }
             uint64_t target = Emu_x86_64_ReadRm(cpu, &insn, next, EMU_X86_64_WIDTH_64);
@@ -861,25 +906,10 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                 } break;
                 case ENC_X86_64_GRP_IDIV:
                 case ENC_X86_64_GRP_DIV: {
-                    uint64_t d = Emu_x86_64_ReadRm(cpu, &insn, next, width);
-                    if (d == 0) {
-                        Emu_x86_64_Fault(cpu, ERR_EMU_DIVIDE_BY_ZERO, (Emu_TypeULLong) rip);
-                        return;
-                    }
-                    if ((insn.ei_reg & ENC_X86_64_REG_MASK) == ENC_X86_64_GRP_IDIV) {
-                        Emu_TypeInt128 num = ((Emu_TypeInt128) (int64_t) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
-                                     | cpu->ec_reg[EMU_X86_64_REG_RAX];
-                        cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (int64_t) (num / (int64_t) d);
-                        cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (int64_t) (num % (int64_t) d);
-                    } else {
-                        Emu_TypeUInt128 num = ((Emu_TypeUInt128) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
-                                              | cpu->ec_reg[EMU_X86_64_REG_RAX];
-                        cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (num / d);
-                        cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (num % d);
-                    }
+                    Emu_x86_64_Divide(cpu, &insn, next, rip, width);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, ERR_EMU_GROUP3_NOT_IMPLEMENTED,(Emu_TypeULLong) rip);
+                    Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_GROUP3_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
                 }
             }
         } break;
@@ -891,19 +921,20 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
             Emu_x86_64_StepX87(cpu, &insn, next, rip);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED,(Emu_TypeULLong) rip);
+            Emu_x86_64_Fault(cpu, EMU_X86_64_SIG_ILL, ERR_EMU_OPCODE_NOT_IMPLEMENTED, (Emu_TypeULLong) rip);
         }
     }
 }
 
-// Run a loaded program to completion and return the status it stopped with.
-int32_t Emu_x86_64_Run(const Load_x86_64_Image *img, Emu_x86_64_Trace trace)
+// Run a loaded program to completion and return its status and fault signal.
+int32_t Emu_x86_64_Run(const Load_x86_64_Image *img, Emu_x86_64_Trace trace, int32_t *sig)
 {
     Emu_x86_64_Cpu cpu;
     Emu_x86_64_Init(&cpu, img);
     while (! cpu.ec_halted) {
         Emu_x86_64_Step(&cpu, trace);
     }
+    *sig = cpu.ec_signal;
     return cpu.ec_status;
 }
 
