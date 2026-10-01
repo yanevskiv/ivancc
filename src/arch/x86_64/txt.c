@@ -597,13 +597,13 @@ const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
     const char *ptr = text;
 
     for (ptr++; *ptr != '"'; ptr++) {
-        Err_Assert(*ptr != '\0', ERR_TXT_STRING_UNTERMINATED, text);
+        Err_Assert(*ptr != '\0', ERR_TXT_STRING_NOT_TERMINATED, text);
         if (*ptr != '\\') {
             Buf_PutByte(bytes, *ptr);
             continue;
         }
         ptr++;
-        Err_Assert(*ptr != '\0', ERR_TXT_STRING_UNTERMINATED, text);
+        Err_Assert(*ptr != '\0', ERR_TXT_STRING_NOT_TERMINATED, text);
         switch (*ptr) {
             case 'b': {
                 Buf_PutByte(bytes, '\b');
@@ -657,7 +657,7 @@ const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
                 Buf_PutByte(bytes, (char) value);
             } break;
             default: {
-                Err_Raise(ERR_TXT_ESCAPE_UNKNOWN, *ptr);
+                Err_Raise(ERR_TXT_ESCAPE_NOT_KNOWN, *ptr);
             } break;
         }
     }
@@ -805,7 +805,7 @@ void Txt_x86_64_Att_ParseInstr(const char *line)
         mnemonic[mnemlen - 1] = '\0';
         opcode = Txt_x86_64_OpByName(mnemonic);
     }
-    Err_Assert(opcode >= 0, ERR_TXT_MNEMONIC_UNKNOWN, (int) mnemlen, line);
+    Err_Assert(opcode >= 0, ERR_TXT_MNEMONIC_NOT_KNOWN, (int) mnemlen, line);
 
     Asm_x86_64_Operand ops[TXT_X86_64_OPERANDS_MAX] = {0};
     int32_t nops = 0;

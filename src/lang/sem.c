@@ -203,18 +203,18 @@ void Sem_CheckAssign(const Ast_Type *to, const Ast_Node *from, const char *what,
         return;
     }
     if (Sem_IsAggregate(to) || Sem_IsAggregate(type)) {
-        Err_AssertAt(line, Ast_IsCompatibleUnqualified(to, type), ERR_SEM_ASSIGN_INCOMPATIBLE, what);
+        Err_AssertAt(line, Ast_IsCompatibleUnqualified(to, type), ERR_SEM_ASSIGN_NOT_COMPATIBLE, what);
         return;
     }
     if (to->at_kind == AST_TYPE_KIND_PTR && Sem_IsNullPointer(from)) {
         return;
     }
-    Err_AssertAt(line, to->at_kind == AST_TYPE_KIND_PTR && type->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_ASSIGN_INCOMPATIBLE, what);
+    Err_AssertAt(line, to->at_kind == AST_TYPE_KIND_PTR && type->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_ASSIGN_NOT_COMPATIBLE, what);
 
     const Ast_Type *want = to->at_base;
     const Ast_Type *have = type->at_base;
     bool voids = want->at_kind == AST_TYPE_KIND_VOID || have->at_kind == AST_TYPE_KIND_VOID;
-    Err_AssertAt(line, voids || Ast_IsCompatibleUnqualified(want, have), ERR_SEM_ASSIGN_INCOMPATIBLE, what);
+    Err_AssertAt(line, voids || Ast_IsCompatibleUnqualified(want, have), ERR_SEM_ASSIGN_NOT_COMPATIBLE, what);
     Err_AssertAt(line, ! (have->at_qual & ~want->at_qual), ERR_SEM_ASSIGN_DISCARDS_QUALIFIER, what);
 }
 
@@ -1092,7 +1092,7 @@ void Sem_CheckGotos(Ast_Node *node, Ast_Node *body)
     }
     if (node->an_kind == AST_NODE_KIND_GOTO) {
         Ast_Node *label = Sem_FindLabel(body, node->an_labelname);
-        Err_AssertAt(node->an_line, label != NULL, ERR_SEM_GOTO_UNDEFINED, node->an_labelname);
+        Err_AssertAt(node->an_line, label != NULL, ERR_SEM_GOTO_NOT_DEFINED, node->an_labelname);
         Err_AssertAt(node->an_line, Ast_ContainsVmScope(node->an_vm, label->an_vm), ERR_SEM_GOTO_INTO_VM_SCOPE, node->an_labelname);
         node->an_target = label;
     }
@@ -1233,16 +1233,16 @@ void Sem_Annotate(Ast_Node *node)
             }
             Err_AssertAt(node->an_line, Sem_IsPointer(node->an_lhs->an_type), ERR_SEM_DEREF_NOT_POINTER);
             Err_AssertAt(node->an_line, node->an_lhs->an_type->at_base->at_kind != AST_TYPE_KIND_VOID, ERR_SEM_DEREF_VOID);
-            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_base->at_complete || Ast_IsUnsized(node->an_lhs->an_type->at_base), ERR_SEM_DEREF_INCOMPLETE);
+            Err_AssertAt(node->an_line, node->an_lhs->an_type->at_base->at_complete || Ast_IsUnsized(node->an_lhs->an_type->at_base), ERR_SEM_DEREF_NOT_COMPLETE);
             node->an_type = node->an_lhs->an_type->at_base;
         } break;
 
         case AST_NODE_KIND_MEMBER: {
             Ast_Type *type = node->an_lhs->an_type;
             Err_AssertAt(node->an_line, Sem_IsAggregate(type), ERR_SEM_MEMBER_NOT_AGGREGATE, node->an_memname);
-            Err_AssertAt(node->an_line, type->at_complete, ERR_SEM_MEMBER_INCOMPLETE, Sem_TypeName(type));
+            Err_AssertAt(node->an_line, type->at_complete, ERR_SEM_MEMBER_NOT_COMPLETE, Sem_TypeName(type));
             node->an_member = Ast_FindMember(type, node->an_memname);
-            Err_AssertAt(node->an_line, node->an_member, ERR_SEM_MEMBER_UNKNOWN, node->an_memname, Sem_TypeName(type));
+            Err_AssertAt(node->an_line, node->an_member, ERR_SEM_MEMBER_NOT_KNOWN, node->an_memname, Sem_TypeName(type));
             node->an_type = Ast_Qualify(node->an_member->am_type, node->an_member->am_type->at_qual | type->at_qual);
         } break;
 
@@ -1252,7 +1252,7 @@ void Sem_Annotate(Ast_Node *node)
 
         case AST_NODE_KIND_SIZEOF: {
             Ast_Type *type = node->an_lhs->an_type;
-            Err_AssertAt(node->an_line, type->at_complete, ERR_SEM_SIZEOF_INCOMPLETE);
+            Err_AssertAt(node->an_line, type->at_complete, ERR_SEM_SIZEOF_NOT_COMPLETE);
             if (Ast_IsVla(type)) {
                 Sem_Replace(node, Sem_NewBinary(AST_NODE_KIND_COMMA, node->an_lhs, Sem_TempRef(type->at_vsize, node->an_line), node->an_line));
                 break;
