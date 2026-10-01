@@ -1058,8 +1058,7 @@ void Sem_CheckCast(Ast_Node *node)
         return;
     }
     Err_AssertAt(node->an_line, Sem_IsScalar(to) && Sem_IsScalar(from), ERR_SEM_CAST_NOT_SCALAR);
-    Err_AssertAt(node->an_line, ! Ast_IsFloating(to) || Ast_IsArithmetic(from), ERR_SEM_CAST_FLOATING);
-    Err_AssertAt(node->an_line, ! Ast_IsFloating(from) || Ast_IsArithmetic(to), ERR_SEM_CAST_FLOATING);
+    Err_AssertAt(node->an_line, (! Ast_IsFloating(to) || Ast_IsArithmetic(from)) && (! Ast_IsFloating(from) || Ast_IsArithmetic(to)), ERR_SEM_CAST_FLOATING);
     if (to->at_kind == AST_TYPE_KIND_BOOL) {
         node->an_lhs = Sem_Truth(node->an_lhs);
     }

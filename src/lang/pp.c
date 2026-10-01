@@ -461,6 +461,15 @@ bool Pp_IsMacroName(const Pp_Token *tok)
     return tok->pt_kind == PP_TOKEN_IDENT && ! (tok->pt_flags & PP_FLAG_BOL);
 }
 
+// Return the macro name the directive at pos names.
+const Pp_Token *Pp_MacroNameAt(const Pp_File *file, size_t pos)
+{
+    const Pp_Token *name = &file->pf_tokens[pos + 2];
+
+    Err_AssertAt(file->pf_tokens[pos].pt_line, Pp_IsMacroName(name), ERR_PP_MACRO_NAME_MISSING);
+    return name;
+}
+
 // Hash a macro name.
 uint32_t Pp_HashName(const char *text, size_t len)
 {
@@ -1372,9 +1381,7 @@ void Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include k
 void Pp_RunDefine(const Pp_File *file, size_t pos)
 {
     const Pp_Token *hash = &file->pf_tokens[pos];
-    const Pp_Token *name = &file->pf_tokens[pos + 2];
-
-    Err_AssertAt(hash->pt_line, Pp_IsMacroName(name), ERR_PP_MACRO_NAME_MISSING);
+    const Pp_Token *name = Pp_MacroNameAt(file, pos);
 
     size_t start = pos + 3;
     size_t end = Pp_SkipLine(file, pos);
@@ -1419,7 +1426,7 @@ size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
             def->ma_variadic = true;
         } else {
             Err_AssertAt(line, param->pt_kind == PP_TOKEN_IDENT, ERR_PP_MACRO_PARAMS_MALFORMED);
-            Err_AssertAt(line, ! Pp_TokenEquals(param, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
+            Pp_CheckVaArgs(def, param, line);
             Err_AssertAt(line, ! Pp_FindParam(def, param, &dup), ERR_PP_MACRO_PARAM_DUPLICATE, (int) param->pt_len, param->pt_text);
         }
         def->ma_params = realloc(def->ma_params, (def->ma_nparams + 1) * sizeof(*def->ma_params));
@@ -1430,6 +1437,12 @@ size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
         }
         Err_AssertAt(line, ! def->ma_variadic && Pp_TokenEquals(&tokens[pos - 1], ","), ERR_PP_MACRO_PARAMS_MALFORMED);
     }
+}
+
+// Reject `__VA_ARGS__` where a macro may not name it.
+void Pp_CheckVaArgs(const Pp_Macro *def, const Pp_Token *tok, Ast_Line line)
+{
+    Err_AssertAt(line, def->ma_variadic || ! Pp_TokenEquals(tok, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
 }
 
 // Check a replacement list against the constraints of 6.10.3.
@@ -1444,7 +1457,7 @@ void Pp_CheckBody(const Pp_Macro *def, Ast_Line line)
     for (size_t i = 0; i < n; i++) {
         const Pp_Token *tok = &def->ma_body[i];
 
-        Err_AssertAt(line, def->ma_variadic || ! Pp_TokenEquals(tok, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
+        Pp_CheckVaArgs(def, tok, line);
         if (def->ma_kind == PP_MACRO_FUNCTION && Pp_IsHash(tok)) {
             Err_AssertAt(line, i + 1 < n && Pp_FindParam(def, &def->ma_body[i + 1], &param), ERR_PP_STRINGIZE_NOT_PARAM);
         }
@@ -1454,11 +1467,7 @@ void Pp_CheckBody(const Pp_Macro *def, Ast_Line line)
 // Run the #undef directive at pos.
 void Pp_RunUndef(const Pp_File *file, size_t pos)
 {
-    const Pp_Token *hash = &file->pf_tokens[pos];
-    const Pp_Token *name = &file->pf_tokens[pos + 2];
-
-    Err_AssertAt(hash->pt_line, Pp_IsMacroName(name), ERR_PP_MACRO_NAME_MISSING);
-    Pp_UndefMacro(name);
+    Pp_UndefMacro(Pp_MacroNameAt(file, pos));
 }
 
 // Run the #line directive at pos.
@@ -1475,9 +1484,7 @@ void Pp_RunLine(Pp_Printer *pr, const Pp_File *file, size_t pos)
 
     if (path) {
         Err_AssertAt(name->pt_line, path->pt_kind == PP_TOKEN_STRING && path->pt_text[0] == '"', ERR_PP_LINE_NAME_NOT_VALID, (int) path->pt_len, path->pt_text);
-        if (path->pt_next) {
-            Err_WarnAt(name->pt_line, ERR_PP_EXTRA_TOKENS, (int) name->pt_len, name->pt_text);
-        }
+        Pp_CheckLineEnd(path->pt_next, name);
         Pp_CurPlace.pl_name = Par_UnescapeLiteral(path->pt_text + 1, path->pt_len - 2, AST_TYPE_SIZE_CHAR, &len, name->pt_line);
     }
     Pp_CurPlace.pl_shift = line - (name->pt_line + 1);
@@ -1493,10 +1500,11 @@ Ast_Line Pp_ReadLineNumber(const Pp_Token *tok, Ast_Line line)
         int32_t digit = Par_DigitValue(tok->pt_text[i]);
 
         Err_AssertAt(line, digit >= 0 && digit < PAR_BASE_DECIMAL, ERR_PP_LINE_NUMBER_NOT_VALID, (int) tok->pt_len, tok->pt_text);
-        value = value * PAR_BASE_DECIMAL + (uintmax_t) digit;
-        Err_AssertAt(line, value <= PP_LINE_MAX, ERR_PP_LINE_OUT_OF_RANGE);
+        if (value <= PP_LINE_MAX) {
+            value = value * PAR_BASE_DECIMAL + (uintmax_t) digit;
+        }
     }
-    Err_AssertAt(line, value > 0, ERR_PP_LINE_OUT_OF_RANGE);
+    Err_AssertAt(line, value > 0 && value <= PP_LINE_MAX, ERR_PP_LINE_OUT_OF_RANGE);
     return (Ast_Line) value;
 }
 
@@ -1509,7 +1517,7 @@ void Pp_RunPragma(const Pp_File *file, const Pp_File *text, size_t pos)
     if ((arg->pt_flags & PP_FLAG_BOL) || arg->pt_kind != PP_TOKEN_IDENT || ! Pp_TokenEquals(arg, "once")) {
         return;
     }
-    Pp_CheckLineEnd(text, pos + 3, name);
+    Pp_CheckLineEnd(&text->pf_tokens[pos + 3], name);
     if (file->pf_index == Pp_MainFile) {
         Err_WarnAt(arg->pt_line, ERR_PP_ONCE_IN_MAIN_FILE);
     }
@@ -1617,7 +1625,7 @@ size_t Pp_RunElse(const Pp_File *file, size_t pos)
     const Pp_Token *name = &file->pf_tokens[pos + 1];
 
     Pp_CheckCond(name);
-    Pp_CheckLineEnd(file, pos + 2, name);
+    Pp_CheckLineEnd(&file->pf_tokens[pos + 2], name);
     Pp_Conds->pc_else = true;
     if (Pp_Conds->pc_taken) {
         return Pp_SkipGroup(file, pos);
@@ -1633,7 +1641,7 @@ size_t Pp_RunEndif(const Pp_File *file, size_t pos)
     const Pp_Token *name = &file->pf_tokens[pos + 1];
 
     Err_AssertAt(name->pt_line, cond, ERR_PP_COND_WITHOUT_IF, (int) name->pt_len, name->pt_text);
-    Pp_CheckLineEnd(file, pos + 2, name);
+    Pp_CheckLineEnd(&file->pf_tokens[pos + 2], name);
     Pp_Conds = cond->pc_next;
     free(cond);
     return Pp_SkipLine(file, pos);
@@ -1647,9 +1655,9 @@ void Pp_CheckCond(const Pp_Token *name)
 }
 
 // Warn about tokens left on a directive's line.
-void Pp_CheckLineEnd(const Pp_File *file, size_t pos, const Pp_Token *name)
+void Pp_CheckLineEnd(const Pp_Token *next, const Pp_Token *name)
 {
-    if (! (file->pf_tokens[pos].pt_flags & PP_FLAG_BOL)) {
+    if (next && ! (next->pt_flags & PP_FLAG_BOL)) {
         Err_WarnAt(name->pt_line, ERR_PP_EXTRA_TOKENS, (int) name->pt_len, name->pt_text);
     }
 }
@@ -1658,10 +1666,9 @@ void Pp_CheckLineEnd(const Pp_File *file, size_t pos, const Pp_Token *name)
 bool Pp_IsDefined(const Pp_File *file, size_t pos)
 {
     const Pp_Token *name = &file->pf_tokens[pos + 1];
-    const Pp_Token *macro = &file->pf_tokens[pos + 2];
+    const Pp_Token *macro = Pp_MacroNameAt(file, pos);
 
-    Err_AssertAt(name->pt_line, Pp_IsMacroName(macro), ERR_PP_MACRO_NAME_MISSING);
-    Pp_CheckLineEnd(file, pos + 3, name);
+    Pp_CheckLineEnd(&file->pf_tokens[pos + 3], name);
     return Pp_FindMacro(macro->pt_text, macro->pt_len) != NULL;
 }
 

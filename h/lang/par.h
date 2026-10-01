@@ -252,6 +252,7 @@ Ast_Node   *Par_VaCopy(Ast_Node *dst, Ast_Node *src, Ast_Line line);
 Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail);
 void        Par_AddBitfield(Ast_Member *member, Ast_Node *width, Ast_Line line);
 Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls);
+void        Par_CheckTagKind(const Ast_Type *type, Ast_TypeKind kind, const char *tag, Ast_Line line);
 Ast_Type   *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line);
 Ast_Type   *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line);
 void        Par_AddEnumConst(const char *name, Ast_Node *value, Ast_Line line);

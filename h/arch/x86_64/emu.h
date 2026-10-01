@@ -204,6 +204,8 @@ void Emu_x86_64_WriteReg(Emu_x86_64_Cpu *cpu, Emu_x86_64_Reg reg, uint64_t value
 bool Emu_x86_64_IsDevice(uint64_t addr);
 uint64_t Emu_x86_64_ReadDev(Emu_x86_64_Cpu *cpu, uint64_t addr);
 void Emu_x86_64_WriteDev(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value);
+const uint8_t *Emu_x86_64_ReadAt(Emu_x86_64_Cpu *cpu, uint64_t addr, size_t size);
+uint8_t *Emu_x86_64_WriteAt(Emu_x86_64_Cpu *cpu, uint64_t addr, size_t size);
 uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, Emu_x86_64_OperandWidth width);
 void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, Emu_x86_64_OperandWidth width);
 uint64_t Emu_x86_64_RmAddr(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64_t next);
