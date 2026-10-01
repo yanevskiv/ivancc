@@ -1,4 +1,4 @@
-// (Test) Compiler error: [ERR_SEM_ASSIGN_NOT_COMPATIBLE]
+// (Test) Compiler error: [ERR_SEM_ASSIGN_POINTEE_NOT_COMPATIBLE]
 // Pointers to functions with different parameter lists are incompatible.
 
 int none(void) { return 0; }

@@ -74,7 +74,7 @@ static void As_Assemble(const char *input, const char *output)
 {
     char *text = As_ReadSource(input);
 
-    Err_Assert(text, ERR_FILE_ACCESS, input, strerror(errno));
+    Err_Assert(text, ERR_AS_INPUT_NOT_READABLE, input, strerror(errno));
     Txt_x86_64_Att_Parse(text);
     free(text);
 
@@ -82,9 +82,10 @@ static void As_Assemble(const char *input, const char *output)
 
     FILE *out = fopen(output, "wb");
 
-    Err_Assert(out, ERR_FILE_ACCESS, output, strerror(errno));
-    Err_Assert(Enc_x86_64_Write(out), ERR_FILE_ACCESS, output, strerror(errno));
-    Err_Assert(fclose(out) == 0, ERR_FILE_ACCESS, output, strerror(errno));
+    Err_Assert(out, ERR_AS_OUTPUT_NOT_WRITEABLE, output, strerror(errno));
+    bool written = Enc_x86_64_Write(out);
+    bool closed = fclose(out) == 0;
+    Err_Assert(written && closed, ERR_AS_OUTPUT_WRITE_FAILED, output, strerror(errno));
 }
 
 // Main function

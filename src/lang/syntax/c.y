@@ -582,7 +582,7 @@ designator
 array_len
     : expr
         { int64_t val;
-          Err_AssertAt(@1, Sem_Fold($1, &val), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+          Err_AssertAt(@1, Sem_Fold($1, &val), ERR_PAR_DESIG_NOT_CONSTANT);
           $$ = val; }
     ;
 

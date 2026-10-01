@@ -1,4 +1,4 @@
-// (Test) Compiler error: [ERR_SEM_COND_MISMATCH]
+// (Test) Compiler error: [ERR_SEM_COND_VOID_MISMATCH]
 // A conditional cannot mix a void operand with a value.
 
 int main()

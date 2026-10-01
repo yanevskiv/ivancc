@@ -1,4 +1,4 @@
-// (Test) Compiler error: [ERR_PAR_CONFLICTING_TYPES]
+// (Test) Compiler error: [ERR_PAR_FUNCTION_CONFLICTING_TYPES]
 // A definition whose parameters disagree with an earlier prototype's is a
 // conflicting declaration, as is a qualifier that differs below the top level.
 

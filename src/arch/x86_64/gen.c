@@ -757,7 +757,7 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
         case AST_NODE_KIND_ASSIGN:
         case AST_NODE_KIND_COMMA:
         case AST_NODE_KIND_COND: {
-            Err_AssertAt(node->an_line, Gen_x86_64_ByAddress(node->an_type), ERR_GEN_NOT_LVALUE);
+            Err_AssertAt(node->an_line, Gen_x86_64_ByAddress(node->an_type), ERR_GEN_RESULT_NOT_LVALUE);
             Gen_x86_64_EmitExpr(node);
         } break;
         case AST_NODE_KIND_COMPOUND: {
@@ -1918,7 +1918,7 @@ void Gen_x86_64_EmitFloatConstant(uint8_t *bytes, const Ast_Node *item, const As
     uint64_t dbl = 0;
     long double value = 0;
 
-    Err_AssertAt(var->av_line, Sem_FoldFloat(item->an_lhs, &value), ERR_GEN_INIT_NOT_CONSTANT, var->av_name);
+    Err_AssertAt(var->av_line, Sem_FoldFloat(item->an_lhs, &value), ERR_GEN_INIT_FLOAT_NOT_CONSTANT, var->av_name);
     switch (item->an_type->at_kind) {
         case AST_TYPE_KIND_FLOAT: {
             single = Fp_FloatBits((float) value);

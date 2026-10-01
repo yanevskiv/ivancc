@@ -209,12 +209,12 @@ void Sem_CheckAssign(const Ast_Type *to, const Ast_Node *from, const char *what,
     if (to->at_kind == AST_TYPE_KIND_PTR && Sem_IsNullPointer(from)) {
         return;
     }
-    Err_AssertAt(line, to->at_kind == AST_TYPE_KIND_PTR && type->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_ASSIGN_NOT_COMPATIBLE, what);
+    Err_AssertAt(line, to->at_kind == AST_TYPE_KIND_PTR && type->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_ASSIGN_NOT_POINTER, what);
 
     const Ast_Type *want = to->at_base;
     const Ast_Type *have = type->at_base;
     bool voids = want->at_kind == AST_TYPE_KIND_VOID || have->at_kind == AST_TYPE_KIND_VOID;
-    Err_AssertAt(line, voids || Ast_IsCompatibleUnqualified(want, have), ERR_SEM_ASSIGN_NOT_COMPATIBLE, what);
+    Err_AssertAt(line, voids || Ast_IsCompatibleUnqualified(want, have), ERR_SEM_ASSIGN_POINTEE_NOT_COMPATIBLE, what);
     Err_AssertAt(line, ! (have->at_qual & ~want->at_qual), ERR_SEM_ASSIGN_DISCARDS_QUALIFIER, what);
 }
 
@@ -225,7 +225,7 @@ Ast_Type *Sem_CondType(const Ast_Node *node)
     Ast_Type *els = Sem_ValueType(node->an_els->an_type);
 
     if (then->at_kind == AST_TYPE_KIND_VOID || els->at_kind == AST_TYPE_KIND_VOID) {
-        Err_AssertAt(node->an_line, then->at_kind == els->at_kind, ERR_SEM_COND_MISMATCH);
+        Err_AssertAt(node->an_line, then->at_kind == els->at_kind, ERR_SEM_COND_VOID_MISMATCH);
         return then;
     }
     if (Sem_IsAggregate(then) || Sem_IsAggregate(els)) {
@@ -238,11 +238,11 @@ Ast_Type *Sem_CondType(const Ast_Node *node)
     if (els->at_kind == AST_TYPE_KIND_PTR && Sem_IsNullPointer(node->an_then)) {
         return els;
     }
-    Err_AssertAt(node->an_line, then->at_kind == AST_TYPE_KIND_PTR && els->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_COND_MISMATCH);
+    Err_AssertAt(node->an_line, then->at_kind == AST_TYPE_KIND_PTR && els->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_COND_NOT_POINTER);
     if (els->at_base->at_kind == AST_TYPE_KIND_VOID) {
         return els;
     }
-    Err_AssertAt(node->an_line, then->at_base->at_kind == AST_TYPE_KIND_VOID || Ast_IsCompatibleUnqualified(then->at_base, els->at_base), ERR_SEM_COND_MISMATCH);
+    Err_AssertAt(node->an_line, then->at_base->at_kind == AST_TYPE_KIND_VOID || Ast_IsCompatibleUnqualified(then->at_base, els->at_base), ERR_SEM_COND_POINTEE_NOT_COMPATIBLE);
     return then;
 }
 
@@ -966,7 +966,7 @@ void Sem_Arith(Ast_Node *node)
         return;
     }
     Err_AssertAt(node->an_line, ! Ast_IsFloating(lhs) && ! Ast_IsFloating(rhs), ERR_SEM_POINTER_FLOATING);
-    Err_AssertAt(node->an_line, (Sem_IsPointer(lhs) || Ast_IsInteger(lhs)) && (Sem_IsPointer(rhs) || Ast_IsInteger(rhs)), ERR_SEM_OPERAND_NOT_INTEGER);
+    Err_AssertAt(node->an_line, (Sem_IsPointer(lhs) || Ast_IsInteger(lhs)) && (Sem_IsPointer(rhs) || Ast_IsInteger(rhs)), ERR_SEM_POINTER_OFFSET_NOT_INTEGER);
 
     if (Sem_IsPointer(lhs) && Sem_IsPointer(rhs)) {
         Err_AssertAt(node->an_line, node->an_kind == AST_NODE_KIND_SUB, ERR_SEM_ADD_POINTERS);
@@ -1036,7 +1036,7 @@ void Sem_CheckOpAssign(const Ast_Node *node)
         case AST_NODE_KIND_ADD:
         case AST_NODE_KIND_SUB: {
             bool step = lhs->at_kind == AST_TYPE_KIND_PTR && Ast_IsInteger(rhs);
-            Err_AssertAt(node->an_line, step || (Ast_IsArithmetic(lhs) && Ast_IsArithmetic(rhs)), ERR_SEM_OPERAND_NOT_ARITHMETIC);
+            Err_AssertAt(node->an_line, step || (Ast_IsArithmetic(lhs) && Ast_IsArithmetic(rhs)), ERR_SEM_OPASSIGN_NOT_ARITHMETIC);
         } break;
         case AST_NODE_KIND_MUL:
         case AST_NODE_KIND_DIV: {
@@ -1277,8 +1277,8 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_OPASSIGN: {
-            Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
-            Err_AssertAt(node->an_line, Sem_IsModifiable(node->an_lhs->an_type), ERR_SEM_ASSIGN_CONST);
+            Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_OPASSIGN_NOT_ASSIGNABLE);
+            Err_AssertAt(node->an_line, Sem_IsModifiable(node->an_lhs->an_type), ERR_SEM_OPASSIGN_CONST);
             Sem_CheckOpAssign(node);
             if (Sem_NeedsFloatAssign(node)) {
                 Sem_LowerOpAssign(node);
@@ -1293,9 +1293,9 @@ void Sem_Annotate(Ast_Node *node)
 
         case AST_NODE_KIND_POSTINC: {
             Ast_Type *type = node->an_lhs->an_type;
-            Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_NOT_ASSIGNABLE);
-            Err_AssertAt(node->an_line, Sem_IsModifiable(type), ERR_SEM_ASSIGN_CONST);
-            Err_AssertAt(node->an_line, Ast_IsArithmetic(type) || type->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_OPERAND_NOT_ARITHMETIC);
+            Err_AssertAt(node->an_line, Sem_IsLvalue(node->an_lhs), ERR_SEM_INCDEC_NOT_ASSIGNABLE);
+            Err_AssertAt(node->an_line, Sem_IsModifiable(type), ERR_SEM_INCDEC_CONST);
+            Err_AssertAt(node->an_line, Ast_IsArithmetic(type) || type->at_kind == AST_TYPE_KIND_PTR, ERR_SEM_INCDEC_NOT_ARITHMETIC);
             if (Sem_NeedsFloatAssign(node) || (Sem_IsPointer(type) && Ast_IsVla(type->at_base))) {
                 Sem_LowerPostInc(node);
                 break;
