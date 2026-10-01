@@ -1521,9 +1521,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [path]
-    [ERR_EMU_NOT_X86_64] = {
+    [ERR_EMU_ARCH_NOT_X86_64] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_NOT_X86_64",
+        .ee_name   = "ERR_EMU_ARCH_NOT_X86_64",
         .ee_format = "'%s' is not an x86_64 executable"
     },
 
