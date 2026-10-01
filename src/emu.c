@@ -111,7 +111,7 @@ int main(int argc, char **argv)
     if (! program) {
         Emu_Usage(argv[0]);
     }
-    Err_Assert(Str_Equals(arch, EMU_DEFAULT_ARCH), ERR_EMU_ARCH_UNSUPPORTED, arch, EMU_DEFAULT_ARCH);
+    Err_Assert(Str_Equals(arch, EMU_DEFAULT_ARCH), ERR_EMU_ARCH_NOT_SUPPORTED, arch, EMU_DEFAULT_ARCH);
 
     Load_x86_64_Image img = {0};
     Err_Assert(Load_x86_64_ReadExec(program, &img), ERR_FILE_ACCESS, program, strerror(errno));

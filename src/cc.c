@@ -413,7 +413,7 @@ int main(int argc, char **argv)
                 Pp_PutUndef(cmdline, optarg);
             } break;
             case CC_OPTION_STD: {
-                Err_Assert(Str_Equals(optarg, CC_DEFAULT_STD), ERR_CC_STD_UNSUPPORTED, optarg, CC_DEFAULT_STD);
+                Err_Assert(Str_Equals(optarg, CC_DEFAULT_STD), ERR_CC_STD_NOT_SUPPORTED, optarg, CC_DEFAULT_STD);
             } break;
             case CC_OPTION_INCLUDE: {
                 Pp_PutInclude(forced, optarg);
@@ -472,7 +472,7 @@ int main(int argc, char **argv)
 
     Buf_PutBytes(cmdline, Buf_Data(forced), Buf_Len(forced));
     Buf_Free(forced);
-    Err_Assert(Str_Equals(arch, CC_DEFAULT_ARCH), ERR_CC_ARCH_UNSUPPORTED, arch, CC_DEFAULT_ARCH);
+    Err_Assert(Str_Equals(arch, CC_DEFAULT_ARCH), ERR_CC_ARCH_NOT_SUPPORTED, arch, CC_DEFAULT_ARCH);
 
     if (optind >= argc) {
         Cc_ShowUsage(argv[0]);

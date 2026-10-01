@@ -736,7 +736,7 @@ Pp_Arg *Pp_ReadArgs(Pp_Reader *rd, const Pp_Macro *macro, const Pp_Token *name, 
     for (;;) {
         const Pp_Token *tok = Pp_ReadToken(rd);
 
-        Err_AssertAt(name->pt_line, tok, ERR_PP_MACRO_UNTERMINATED, macro->ma_name);
+        Err_AssertAt(name->pt_line, tok, ERR_PP_MACRO_NOT_TERMINATED, macro->ma_name);
         if (depth == 0 && Pp_TokenEquals(tok, ")")) {
             *close = tok;
             break;
@@ -829,7 +829,7 @@ void Pp_PasteTokens(Pp_Token *left, const Pp_Token *right, Ast_Line line)
     size_t len = left->pt_len + right->pt_len;
     char *text = Str_Format("%.*s%.*s", (int) left->pt_len, left->pt_text, (int) right->pt_len, right->pt_text);
 
-    Err_AssertAt(line, Pp_LexOne(text, len, &kind), ERR_PP_PASTE_INVALID, (int) left->pt_len, left->pt_text, (int) right->pt_len, right->pt_text);
+    Err_AssertAt(line, Pp_LexOne(text, len, &kind), ERR_PP_PASTE_NOT_VALID, (int) left->pt_len, left->pt_text, (int) right->pt_len, right->pt_text);
     left->pt_kind = kind;
     left->pt_text = text;
     left->pt_len = len;
@@ -1334,7 +1334,7 @@ size_t Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos)
     } else if (Pp_TokenEquals(name, "warning")) {
         Pp_RunWarning(file, pos);
     } else {
-        Err_RaiseAt(hash->pt_line, ERR_PP_DIRECTIVE_UNKNOWN, (int) name->pt_len, name->pt_text);
+        Err_RaiseAt(hash->pt_line, ERR_PP_DIRECTIVE_NOT_KNOWN, (int) name->pt_len, name->pt_text);
     }
     return Pp_SkipLine(file, pos);
 }
@@ -1474,7 +1474,7 @@ void Pp_RunLine(Pp_Printer *pr, const Pp_File *file, size_t pos)
     Ast_Line line = Pp_ReadLineNumber(number, name->pt_line);
 
     if (path) {
-        Err_AssertAt(name->pt_line, path->pt_kind == PP_TOKEN_STRING && path->pt_text[0] == '"', ERR_PP_LINE_NAME_INVALID, (int) path->pt_len, path->pt_text);
+        Err_AssertAt(name->pt_line, path->pt_kind == PP_TOKEN_STRING && path->pt_text[0] == '"', ERR_PP_LINE_NAME_NOT_VALID, (int) path->pt_len, path->pt_text);
         if (path->pt_next) {
             Err_WarnAt(name->pt_line, ERR_PP_EXTRA_TOKENS, (int) name->pt_len, name->pt_text);
         }
@@ -1492,7 +1492,7 @@ Ast_Line Pp_ReadLineNumber(const Pp_Token *tok, Ast_Line line)
     for (size_t i = 0; i < tok->pt_len; i++) {
         int32_t digit = Par_DigitValue(tok->pt_text[i]);
 
-        Err_AssertAt(line, digit >= 0 && digit < PAR_BASE_DECIMAL, ERR_PP_LINE_NUMBER_INVALID, (int) tok->pt_len, tok->pt_text);
+        Err_AssertAt(line, digit >= 0 && digit < PAR_BASE_DECIMAL, ERR_PP_LINE_NUMBER_NOT_VALID, (int) tok->pt_len, tok->pt_text);
         value = value * PAR_BASE_DECIMAL + (uintmax_t) digit;
         Err_AssertAt(line, value <= PP_LINE_MAX, ERR_PP_LINE_OUT_OF_RANGE);
     }
@@ -1856,7 +1856,7 @@ Pp_Value Pp_EvalUnary(Pp_Expr *ex, Pp_Eval mode)
         val.pv_bits = Pp_IsTrue(Pp_EvalUnary(ex, mode)) ? PP_VALUE_FALSE : PP_VALUE_TRUE;
         return val;
     }
-    Err_RaiseAt(ex->pe_line, ERR_PP_EXPR_TOKEN_INVALID, (int) tok->pt_len, tok->pt_text);
+    Err_RaiseAt(ex->pe_line, ERR_PP_EXPR_TOKEN_NOT_VALID, (int) tok->pt_len, tok->pt_text);
     return val;
 }
 
@@ -1876,7 +1876,7 @@ Pp_Value Pp_EvalNumber(const Pp_Token *tok, Ast_Line line)
     val.pv_bits = strtoumax(text, &end, 0);
     Err_AssertAt(line, errno != ERANGE, ERR_PP_EXPR_TOO_LARGE);
     valid = Pp_ReadSuffix(end, &val.pv_unsigned);
-    Err_AssertAt(line, valid, ERR_PP_EXPR_SUFFIX_INVALID, end);
+    Err_AssertAt(line, valid, ERR_PP_EXPR_SUFFIX_NOT_VALID, end);
     val.pv_unsigned = val.pv_unsigned || val.pv_bits > INTMAX_MAX;
     Str_Free(text);
     return val;
@@ -2110,7 +2110,7 @@ void Pp_RunFile(Pp_Printer *pr, const Pp_File *file)
         }
     }
     if (Pp_Conds) {
-        Err_RaiseAt(Pp_Conds->pc_name->pt_line, ERR_PP_COND_UNTERMINATED, (int) Pp_Conds->pc_name->pt_len, Pp_Conds->pc_name->pt_text);
+        Err_RaiseAt(Pp_Conds->pc_name->pt_line, ERR_PP_COND_NOT_TERMINATED, (int) Pp_Conds->pc_name->pt_len, Pp_Conds->pc_name->pt_text);
     }
     Pp_Conds = outer;
     Pp_CurPlace = includer;

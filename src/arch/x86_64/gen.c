@@ -1384,7 +1384,7 @@ void Gen_x86_64_EmitOpAssign(Ast_NodeKind op, const Ast_Type *type, Ast_Line lin
             Gen_x86_64_EmitShift(sign, ASM_X86_64_REG_RAX);
         } break;
         default: {
-            Err_RaiseAt(line, ERR_GEN_UNEXPECTED_OPASSIGN, op);
+            Err_RaiseAt(line, ERR_GEN_OPASSIGN_NOT_EXPECTED, op);
         }
     }
 }
@@ -1638,7 +1638,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                     Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
                 } break;
                 default: {
-                    Err_RaiseAt(node->an_line, ERR_GEN_UNEXPECTED_EXPR, node->an_kind);
+                    Err_RaiseAt(node->an_line, ERR_GEN_EXPR_NOT_EXPECTED, node->an_kind);
                 }
             }
         }
@@ -1814,7 +1814,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             // empty
         } break;
         default: {
-            Err_RaiseAt(node->an_line, ERR_GEN_UNEXPECTED_STMT, node->an_kind);
+            Err_RaiseAt(node->an_line, ERR_GEN_STMT_NOT_EXPECTED, node->an_kind);
         }
     }
 }

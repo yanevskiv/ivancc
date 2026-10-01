@@ -73,7 +73,7 @@ void Pp_Tokenize(Pp_File *file)
     for (;;) {
         Pp_TokenKind kind = (Pp_TokenKind) pplex();
 
-        Err_AssertAt((Ast_Line) pplineno, kind != PP_TOKEN_OPEN_COMMENT, ERR_PP_COMMENT_UNTERMINATED);
+        Err_AssertAt((Ast_Line) pplineno, kind != PP_TOKEN_OPEN_COMMENT, ERR_PP_COMMENT_NOT_TERMINATED);
         if (kind == PP_TOKEN_SPACE) {
             flags |= PP_FLAG_SPACE;
             continue;

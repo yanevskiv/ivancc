@@ -58,7 +58,7 @@ void Link_x86_64_RelApplyOne(Elf_Sec *sec, const Elf_Rela *rel)
             Link_x86_64_RelPatchLE(sec, rel->rel_offset, S + A, 8);
         } break;
         default: {
-            Err_Raise(ERR_LINK_UNSUPPORTED_RELOCATION, rel->rel_type);
+            Err_Raise(ERR_LINK_RELOCATION_NOT_SUPPORTED, rel->rel_type);
         }
     }
 }
@@ -185,7 +185,7 @@ void Link_x86_64_MergeFiles(Elf *out, const char *const *paths, size_t npaths)
 {
     for (size_t i = 0; i < npaths; i++) {
         Elf *in = Elf_Read_Path(paths[i]);
-        Err_Assert(in, ERR_LINK_OBJECT_UNREADABLE, paths[i]);
+        Err_Assert(in, ERR_LINK_OBJECT_NOT_READABLE, paths[i]);
         Link_x86_64_Merge(out, in);
         Elf_Free(in);
     }
@@ -242,7 +242,7 @@ void Link_x86_64_CheckDefined(Elf *elf)
         Elf_Sec *sec = Elf_Section_At(elf, i);
         for (size_t r = 0; r < Elf_Rela_Count(sec); r++) {
             Elf_Sym *sym = Elf_Rela_At(sec, r)->rel_sym;
-            Err_Assert(sym && sym->sym_sec, ERR_LINK_UNDEFINED_SYMBOL, sym ? sym->sym_name : "?");
+            Err_Assert(sym && sym->sym_sec, ERR_LINK_SYMBOL_NOT_DEFINED, sym ? sym->sym_name : "?");
         }
     }
 }
@@ -256,7 +256,7 @@ void Link_x86_64_Exec(Elf *elf, const Link_x86_64_Options *opts)
     Link_x86_64_CheckDefined(elf);
 
     Elf_Sym *sym = Elf_Symbol_Find(elf, entry);
-    Err_Assert(sym && sym->sym_sec, ERR_LINK_UNDEFINED_ENTRY, entry);
+    Err_Assert(sym && sym->sym_sec, ERR_LINK_ENTRY_NOT_DEFINED, entry);
     Elf_SetEntry(elf, sym->sym_sec->sec_addr + sym->sym_value);
 
     Link_x86_64_RelApply(elf);

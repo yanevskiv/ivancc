@@ -30,16 +30,16 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PP_COMMENT_UNTERMINATED] = {
+    [ERR_PP_COMMENT_NOT_TERMINATED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_COMMENT_UNTERMINATED",
+        .ee_name   = "ERR_PP_COMMENT_NOT_TERMINATED",
         .ee_format = "unterminated comment"
     },
 
     // Args: [name length, name]
-    [ERR_PP_DIRECTIVE_UNKNOWN] = {
+    [ERR_PP_DIRECTIVE_NOT_KNOWN] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_DIRECTIVE_UNKNOWN",
+        .ee_name   = "ERR_PP_DIRECTIVE_NOT_KNOWN",
         .ee_format = "invalid preprocessing directive #%.*s"
     },
 
@@ -100,9 +100,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [name]
-    [ERR_PP_MACRO_UNTERMINATED] = {
+    [ERR_PP_MACRO_NOT_TERMINATED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_MACRO_UNTERMINATED",
+        .ee_name   = "ERR_PP_MACRO_NOT_TERMINATED",
         .ee_format = "unterminated argument list invoking macro '%s'"
     },
 
@@ -135,16 +135,16 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [left length, left, right length, right]
-    [ERR_PP_PASTE_INVALID] = {
+    [ERR_PP_PASTE_NOT_VALID] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_PASTE_INVALID",
+        .ee_name   = "ERR_PP_PASTE_NOT_VALID",
         .ee_format = "pasting \"%.*s\" and \"%.*s\" does not give a valid preprocessing token"
     },
 
     // Args: [directive length, directive]
-    [ERR_PP_COND_UNTERMINATED] = {
+    [ERR_PP_COND_NOT_TERMINATED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_COND_UNTERMINATED",
+        .ee_name   = "ERR_PP_COND_NOT_TERMINATED",
         .ee_format = "unterminated #%.*s"
     },
 
@@ -191,9 +191,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [token length, token]
-    [ERR_PP_EXPR_TOKEN_INVALID] = {
+    [ERR_PP_EXPR_TOKEN_NOT_VALID] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_EXPR_TOKEN_INVALID",
+        .ee_name   = "ERR_PP_EXPR_TOKEN_NOT_VALID",
         .ee_format = "token \"%.*s\" is not valid in preprocessor expressions"
     },
 
@@ -233,9 +233,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [suffix]
-    [ERR_PP_EXPR_SUFFIX_INVALID] = {
+    [ERR_PP_EXPR_SUFFIX_NOT_VALID] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_EXPR_SUFFIX_INVALID",
+        .ee_name   = "ERR_PP_EXPR_SUFFIX_NOT_VALID",
         .ee_format = "invalid suffix \"%s\" on integer constant"
     },
 
@@ -254,9 +254,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [token length, token]
-    [ERR_PP_LINE_NUMBER_INVALID] = {
+    [ERR_PP_LINE_NUMBER_NOT_VALID] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_LINE_NUMBER_INVALID",
+        .ee_name   = "ERR_PP_LINE_NUMBER_NOT_VALID",
         .ee_format = "\"%.*s\" after #line is not a positive integer"
     },
 
@@ -268,9 +268,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [token length, token]
-    [ERR_PP_LINE_NAME_INVALID] = {
+    [ERR_PP_LINE_NAME_NOT_VALID] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PP_LINE_NAME_INVALID",
+        .ee_name   = "ERR_PP_LINE_NAME_NOT_VALID",
         .ee_format = "\"%.*s\" is not a valid filename"
     },
 
@@ -303,9 +303,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [character]
-    [ERR_LEX_UNEXPECTED_CHAR] = {
+    [ERR_LEX_CHAR_NOT_EXPECTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_LEX_UNEXPECTED_CHAR",
+        .ee_name   = "ERR_LEX_CHAR_NOT_EXPECTED",
         .ee_format = "unexpected character '%s'"
     },
 
@@ -338,23 +338,23 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PAR_ESCAPE_UCN_INCOMPLETE] = {
+    [ERR_PAR_ESCAPE_UCN_NOT_COMPLETE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_ESCAPE_UCN_INCOMPLETE",
+        .ee_name   = "ERR_PAR_ESCAPE_UCN_NOT_COMPLETE",
         .ee_format = "incomplete universal character name"
     },
 
     // Args: [character]
-    [ERR_PAR_ESCAPE_UNKNOWN] = {
+    [ERR_PAR_ESCAPE_NOT_KNOWN] = {
         .ee_level  = ERR_LEVEL_ERROR,
-        .ee_name   = "ERR_PAR_ESCAPE_UNKNOWN",
+        .ee_name   = "ERR_PAR_ESCAPE_NOT_KNOWN",
         .ee_format = "unknown escape sequence '\\%c'"
     },
 
     // Args: none
-    [ERR_PAR_DECL_UNNAMED] = {
+    [ERR_PAR_DECL_NOT_NAMED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_DECL_UNNAMED",
+        .ee_name   = "ERR_PAR_DECL_NOT_NAMED",
         .ee_format = "this declaration needs a name"
     },
 
@@ -429,9 +429,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [parameter]
-    [ERR_PAR_KNR_UNDECLARED] = {
+    [ERR_PAR_KNR_NOT_DECLARED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_KNR_UNDECLARED",
+        .ee_name   = "ERR_PAR_KNR_NOT_DECLARED",
         .ee_format = "parameter '%s' has no declaration"
     },
 
@@ -457,9 +457,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PAR_SPEC_INVALID] = {
+    [ERR_PAR_SPEC_NOT_VALID] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_SPEC_INVALID",
+        .ee_name   = "ERR_PAR_SPEC_NOT_VALID",
         .ee_format = "these type specifiers do not name a type"
     },
 
@@ -541,9 +541,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PAR_MEMBER_UNNAMED] = {
+    [ERR_PAR_MEMBER_NOT_NAMED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_MEMBER_UNNAMED",
+        .ee_name   = "ERR_PAR_MEMBER_NOT_NAMED",
         .ee_format = "this member needs a name"
     },
 
@@ -611,9 +611,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PAR_INIT_ARRAY_UNBRACED] = {
+    [ERR_PAR_INIT_ARRAY_NOT_BRACED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_INIT_ARRAY_UNBRACED",
+        .ee_name   = "ERR_PAR_INIT_ARRAY_NOT_BRACED",
         .ee_format = "an array needs a braced initializer"
     },
 
@@ -639,16 +639,16 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PAR_LITERAL_INCOMPLETE] = {
+    [ERR_PAR_LITERAL_NOT_COMPLETE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_LITERAL_INCOMPLETE",
+        .ee_name   = "ERR_PAR_LITERAL_NOT_COMPLETE",
         .ee_format = "a compound literal of an incomplete type has no size"
     },
 
     // Args: [name]
-    [ERR_PAR_OBJECT_INCOMPLETE] = {
+    [ERR_PAR_OBJECT_NOT_COMPLETE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_OBJECT_INCOMPLETE",
+        .ee_name   = "ERR_PAR_OBJECT_NOT_COMPLETE",
         .ee_format = "'%s' has an incomplete type"
     },
 
@@ -674,9 +674,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PAR_SIZEOF_INCOMPLETE] = {
+    [ERR_PAR_SIZEOF_NOT_COMPLETE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_SIZEOF_INCOMPLETE",
+        .ee_name   = "ERR_PAR_SIZEOF_NOT_COMPLETE",
         .ee_format = "invalid application of 'sizeof' to an incomplete type"
     },
 
@@ -695,9 +695,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [identifier]
-    [ERR_PAR_UNDECLARED] = {
+    [ERR_PAR_NAME_NOT_DECLARED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_UNDECLARED",
+        .ee_name   = "ERR_PAR_NAME_NOT_DECLARED",
         .ee_format = "use of undeclared identifier '%s'"
     },
 
@@ -765,9 +765,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [member]
-    [ERR_AST_MEMBER_INCOMPLETE] = {
+    [ERR_AST_MEMBER_NOT_COMPLETE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_AST_MEMBER_INCOMPLETE",
+        .ee_name   = "ERR_AST_MEMBER_NOT_COMPLETE",
         .ee_format = "member '%s' has an incomplete type"
     },
 
@@ -779,9 +779,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_AST_AGGREGATE_UNNAMED] = {
+    [ERR_AST_AGGREGATE_NOT_NAMED] = {
         .ee_level  = ERR_LEVEL_ERROR,
-        .ee_name   = "ERR_AST_AGGREGATE_UNNAMED",
+        .ee_name   = "ERR_AST_AGGREGATE_NOT_NAMED",
         .ee_format = "an aggregate must declare at least one named member"
     },
 
@@ -828,9 +828,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [label]
-    [ERR_SEM_GOTO_UNDEFINED] = {
+    [ERR_SEM_GOTO_NOT_DEFINED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_SEM_GOTO_UNDEFINED",
+        .ee_name   = "ERR_SEM_GOTO_NOT_DEFINED",
         .ee_format = "goto names an undefined label '%s'"
     },
 
@@ -891,16 +891,16 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_SEM_DEREF_INCOMPLETE] = {
+    [ERR_SEM_DEREF_NOT_COMPLETE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_SEM_DEREF_INCOMPLETE",
+        .ee_name   = "ERR_SEM_DEREF_NOT_COMPLETE",
         .ee_format = "cannot dereference a pointer to an incomplete type"
     },
 
     // Args: none
-    [ERR_SEM_SIZEOF_INCOMPLETE] = {
+    [ERR_SEM_SIZEOF_NOT_COMPLETE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_SEM_SIZEOF_INCOMPLETE",
+        .ee_name   = "ERR_SEM_SIZEOF_NOT_COMPLETE",
         .ee_format = "invalid application of 'sizeof' to an incomplete type"
     },
 
@@ -919,16 +919,16 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [type name]
-    [ERR_SEM_MEMBER_INCOMPLETE] = {
+    [ERR_SEM_MEMBER_NOT_COMPLETE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_SEM_MEMBER_INCOMPLETE",
+        .ee_name   = "ERR_SEM_MEMBER_NOT_COMPLETE",
         .ee_format = "'%s' is an incomplete type"
     },
 
     // Args: [member, type name]
-    [ERR_SEM_MEMBER_UNKNOWN] = {
+    [ERR_SEM_MEMBER_NOT_KNOWN] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_SEM_MEMBER_UNKNOWN",
+        .ee_name   = "ERR_SEM_MEMBER_NOT_KNOWN",
         .ee_format = "no member named '%s' in '%s'"
     },
 
@@ -954,9 +954,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [context]
-    [ERR_SEM_ASSIGN_INCOMPATIBLE] = {
+    [ERR_SEM_ASSIGN_NOT_COMPATIBLE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_SEM_ASSIGN_INCOMPATIBLE",
+        .ee_name   = "ERR_SEM_ASSIGN_NOT_COMPATIBLE",
         .ee_format = "incompatible types in %s"
     },
 
@@ -1059,23 +1059,23 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [operator kind]
-    [ERR_GEN_UNEXPECTED_OPASSIGN] = {
+    [ERR_GEN_OPASSIGN_NOT_EXPECTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_GEN_UNEXPECTED_OPASSIGN",
+        .ee_name   = "ERR_GEN_OPASSIGN_NOT_EXPECTED",
         .ee_format = "unexpected compound assignment %d"
     },
 
     // Args: [node kind]
-    [ERR_GEN_UNEXPECTED_EXPR] = {
+    [ERR_GEN_EXPR_NOT_EXPECTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_GEN_UNEXPECTED_EXPR",
+        .ee_name   = "ERR_GEN_EXPR_NOT_EXPECTED",
         .ee_format = "unexpected node kind %d"
     },
 
     // Args: [node kind]
-    [ERR_GEN_UNEXPECTED_STMT] = {
+    [ERR_GEN_STMT_NOT_EXPECTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_GEN_UNEXPECTED_STMT",
+        .ee_name   = "ERR_GEN_STMT_NOT_EXPECTED",
         .ee_format = "unexpected statement kind %d"
     },
 
@@ -1122,30 +1122,30 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [path]
-    [ERR_LINK_OBJECT_UNREADABLE] = {
+    [ERR_LINK_OBJECT_NOT_READABLE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_LINK_OBJECT_UNREADABLE",
+        .ee_name   = "ERR_LINK_OBJECT_NOT_READABLE",
         .ee_format = "cannot read object '%s'"
     },
 
     // Args: [symbol]
-    [ERR_LINK_UNDEFINED_SYMBOL] = {
+    [ERR_LINK_SYMBOL_NOT_DEFINED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_LINK_UNDEFINED_SYMBOL",
+        .ee_name   = "ERR_LINK_SYMBOL_NOT_DEFINED",
         .ee_format = "undefined symbol '%s'"
     },
 
     // Args: [symbol]
-    [ERR_LINK_UNDEFINED_ENTRY] = {
+    [ERR_LINK_ENTRY_NOT_DEFINED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_LINK_UNDEFINED_ENTRY",
+        .ee_name   = "ERR_LINK_ENTRY_NOT_DEFINED",
         .ee_format = "undefined entry symbol '%s'"
     },
 
     // Args: [relocation type]
-    [ERR_LINK_UNSUPPORTED_RELOCATION] = {
+    [ERR_LINK_RELOCATION_NOT_SUPPORTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_LINK_UNSUPPORTED_RELOCATION",
+        .ee_name   = "ERR_LINK_RELOCATION_NOT_SUPPORTED",
         .ee_format = "unsupported relocation type %u"
     },
 
@@ -1199,9 +1199,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [mnemonic length, mnemonic]
-    [ERR_TXT_MNEMONIC_UNKNOWN] = {
+    [ERR_TXT_MNEMONIC_NOT_KNOWN] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_MNEMONIC_UNKNOWN",
+        .ee_name   = "ERR_TXT_MNEMONIC_NOT_KNOWN",
         .ee_format = "unknown mnemonic '%.*s'"
     },
 
@@ -1241,23 +1241,23 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [string]
-    [ERR_TXT_STRING_UNTERMINATED] = {
+    [ERR_TXT_STRING_NOT_TERMINATED] = {
         .ee_level  = ERR_LEVEL_ERROR,
-        .ee_name   = "ERR_TXT_STRING_UNTERMINATED",
+        .ee_name   = "ERR_TXT_STRING_NOT_TERMINATED",
         .ee_format = "missing closing quote in '%s'"
     },
 
     // Args: [character]
-    [ERR_TXT_ESCAPE_UNKNOWN] = {
+    [ERR_TXT_ESCAPE_NOT_KNOWN] = {
         .ee_level  = ERR_LEVEL_ERROR,
-        .ee_name   = "ERR_TXT_ESCAPE_UNKNOWN",
+        .ee_name   = "ERR_TXT_ESCAPE_NOT_KNOWN",
         .ee_format = "unknown escape sequence '\\%c'"
     },
 
     // Args: [architecture, supported architecture]
-    [ERR_CC_ARCH_UNSUPPORTED] = {
+    [ERR_CC_ARCH_NOT_SUPPORTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_CC_ARCH_UNSUPPORTED",
+        .ee_name   = "ERR_CC_ARCH_NOT_SUPPORTED",
         .ee_format = "unsupported architecture '%s' (only %s is supported)"
     },
 
@@ -1269,9 +1269,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [standard, supported standard]
-    [ERR_CC_STD_UNSUPPORTED] = {
+    [ERR_CC_STD_NOT_SUPPORTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_CC_STD_UNSUPPORTED",
+        .ee_name   = "ERR_CC_STD_NOT_SUPPORTED",
         .ee_format = "unsupported standard '%s' (only %s is supported)"
     },
 
@@ -1283,9 +1283,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [architecture, supported architecture]
-    [ERR_EMU_ARCH_UNSUPPORTED] = {
+    [ERR_EMU_ARCH_NOT_SUPPORTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_ARCH_UNSUPPORTED",
+        .ee_name   = "ERR_EMU_ARCH_NOT_SUPPORTED",
         .ee_format = "unsupported architecture '%s' (only %s is supported)"
     },
 
@@ -1297,44 +1297,44 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [address, instruction address]
-    [ERR_EMU_READ_UNMAPPED] = {
+    [ERR_EMU_READ_NOT_MAPPED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_READ_UNMAPPED",
+        .ee_name   = "ERR_EMU_READ_NOT_MAPPED",
         .ee_format = "read of unmapped memory at 0x%llx from %%rip = 0x%llx"
     },
 
     // Args: [address, instruction address]
-    [ERR_EMU_WRITE_UNMAPPED] = {
+    [ERR_EMU_WRITE_NOT_MAPPED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_WRITE_UNMAPPED",
+        .ee_name   = "ERR_EMU_WRITE_NOT_MAPPED",
         .ee_format = "write to unmapped memory at 0x%llx from %%rip = 0x%llx"
     },
 
     // Args: [address, instruction address]
-    [ERR_EMU_SYSCALL_UNMAPPED] = {
+    [ERR_EMU_SYSCALL_NOT_MAPPED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_SYSCALL_UNMAPPED",
+        .ee_name   = "ERR_EMU_SYSCALL_NOT_MAPPED",
         .ee_format = "syscall buffer in unmapped memory at 0x%llx from %%rip = 0x%llx"
     },
 
     // Args: [syscall number, instruction address]
-    [ERR_EMU_SYSCALL_UNIMPLEMENTED] = {
+    [ERR_EMU_SYSCALL_NOT_IMPLEMENTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_SYSCALL_UNIMPLEMENTED",
+        .ee_name   = "ERR_EMU_SYSCALL_NOT_IMPLEMENTED",
         .ee_format = "unimplemented syscall %llu from %%rip = 0x%llx"
     },
 
     // Args: [instruction address]
-    [ERR_EMU_UNDECODABLE] = {
+    [ERR_EMU_OPCODE_NOT_DECODABLE] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_UNDECODABLE",
+        .ee_name   = "ERR_EMU_OPCODE_NOT_DECODABLE",
         .ee_format = "undecodable instruction at 0x%llx"
     },
 
     // Args: [opcode map, instruction address]
-    [ERR_EMU_OPCODE_UNIMPLEMENTED] = {
+    [ERR_EMU_OPCODE_NOT_IMPLEMENTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_OPCODE_UNIMPLEMENTED",
+        .ee_name   = "ERR_EMU_OPCODE_NOT_IMPLEMENTED",
         .ee_format = "unimplemented %s opcode at 0x%llx"
     },
 

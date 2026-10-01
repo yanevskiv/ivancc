@@ -400,7 +400,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
             }
             continue;
         }
-        Err_AssertAt(member->am_line, member->am_type->at_complete, ERR_AST_MEMBER_INCOMPLETE, member->am_name);
+        Err_AssertAt(member->am_line, member->am_type->at_complete, ERR_AST_MEMBER_NOT_COMPLETE, member->am_name);
         for (Ast_Member *seen = members; seen != member; seen = seen->am_next) {
             Err_AssertAt(member->am_line, ! member->am_name || ! Str_Equals(seen->am_name, member->am_name), ERR_AST_MEMBER_DUPLICATE, member->am_name);
         }
@@ -424,7 +424,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
     }
 
     Ast_Member *named = Ast_NamedMembers(members);
-    Err_AssertAt(line, named, ERR_AST_AGGREGATE_UNNAMED);
+    Err_AssertAt(line, named, ERR_AST_AGGREGATE_NOT_NAMED);
 
     type->at_members  = named;
     type->at_complete = AST_TYPE_COMPLETE;
