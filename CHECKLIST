@@ -1,0 +1,328 @@
+Checklist
+
+Checklist toward ISO C99: the language, then the standard library of clause 7.
+
+    Language
+
+        Lexical
+
+            - [x] `//` line comments
+            - [x] `/* */` block comments
+            - [x] identifiers
+            - [x] decimal integer literals
+            - [x] hex integer literals (`0x...`)
+            - [x] octal integer literals (`0...`)
+            - [x] integer suffixes (`u U l L ll LL` and combinations)
+            - [x] floating-point literals (`1.0`, `1e10`, `0x1p0`)
+            - [x] character literals
+            - [x] full escape set (`\a \b \f \v \xHH`, octal `\nnn`, `\uXXXX`/`\UXXXXXXXX`)
+            - [x] string literals
+            - [x] adjacent string literal concatenation (`"a" "b"`)
+            - [x] wide literals (`L"..."`, `L'x'`)
+            - [x] multi-character constants (`'ab'`)
+
+        Types
+
+            - [x] `int`, `char`, `void`
+            - [x] `short`
+            - [x] `long`, `long long`
+            - [x] `float`, `double`
+            - [x] `long double` (80-bit x87: 16 bytes, aligned 16, passed on the stack, returned in `%st`)
+            - [x] `_Bool`
+            - [x] `signed` / `unsigned`
+            - [x] `const` qualifier
+            - [x] `volatile` qualifier
+            - [x] `restrict` qualifier
+            - [x] pointer declarators (`int *p`, any number of stars)
+            - [x] array declarators, incl. multi-dimensional (`[N][M]`)
+            - [x] variable-length arrays (`int a[n]`, `sizeof` of one evaluated at run time)
+            - [x] function-pointer declarators
+            - [x] `struct`
+            - [x] `union`
+            - [x] `enum`
+            - [x] `typedef`
+            - [x] bitfields
+            - [x] flexible array members (`struct s { int n; char d[]; }`)
+            - [x] compound literals (`(T){ ... }`)
+
+        Declarations
+
+            - [x] single declarator with optional initializer
+            - [x] multiple declarators per statement (`int a, b, c;`)
+            - [x] array initializers (`{1, 2, 3}`)
+            - [x] array length taken from its initializer (`int a[] = {1, 2, 3}`)
+            - [x] char and `wchar_t` arrays initialized from a string literal (`char s[] = "abc"`)
+            - [x] designated initializers (`[i] = v` and `.field = v`)
+            - [x] designated initializers, nested (`[1].f[2] = v`, and brace elision around them)
+            - [x] storage classes: `static`, `extern`, `register`, `auto`
+            - [x] `inline`
+            - [x] top-level (global) variable declarations
+            - [x] function prototypes (parsed; currently a no-op)
+
+        Expressions and operators
+
+            - [x] arithmetic: `+ - * / %`
+            - [x] relational: `< > <= >=`
+            - [x] equality: `== !=`
+            - [x] logical: `&& ||`
+            - [x] unary `-` and `!`
+            - [x] unary `+`
+            - [x] bitwise: `& | ^ ~ << >>`
+            - [x] compound assignment: `+= -= *= /= %= &= |= ^= <<= >>=`
+            - [x] increment / decrement: `++ --` (prefix and postfix)
+            - [x] ternary `?:`
+            - [x] comma operator
+            - [x] assignment `=` (to a variable, `*p`, or `a[i]`)
+            - [x] address-of `&` (unary)
+            - [x] dereference `*` (unary)
+            - [x] array subscript `a[i]`
+            - [x] struct/union member access `.` and `->`
+            - [x] call through a function pointer
+            - [x] `sizeof` (type and expression forms)
+            - [x] cast expressions (`(T) expr`)
+            - [x] function calls, fixed arity
+            - [x] compound literals in expression position
+            - [x] parenthesized expressions
+
+        Statements
+
+            - [x] expression statement
+            - [x] empty statement (`;`)
+            - [x] compound statement / block
+            - [x] `if` / `else`
+            - [x] `while`
+            - [x] `for` (expression-only init; no `for (int i = 0; ...)`)
+            - [x] declaration as a `for`-loop initializer
+            - [x] `do`-`while`
+            - [x] `switch` / `case` / `default`
+            - [x] `break`
+            - [x] `continue`
+            - [x] `goto` and labels
+
+        Functions
+
+            - [x] definitions with a fixed parameter list
+            - [x] variadic marker `...` (arguments reachable through a real `va_list`)
+            - [x] prototypes (parsed, no-op)
+            - [x] function-pointer parameters/variables actually callable
+            - [x] qualifiers and `static` in array parameters (`int a[static 4]`, `int a[const 4]`)
+            - [x] old-style (K&R) parameter lists (`int f(a, b) int a; char b; { ... }`)
+            - [x] unprototyped declarations (`int f();`) and default argument promotions
+
+        Preprocessor
+
+            - [x] `#include`
+            - [x] `#define` (object-like)
+            - [x] `#define` (function-like, incl. variadic macros)
+            - [x] `#undef`
+            - [x] `#if` / `#ifdef` / `#ifndef` / `#elif` / `#else` / `#endif`, `defined()`
+            - [x] `#pragma`
+            - [x] `#error` / `#warning`
+            - [x] token pasting (`##`) and stringizing (`#`)
+            - [x] predefined macros (`__FILE__`, `__LINE__`, `__func__`, ...)
+
+    Library
+
+        Toolchain and runtime
+
+            - [x] `__builtin_offsetof`, an integer constant for `offsetof`
+            - [ ] target macros predefined from `-mtarget` (`__linux__`, `__unix__`, ...)
+            - [ ] `_start` hands `main` its `argc`, `argv` and `envp`, and a return from `main` calls `exit`
+            - [ ] `ivanar`, which builds `libc.a`
+            - [ ] archives in `ivanld`, pulling in only the members a program needs
+            - [ ] the system layer: one syscall stub, and the syscalls libc needs answered by `ivanemu`
+            - [ ] signal delivery in `ivanemu`: a handler, its frame and `rt_sigreturn`
+            - [ ] the floating-point control and status instructions, and `ivanemu`'s rounding modes and exception flags
+            - [ ] `_Complex`: the three types, their arithmetic, conversions and calling convention
+            - [ ] `_Generic`, for `<tgmath.h>`
+            - [ ] `__STDC_HOSTED__` is 1
+
+        `<stddef.h>` (7.17)
+
+            - [ ] `ptrdiff_t`, `size_t`, `wchar_t`
+            - [ ] `NULL`, `offsetof`
+
+        `<stdbool.h>` (7.16)
+
+            - [ ] `bool`, `true`, `false`, `__bool_true_false_are_defined`
+
+        `<iso646.h>` (7.9)
+
+            - [ ] `and`, `and_eq`, `bitand`, `bitor`, `compl`, `not`, `not_eq`, `or`, `or_eq`, `xor`, `xor_eq`
+
+        `<limits.h>` (7.10)
+
+            - [ ] `CHAR_BIT`, `MB_LEN_MAX`
+            - [ ] `SCHAR_MIN`, `SCHAR_MAX`, `UCHAR_MAX`, `CHAR_MIN`, `CHAR_MAX`
+            - [ ] `SHRT_MIN`, `SHRT_MAX`, `USHRT_MAX`, `INT_MIN`, `INT_MAX`, `UINT_MAX`
+            - [ ] `LONG_MIN`, `LONG_MAX`, `ULONG_MAX`, `LLONG_MIN`, `LLONG_MAX`, `ULLONG_MAX`
+
+        `<stdint.h>` (7.18)
+
+            - [ ] exact-width types: `int8_t` to `int64_t`, `uint8_t` to `uint64_t`
+            - [ ] minimum-width types: `int_least8_t` to `uint_least64_t`
+            - [ ] fastest types: `int_fast8_t` to `uint_fast64_t`
+            - [ ] `intptr_t`, `uintptr_t`, `intmax_t`, `uintmax_t`
+            - [ ] the limits of each: `INT8_MIN` to `UINTMAX_MAX`
+            - [ ] the limits of other types: `PTRDIFF_MIN`, `PTRDIFF_MAX`, `SIG_ATOMIC_MIN`, `SIG_ATOMIC_MAX`, `SIZE_MAX`, `WCHAR_MIN`, `WCHAR_MAX`, `WINT_MIN`, `WINT_MAX`
+            - [ ] constant macros: `INT8_C` to `UINT64_C`, `INTMAX_C`, `UINTMAX_C`
+
+        `<float.h>` (7.7)
+
+            - [ ] `FLT_ROUNDS`, `FLT_EVAL_METHOD`, `FLT_RADIX`, `DECIMAL_DIG`
+            - [ ] for `FLT`, `DBL` and `LDBL`: `_MANT_DIG`, `_DIG`, `_MIN_EXP`, `_MIN_10_EXP`, `_MAX_EXP`, `_MAX_10_EXP`
+            - [ ] for `FLT`, `DBL` and `LDBL`: `_MAX`, `_EPSILON`, `_MIN`
+
+        `<stdarg.h>` (7.15)
+
+            - [ ] `va_list`
+            - [ ] `va_start`, `va_arg`, `va_copy`, `va_end`
+
+        `<errno.h>` (7.5)
+
+            - [ ] `EDOM`, `EILSEQ`, `ERANGE`
+            - [ ] `errno`
+
+        `<ctype.h>` (7.4)
+
+            - [ ] classification: `isalnum`, `isalpha`, `isblank`, `iscntrl`, `isdigit`, `isgraph`, `islower`, `isprint`, `ispunct`, `isspace`, `isupper`, `isxdigit`
+            - [ ] case mapping: `tolower`, `toupper`
+
+        `<string.h>` (7.21)
+
+            - [ ] copying: `memcpy`, `memmove`, `strcpy`, `strncpy`
+            - [ ] concatenation: `strcat`, `strncat`
+            - [ ] comparison: `memcmp`, `strcmp`, `strcoll`, `strncmp`, `strxfrm`
+            - [ ] search: `memchr`, `strchr`, `strcspn`, `strpbrk`, `strrchr`, `strspn`, `strstr`, `strtok`
+            - [ ] `memset`, `strerror`, `strlen`
+
+        `<inttypes.h>` (7.8)
+
+            - [ ] `imaxdiv_t`
+            - [ ] `PRId8` to `PRIXPTR`, every `PRI` macro for `d`, `i`, `o`, `u`, `x` and `X`
+            - [ ] `SCNd8` to `SCNxPTR`, every `SCN` macro for `d`, `i`, `o`, `u` and `x`
+            - [ ] `imaxabs`, `imaxdiv`
+            - [ ] `strtoimax`, `strtoumax`
+            - [ ] `wcstoimax`, `wcstoumax`
+
+        `<setjmp.h>` (7.13)
+
+            - [ ] `jmp_buf`
+            - [ ] `setjmp`, `longjmp`
+
+        `<assert.h>` (7.2)
+
+            - [ ] `assert`, and `NDEBUG` turning it off at each inclusion
+
+        `<time.h>` (7.23)
+
+            - [ ] `CLOCKS_PER_SEC`, `clock_t`, `time_t`, `struct tm`
+            - [ ] manipulation: `clock`, `difftime`, `mktime`, `time`
+            - [ ] conversion: `asctime`, `ctime`, `gmtime`, `localtime`, `strftime`
+
+        `<signal.h>` (7.14)
+
+            - [ ] `sig_atomic_t`, `SIG_DFL`, `SIG_ERR`, `SIG_IGN`
+            - [ ] `SIGABRT`, `SIGFPE`, `SIGILL`, `SIGINT`, `SIGSEGV`, `SIGTERM`
+            - [ ] `signal`, `raise`
+
+        `<locale.h>` (7.11)
+
+            - [ ] `struct lconv`, `LC_ALL`, `LC_COLLATE`, `LC_CTYPE`, `LC_MONETARY`, `LC_NUMERIC`, `LC_TIME`
+            - [ ] `setlocale`, with `"C"`, `"C.UTF-8"` and `""`
+            - [ ] `localeconv`
+
+        `<stdlib.h>` (7.20)
+
+            - [ ] `div_t`, `ldiv_t`, `lldiv_t`, `EXIT_FAILURE`, `EXIT_SUCCESS`, `RAND_MAX`, `MB_CUR_MAX`
+            - [ ] numeric conversion: `atof`, `atoi`, `atol`, `atoll`
+            - [ ] numeric conversion: `strtod`, `strtof`, `strtold`, with hexadecimal, infinity and NaN
+            - [ ] numeric conversion: `strtol`, `strtoll`, `strtoul`, `strtoull`
+            - [ ] pseudo-random numbers: `rand`, `srand`
+            - [ ] memory management: `calloc`, `free`, `malloc`, `realloc`
+            - [ ] environment: `abort`, `atexit`, `exit`, `_Exit`, `getenv`, `system`
+            - [ ] searching and sorting: `bsearch`, `qsort`
+            - [ ] integer arithmetic: `abs`, `labs`, `llabs`, `div`, `ldiv`, `lldiv`
+            - [ ] multibyte characters: `mblen`, `mbtowc`, `wctomb`
+            - [ ] multibyte strings: `mbstowcs`, `wcstombs`
+
+        `<stdio.h>` (7.19)
+
+            - [ ] `FILE`, `fpos_t`, `_IOFBF`, `_IOLBF`, `_IONBF`, `BUFSIZ`, `EOF`, `FOPEN_MAX`, `FILENAME_MAX`, `L_tmpnam`, `SEEK_CUR`, `SEEK_END`, `SEEK_SET`, `TMP_MAX`
+            - [ ] `stdin`, `stdout`, `stderr`, buffered as C asks
+            - [ ] operations on files: `remove`, `rename`, `tmpfile`, `tmpnam`
+            - [ ] file access: `fclose`, `fflush`, `fopen`, `freopen`, `setbuf`, `setvbuf`
+            - [ ] formatted output: `fprintf`, `printf`, `snprintf`, `sprintf`, `vfprintf`, `vprintf`, `vsnprintf`, `vsprintf`
+            - [ ] formatted output of floating values: `%f`, `%e`, `%g` and `%a`
+            - [ ] formatted input: `fscanf`, `scanf`, `sscanf`, `vfscanf`, `vscanf`, `vsscanf`
+            - [ ] character input and output: `fgetc`, `fgets`, `fputc`, `fputs`, `getc`, `getchar`, `gets`, `putc`, `putchar`, `puts`, `ungetc`
+            - [ ] direct input and output: `fread`, `fwrite`
+            - [ ] file positioning: `fgetpos`, `fseek`, `fsetpos`, `ftell`, `rewind`
+            - [ ] error handling: `clearerr`, `feof`, `ferror`, `perror`
+
+        `<wctype.h>` (7.25)
+
+            - [ ] `wint_t`, `wctrans_t`, `wctype_t`, `WEOF`
+            - [ ] classification: `iswalnum`, `iswalpha`, `iswblank`, `iswcntrl`, `iswdigit`, `iswgraph`, `iswlower`, `iswprint`, `iswpunct`, `iswspace`, `iswupper`, `iswxdigit`
+            - [ ] extensible classification: `iswctype`, `wctype`
+            - [ ] case mapping: `towlower`, `towupper`
+            - [ ] extensible mapping: `towctrans`, `wctrans`
+
+        `<wchar.h>` (7.24)
+
+            - [ ] `mbstate_t`, `wint_t`, `WCHAR_MIN`, `WCHAR_MAX`, `WEOF`
+            - [ ] formatted wide input and output: `fwprintf`, `fwscanf`, `swprintf`, `swscanf`, `vfwprintf`, `vfwscanf`, `vswprintf`, `vswscanf`, `vwprintf`, `vwscanf`, `wprintf`, `wscanf`
+            - [ ] wide character input and output: `fgetwc`, `fgetws`, `fputwc`, `fputws`, `fwide`, `getwc`, `getwchar`, `putwc`, `putwchar`, `ungetwc`
+            - [ ] numeric conversion: `wcstod`, `wcstof`, `wcstold`, `wcstol`, `wcstoll`, `wcstoul`, `wcstoull`
+            - [ ] copying: `wcscpy`, `wcsncpy`, `wmemcpy`, `wmemmove`
+            - [ ] concatenation: `wcscat`, `wcsncat`
+            - [ ] comparison: `wcscmp`, `wcscoll`, `wcsncmp`, `wcsxfrm`, `wmemcmp`
+            - [ ] search: `wcschr`, `wcscspn`, `wcspbrk`, `wcsrchr`, `wcsspn`, `wcsstr`, `wcstok`, `wmemchr`
+            - [ ] `wcslen`, `wmemset`, `wcsftime`
+            - [ ] single-byte conversion: `btowc`, `wctob`
+            - [ ] restartable multibyte conversion: `mbsinit`, `mbrlen`, `mbrtowc`, `wcrtomb`, `mbsrtowcs`, `wcsrtombs`
+
+        `<fenv.h>` (7.6)
+
+            - [ ] `fenv_t`, `fexcept_t`, `FE_DFL_ENV`
+            - [ ] `FE_DIVBYZERO`, `FE_INEXACT`, `FE_INVALID`, `FE_OVERFLOW`, `FE_UNDERFLOW`, `FE_ALL_EXCEPT`
+            - [ ] `FE_DOWNWARD`, `FE_TONEAREST`, `FE_TOWARDZERO`, `FE_UPWARD`
+            - [ ] `#pragma STDC FENV_ACCESS`
+            - [ ] exceptions: `feclearexcept`, `fegetexceptflag`, `feraiseexcept`, `fesetexceptflag`, `fetestexcept`
+            - [ ] rounding: `fegetround`, `fesetround`
+            - [ ] environment: `fegetenv`, `feholdexcept`, `fesetenv`, `feupdateenv`
+
+        `<math.h>` (7.12), each function in `double`, `float` (`f`) and `long double` (`l`)
+
+            - [ ] `float_t`, `double_t`, `HUGE_VAL`, `HUGE_VALF`, `HUGE_VALL`, `INFINITY`, `NAN`
+            - [ ] `FP_INFINITE`, `FP_NAN`, `FP_NORMAL`, `FP_SUBNORMAL`, `FP_ZERO`, `FP_FAST_FMA`, `FP_FAST_FMAF`, `FP_FAST_FMAL`, `FP_ILOGB0`, `FP_ILOGBNAN`
+            - [ ] `MATH_ERRNO`, `MATH_ERREXCEPT`, `math_errhandling`
+            - [ ] `#pragma STDC FP_CONTRACT`
+            - [ ] classification: `fpclassify`, `isfinite`, `isinf`, `isnan`, `isnormal`, `signbit`
+            - [ ] trigonometric: `acos`, `asin`, `atan`, `atan2`, `cos`, `sin`, `tan`
+            - [ ] hyperbolic: `acosh`, `asinh`, `atanh`, `cosh`, `sinh`, `tanh`
+            - [ ] exponential and logarithmic: `exp`, `exp2`, `expm1`, `frexp`, `ilogb`, `ldexp`, `log`, `log10`, `log1p`, `log2`, `logb`, `modf`, `scalbn`, `scalbln`
+            - [ ] power and absolute value: `cbrt`, `fabs`, `hypot`, `pow`, `sqrt`
+            - [ ] error and gamma: `erf`, `erfc`, `lgamma`, `tgamma`
+            - [ ] nearest integer: `ceil`, `floor`, `nearbyint`, `rint`, `lrint`, `llrint`, `round`, `lround`, `llround`, `trunc`
+            - [ ] remainder: `fmod`, `remainder`, `remquo`
+            - [ ] manipulation: `copysign`, `nan`, `nextafter`, `nexttoward`
+            - [ ] maximum, minimum and positive difference: `fdim`, `fmax`, `fmin`
+            - [ ] `fma`
+            - [ ] comparison: `isgreater`, `isgreaterequal`, `isless`, `islessequal`, `islessgreater`, `isunordered`
+
+        `<complex.h>` (7.3), each function in `double`, `float` (`f`) and `long double` (`l`)
+
+            - [ ] `complex`, `_Complex_I`, `I`
+            - [ ] `#pragma STDC CX_LIMITED_RANGE`
+            - [ ] trigonometric: `cacos`, `casin`, `catan`, `ccos`, `csin`, `ctan`
+            - [ ] hyperbolic: `cacosh`, `casinh`, `catanh`, `ccosh`, `csinh`, `ctanh`
+            - [ ] exponential and logarithmic: `cexp`, `clog`
+            - [ ] power and absolute value: `cabs`, `cpow`, `csqrt`
+            - [ ] manipulation: `carg`, `cimag`, `conj`, `cproj`, `creal`
+
+        `<tgmath.h>` (7.22)
+
+            - [ ] real or complex by the argument: `acos`, `asin`, `atan`, `acosh`, `asinh`, `atanh`, `cos`, `sin`, `tan`, `cosh`, `sinh`, `tanh`, `exp`, `log`, `pow`, `sqrt`, and `fabs`, choosing `cabs`
+            - [ ] real only: every other unsuffixed `<math.h>` function but `modf`
+            - [ ] complex only: `carg`, `cimag`, `conj`, `cproj`, `creal`
