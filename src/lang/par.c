@@ -109,7 +109,7 @@ Par_Decl *Par_NewDecl(char *name)
 // Reject a declarator with no name.
 void Par_NeedName(Par_Decl *decl, Ast_Line line)
 {
-    Err_AssertAt(decl->pc_line ? decl->pc_line : line, decl->pc_name, ERR_PAR_DECL_UNNAMED);
+    Err_AssertAt(decl->pc_line ? decl->pc_line : line, decl->pc_name, ERR_PAR_DECL_NOT_NAMED);
 }
 
 // Append one derivation to a declarator.
@@ -264,7 +264,7 @@ void Par_SetKnrParam(Par_Decl *decl, Ast_Line line)
 void Par_CheckKnrParams(void)
 {
     for (Ast_Var *param = Par_CurDeclType->at_params; param; param = param->av_param_next) {
-        Err_AssertAt(param->av_line, param->av_type, ERR_PAR_KNR_UNDECLARED, param->av_name);
+        Err_AssertAt(param->av_line, param->av_type, ERR_PAR_KNR_NOT_DECLARED, param->av_name);
     }
 }
 
@@ -607,7 +607,7 @@ char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *ou
                 size_t count = body[i + 1] == 'u' ? PAR_UCN_SHORT_DIGITS : PAR_UCN_LONG_DIGITS;
                 size_t start = pos;
                 uint64_t value = Par_ScanDigits(body, len, &pos, PAR_BASE_HEX, count);
-                Err_AssertAt(line, pos - start == count, ERR_PAR_ESCAPE_UCN_INCOMPLETE);
+                Err_AssertAt(line, pos - start == count, ERR_PAR_ESCAPE_UCN_NOT_COMPLETE);
                 if (width > AST_TYPE_SIZE_CHAR) {
                     Par_PutEscape(buf, &n, width, value, line);
                 } else {
@@ -615,7 +615,7 @@ char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *ou
                 }
             } break;
             default: {
-                Err_RaiseAt(line, ERR_PAR_ESCAPE_UNKNOWN, body[i + 1]);
+                Err_RaiseAt(line, ERR_PAR_ESCAPE_NOT_KNOWN, body[i + 1]);
             } break;
         }
         i = pos - 1;
@@ -740,7 +740,7 @@ Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line)
             return &Ast_TypeLDouble;
         } break;
         default: {
-            Err_RaiseAt(line, ERR_PAR_SPEC_INVALID);
+            Err_RaiseAt(line, ERR_PAR_SPEC_NOT_VALID);
         }
     }
     return &Ast_TypeInt;
@@ -824,7 +824,7 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
     Ast_Member *tail = &head;
 
     for (Par_Decl *decl = decls; decl; decl = decl->pc_next) {
-        Err_AssertAt(decl->pc_line, decl->pc_name || decl->pc_bits, ERR_PAR_MEMBER_UNNAMED);
+        Err_AssertAt(decl->pc_line, decl->pc_name || decl->pc_bits, ERR_PAR_MEMBER_NOT_NAMED);
         tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
         Par_NeedFixedSize(tail->am_type, decl->pc_line);
@@ -1127,7 +1127,7 @@ void Par_Flatten(Ast_Type *type, int32_t base, Ast_Member *bits, Ast_Node *init,
         return;
     }
     if (init->an_kind != AST_NODE_KIND_INITLIST) {
-        Err_AssertAt(line, type->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_INIT_ARRAY_UNBRACED);
+        Err_AssertAt(line, type->at_kind != AST_TYPE_KIND_ARRAY, ERR_PAR_INIT_ARRAY_NOT_BRACED);
         (*tail)->an_next = Par_InitAt(base, type, bits, init, line);
         *tail = (*tail)->an_next;
         return;
@@ -1190,7 +1190,7 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line)
 // Build the unnamed object a compound literal names.
 Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line)
 {
-    Err_AssertAt(line, type->at_complete || Ast_IsUnsized(type), ERR_PAR_LITERAL_INCOMPLETE);
+    Err_AssertAt(line, type->at_complete || Ast_IsUnsized(type), ERR_PAR_LITERAL_NOT_COMPLETE);
     Par_NeedFixedSize(type, line);
 
     Ast_Node *list = Ast_NewNode(AST_NODE_KIND_INITLIST, line);
@@ -1216,7 +1216,7 @@ Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line)
 // Reject an object whose type has no size.
 void Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line)
 {
-    Err_AssertAt(line, type->at_complete || Par_DeclStorage == AST_STORAGE_EXTERN, ERR_PAR_OBJECT_INCOMPLETE, name);
+    Err_AssertAt(line, type->at_complete || Par_DeclStorage == AST_STORAGE_EXTERN, ERR_PAR_OBJECT_NOT_COMPLETE, name);
 }
 
 // Reject a variably modified type where only a fixed-size type may go.
@@ -1567,7 +1567,7 @@ Ast_Node *Par_Designator(char *name, Ast_Line line)
     }
 
     Ast_Func *fn = Ast_FindFunction(name);
-    Err_AssertAt(line, fn, ERR_PAR_UNDECLARED, name);
+    Err_AssertAt(line, fn, ERR_PAR_NAME_NOT_DECLARED, name);
     Ast_Node *node = Ast_NewNode(AST_NODE_KIND_FUNCADDR, line);
     node->an_funcname = name;
     return node;
@@ -1586,7 +1586,7 @@ Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line)
 // Build the size a sizeof of a type name yields.
 Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
 {
-    Err_AssertAt(line, type->at_complete, ERR_PAR_SIZEOF_INCOMPLETE);
+    Err_AssertAt(line, type->at_complete, ERR_PAR_SIZEOF_NOT_COMPLETE);
     if (! Ast_IsVla(type)) {
         Ast_Node *num = Ast_NewNum(type->at_size, line);
         num->an_type = &Ast_TypeULong;

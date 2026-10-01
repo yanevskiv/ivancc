@@ -167,7 +167,7 @@ L?'([^'\\\n]|\\.)+'     { bool wide = yytext[0] == 'L';
 "<%"                    return LBRACE;
 "%>"                    return RBRACE;
 
-.                       { Err_RaiseAt((Ast_Line) yylineno, ERR_LEX_UNEXPECTED_CHAR, yytext); }
+.                       { Err_RaiseAt((Ast_Line) yylineno, ERR_LEX_CHAR_NOT_EXPECTED, yytext); }
 
 %%
 

@@ -201,7 +201,7 @@ uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, Emu_x86_64_Opera
     size_t n = width / EMU_X86_64_BITS_PER_BYTE;
     const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, n);
     if (! p) {
-        Emu_x86_64_Fault(cpu, ERR_EMU_READ_UNMAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+        Emu_x86_64_Fault(cpu, ERR_EMU_READ_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
         return 0;
     }
     uint64_t val = 0;
@@ -222,7 +222,7 @@ void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, Emu
     size_t n = width / EMU_X86_64_BITS_PER_BYTE;
     uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, n);
     if (! p) {
-        Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_UNMAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+        Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
         return;
     }
     for (size_t i = 0; i < n; i++) {
@@ -402,7 +402,7 @@ void Emu_x86_64_StepSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
                         r = x / y;
                     } break;
                     default: {
-                        Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "SSE", (Emu_TypeULLong) rip);
+                        Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "SSE", (Emu_TypeULLong) rip);
                     }
                 }
                 dst[0] = Fp_DoubleBits(r);
@@ -424,7 +424,7 @@ void Emu_x86_64_StepSse(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
                         r = x / y;
                     } break;
                     default: {
-                        Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "SSE", (Emu_TypeULLong) rip);
+                        Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "SSE", (Emu_TypeULLong) rip);
                     }
                 }
                 dst[0] = (dst[0] & ~(uint64_t) EMU_X86_64_MASK_32) | Fp_FloatBits(r);
@@ -482,7 +482,7 @@ void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uin
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M80: {
             const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, FP_EXTENDED_SIZE);
             if (! p) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_READ_UNMAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_READ_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
                 return;
             }
             Emu_x86_64_StPush(cpu, Fp_DecodeExtended(p));
@@ -490,13 +490,13 @@ void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uin
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M80: {
             uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, FP_EXTENDED_SIZE);
             if (! p) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_UNMAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
                 return;
             }
             Fp_EncodeExtended(Emu_x86_64_StPop(cpu), p);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
+            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "x87", (Emu_TypeULLong) rip);
         }
     }
 }
@@ -517,7 +517,7 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
     switch (insn->ei_op) {
         case ENC_X86_64_OPCODE_X87_D9: {
             if (form != ENC_X86_64_X87_FCHS || i != 0) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "x87", (Emu_TypeULLong) rip);
                 return;
             }
             *top = -*top;
@@ -537,7 +537,7 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
                     *sti = *sti / *top;
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
+                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "x87", (Emu_TypeULLong) rip);
                     return;
                 }
             }
@@ -545,7 +545,7 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
         } break;
         case ENC_X86_64_OPCODE_X87_DF: {
             if (form != ENC_X86_64_X87_FUCOMIP) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "x87", (Emu_TypeULLong) rip);
                 return;
             }
             Emu_x86_64_FlagsCompare(cpu, *top, *sti);
@@ -553,14 +553,14 @@ void Emu_x86_64_StepX87(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uint64
         } break;
         case ENC_X86_64_OPCODE_X87_DD: {
             if (form != ENC_X86_64_X87_FSTP) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "x87", (Emu_TypeULLong) rip);
                 return;
             }
             *sti = *top;
             Emu_x86_64_StPop(cpu);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "x87", (Emu_TypeULLong) rip);
+            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "x87", (Emu_TypeULLong) rip);
         }
     }
 }
@@ -576,7 +576,7 @@ void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
             uint64_t len = cpu->ec_reg[EMU_X86_64_REG_RDX];
             const uint8_t *p = Load_x86_64_At(cpu->ec_img, buf, len);
             if (! p) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_SYSCALL_UNMAPPED, (Emu_TypeULLong) buf, (Emu_TypeULLong) cpu->ec_rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_SYSCALL_NOT_MAPPED, (Emu_TypeULLong) buf, (Emu_TypeULLong) cpu->ec_rip);
                 return;
             }
             ssize_t n = write((int) fd, p, (size_t) len);
@@ -587,7 +587,7 @@ void Emu_x86_64_Syscall(Emu_x86_64_Cpu *cpu)
             cpu->ec_status = cpu->ec_reg[EMU_X86_64_REG_RDI] & EMU_X86_64_MASK_8;
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, ERR_EMU_SYSCALL_UNIMPLEMENTED, (Emu_TypeULLong) nr, (Emu_TypeULLong) cpu->ec_rip);
+            Emu_x86_64_Fault(cpu, ERR_EMU_SYSCALL_NOT_IMPLEMENTED, (Emu_TypeULLong) nr, (Emu_TypeULLong) cpu->ec_rip);
         }
     }
 }
@@ -601,7 +601,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
     Emu_x86_64_Insn insn;
 
     if (! code || ! Emu_x86_64_Decode(code, avail, &insn)) {
-        Emu_x86_64_Fault(cpu, ERR_EMU_UNDECODABLE, (Emu_TypeULLong) rip);
+        Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_DECODABLE, (Emu_TypeULLong) rip);
         return;
     }
     if (trace == EMU_X86_64_TRACE) {
@@ -694,7 +694,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                 Emu_x86_64_WriteReg(cpu, insn.ei_reg, (uint64_t) (int64_t) (int16_t) b, width);
             } break;
             default: {
-                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "two-byte", (Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "two-byte", (Emu_TypeULLong) rip);
             }
         }
         return;
@@ -748,7 +748,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     Emu_x86_64_WriteRm(cpu, &insn, next, a >> count, width);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "group 2", (Emu_TypeULLong) rip);
+                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "group 2", (Emu_TypeULLong) rip);
                 }
             }
         } break;
@@ -818,13 +818,13 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     Emu_x86_64_FlagsSub(cpu, a, b, width);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "group 1", (Emu_TypeULLong) rip);
+                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "group 1", (Emu_TypeULLong) rip);
                 }
             }
         } break;
         case ENC_X86_64_OPCODE_GRP5_RM: {
             if ((insn.ei_reg & ENC_X86_64_REG_MASK) != ENC_X86_64_GRP_CALL) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "group 5", (Emu_TypeULLong) rip);
+                Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "group 5", (Emu_TypeULLong) rip);
                 return;
             }
             uint64_t target = Emu_x86_64_ReadRm(cpu, &insn, next, EMU_X86_64_WIDTH_64);
@@ -866,7 +866,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (num % d);
                 } break;
                 default: {
-                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "group 3", (Emu_TypeULLong) rip);
+                    Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "group 3", (Emu_TypeULLong) rip);
                 }
             }
         } break;
@@ -878,7 +878,7 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
             Emu_x86_64_StepX87(cpu, &insn, next, rip);
         } break;
         default: {
-            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_UNIMPLEMENTED, "one-byte", (Emu_TypeULLong) rip);
+            Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "one-byte", (Emu_TypeULLong) rip);
         }
     }
 }
