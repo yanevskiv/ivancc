@@ -276,7 +276,7 @@ enum Err_Code {
 
     ERR_EMU_ARCH_NOT_SUPPORTED,            // can't emulate an architecture other than x86_64
     ERR_EMU_PROGRAM_NOT_READABLE,          // can't read the executable to run
-    ERR_EMU_NOT_X86_64,                    // can't run an executable that is not for x86_64
+    ERR_EMU_ARCH_NOT_X86_64,               // can't run an executable that is not for x86_64
     ERR_EMU_READ_NOT_MAPPED,               // can't read unmapped memory
     ERR_EMU_WRITE_NOT_MAPPED,              // can't write to unmapped memory
     ERR_EMU_SYSCALL_NOT_MAPPED,            // can't pass a syscall a buffer in unmapped memory
