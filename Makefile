@@ -169,4 +169,4 @@ $(EMU_DIR): | $(BUILD)
 
 -include $(shell find $(OUT) -name '*.d' 2>/dev/null)
 
-.PHONY: all clean tests test_syntaxtest_bugs test_edge test_libc test_errors $(TEST_NAMES)
+.PHONY: all clean tests test_syntax test_bugs test_edge test_libc test_errors $(TEST_NAMES)
