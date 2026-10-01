@@ -661,8 +661,9 @@ Par_Spec Par_AddSpec(Par_Spec specs, Par_Spec spec, Ast_Line line)
 // Merge one specifier or qualifier into a declaration's set.
 void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line)
 {
-    Err_AssertAt(line, ! one->ps_type || ! (into->ps_type || into->ps_specs), ERR_PAR_SPEC_TWO_TYPES);
-    Err_AssertAt(line, ! one->ps_specs || ! into->ps_type, ERR_PAR_SPEC_TWO_TYPES);
+    bool clash = (one->ps_type && (into->ps_type || into->ps_specs)) || (one->ps_specs && into->ps_type);
+
+    Err_AssertAt(line, ! clash, ERR_PAR_SPEC_TWO_TYPES);
     if (one->ps_specs) {
         into->ps_specs = Par_AddSpec(into->ps_specs, one->ps_specs, line);
     }
@@ -693,10 +694,13 @@ Ast_Storage Par_SpecsStorage(const Par_Specs *specs, Par_StorageUse use, Ast_Lin
 // Return the type a declaration's specifier keywords name.
 Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line)
 {
+    int32_t base = specs & ~(PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED);
+    bool floating = base == PAR_SPEC_FLOAT || base == PAR_SPEC_DOUBLE || base == (PAR_SPEC_LONG | PAR_SPEC_DOUBLE);
     Par_Spec explicit = specs & (PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED);
     Ast_TypeSign sign = specs & PAR_SPEC_UNSIGNED ? AST_TYPE_UNSIGNED : AST_TYPE_SIGNED;
 
-    switch (specs & ~(PAR_SPEC_SIGNED | PAR_SPEC_UNSIGNED)) {
+    Err_AssertAt(line, ! explicit || ! floating, ERR_PAR_FLOAT_SIGNED);
+    switch (base) {
         case PAR_SPEC_VOID: {
             Err_AssertAt(line, ! explicit, ERR_PAR_VOID_SIGNED);
             return &Ast_TypeVoid;
@@ -728,15 +732,12 @@ Ast_Type *Par_SpecType(Par_Spec specs, Ast_Line line)
             return Ast_IntegerType(AST_TYPE_KIND_LLONG, sign);
         } break;
         case PAR_SPEC_FLOAT: {
-            Err_AssertAt(line, ! explicit, ERR_PAR_FLOAT_SIGNED);
             return &Ast_TypeFloat;
         } break;
         case PAR_SPEC_DOUBLE: {
-            Err_AssertAt(line, ! explicit, ERR_PAR_FLOAT_SIGNED);
             return &Ast_TypeDouble;
         } break;
         case PAR_SPEC_LONG | PAR_SPEC_DOUBLE: {
-            Err_AssertAt(line, ! explicit, ERR_PAR_FLOAT_SIGNED);
             return &Ast_TypeLDouble;
         } break;
         default: {
@@ -838,13 +839,19 @@ Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
     return head.am_next;
 }
 
+// Reject a tag already bound to another kind of aggregate.
+void Par_CheckTagKind(const Ast_Type *type, Ast_TypeKind kind, const char *tag, Ast_Line line)
+{
+    Err_AssertAt(line, ! type || type->at_kind == kind, ERR_PAR_TAG_WRONG_KIND, tag);
+}
+
 // Open a struct or union definition, binding its tag first.
 Ast_Type *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line)
 {
     Ast_Type *type = tag ? Ast_FindTagHere(tag) : NULL;
 
     Err_AssertAt(line, ! type || ! type->at_complete, ERR_PAR_TAG_REDEFINED, tag);
-    Err_AssertAt(line, ! type || type->at_kind == kind, ERR_PAR_TAG_WRONG_KIND, tag);
+    Par_CheckTagKind(type, kind, tag, line);
     if (! type) {
         type = Ast_NewAggregate(kind, tag);
         if (tag) {
@@ -859,7 +866,7 @@ Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line li
 {
     Ast_Type *type = Ast_FindTag(tag);
 
-    Err_AssertAt(line, ! type || type->at_kind == kind, ERR_PAR_TAG_WRONG_KIND, tag);
+    Par_CheckTagKind(type, kind, tag, line);
     if (! type) {
         type = Ast_NewAggregate(kind, tag);
         Ast_DeclareTag(tag, type);
@@ -1265,17 +1272,13 @@ Ast_Node *Par_WithSizes(Ast_Type *type, Ast_Node *expr, Ast_Line line)
 // Merge a later file-scope declaration's storage class into the first one's.
 void Par_Redeclare(Ast_Var *var, Ast_Line line)
 {
-    switch (Par_DeclStorage) {
-        case AST_STORAGE_EXTERN: {
-            // empty
-        } break;
-        case AST_STORAGE_STATIC: {
-            Err_AssertAt(line, var->av_storage == AST_STORAGE_STATIC, ERR_PAR_OBJECT_LINKAGE, var->av_name);
-        } break;
-        default: {
-            Err_AssertAt(line, var->av_storage != AST_STORAGE_STATIC, ERR_PAR_OBJECT_LINKAGE, var->av_name);
-            var->av_storage = AST_STORAGE_NONE;
-        } break;
+    bool now = Par_DeclStorage == AST_STORAGE_STATIC;
+    bool before = var->av_storage == AST_STORAGE_STATIC;
+    bool external = Par_DeclStorage == AST_STORAGE_EXTERN;
+
+    Err_AssertAt(line, external || now == before, ERR_PAR_OBJECT_LINKAGE, var->av_name);
+    if (! external && ! now) {
+        var->av_storage = AST_STORAGE_NONE;
     }
 }
 
