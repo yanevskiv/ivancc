@@ -1,4 +1,4 @@
-// (Test) Compiler error: [ERR_SEM_ASSIGN_CONST]
+// (Test) Compiler error: [ERR_SEM_INCDEC_CONST]
 // An array is no modifiable lvalue, so `a++` is refused rather than producing
 // a garbage value.
 

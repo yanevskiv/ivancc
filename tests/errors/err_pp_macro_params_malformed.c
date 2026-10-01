@@ -1,4 +1,4 @@
 // (Test) Compiler error: [ERR_PP_MACRO_PARAMS_MALFORMED]
-// Can't leave a name out of a macro's parameter list.
+// Can't follow a macro parameter with anything but `,` or `)`.
 
-#define F(a,) a
+#define F(a b) a

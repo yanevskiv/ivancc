@@ -878,7 +878,7 @@ Ast_Type *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line li
 void Par_AddEnumConst(const char *name, Ast_Node *value, Ast_Line line)
 {
     Err_AssertAt(line, ! value || Sem_Fold(value, &Par_EnumValue), ERR_PAR_ENUM_NOT_CONSTANT, name);
-    Err_AssertAt(line, ! Ast_IsEnumConstHere(name) && ! Ast_FindVarHere(name) && ! Ast_FindTypedefHere(name), ERR_PAR_REDECLARED, name);
+    Err_AssertAt(line, ! Ast_IsEnumConstHere(name) && ! Ast_FindVarHere(name) && ! Ast_FindTypedefHere(name), ERR_PAR_ENUM_REDECLARED, name);
     Ast_DeclareEnumConst(name, Par_EnumValue++);
 }
 
@@ -1242,7 +1242,7 @@ Ast_Node *Par_SizeExpr(Ast_Type *type, Ast_Line line)
     if (! Ast_IsVla(type) || type->at_vsize) {
         return inner;
     }
-    Err_AssertAt(line, Par_InFunction, ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+    Err_AssertAt(line, Par_InFunction, ERR_PAR_VLA_OUTSIDE_FUNCTION);
     Err_AssertAt(line, type->at_vlen->an_kind != AST_NODE_KIND_NOP, ERR_PAR_VLA_STAR_NOT_PROTOTYPE);
 
     char *name = Str_Format(".vsize.%d", Par_SizeCount++);
@@ -1297,7 +1297,7 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
     if (! Ast_IsUnsized(type)) {
         Par_CheckComplete(name, type, line);
     }
-    Err_AssertAt(line, ! Ast_FindFunction(name), ERR_PAR_CONFLICTING_TYPES, name);
+    Err_AssertAt(line, ! Ast_FindFunction(name), ERR_PAR_FUNCTION_AS_OBJECT, name);
 
     Ast_Var *var = Ast_FindGlobal(name);
     if (var) {
@@ -1330,7 +1330,7 @@ void Par_CheckRedeclaration(const char *name, const Ast_Type *type, Ast_Line lin
     bool typedefs = def && ! var && Par_DeclStorage == AST_STORAGE_TYPEDEF;
 
     if (externs || typedefs) {
-        Err_AssertAt(line, Ast_IsCompatible(var ? var->av_type : def, type), ERR_PAR_CONFLICTING_TYPES, name);
+        Err_AssertAt(line, Ast_IsCompatible(var ? var->av_type : def, type), ERR_PAR_LOCAL_CONFLICTING_TYPES, name);
         return;
     }
     Err_AssertAt(line, ! var && ! def && ! Ast_IsEnumConstHere(name), ERR_PAR_REDECLARED, name);
@@ -1343,7 +1343,7 @@ Ast_Var *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line)
         Par_NeedFixedSize(type, line);
     }
     if (Par_DeclStorage == AST_STORAGE_STATIC) {
-        Err_AssertAt(line, ! Ast_IsVla(type), ERR_PAR_ARRAY_LEN_NOT_CONSTANT);
+        Err_AssertAt(line, ! Ast_IsVla(type), ERR_PAR_VLA_STATIC);
     }
     Par_CheckRedeclaration(name, type, line);
     if (Par_DeclStorage == AST_STORAGE_TYPEDEF) {
@@ -1430,7 +1430,7 @@ void Par_AddFunction(Ast_Func *fn, Ast_Line line)
     Ast_Func *seen = Ast_FindFunction(fn->af_name);
     if (seen) {
         Ast_Type *type = fn->af_type;
-        Err_AssertAt(line, Ast_IsCompatible(seen->af_type, type), ERR_PAR_CONFLICTING_TYPES, fn->af_name);
+        Err_AssertAt(line, Ast_IsCompatible(seen->af_type, type), ERR_PAR_FUNCTION_CONFLICTING_TYPES, fn->af_name);
         Err_AssertAt(line, ! seen->af_body || ! fn->af_body, ERR_PAR_FUNCTION_REDEFINED, fn->af_name);
         if (fn->af_body) {
             Ast_TypeProto proto = type->at_proto == AST_TYPE_PROTO ? AST_TYPE_PROTO : seen->af_type->at_proto;
@@ -1456,7 +1456,7 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line)
 {
     Ast_Func *fn = calloc(1, sizeof(Ast_Func));
 
-    Err_AssertAt(line, ! Ast_FindGlobal(name), ERR_PAR_CONFLICTING_TYPES, name);
+    Err_AssertAt(line, ! Ast_FindGlobal(name), ERR_PAR_OBJECT_AS_FUNCTION, name);
     fn->af_name   = (char *) name;
     fn->af_type   = type;
     fn->af_static = Par_DeclStorage == AST_STORAGE_STATIC;

@@ -114,7 +114,7 @@ int main(int argc, char **argv)
     Err_Assert(Str_Equals(arch, EMU_DEFAULT_ARCH), ERR_EMU_ARCH_NOT_SUPPORTED, arch, EMU_DEFAULT_ARCH);
 
     Load_x86_64_Image img = {0};
-    Err_Assert(Load_x86_64_ReadExec(program, &img), ERR_FILE_ACCESS, program, strerror(errno));
+    Err_Assert(Load_x86_64_ReadExec(program, &img), ERR_EMU_PROGRAM_NOT_READABLE, program, strerror(errno));
     Err_Assert(img.li_machine == ELF_EM_X86_64, ERR_EMU_NOT_X86_64, program);
 
     int32_t status = 0;
