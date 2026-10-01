@@ -62,11 +62,12 @@ enum Err_Code {
     ERR_PP_MACRO_REDEFINED,                // shouldn't redefine a macro with a different body
     ERR_PP_MACRO_PARAMS_NOT_TERMINATED,    // can't leave a macro parameter list without its `)`
     ERR_PP_MACRO_PARAM_NOT_NAME,           // can't give a macro a parameter that is not a name
+    ERR_PP_MACRO_PARAM_VA_ARGS,            // can't name a macro parameter `__VA_ARGS__`
     ERR_PP_MACRO_PARAMS_MALFORMED,         // can't follow a macro parameter with anything but `,` or `)`
     ERR_PP_MACRO_PARAM_DUPLICATE,          // can't give a macro two parameters with the same name
     ERR_PP_MACRO_NOT_TERMINATED,           // can't leave a macro call's argument list open
     ERR_PP_MACRO_ARGS_COUNT,               // can't call a macro with the wrong number of arguments
-    ERR_PP_VA_ARGS_MISPLACED,              // can't use `__VA_ARGS__` in a macro that is not variadic
+    ERR_PP_VA_ARGS_NOT_VARIADIC,           // can't use `__VA_ARGS__` in a macro that is not variadic
     ERR_PP_STRINGIZE_NOT_PARAM,            // can't apply `#` to a name that is not a parameter
     ERR_PP_PASTE_AT_EDGE,                  // can't start or end a replacement list with `##`
     ERR_PP_PASTE_NOT_VALID,                // can't paste two tokens that do not form one token

@@ -107,6 +107,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
+    [ERR_PP_MACRO_PARAM_VA_ARGS] = {
+        .ee_level  = ERR_LEVEL_ERROR,
+        .ee_name   = "ERR_PP_MACRO_PARAM_VA_ARGS",
+        .ee_format = "__VA_ARGS__ can only appear in the expansion of a variadic macro"
+    },
+
+    // Args: none
     [ERR_PP_MACRO_PARAMS_MALFORMED] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_PP_MACRO_PARAMS_MALFORMED",
@@ -135,9 +142,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PP_VA_ARGS_MISPLACED] = {
+    [ERR_PP_VA_ARGS_NOT_VARIADIC] = {
         .ee_level  = ERR_LEVEL_ERROR,
-        .ee_name   = "ERR_PP_VA_ARGS_MISPLACED",
+        .ee_name   = "ERR_PP_VA_ARGS_NOT_VARIADIC",
         .ee_format = "__VA_ARGS__ can only appear in the expansion of a variadic macro"
     },
 

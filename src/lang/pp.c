@@ -1408,12 +1408,6 @@ void Pp_RunDefine(const Pp_File *file, size_t pos)
     Pp_DefineMacro(name, &def);
 }
 
-// Reject `__VA_ARGS__` where a macro may not name it.
-void Pp_CheckVaArgs(const Pp_Macro *def, const Pp_Token *tok, Ast_Line line)
-{
-    Err_AssertAt(line, def->ma_variadic || ! Pp_TokenEquals(tok, PP_VA_ARGS), ERR_PP_VA_ARGS_MISPLACED);
-}
-
 // Read a macro's parameter list.
 size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
 {
@@ -1432,7 +1426,7 @@ size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
             def->ma_variadic = true;
         } else {
             Err_AssertAt(line, param->pt_kind == PP_TOKEN_IDENT, ERR_PP_MACRO_PARAM_NOT_NAME);
-            Pp_CheckVaArgs(def, param, line);
+            Err_AssertAt(line, ! Pp_TokenEquals(param, PP_VA_ARGS), ERR_PP_MACRO_PARAM_VA_ARGS);
             Err_AssertAt(line, ! Pp_FindParam(def, param, &dup), ERR_PP_MACRO_PARAM_DUPLICATE, (int) param->pt_len, param->pt_text);
         }
         def->ma_params = realloc(def->ma_params, (def->ma_nparams + 1) * sizeof(*def->ma_params));
@@ -1457,7 +1451,7 @@ void Pp_CheckBody(const Pp_Macro *def, Ast_Line line)
     for (size_t i = 0; i < n; i++) {
         const Pp_Token *tok = &def->ma_body[i];
 
-        Pp_CheckVaArgs(def, tok, line);
+        Err_AssertAt(line, def->ma_variadic || ! Pp_TokenEquals(tok, PP_VA_ARGS), ERR_PP_VA_ARGS_NOT_VARIADIC);
         if (def->ma_kind == PP_MACRO_FUNCTION && Pp_IsHash(tok)) {
             Err_AssertAt(line, i + 1 < n && Pp_FindParam(def, &def->ma_body[i + 1], &param), ERR_PP_STRINGIZE_NOT_PARAM);
         }

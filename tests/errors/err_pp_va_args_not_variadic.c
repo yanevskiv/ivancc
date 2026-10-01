@@ -1,4 +1,4 @@
-// (Test) Compiler error: [ERR_PP_VA_ARGS_MISPLACED]
+// (Test) Compiler error: [ERR_PP_VA_ARGS_NOT_VARIADIC]
 // Can't use `__VA_ARGS__` in a macro that is not variadic.
 // Note: gcc only warns.
 
