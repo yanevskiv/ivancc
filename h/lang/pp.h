@@ -469,7 +469,6 @@ size_t   Pp_SkipLine(const Pp_File *file, size_t pos);
 size_t   Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos);
 void     Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include kind);
 void     Pp_RunDefine(const Pp_File *file, size_t pos);
-void     Pp_CheckVaArgs(const Pp_Macro *def, const Pp_Token *tok, Ast_Line line);
 size_t   Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def);
 void     Pp_CheckBody(const Pp_Macro *def, Ast_Line line);
 void     Pp_RunUndef(const Pp_File *file, size_t pos);
