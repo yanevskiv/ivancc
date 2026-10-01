@@ -191,6 +191,26 @@ void Emu_x86_64_WriteDev(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value)
     }
 }
 
+// Return the bytes a read of the image takes, faulting when they are unmapped.
+const uint8_t *Emu_x86_64_ReadAt(Emu_x86_64_Cpu *cpu, uint64_t addr, size_t size)
+{
+    const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, size);
+    if (! p) {
+        Emu_x86_64_Fault(cpu, ERR_EMU_READ_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+    }
+    return p;
+}
+
+// Return the bytes a write to the image takes, faulting when they are unmapped.
+uint8_t *Emu_x86_64_WriteAt(Emu_x86_64_Cpu *cpu, uint64_t addr, size_t size)
+{
+    uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, size);
+    if (! p) {
+        Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
+    }
+    return p;
+}
+
 // Read width bits from the image, faulting if that address is not mapped.
 uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, Emu_x86_64_OperandWidth width)
 {
@@ -199,9 +219,8 @@ uint64_t Emu_x86_64_ReadMem(Emu_x86_64_Cpu *cpu, uint64_t addr, Emu_x86_64_Opera
     }
 
     size_t n = width / EMU_X86_64_BITS_PER_BYTE;
-    const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, n);
+    const uint8_t *p = Emu_x86_64_ReadAt(cpu, addr, n);
     if (! p) {
-        Emu_x86_64_Fault(cpu, ERR_EMU_READ_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
         return 0;
     }
     uint64_t val = 0;
@@ -220,9 +239,8 @@ void Emu_x86_64_WriteMem(Emu_x86_64_Cpu *cpu, uint64_t addr, uint64_t value, Emu
     }
 
     size_t n = width / EMU_X86_64_BITS_PER_BYTE;
-    uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, n);
+    uint8_t *p = Emu_x86_64_WriteAt(cpu, addr, n);
     if (! p) {
-        Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
         return;
     }
     for (size_t i = 0; i < n; i++) {
@@ -480,17 +498,15 @@ void Emu_x86_64_StepX87Mem(Emu_x86_64_Cpu *cpu, const Emu_x86_64_Insn *insn, uin
             Emu_x86_64_StPush(cpu, (long double) (int64_t) Emu_x86_64_ReadMem(cpu, addr, EMU_X86_64_WIDTH_64));
         } break;
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M80: {
-            const uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, FP_EXTENDED_SIZE);
+            const uint8_t *p = Emu_x86_64_ReadAt(cpu, addr, FP_EXTENDED_SIZE);
             if (! p) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_READ_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
                 return;
             }
             Emu_x86_64_StPush(cpu, Fp_DecodeExtended(p));
         } break;
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M80: {
-            uint8_t *p = Load_x86_64_At(cpu->ec_img, addr, FP_EXTENDED_SIZE);
+            uint8_t *p = Emu_x86_64_WriteAt(cpu, addr, FP_EXTENDED_SIZE);
             if (! p) {
-                Emu_x86_64_Fault(cpu, ERR_EMU_WRITE_NOT_MAPPED, (Emu_TypeULLong) addr, (Emu_TypeULLong) cpu->ec_rip);
                 return;
             }
             Fp_EncodeExtended(Emu_x86_64_StPop(cpu), p);
@@ -843,27 +859,24 @@ void Emu_x86_64_Step(Emu_x86_64_Cpu *cpu, Emu_x86_64_Trace trace)
                     uint64_t a = Emu_x86_64_ReadRm(cpu, &insn, next, width);
                     Emu_x86_64_WriteRm(cpu, &insn, next, ~a, width);
                 } break;
-                case ENC_X86_64_GRP_IDIV: {
-                    int64_t d = (int64_t) Emu_x86_64_ReadRm(cpu, &insn, next, width);
-                    if (d == 0) {
-                        Emu_x86_64_Fault(cpu, ERR_EMU_DIVIDE_BY_ZERO, (Emu_TypeULLong) rip);
-                        return;
-                    }
-                    Emu_TypeInt128 num = ((Emu_TypeInt128) (int64_t) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
-                                 | cpu->ec_reg[EMU_X86_64_REG_RAX];
-                    cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (int64_t) (num / d);
-                    cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (int64_t) (num % d);
-                } break;
+                case ENC_X86_64_GRP_IDIV:
                 case ENC_X86_64_GRP_DIV: {
                     uint64_t d = Emu_x86_64_ReadRm(cpu, &insn, next, width);
                     if (d == 0) {
                         Emu_x86_64_Fault(cpu, ERR_EMU_DIVIDE_BY_ZERO, (Emu_TypeULLong) rip);
                         return;
                     }
-                    Emu_TypeUInt128 num = ((Emu_TypeUInt128) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
-                                          | cpu->ec_reg[EMU_X86_64_REG_RAX];
-                    cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (num / d);
-                    cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (num % d);
+                    if ((insn.ei_reg & ENC_X86_64_REG_MASK) == ENC_X86_64_GRP_IDIV) {
+                        Emu_TypeInt128 num = ((Emu_TypeInt128) (int64_t) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
+                                     | cpu->ec_reg[EMU_X86_64_REG_RAX];
+                        cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (int64_t) (num / (int64_t) d);
+                        cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (int64_t) (num % (int64_t) d);
+                    } else {
+                        Emu_TypeUInt128 num = ((Emu_TypeUInt128) cpu->ec_reg[EMU_X86_64_REG_RDX] << EMU_X86_64_WIDTH_64)
+                                              | cpu->ec_reg[EMU_X86_64_REG_RAX];
+                        cpu->ec_reg[EMU_X86_64_REG_RAX] = (uint64_t) (num / d);
+                        cpu->ec_reg[EMU_X86_64_REG_RDX] = (uint64_t) (num % d);
+                    }
                 } break;
                 default: {
                     Emu_x86_64_Fault(cpu, ERR_EMU_OPCODE_NOT_IMPLEMENTED, "group 3", (Emu_TypeULLong) rip);

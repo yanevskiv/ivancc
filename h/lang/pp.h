@@ -408,18 +408,19 @@ bool      Pp_LexOne(const char *text, size_t len, Pp_TokenKind *kind);
 char     *Pp_QuoteName(const char *name);
 
 // Macros
-bool      Pp_IsMacroName(const Pp_Token *tok);
-uint32_t  Pp_HashName(const char *text, size_t len);
-Pp_Macro *Pp_FindMacro(const char *text, size_t len);
-bool      Pp_FindParam(const Pp_Macro *macro, const Pp_Token *tok, size_t *index);
-bool      Pp_SameMacro(const Pp_Macro *macro, const Pp_Macro *def);
-void      Pp_DefineMacro(const Pp_Token *name, const Pp_Macro *def);
-void      Pp_UndefMacro(const Pp_Token *name);
-void      Pp_PutDefine(Buf *cmdline, const char *arg);
-void      Pp_PutUndef(Buf *cmdline, const char *name);
-void      Pp_PutInclude(Buf *cmdline, const char *path);
-void      Pp_PutPredefined(Buf *out);
-void      Pp_DefineBuiltins(void);
+bool            Pp_IsMacroName(const Pp_Token *tok);
+const Pp_Token *Pp_MacroNameAt(const Pp_File *file, size_t pos);
+uint32_t        Pp_HashName(const char *text, size_t len);
+Pp_Macro       *Pp_FindMacro(const char *text, size_t len);
+bool            Pp_FindParam(const Pp_Macro *macro, const Pp_Token *tok, size_t *index);
+bool            Pp_SameMacro(const Pp_Macro *macro, const Pp_Macro *def);
+void            Pp_DefineMacro(const Pp_Token *name, const Pp_Macro *def);
+void            Pp_UndefMacro(const Pp_Token *name);
+void            Pp_PutDefine(Buf *cmdline, const char *arg);
+void            Pp_PutUndef(Buf *cmdline, const char *name);
+void            Pp_PutInclude(Buf *cmdline, const char *path);
+void            Pp_PutPredefined(Buf *out);
+void            Pp_DefineBuiltins(void);
 
 // Hide sets
 bool        Pp_HideSetHas(const Pp_HideSet *set, const Pp_Macro *macro);
@@ -469,6 +470,7 @@ size_t   Pp_RunDirective(Pp_Printer *pr, const Pp_File *file, size_t pos);
 void     Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include kind);
 void     Pp_RunDefine(const Pp_File *file, size_t pos);
 size_t   Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def);
+void     Pp_CheckVaArgs(const Pp_Macro *def, const Pp_Token *tok, Ast_Line line);
 void     Pp_CheckBody(const Pp_Macro *def, Ast_Line line);
 void     Pp_RunUndef(const Pp_File *file, size_t pos);
 void     Pp_RunLine(Pp_Printer *pr, const Pp_File *file, size_t pos);
@@ -486,7 +488,7 @@ size_t    Pp_RunElif(const Pp_File *file, size_t pos);
 size_t    Pp_RunElse(const Pp_File *file, size_t pos);
 size_t    Pp_RunEndif(const Pp_File *file, size_t pos);
 void      Pp_CheckCond(const Pp_Token *name);
-void      Pp_CheckLineEnd(const Pp_File *file, size_t pos, const Pp_Token *name);
+void      Pp_CheckLineEnd(const Pp_Token *next, const Pp_Token *name);
 bool      Pp_IsDefined(const Pp_File *file, size_t pos);
 size_t    Pp_SkipGroup(const Pp_File *file, size_t pos);
 bool      Pp_EvalLine(const Pp_File *file, size_t pos);

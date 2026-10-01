@@ -597,13 +597,12 @@ const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
     const char *ptr = text;
 
     for (ptr++; *ptr != '"'; ptr++) {
-        Err_Assert(*ptr != '\0', ERR_TXT_STRING_NOT_TERMINATED, text);
+        Err_Assert(*ptr != '\0' && (*ptr != '\\' || ptr[1] != '\0'), ERR_TXT_STRING_NOT_TERMINATED, text);
         if (*ptr != '\\') {
             Buf_PutByte(bytes, *ptr);
             continue;
         }
         ptr++;
-        Err_Assert(*ptr != '\0', ERR_TXT_STRING_NOT_TERMINATED, text);
         switch (*ptr) {
             case 'b': {
                 Buf_PutByte(bytes, '\b');
