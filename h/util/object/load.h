@@ -45,6 +45,9 @@ struct Load_Image {
 uint64_t Load_AlignDown(uint64_t addr, uint64_t align);
 uint64_t Load_AlignUp(uint64_t addr, uint64_t align);
 bool     Load_ReadExec(const char *path, Load_Image *img);
+void     Load_PutWord(uint8_t *ptr, uint64_t value);
+void     Load_PushArgs(Load_Image *img, const char *const *argv, size_t argc, const char *const *envp, size_t nenv);
+uint8_t *Load_PutVector(Load_Image *img, uint8_t *word, uint64_t *text, const char *const *strs, size_t n);
 void    *Load_At(const Load_Image *img, uint64_t vaddr, uint64_t size);
 void     Load_Free(Load_Image *img);
 

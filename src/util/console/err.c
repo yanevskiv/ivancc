@@ -1464,6 +1464,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "segment runs past the end of '%s'"
     },
 
+    // Args: [bytes, most bytes]
+    [ERR_LOAD_ARGS_TOO_LARGE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LOAD_ARGS_TOO_LARGE",
+        .ee_format = "arguments and environment take %llu bytes, more than the %llu the stack allows"
+    },
+
     // Args: [operand]
     [ERR_TXT_QUAD_NOT_ADDRESS] = {
         .ee_level  = ERR_LEVEL_FATAL,

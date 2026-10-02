@@ -11,6 +11,7 @@ BIN="$HERE/build/bin"
 LIB="$HERE/build/lib/x86_64/linux"
 TIMEOUT=5
 HEAD_LINES=10
+TEST_ENV="IVANCC_TEST=1"
 PIPELINES="ivancc ivanas ivanar ivanld ivanemu"
 PIPELINE=
 SOURCE=${1:-}
@@ -91,11 +92,13 @@ stage_run_ok()
     [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ]
 }
 
-# Run the program and record its output and status.
+# Run the program with the test's arguments in a known environment, and record its output and status.
 stage_run()
 {
-    { timeout "$TIMEOUT" "$@" >"${RUN}/output" 2>&1; } 2>/dev/null
+    set -f
+    { timeout "$TIMEOUT" env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") >"${RUN}/output" 2>&1; } 2>/dev/null
     echo $? > "${RUN}/status"
+    set +f
 }
 
 # Build an executable with ivancc alone, and run it natively.
@@ -141,10 +144,10 @@ pipeline_ivanld()
     stage_run "${RUN}/a.out"
 }
 
-# Build for ivanemu, and run it under the emulator.
+# Build for Linux, and run it under the emulator.
 pipeline_ivanemu()
 {
-    stage_compile -mtarget=ivanemu -o "${RUN}/a.out"
+    stage_compile -mtarget=linux -o "${RUN}/a.out"
     stage_compile_ok || return 0
     stage_run_ok || return 0
     stage_run "${BIN}/ivanemu" "${RUN}/a.out"
@@ -170,6 +173,7 @@ setup()
     get_line "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
     get_text "${SOURCE}" '(Test) Output' > "${TMP}/expected_output"
     get_line "${SOURCE}" '(Test) Emulator error' > "${TMP}/expected_emulator_error"
+    get_line "${SOURCE}" '(Test) Arguments' > "${TMP}/arguments"
 
     NAME="$(basename -- "$SOURCE")"
     cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
