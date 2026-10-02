@@ -1674,6 +1674,76 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "%s: %s"
     },
 
+    // Args: [path, reason]
+    [ERR_AR_ARCHIVE_NOT_READABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_ARCHIVE_NOT_READABLE",
+        .ee_format = "%s: %s"
+    },
+
+    // Args: [path]
+    [ERR_AR_NOT_ARCHIVE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_NOT_ARCHIVE",
+        .ee_format = "'%s' is not an archive"
+    },
+
+    // Args: [path]
+    [ERR_AR_MEMBER_TRUNCATED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_MEMBER_TRUNCATED",
+        .ee_format = "'%s' ends inside a member"
+    },
+
+    // Args: [path]
+    [ERR_AR_HEADER_MALFORMED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_HEADER_MALFORMED",
+        .ee_format = "'%s' holds a malformed member header"
+    },
+
+    // Args: [path]
+    [ERR_AR_NAME_NOT_FOUND] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_NAME_NOT_FOUND",
+        .ee_format = "'%s' names a member outside its long-name table"
+    },
+
+    // Args: [path, reason]
+    [ERR_AR_INPUT_NOT_READABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_INPUT_NOT_READABLE",
+        .ee_format = "%s: %s"
+    },
+
+    // Args: [member, path]
+    [ERR_AR_MEMBER_NOT_FOUND] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_MEMBER_NOT_FOUND",
+        .ee_format = "no member '%s' in '%s'"
+    },
+
+    // Args: [member]
+    [ERR_AR_EXTRACT_NAME_NOT_PLAIN] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_EXTRACT_NAME_NOT_PLAIN",
+        .ee_format = "refusing to extract '%s', whose name holds a slash"
+    },
+
+    // Args: [member, reason]
+    [ERR_AR_EXTRACT_NOT_WRITEABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_EXTRACT_NOT_WRITEABLE",
+        .ee_format = "%s: %s"
+    },
+
+    // Args: [path, reason]
+    [ERR_AR_OUTPUT_NOT_WRITEABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_AR_OUTPUT_NOT_WRITEABLE",
+        .ee_format = "%s: %s"
+    },
+
     // Args: [placement]
     [ERR_LD_PLACE_MALFORMED] = {
         .ee_level  = ERR_LEVEL_FATAL,

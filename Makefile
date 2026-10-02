@@ -34,7 +34,7 @@ LDLIBS  := -lm
 LEX     := flex
 YACC    := bison
 
-MAIN_SRCS := src/cc.c src/ld.c src/as.c src/emu.c
+MAIN_SRCS := src/cc.c src/ld.c src/as.c src/ar.c src/emu.c
 ALL_SRCS  := $(shell find src -path src/libc -prune -o -name '*.c' -print)
 LIB_SRCS  := $(filter-out $(MAIN_SRCS),$(ALL_SRCS))
 LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
@@ -46,6 +46,7 @@ ELF_OBJS := $(OUT)/util/object/elf.o $(OUT)/util/console/err.o $(OUT)/util/conso
 AS_OBJS := $(OUT)/as.o $(ELF_OBJS) $(OUT)/util/buf.o \
 	$(OUT)/arch/$(TARGET_ARCH)/txt.o $(OUT)/arch/$(TARGET_ARCH)/asm.o \
 	$(OUT)/arch/$(TARGET_ARCH)/enc.o
+AR_OBJS := $(OUT)/ar.o $(ELF_OBJS) $(OUT)/util/object/arc.o
 EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/util/fp.o $(OUT)/arch/$(TARGET_ARCH)/cpu.o $(OUT)/arch/$(TARGET_ARCH)/load.o
 LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/link.o
 
@@ -61,13 +62,14 @@ TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(ERROR
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
+AR_BIN := $(BUILD)/bin/$(TARGET)ar
 LD_BIN := $(BUILD)/bin/$(TARGET)ld
 EMU_BIN := $(BUILD)/bin/$(TARGET)emu
 
-TEST_DEPS := $(TEST_TOOL) $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME)
+TEST_DEPS := $(TEST_TOOL) $(CC_BIN) $(AS_BIN) $(AR_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME)
 
 # --- phony recipes ---
-all: $(CC_BIN) $(AS_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
+all: $(CC_BIN) $(AS_BIN) $(AR_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
 
 clean:
 	rm -rf $(BUILD) $(OUT)
@@ -89,6 +91,9 @@ $(CC_BIN): $(CC_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ $(LDLIBS) -o $@
 
 $(AS_BIN): $(AS_OBJS) | $(BUILD)/bin
+	$(CC) $(CFLAGS) $(WARN) $^ -o $@
+
+$(AR_BIN): $(AR_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 $(LD_BIN): $(LD_OBJS) | $(BUILD)/bin

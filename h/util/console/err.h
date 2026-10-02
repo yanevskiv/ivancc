@@ -298,6 +298,17 @@ enum Err_Code {
     ERR_AS_OUTPUT_NOT_WRITEABLE,           // can't create the assembler's object file
     ERR_AS_OUTPUT_WRITE_FAILED,            // can't write or close the assembler's object file
 
+    ERR_AR_ARCHIVE_NOT_READABLE,           // can't read the archive
+    ERR_AR_NOT_ARCHIVE,                    // can't read a file that does not open with `!<arch>` as an archive
+    ERR_AR_MEMBER_TRUNCATED,               // can't read a member that runs past the end of its archive
+    ERR_AR_HEADER_MALFORMED,               // can't read a member header whose size or terminator is malformed
+    ERR_AR_NAME_NOT_FOUND,                 // can't read a long member name the long-name table does not hold
+    ERR_AR_INPUT_NOT_READABLE,             // can't add a file that can't be read
+    ERR_AR_MEMBER_NOT_FOUND,               // can't find a member the archive does not hold
+    ERR_AR_EXTRACT_NAME_NOT_PLAIN,         // can't extract a member whose name holds a slash
+    ERR_AR_EXTRACT_NOT_WRITEABLE,          // can't write an extracted member
+    ERR_AR_OUTPUT_NOT_WRITEABLE,           // can't write the archive
+
     ERR_LD_PLACE_MALFORMED,                // can't pass `-place` anything but SEC@ADDR
     ERR_LD_OUTPUT_NOT_WRITEABLE,           // can't write the linker's executable
 

@@ -11,7 +11,7 @@ BIN="$HERE/build/bin"
 LIB="$HERE/build/lib/linux"
 TIMEOUT=5
 HEAD_LINES=10
-PIPELINES="ivancc ivanas ivanld ivanemu"
+PIPELINES="ivancc ivanas ivanar ivanld ivanemu"
 PIPELINE=
 SOURCE=${1:-}
 
@@ -118,6 +118,19 @@ pipeline_ivanas()
     stage_run "${RUN}/a.out"
 }
 
+# Build an object, archive it with ivanar as GNU ar would, link the archive with gcc, and run it natively.
+pipeline_ivanar()
+{
+    stage_compile -c -o "${RUN}/a.o"
+    stage_compile_ok || return 0
+    stage_build ivanar "${BIN}/ivanar" rcs "${RUN}/a.a" "${RUN}/a.o"
+    stage_build ar ar rcsD "${RUN}/gnu.a" "${RUN}/a.o"
+    cmp -s "${RUN}/a.a" "${RUN}/gnu.a" || fail 'ivanar and ar rcsD wrote different archives:\n%s' "$(cmp "${RUN}/a.a" "${RUN}/gnu.a" 2>&1)"
+    stage_build gcc gcc -nostdlib -static -no-pie -o "${RUN}/a.out" "${LIB}/crt0.o" "${RUN}/a.a" "${LIB}/libc.o"
+    stage_run_ok || return 0
+    stage_run "${RUN}/a.out"
+}
+
 # Build an object, link it with ivanld, and run it natively.
 pipeline_ivanld()
 {
@@ -142,7 +155,7 @@ setup()
 {
     [ -n "$SOURCE" ] || error "no test file given"
     [ -f "$SOURCE" ] || error "no such file: $SOURCE"
-    for TOOL in ivancc ivanas ivanld ivanemu; do
+    for TOOL in ivancc ivanas ivanar ivanld ivanemu; do
         [ -x "${BIN}/${TOOL}" ] || error "not executable: ${BIN}/${TOOL}"
     done
 

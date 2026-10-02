@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     }
 
     Elf *e = Link_x86_64_Run((const char *const *) objs, nobjs, &opts);
-    Err_Assert(Elf_Write_Path(e, output), ERR_LD_OUTPUT_NOT_WRITEABLE, output, strerror(errno));
+    Err_Assert(Elf_WritePath(e, output), ERR_LD_OUTPUT_NOT_WRITEABLE, output, strerror(errno));
     Elf_Free(e);
     if (! opts.lo_relocatable) {
         chmod(output, LD_MODE);
