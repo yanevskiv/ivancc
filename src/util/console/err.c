@@ -1415,6 +1415,20 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "cannot read member '%s' of '%s' as an object"
     },
 
+    // Args: [name, machine, output machine]
+    [ERR_LINK_MACHINE_MISMATCH] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LINK_MACHINE_MISMATCH",
+        .ee_format = "'%s' is for machine %u, not the output's %u"
+    },
+
+    // Args: [machine]
+    [ERR_LINK_MACHINE_NOT_SUPPORTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LINK_MACHINE_NOT_SUPPORTED",
+        .ee_format = "cannot apply relocations for machine %u"
+    },
+
     // Args: [path]
     [ERR_LOAD_NOT_ELF] = {
         .ee_level  = ERR_LEVEL_FATAL,

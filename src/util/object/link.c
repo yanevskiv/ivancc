@@ -63,13 +63,26 @@ void Link_x86_64_RelApplyOne(Elf_Sec *sec, const Elf_Rela *rel)
     }
 }
 
+// Apply one relocation by the rules of the object's machine.
+void Link_RelApplyOne(const Elf *elf, Elf_Sec *sec, const Elf_Rela *rel)
+{
+    switch (elf->elf_machine) {
+        case ELF_EM_X86_64: {
+            Link_x86_64_RelApplyOne(sec, rel);
+        } break;
+        default: {
+            Err_Raise(ERR_LINK_MACHINE_NOT_SUPPORTED, (unsigned) elf->elf_machine);
+        }
+    }
+}
+
 // Apply every relocation in a placed object, patching each section's bytes.
 void Link_RelApply(Elf *elf)
 {
     for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
         Elf_Sec *sec = Elf_SectionAt(elf, i);
         for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
-            Link_x86_64_RelApplyOne(sec, Elf_RelaAt(sec, r));
+            Link_RelApplyOne(elf, sec, Elf_RelaAt(sec, r));
         }
     }
 }
@@ -108,9 +121,11 @@ Elf_Sym *Link_FindGlobal(Elf *elf, const char *name)
     return NULL;
 }
 
-// Merge one input object into the output.
-void Link_Merge(Elf *out, Elf *in)
+// Merge one input object, named name, into the output.
+void Link_Merge(Elf *out, Elf *in, const char *name)
 {
+    Err_Assert(in->elf_machine == out->elf_machine, ERR_LINK_MACHINE_MISMATCH, name, (unsigned) in->elf_machine, (unsigned) out->elf_machine);
+
     size_t nsec = Elf_SectionCount(in);
     size_t nsym = Elf_SymbolCount(in);
 
@@ -200,7 +215,7 @@ void Link_MergeMember(Elf *out, const char *path, const Lib_ArMember *member, co
     if (opts->lo_trace >= LINK_TRACE_MEMBERS) {
         printf("(%s)%s\n", path, member->lam_name);
     }
-    Link_Merge(out, in);
+    Link_Merge(out, in, member->lam_name);
     Elf_Free(in);
 }
 
@@ -249,7 +264,7 @@ void Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths, const Li
         } else {
             Elf *in = Elf_ReadMem(bytes, len);
             Err_Assert(in, ERR_LINK_OBJECT_NOT_READABLE, paths[i]);
-            Link_Merge(out, in);
+            Link_Merge(out, in, paths[i]);
             Elf_Free(in);
         }
         free(bytes);
