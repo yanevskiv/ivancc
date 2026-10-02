@@ -263,6 +263,7 @@ enum Err_Code {
     ERR_LOAD_NOT_EXECUTABLE,               // can't load an ELF file that is not an executable
     ERR_LOAD_NO_SEGMENTS,                  // can't load an executable with no loadable segments
     ERR_LOAD_SEGMENT_TRUNCATED,            // can't load a segment that runs past the end of its file
+    ERR_LOAD_ARGS_TOO_LARGE,               // can't fit the arguments and environment in a quarter of the stack
 
     ERR_TXT_QUAD_NOT_ADDRESS,              // can't give `.quad` an operand that is not an address
     ERR_TXT_MNEMONIC_MALFORMED,            // can't assemble a line whose mnemonic is malformed

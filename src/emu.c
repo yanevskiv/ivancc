@@ -82,11 +82,14 @@ struct Emu_Guest {
     int32_t                  eg_signal; // the signal a fault ended it with, or 0
 };
 
+// The host's environment.
+extern char **environ;
+
 // Show usage information and exit.
 static void Emu_Usage(const char *prog)
 {
     fprintf(stderr,
-        "Usage: %s [options] PROGRAM\n"
+        "Usage: %s [options] PROGRAM [ARGUMENT...]\n"
         "  -d          disassemble instead of running\n"
         "  -i          print what the loader made of the file and stop\n"
         "  -t          trace each instruction to stderr as it runs\n"
@@ -283,14 +286,14 @@ static void Emu_Raise(int32_t sig)
 int main(int argc, char **argv)
 {
     const char *arch = EMU_DEFAULT_ARCH;
-    const char *program = NULL;
+    int32_t first = argc;
     bool disasm = false;
     bool info = false;
     Emu_Trace trace = EMU_QUIET;
 
     Log_SetProgramName(argv[0]);
 
-    for (int32_t i = 1; i < argc; i++) {
+    for (int32_t i = 1; i < first; i++) {
         const char *arg = argv[i];
         if (Str_StartsWith(arg, "-m" EMU_MARCH_PREFIX)) {
             arch = arg + 2 + strlen(EMU_MARCH_PREFIX);
@@ -303,18 +306,25 @@ int main(int argc, char **argv)
         } else if (arg[0] == '-' && arg[1]) {
             Emu_Usage(argv[0]);
         } else {
-            program = arg;
+            first = i;
         }
     }
 
-    if (! program) {
+    if (first == argc) {
         Emu_Usage(argv[0]);
     }
     Err_Assert(Str_Equals(arch, EMU_DEFAULT_ARCH), ERR_EMU_ARCH_NOT_SUPPORTED, arch, EMU_DEFAULT_ARCH);
 
+    const char *program = argv[first];
     Load_Image img = {0};
     Err_Assert(Load_ReadExec(program, &img), ERR_EMU_PROGRAM_NOT_READABLE, program, strerror(errno));
     Err_Assert(img.li_machine == ELF_EM_X86_64, ERR_EMU_ARCH_NOT_X86_64, program);
+
+    size_t nenv = 0;
+    while (environ[nenv]) {
+        nenv++;
+    }
+    Load_PushArgs(&img, (const char *const *) argv + first, (size_t) (argc - first), (const char *const *) environ, nenv);
 
     int32_t status = 0;
     int32_t sig = 0;

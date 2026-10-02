@@ -26,6 +26,21 @@
 // Alignment the SysV ABI requires of %rsp at a call boundary.
 #define LOAD_STACK_ALIGN 16
 
+// Most bytes the arguments and environment take, a quarter as on Linux.
+#define LOAD_ARGS_MAX (LOAD_STACK_SIZE / 4)
+
+// Bytes in one word of the argument block.
+#define LOAD_WORD_SIZE 8
+
+// Bits in one byte of a word.
+#define LOAD_BYTE_BITS 8
+
+// Words of the argument block that are not pointers to strings.
+#define LOAD_ARGS_FIXED_WORDS 5
+
+// The type that ends the auxiliary vector.
+#define LOAD_AT_NULL 0
+
 // Round addr down to a multiple of align.
 uint64_t Load_AlignDown(uint64_t addr, uint64_t align)
 {
@@ -89,6 +104,56 @@ bool Load_ReadExec(const char *path, Load_Image *img)
 
     free(file);
     return true;
+}
+
+// Store a little-endian word.
+void Load_PutWord(uint8_t *ptr, uint64_t value)
+{
+    for (size_t i = 0; i < LOAD_WORD_SIZE; i++) {
+        ptr[i] = (uint8_t) (value >> (i * LOAD_BYTE_BITS));
+    }
+}
+
+// Lay out argc, argv, envp and an empty auxiliary vector as Linux does.
+void Load_PushArgs(Load_Image *img, const char *const *argv, size_t argc, const char *const *envp, size_t nenv)
+{
+    // Phase: the room the block takes.
+    uint64_t strings = 0;
+    for (size_t i = 0; i < argc; i++) {
+        strings += strlen(argv[i]) + 1;
+    }
+    for (size_t i = 0; i < nenv; i++) {
+        strings += strlen(envp[i]) + 1;
+    }
+    uint64_t words = argc + nenv + LOAD_ARGS_FIXED_WORDS;
+    uint64_t total = strings + words * LOAD_WORD_SIZE + LOAD_STACK_ALIGN;
+    Err_Assert(total <= LOAD_ARGS_MAX, ERR_LOAD_ARGS_TOO_LARGE, (unsigned long long) total, (unsigned long long) LOAD_ARGS_MAX);
+
+    // Phase: the strings at the top, the words below them.
+    uint64_t text = img->li_stack - strings;
+    uint64_t sp = Load_AlignDown(text - words * LOAD_WORD_SIZE, LOAD_STACK_ALIGN);
+    uint8_t *word = Load_At(img, sp, words * LOAD_WORD_SIZE);
+
+    Load_PutWord(word, argc);
+    word = Load_PutVector(img, word + LOAD_WORD_SIZE, &text, argv, argc);
+    word = Load_PutVector(img, word, &text, envp, nenv);
+    Load_PutWord(word, LOAD_AT_NULL);
+    Load_PutWord(word + LOAD_WORD_SIZE, 0);
+    img->li_stack = sp;
+}
+
+// Store a vector of strings and the null that ends it.
+uint8_t *Load_PutVector(Load_Image *img, uint8_t *word, uint64_t *text, const char *const *strs, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        size_t len = strlen(strs[i]) + 1;
+        memcpy(Load_At(img, *text, len), strs[i], len);
+        Load_PutWord(word, *text);
+        word += LOAD_WORD_SIZE;
+        *text += len;
+    }
+    Load_PutWord(word, 0);
+    return word + LOAD_WORD_SIZE;
 }
 
 // Return a pointer to size bytes of the image at vaddr.
