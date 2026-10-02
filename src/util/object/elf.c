@@ -21,7 +21,7 @@
 #include "util/object/elf.h"
 
 // Initialize an empty byte buffer.
-void Elf_Buffer_Init(Elf_Buffer *buf)
+void Elf_BufferInit(Elf_Buffer *buf)
 {
     buf->eb_data = NULL;
     buf->eb_len  = 0;
@@ -29,7 +29,7 @@ void Elf_Buffer_Init(Elf_Buffer *buf)
 }
 
 // Free a buffer's storage and clear it.
-void Elf_Buffer_Free(Elf_Buffer *buf)
+void Elf_BufferFree(Elf_Buffer *buf)
 {
     free(buf->eb_data);
     buf->eb_data = NULL;
@@ -38,7 +38,7 @@ void Elf_Buffer_Free(Elf_Buffer *buf)
 }
 
 // Grow a buffer so it can hold at least n more bytes.
-void Elf_Buffer_Reserve(Elf_Buffer *buf, size_t n)
+void Elf_BufferReserve(Elf_Buffer *buf, size_t n)
 {
     if (buf->eb_len + n <= buf->eb_cap) {
         return;
@@ -52,73 +52,73 @@ void Elf_Buffer_Reserve(Elf_Buffer *buf, size_t n)
 }
 
 // Return a pointer to byte off within a buffer, for in-place patching.
-void *Elf_Buffer_At(Elf_Buffer *buf, size_t off)
+void *Elf_BufferAt(Elf_Buffer *buf, size_t off)
 {
     return buf->eb_data + off;
 }
 
 // Append one byte, returning the offset it began at.
-size_t Elf_Buffer_Byte(Elf_Buffer *buf, uint8_t value)
+size_t Elf_BufferByte(Elf_Buffer *buf, uint8_t value)
 {
     size_t off = buf->eb_len;
-    Elf_Buffer_Reserve(buf, 1);
+    Elf_BufferReserve(buf, 1);
     buf->eb_data[buf->eb_len++] = value;
     return off;
 }
 
 // Append n raw bytes, returning the offset they began at.
-size_t Elf_Buffer_Data(Elf_Buffer *buf, const void *data, size_t n)
+size_t Elf_BufferData(Elf_Buffer *buf, const void *data, size_t n)
 {
     size_t off = buf->eb_len;
-    Elf_Buffer_Reserve(buf, n);
+    Elf_BufferReserve(buf, n);
     memcpy(buf->eb_data + buf->eb_len, data, n);
     buf->eb_len += n;
     return off;
 }
 
 // Append a little-endian 16-bit value, returning its offset.
-size_t Elf_Buffer_U16(Elf_Buffer *buf, uint16_t value)
+size_t Elf_BufferU16(Elf_Buffer *buf, uint16_t value)
 {
     uint8_t bytes[2] = { value & 0xFF, (value >> 8) & 0xFF };
-    return Elf_Buffer_Data(buf, bytes, 2);
+    return Elf_BufferData(buf, bytes, 2);
 }
 
 // Append a little-endian 32-bit value, returning its offset.
-size_t Elf_Buffer_U32(Elf_Buffer *buf, uint32_t value)
+size_t Elf_BufferU32(Elf_Buffer *buf, uint32_t value)
 {
     uint8_t bytes[4];
     for (size_t i = 0; i < sizeof(bytes); i++) {
         bytes[i] = (value >> (8 * i)) & 0xFF;
     }
-    return Elf_Buffer_Data(buf, bytes, 4);
+    return Elf_BufferData(buf, bytes, 4);
 }
 
 // Append a little-endian 64-bit value, returning its offset.
-size_t Elf_Buffer_U64(Elf_Buffer *buf, uint64_t value)
+size_t Elf_BufferU64(Elf_Buffer *buf, uint64_t value)
 {
     uint8_t bytes[8];
     for (size_t i = 0; i < sizeof(bytes); i++) {
         bytes[i] = (value >> (8 * i)) & 0xFF;
     }
-    return Elf_Buffer_Data(buf, bytes, 8);
+    return Elf_BufferData(buf, bytes, 8);
 }
 
 // Append n zero bytes, returning the offset they began at.
-size_t Elf_Buffer_Zero(Elf_Buffer *buf, size_t n)
+size_t Elf_BufferZero(Elf_Buffer *buf, size_t n)
 {
     size_t off = buf->eb_len;
-    Elf_Buffer_Reserve(buf, n);
+    Elf_BufferReserve(buf, n);
     memset(buf->eb_data + buf->eb_len, 0, n);
     buf->eb_len += n;
     return off;
 }
 
 // Pad the buffer with zeros up to a multiple of align, returning new length.
-size_t Elf_Buffer_Align(Elf_Buffer *buf, size_t align)
+size_t Elf_BufferAlign(Elf_Buffer *buf, size_t align)
 {
     if (align > 1) {
         while (buf->eb_len % align != 0) {
-            Elf_Buffer_Byte(buf, 0);
+            Elf_BufferByte(buf, 0);
         }
     }
     return buf->eb_len;
@@ -156,7 +156,7 @@ void Elf_Free(Elf *elf)
         return;
     }
     for (size_t i = 0; i < elf->elf_nsecs; i++) {
-        Elf_Buffer_Free(&elf->elf_secs[i]->sec_data);
+        Elf_BufferFree(&elf->elf_secs[i]->sec_data);
         free(elf->elf_secs[i]->sec_relas);
         free(elf->elf_secs[i]);
     }
@@ -197,14 +197,14 @@ const char *Elf_Error(const Elf *elf)
 }
 
 // Append a new section and return it.
-Elf_Sec *Elf_Section_Add(Elf *elf, const char *name, uint32_t type, uint64_t flags)
+Elf_Sec *Elf_SectionAdd(Elf *elf, const char *name, uint32_t type, uint64_t flags)
 {
     Elf_Sec *sec = calloc(1, sizeof(*sec));
     sec->sec_name      = Elf_Intern(elf, name);
     sec->sec_type      = type;
     sec->sec_flags     = flags;
     sec->sec_addralign = 1;
-    Elf_Buffer_Init(&sec->sec_data);
+    Elf_BufferInit(&sec->sec_data);
 
     if (elf->elf_nsecs == elf->elf_capsecs) {
         elf->elf_capsecs = elf->elf_capsecs ? elf->elf_capsecs * 2 : 8;
@@ -215,7 +215,7 @@ Elf_Sec *Elf_Section_Add(Elf *elf, const char *name, uint32_t type, uint64_t fla
 }
 
 // Find a section by name.
-Elf_Sec *Elf_Section_Find(Elf *elf, const char *name)
+Elf_Sec *Elf_SectionFind(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < elf->elf_nsecs; i++) {
         if (strcmp(elf->elf_secs[i]->sec_name, name) == 0) {
@@ -226,41 +226,41 @@ Elf_Sec *Elf_Section_Find(Elf *elf, const char *name)
 }
 
 // Find a section by name, creating it with the given type and flags if absent.
-Elf_Sec *Elf_Section_Get(Elf *elf, const char *name, uint32_t type, uint64_t flags)
+Elf_Sec *Elf_SectionGet(Elf *elf, const char *name, uint32_t type, uint64_t flags)
 {
-    Elf_Sec *sec = Elf_Section_Find(elf, name);
+    Elf_Sec *sec = Elf_SectionFind(elf, name);
     if (sec) {
         return sec;
     }
-    return Elf_Section_Add(elf, name, type, flags);
+    return Elf_SectionAdd(elf, name, type, flags);
 }
 
 // Return the number of sections.
-size_t Elf_Section_Count(const Elf *elf)
+size_t Elf_SectionCount(const Elf *elf)
 {
     return elf->elf_nsecs;
 }
 
 // Return section i.
-Elf_Sec *Elf_Section_At(const Elf *elf, size_t i)
+Elf_Sec *Elf_SectionAt(const Elf *elf, size_t i)
 {
     return elf->elf_secs[i];
 }
 
 // Return the byte buffer a section's contents are appended to.
-Elf_Buffer *Elf_Section_Data(Elf_Sec *sec)
+Elf_Buffer *Elf_SectionData(Elf_Sec *sec)
 {
     return &sec->sec_data;
 }
 
 // Place a section at a load address.
-void Elf_Section_Addr(Elf_Sec *sec, uint64_t addr)
+void Elf_SectionAddr(Elf_Sec *sec, uint64_t addr)
 {
     sec->sec_addr = addr;
 }
 
 // Append a symbol and return it.
-Elf_Sym *Elf_Symbol_Add(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value, uint8_t bind, uint8_t type)
+Elf_Sym *Elf_SymbolAdd(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value, uint8_t bind, uint8_t type)
 {
     Elf_Sym *sym = calloc(1, sizeof(*sym));
     sym->sym_name  = Elf_Intern(elf, name);
@@ -278,7 +278,7 @@ Elf_Sym *Elf_Symbol_Add(Elf *elf, const char *name, Elf_Sec *sec, uint64_t value
 }
 
 // Find a symbol by name.
-Elf_Sym *Elf_Symbol_Find(Elf *elf, const char *name)
+Elf_Sym *Elf_SymbolFind(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < elf->elf_nsyms; i++) {
         if (strcmp(elf->elf_syms[i]->sym_name, name) == 0) {
@@ -289,19 +289,19 @@ Elf_Sym *Elf_Symbol_Find(Elf *elf, const char *name)
 }
 
 // Return the number of symbols.
-size_t Elf_Symbol_Count(const Elf *elf)
+size_t Elf_SymbolCount(const Elf *elf)
 {
     return elf->elf_nsyms;
 }
 
 // Return symbol i.
-Elf_Sym *Elf_Symbol_At(const Elf *elf, size_t i)
+Elf_Sym *Elf_SymbolAt(const Elf *elf, size_t i)
 {
     return elf->elf_syms[i];
 }
 
 // Append a relocation to the section it patches and return it.
-Elf_Rela *Elf_Rela_Add(Elf_Sec *target, uint64_t offset, Elf_Sym *sym, uint32_t type, int64_t addend)
+Elf_Rela *Elf_RelaAdd(Elf_Sec *target, uint64_t offset, Elf_Sym *sym, uint32_t type, int64_t addend)
 {
     if (target->sec_nrelas == target->sec_caprelas) {
         target->sec_caprelas = target->sec_caprelas ? target->sec_caprelas * 2 : 8;
@@ -316,19 +316,19 @@ Elf_Rela *Elf_Rela_Add(Elf_Sec *target, uint64_t offset, Elf_Sym *sym, uint32_t 
 }
 
 // Return the number of relocations patching a section.
-size_t Elf_Rela_Count(const Elf_Sec *target)
+size_t Elf_RelaCount(const Elf_Sec *target)
 {
     return target->sec_nrelas;
 }
 
 // Return relocation i of a section.
-Elf_Rela *Elf_Rela_At(const Elf_Sec *target, size_t i)
+Elf_Rela *Elf_RelaAt(const Elf_Sec *target, size_t i)
 {
     return (Elf_Rela *) &target->sec_relas[i];
 }
 
 // Validate the file header and return it.
-const Elf64_Ehdr *Elf_Read_Ehdr(const uint8_t *data, size_t n)
+const Elf64_Ehdr *Elf_ReadEhdr(const uint8_t *data, size_t n)
 {
     if (n < sizeof(Elf64_Ehdr)) {
         return NULL;
@@ -342,10 +342,10 @@ const Elf64_Ehdr *Elf_Read_Ehdr(const uint8_t *data, size_t n)
 }
 
 // Parse ELF bytes into a new object.
-Elf *Elf_Read_Mem(const void *buf, size_t n)
+Elf *Elf_ReadMem(const void *buf, size_t n)
 {
     const uint8_t    *data = buf;
-    const Elf64_Ehdr *eh = Elf_Read_Ehdr(data, n);
+    const Elf64_Ehdr *eh = Elf_ReadEhdr(data, n);
     if (! eh) {
         return NULL;
     }
@@ -363,14 +363,14 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
             continue;
         }
         const char *name = shstr + sh[i].sh_name;
-        Elf_Sec *sec = Elf_Section_Add(elf, name, sh[i].sh_type, sh[i].sh_flags);
+        Elf_Sec *sec = Elf_SectionAdd(elf, name, sh[i].sh_type, sh[i].sh_flags);
         sec->sec_addr      = sh[i].sh_addr;
         sec->sec_addralign = sh[i].sh_addralign ? sh[i].sh_addralign : 1;
         sec->sec_entsize   = sh[i].sh_entsize;
         if (sh[i].sh_type == ELF_SHT_NOBITS) {
-            Elf_Buffer_Zero(&sec->sec_data, sh[i].sh_size);
+            Elf_BufferZero(&sec->sec_data, sh[i].sh_size);
         } else {
-            Elf_Buffer_Data(&sec->sec_data, data + sh[i].sh_offset, sh[i].sh_size);
+            Elf_BufferData(&sec->sec_data, data + sh[i].sh_offset, sh[i].sh_size);
         }
         secmap[i] = sec;
     }
@@ -394,7 +394,7 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
         const char      *name = symstr + sym->st_name;
         Elf_Sec *sec = (sym->st_shndx != ELF_SHN_UNDEF && sym->st_shndx < shnum)
                                     ? secmap[sym->st_shndx] : NULL;
-        symmap[i] = Elf_Symbol_Add(elf, name, sec, sym->st_value, ELF_ST_BIND(sym->st_info), ELF_ST_TYPE(sym->st_info));
+        symmap[i] = Elf_SymbolAdd(elf, name, sec, sym->st_value, ELF_ST_BIND(sym->st_info), ELF_ST_TYPE(sym->st_info));
         symmap[i]->sym_size  = sym->st_size;
         symmap[i]->sym_other = sym->st_other;
     }
@@ -413,7 +413,7 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
         for (size_t r = 0; r < nrel; r++) {
             uint32_t si = ELF_R_SYM(rela[r].r_info);
             Elf_Sym *sym = (si < nsyms) ? symmap[si] : NULL;
-            Elf_Rela_Add(target, rela[r].r_offset, sym, ELF_R_TYPE(rela[r].r_info), rela[r].r_addend);
+            Elf_RelaAdd(target, rela[r].r_offset, sym, ELF_R_TYPE(rela[r].r_info), rela[r].r_addend);
         }
     }
 
@@ -422,8 +422,64 @@ Elf *Elf_Read_Mem(const void *buf, size_t n)
     return elf;
 }
 
+// Copy out section header i when it and its contents lie within the object.
+bool Elf_ReadShdr(const uint8_t *data, size_t n, size_t i, Elf64_Shdr *sh)
+{
+    const Elf64_Ehdr *eh = Elf_ReadEhdr(data, n);
+    if (! eh || eh->e_ident[ELF_EI_CLASS] != ELF_CLASS64 || eh->e_shentsize != sizeof(*sh) || i >= eh->e_shnum) {
+        return false;
+    }
+    if (eh->e_shoff > n || eh->e_shnum > (n - eh->e_shoff) / sizeof(*sh)) {
+        return false;
+    }
+    memcpy(sh, data + eh->e_shoff + i * sizeof(*sh), sizeof(*sh));
+    return sh->sh_offset <= n && sh->sh_size <= n - sh->sh_offset;
+}
+
+// Find the symbol table of an object.
+bool Elf_ReadSymtab(const uint8_t *data, size_t n, Elf64_Shdr *symtab)
+{
+    const Elf64_Ehdr *eh = Elf_ReadEhdr(data, n);
+    size_t nsecs = eh ? eh->e_shnum : 0;
+    for (size_t i = 0; i < nsecs; i++) {
+        if (Elf_ReadShdr(data, n, i, symtab) && symtab->sh_type == ELF_SHT_SYMTAB) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// List the names of the global and weak symbols an object defines.
+const char **Elf_ReadGlobals(const uint8_t *data, size_t n)
+{
+    size_t count = 0;
+    Elf64_Shdr symtab;
+    Elf64_Shdr strtab;
+
+    if (! Elf_ReadSymtab(data, n, &symtab) || ! Elf_ReadShdr(data, n, symtab.sh_link, &strtab)) {
+        return calloc(1, sizeof(const char *));
+    }
+
+    size_t nsyms = symtab.sh_size / sizeof(Elf64_Sym);
+    const char *strs = (const char *) data + strtab.sh_offset;
+    const char **names = calloc(nsyms + 1, sizeof(*names));
+    for (size_t i = 1; i < nsyms; i++) {
+        Elf64_Sym sym;
+        memcpy(&sym, data + symtab.sh_offset + i * sizeof(sym), sizeof(sym));
+        uint8_t bind = ELF_ST_BIND(sym.st_info);
+        if ((bind != ELF_BIND_GLOBAL && bind != ELF_BIND_WEAK) || sym.st_shndx == ELF_SHN_UNDEF) {
+            continue;
+        }
+        if (sym.st_name >= strtab.sh_size || ! memchr(strs + sym.st_name, '\0', strtab.sh_size - sym.st_name)) {
+            continue;
+        }
+        names[count++] = strs + sym.st_name;
+    }
+    return names;
+}
+
 // Read the whole file at path.
-uint8_t *Elf_Read_Bytes(const char *path, size_t *len)
+uint8_t *Elf_ReadBytes(const char *path, size_t *len)
 {
     FILE *file = fopen(path, "rb");
     if (! file) {
@@ -452,31 +508,31 @@ uint8_t *Elf_Read_Bytes(const char *path, size_t *len)
 }
 
 // Parse an ELF file into a new object.
-Elf *Elf_Read_Path(const char *path)
+Elf *Elf_ReadPath(const char *path)
 {
     size_t size = 0;
-    uint8_t *buf = Elf_Read_Bytes(path, &size);
+    uint8_t *buf = Elf_ReadBytes(path, &size);
 
     if (! buf) {
         return NULL;
     }
 
-    Elf *elf = Elf_Read_Mem(buf, size);
+    Elf *elf = Elf_ReadMem(buf, size);
 
     free(buf);
     return elf;
 }
 
 // Append name and a NUL to a string table, returning name's start offset.
-uint32_t Elf_Write_Str(Elf_Buffer *strtab, const char *name)
+uint32_t Elf_WriteStr(Elf_Buffer *strtab, const char *name)
 {
     uint32_t off = (uint32_t) strtab->eb_len;
-    Elf_Buffer_Data(strtab, name, strlen(name) + 1);
+    Elf_BufferData(strtab, name, strlen(name) + 1);
     return off;
 }
 
 // Position of a section within the object, used to fill in section indices.
-uint32_t Elf_Write_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *secidx)
+uint32_t Elf_WriteSectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32_t *secidx)
 {
     for (size_t i = 0; i < elf->elf_nsecs; i++) {
         if (elf->elf_secs[i] == sec) {
@@ -487,11 +543,11 @@ uint32_t Elf_Write_SectionIndex(const Elf *elf, const Elf_Sec *sec, const uint32
 }
 
 // Build the .symtab and .strtab bodies, locals before globals.
-void Elf_Write_Symtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab, Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global)
+void Elf_WriteSymtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab, Elf_Buffer *strtab, uint32_t *slot, uint32_t *first_global)
 {
     Elf64_Sym null = {0};
-    Elf_Buffer_Data(symtab, &null, sizeof(null));
-    Elf_Buffer_Byte(strtab, 0);
+    Elf_BufferData(symtab, &null, sizeof(null));
+    Elf_BufferByte(strtab, 0);
 
     uint32_t si = 1;
     for (int32_t pass = 0; pass < 2; pass++) {
@@ -508,24 +564,24 @@ void Elf_Write_Symtab(const Elf *elf, const uint32_t *secidx, Elf_Buffer *symtab
             }
             slot[i] = si++;
             Elf64_Sym out = {
-                .st_name  = Elf_Write_Str(strtab, sym->sym_name),
+                .st_name  = Elf_WriteStr(strtab, sym->sym_name),
                 .st_info  = ELF_ST_INFO(sym->sym_bind, sym->sym_type),
                 .st_other = sym->sym_other,
                 .st_size  = sym->sym_size
             };
             if (sym->sym_sec) {
-                out.st_shndx = Elf_Write_SectionIndex(elf, sym->sym_sec, secidx);
+                out.st_shndx = Elf_WriteSectionIndex(elf, sym->sym_sec, secidx);
                 out.st_value = sym->sym_value;
             } else {
                 out.st_shndx = ELF_SHN_UNDEF;
             }
-            Elf_Buffer_Data(symtab, &out, sizeof(out));
+            Elf_BufferData(symtab, &out, sizeof(out));
         }
     }
 }
 
 // Build one .rela.* body from a section's relocations, using final indices.
-void Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Elf_Buffer *out)
+void Elf_WriteRelas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, Elf_Buffer *out)
 {
     for (size_t r = 0; r < sec->sec_nrelas; r++) {
         uint32_t symi = 0;
@@ -541,12 +597,12 @@ void Elf_Write_Relas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, E
             .r_info   = ELF_R_INFO(symi, rel->rel_type),
             .r_addend = rel->rel_addend
         };
-        Elf_Buffer_Data(out, &disk, sizeof(disk));
+        Elf_BufferData(out, &disk, sizeof(disk));
     }
 }
 
 // Serialize a relocatable object (ET_REL).
-bool Elf_Write_Rel(const Elf *elf, FILE *out)
+bool Elf_WriteRel(const Elf *elf, FILE *out)
 {
     size_t nuser = elf->elf_nsecs;
 
@@ -571,17 +627,17 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
     uint32_t first_global = 1;
     Elf_Buffer symtab, strtab, shstr;
     uint32_t *slot = calloc(elf->elf_nsyms ? elf->elf_nsyms : 1, sizeof(*slot));
-    Elf_Buffer_Init(&symtab);
-    Elf_Buffer_Init(&strtab);
-    Elf_Buffer_Init(&shstr);
-    Elf_Buffer_Byte(&shstr, 0);
-    Elf_Write_Symtab(elf, secidx, &symtab, &strtab, slot, &first_global);
+    Elf_BufferInit(&symtab);
+    Elf_BufferInit(&strtab);
+    Elf_BufferInit(&shstr);
+    Elf_BufferByte(&shstr, 0);
+    Elf_WriteSymtab(elf, secidx, &symtab, &strtab, slot, &first_global);
 
     Elf_Buffer *relas = calloc(nuser ? nuser : 1, sizeof(*relas));
     for (size_t i = 0; i < nuser; i++) {
-        Elf_Buffer_Init(&relas[i]);
+        Elf_BufferInit(&relas[i]);
         if (relaidx[i]) {
-            Elf_Write_Relas(elf->elf_secs[i], slot, elf, &relas[i]);
+            Elf_WriteRelas(elf->elf_secs[i], slot, elf, &relas[i]);
         }
     }
 
@@ -593,7 +649,7 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
     for (size_t i = 0; i < nuser; i++) {
         Elf_Sec *sec = elf->elf_secs[i];
         shdrs[secidx[i]] = (Elf64_Shdr) {
-            .sh_name      = Elf_Write_Str(&shstr, sec->sec_name),
+            .sh_name      = Elf_WriteStr(&shstr, sec->sec_name),
             .sh_type      = sec->sec_type,
             .sh_flags     = sec->sec_flags,
             .sh_size      = sec->sec_data.eb_len,
@@ -605,7 +661,7 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
     }
 
     shdrs[idx_symtab] = (Elf64_Shdr) {
-        .sh_name      = Elf_Write_Str(&shstr, ".symtab"),
+        .sh_name      = Elf_WriteStr(&shstr, ".symtab"),
         .sh_type      = ELF_SHT_SYMTAB,
         .sh_size      = symtab.eb_len,
         .sh_link      = idx_strtab,
@@ -617,7 +673,7 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
     sizes[idx_symtab]  = symtab.eb_len;
 
     shdrs[idx_strtab] = (Elf64_Shdr) {
-        .sh_name      = Elf_Write_Str(&shstr, ".strtab"),
+        .sh_name      = Elf_WriteStr(&shstr, ".strtab"),
         .sh_type      = ELF_SHT_STRTAB,
         .sh_size      = strtab.eb_len,
         .sh_addralign = 1
@@ -633,7 +689,7 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
         strcpy(name, ".rela");
         strcat(name, elf->elf_secs[i]->sec_name);
         shdrs[relaidx[i]] = (Elf64_Shdr) {
-            .sh_name      = Elf_Write_Str(&shstr, name),
+            .sh_name      = Elf_WriteStr(&shstr, name),
             .sh_type      = ELF_SHT_RELA,
             .sh_size      = relas[i].eb_len,
             .sh_link      = idx_symtab,
@@ -647,7 +703,7 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
     }
 
     shdrs[idx_shstrtab] = (Elf64_Shdr) {
-        .sh_name      = Elf_Write_Str(&shstr, ".shstrtab"),
+        .sh_name      = Elf_WriteStr(&shstr, ".shstrtab"),
         .sh_type      = ELF_SHT_STRTAB,
         .sh_addralign = 1
     };
@@ -697,11 +753,11 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
     }
     fwrite(shdrs, 1, sizeof(Elf64_Shdr) * shnum, out);
 
-    Elf_Buffer_Free(&symtab);
-    Elf_Buffer_Free(&strtab);
-    Elf_Buffer_Free(&shstr);
+    Elf_BufferFree(&symtab);
+    Elf_BufferFree(&strtab);
+    Elf_BufferFree(&shstr);
     for (size_t i = 0; i < nuser; i++) {
-        Elf_Buffer_Free(&relas[i]);
+        Elf_BufferFree(&relas[i]);
     }
     free(relas);
     free(secidx);
@@ -714,7 +770,7 @@ bool Elf_Write_Rel(const Elf *elf, FILE *out)
 }
 
 // Return the segment permissions a section's flags call for.
-uint32_t Elf_Write_SegFlags(const Elf_Sec *sec)
+uint32_t Elf_WriteSegFlags(const Elf_Sec *sec)
 {
     uint32_t flags = ELF_PF_R;
     if (sec->sec_flags & ELF_SHF_EXECINSTR) {
@@ -727,13 +783,13 @@ uint32_t Elf_Write_SegFlags(const Elf_Sec *sec)
 }
 
 // Smallest file offset >= pos that is page-congruent with vaddr.
-uint64_t Elf_Write_PlaceOffset(uint64_t pos, uint64_t vaddr)
+uint64_t Elf_WritePlaceOffset(uint64_t pos, uint64_t vaddr)
 {
     return pos + (vaddr - pos) % ELF_PAGE;
 }
 
 // Serialize a static executable, one PT_LOAD per placed section.
-bool Elf_Write_Exec(const Elf *elf, FILE *out)
+bool Elf_WriteExec(const Elf *elf, FILE *out)
 {
     // Phase: select the loadable sections.
     Elf_Sec **segs = calloc(elf->elf_nsecs ? elf->elf_nsecs : 1, sizeof(*segs));
@@ -749,7 +805,7 @@ bool Elf_Write_Exec(const Elf *elf, FILE *out)
     // Phase: assign page-congruent file offsets.
     uint64_t pos = sizeof(Elf64_Ehdr) + (uint64_t) nseg * sizeof(Elf64_Phdr);
     for (size_t i = 0; i < nseg; i++) {
-        offs[i] = Elf_Write_PlaceOffset(pos, segs[i]->sec_addr);
+        offs[i] = Elf_WritePlaceOffset(pos, segs[i]->sec_addr);
         if (segs[i]->sec_type != ELF_SHT_NOBITS) {
             pos = offs[i] + segs[i]->sec_data.eb_len;
         }
@@ -771,7 +827,7 @@ bool Elf_Write_Exec(const Elf *elf, FILE *out)
         bool nobits = segs[i]->sec_type == ELF_SHT_NOBITS;
         Elf64_Phdr phdr = {
             .p_type   = ELF_PT_LOAD,
-            .p_flags  = Elf_Write_SegFlags(segs[i]),
+            .p_flags  = Elf_WriteSegFlags(segs[i]),
             .p_offset = offs[i],
             .p_vaddr  = segs[i]->sec_addr,
             .p_paddr  = segs[i]->sec_addr,
@@ -800,16 +856,16 @@ bool Elf_Write_Exec(const Elf *elf, FILE *out)
 }
 
 // Serialize an object to an open stream.
-bool Elf_Write_File(const Elf *elf, FILE *out)
+bool Elf_WriteFile(const Elf *elf, FILE *out)
 {
     if (elf->elf_type == ELF_ET_EXEC) {
-        return Elf_Write_Exec(elf, out);
+        return Elf_WriteExec(elf, out);
     }
-    return Elf_Write_Rel(elf, out);
+    return Elf_WriteRel(elf, out);
 }
 
 // Serialize an object to a file.
-bool Elf_Write_Path(const Elf *elf, const char *path)
+bool Elf_WritePath(const Elf *elf, const char *path)
 {
     FILE *out = fopen(path, "wb");
 
@@ -817,7 +873,7 @@ bool Elf_Write_Path(const Elf *elf, const char *path)
         return false;
     }
 
-    bool ok = Elf_Write_File(elf, out);
+    bool ok = Elf_WriteFile(elf, out);
 
     return fclose(out) == 0 && ok;
 }

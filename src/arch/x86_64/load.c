@@ -42,13 +42,13 @@ uint64_t Load_x86_64_AlignUp(uint64_t addr, uint64_t align)
 bool Load_x86_64_ReadExec(const char *path, Load_x86_64_Image *img)
 {
     size_t len = 0;
-    uint8_t *file = Elf_Read_Bytes(path, &len);
+    uint8_t *file = Elf_ReadBytes(path, &len);
     if (! file) {
         return false;
     }
 
     const uint8_t *data = file;
-    const Elf64_Ehdr *eh = Elf_Read_Ehdr(data, len);
+    const Elf64_Ehdr *eh = Elf_ReadEhdr(data, len);
     Err_Assert(eh, ERR_LOAD_NOT_ELF, path);
     Err_Assert(eh->e_ident[4] == ELF_CLASS64 && eh->e_ident[5] == ELF_DATA2LSB, ERR_LOAD_NOT_ELF64_LSB, path);
     Err_Assert(eh->e_type == ELF_ET_EXEC, ERR_LOAD_NOT_EXECUTABLE, path);

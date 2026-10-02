@@ -32,7 +32,7 @@ uint64_t Link_x86_64_RelSymbolAddr(const Elf_Sym *sym)
 // Patch width little-endian bytes at a section offset with value.
 void Link_x86_64_RelPatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width)
 {
-    uint8_t *at = Elf_Buffer_At(Elf_Section_Data(sec), offset);
+    uint8_t *at = Elf_BufferAt(Elf_SectionData(sec), offset);
     for (size_t i = 0; i < width; i++) {
         at[i] = (value >> (8 * i)) & 0xFF;
     }
@@ -66,10 +66,10 @@ void Link_x86_64_RelApplyOne(Elf_Sec *sec, const Elf_Rela *rel)
 // Apply every relocation in a placed object, patching each section's bytes.
 void Link_x86_64_RelApply(Elf *elf)
 {
-    for (size_t i = 0; i < Elf_Section_Count(elf); i++) {
-        Elf_Sec *sec = Elf_Section_At(elf, i);
-        for (size_t r = 0; r < Elf_Rela_Count(sec); r++) {
-            Link_x86_64_RelApplyOne(sec, Elf_Rela_At(sec, r));
+    for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
+        Elf_Sec *sec = Elf_SectionAt(elf, i);
+        for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
+            Link_x86_64_RelApplyOne(sec, Elf_RelaAt(sec, r));
         }
     }
 }
@@ -77,8 +77,8 @@ void Link_x86_64_RelApply(Elf *elf)
 // Index of a section within an object.
 int64_t Link_x86_64_SectionIndex(const Elf *elf, const Elf_Sec *target)
 {
-    for (size_t i = 0; i < Elf_Section_Count(elf); i++) {
-        if (Elf_Section_At(elf, i) == target) {
+    for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
+        if (Elf_SectionAt(elf, i) == target) {
             return (int64_t) i;
         }
     }
@@ -88,8 +88,8 @@ int64_t Link_x86_64_SectionIndex(const Elf *elf, const Elf_Sec *target)
 // Index of a symbol within an object.
 int64_t Link_x86_64_SymbolIndex(const Elf *elf, const Elf_Sym *target)
 {
-    for (size_t i = 0; i < Elf_Symbol_Count(elf); i++) {
-        if (Elf_Symbol_At(elf, i) == target) {
+    for (size_t i = 0; i < Elf_SymbolCount(elf); i++) {
+        if (Elf_SymbolAt(elf, i) == target) {
             return (int64_t) i;
         }
     }
@@ -99,8 +99,8 @@ int64_t Link_x86_64_SymbolIndex(const Elf *elf, const Elf_Sym *target)
 // Find an existing global symbol by name.
 Elf_Sym *Link_x86_64_FindGlobal(Elf *elf, const char *name)
 {
-    for (size_t i = 0; i < Elf_Symbol_Count(elf); i++) {
-        Elf_Sym *sym = Elf_Symbol_At(elf, i);
+    for (size_t i = 0; i < Elf_SymbolCount(elf); i++) {
+        Elf_Sym *sym = Elf_SymbolAt(elf, i);
         if (sym->sym_bind != ELF_BIND_LOCAL && Str_Equals(sym->sym_name, name)) {
             return sym;
         }
@@ -111,8 +111,8 @@ Elf_Sym *Link_x86_64_FindGlobal(Elf *elf, const char *name)
 // Merge one input object into the output.
 void Link_x86_64_Merge(Elf *out, Elf *in)
 {
-    size_t nsec = Elf_Section_Count(in);
-    size_t nsym = Elf_Symbol_Count(in);
+    size_t nsec = Elf_SectionCount(in);
+    size_t nsym = Elf_SymbolCount(in);
 
     Elf_Sec **secmap = calloc(nsec ? nsec : 1, sizeof(*secmap));
     Elf_Sym **symmap = calloc(nsym ? nsym : 1, sizeof(*symmap));
@@ -120,21 +120,21 @@ void Link_x86_64_Merge(Elf *out, Elf *in)
 
     // Phase: merge section bytes, recording each input section's new base.
     for (size_t i = 0; i < nsec; i++) {
-        Elf_Sec *sec = Elf_Section_At(in, i);
-        Elf_Sec *dst = Elf_Section_Get(out, sec->sec_name, sec->sec_type, sec->sec_flags);
-        Elf_Buffer *db = Elf_Section_Data(dst);
+        Elf_Sec *sec = Elf_SectionAt(in, i);
+        Elf_Sec *dst = Elf_SectionGet(out, sec->sec_name, sec->sec_type, sec->sec_flags);
+        Elf_Buffer *db = Elf_SectionData(dst);
         if (sec->sec_addralign > dst->sec_addralign) {
             dst->sec_addralign = sec->sec_addralign;
         }
-        Elf_Buffer_Align(db, sec->sec_addralign);
+        Elf_BufferAlign(db, sec->sec_addralign);
         secbase[i] = db->eb_len;
-        Elf_Buffer_Data(db, sec->sec_data.eb_data, sec->sec_data.eb_len);
+        Elf_BufferData(db, sec->sec_data.eb_data, sec->sec_data.eb_len);
         secmap[i] = dst;
     }
 
     // Phase: copy symbols, unifying globals and resolving undefined references.
     for (size_t i = 0; i < nsym; i++) {
-        Elf_Sym *sym = Elf_Symbol_At(in, i);
+        Elf_Sym *sym = Elf_SymbolAt(in, i);
         Elf_Sec *dsec = NULL;
         uint64_t value = 0;
         if (sym->sym_sec) {
@@ -144,13 +144,13 @@ void Link_x86_64_Merge(Elf *out, Elf *in)
         }
 
         if (sym->sym_bind == ELF_BIND_LOCAL) {
-            symmap[i] = Elf_Symbol_Add(out, sym->sym_name, dsec, value, ELF_BIND_LOCAL, sym->sym_type);
+            symmap[i] = Elf_SymbolAdd(out, sym->sym_name, dsec, value, ELF_BIND_LOCAL, sym->sym_type);
             continue;
         }
 
         Elf_Sym *existing = Link_x86_64_FindGlobal(out, sym->sym_name);
         if (! existing) {
-            symmap[i] = Elf_Symbol_Add(out, sym->sym_name, dsec, value, sym->sym_bind, sym->sym_type);
+            symmap[i] = Elf_SymbolAdd(out, sym->sym_name, dsec, value, sym->sym_bind, sym->sym_type);
             continue;
         }
         if (dsec) {
@@ -164,14 +164,14 @@ void Link_x86_64_Merge(Elf *out, Elf *in)
 
     // Phase: rebase each relocation onto the merged section and out symbol.
     for (size_t i = 0; i < nsec; i++) {
-        Elf_Sec *sec = Elf_Section_At(in, i);
-        for (size_t r = 0; r < Elf_Rela_Count(sec); r++) {
-            Elf_Rela *rel = Elf_Rela_At(sec, r);
+        Elf_Sec *sec = Elf_SectionAt(in, i);
+        for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
+            Elf_Rela *rel = Elf_RelaAt(sec, r);
             int64_t k = Link_x86_64_SymbolIndex(in, rel->rel_sym);
             if (k < 0) {
                 continue;
             }
-            Elf_Rela_Add(secmap[i], secbase[i] + rel->rel_offset, symmap[k], rel->rel_type, rel->rel_addend);
+            Elf_RelaAdd(secmap[i], secbase[i] + rel->rel_offset, symmap[k], rel->rel_type, rel->rel_addend);
         }
     }
 
@@ -184,7 +184,7 @@ void Link_x86_64_Merge(Elf *out, Elf *in)
 void Link_x86_64_MergeFiles(Elf *out, const char *const *paths, size_t npaths)
 {
     for (size_t i = 0; i < npaths; i++) {
-        Elf *in = Elf_Read_Path(paths[i]);
+        Elf *in = Elf_ReadPath(paths[i]);
         Err_Assert(in, ERR_LINK_OBJECT_NOT_READABLE, paths[i]);
         Link_x86_64_Merge(out, in);
         Elf_Free(in);
@@ -217,8 +217,8 @@ uint64_t Link_x86_64_PlacedAddr(const Link_x86_64_Options *opts, const char *nam
 void Link_x86_64_PlaceSections(Elf *elf, const Link_x86_64_Options *opts)
 {
     uint64_t next = ELF_BASE + ELF_PAGE;
-    for (size_t i = 0; i < Elf_Section_Count(elf); i++) {
-        Elf_Sec *sec = Elf_Section_At(elf, i);
+    for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
+        Elf_Sec *sec = Elf_SectionAt(elf, i);
         if (! (sec->sec_flags & ELF_SHF_ALLOC)) {
             continue;
         }
@@ -227,7 +227,7 @@ void Link_x86_64_PlaceSections(Elf *elf, const Link_x86_64_Options *opts)
         if (! placed) {
             addr = next;
         }
-        Elf_Section_Addr(sec, addr);
+        Elf_SectionAddr(sec, addr);
         uint64_t end = addr + sec->sec_data.eb_len;
         if (end > next) {
             next = (end + ELF_PAGE - 1) / ELF_PAGE * ELF_PAGE;
@@ -238,10 +238,10 @@ void Link_x86_64_PlaceSections(Elf *elf, const Link_x86_64_Options *opts)
 // Abort if any relocation references a symbol that was never defined.
 void Link_x86_64_CheckDefined(Elf *elf)
 {
-    for (size_t i = 0; i < Elf_Section_Count(elf); i++) {
-        Elf_Sec *sec = Elf_Section_At(elf, i);
-        for (size_t r = 0; r < Elf_Rela_Count(sec); r++) {
-            Elf_Sym *sym = Elf_Rela_At(sec, r)->rel_sym;
+    for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
+        Elf_Sec *sec = Elf_SectionAt(elf, i);
+        for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
+            Elf_Sym *sym = Elf_RelaAt(sec, r)->rel_sym;
             Err_Assert(sym && sym->sym_sec, ERR_LINK_SYMBOL_NOT_DEFINED, sym ? sym->sym_name : "?");
         }
     }
@@ -255,7 +255,7 @@ void Link_x86_64_Exec(Elf *elf, const Link_x86_64_Options *opts)
     Link_x86_64_PlaceSections(elf, opts);
     Link_x86_64_CheckDefined(elf);
 
-    Elf_Sym *sym = Elf_Symbol_Find(elf, entry);
+    Elf_Sym *sym = Elf_SymbolFind(elf, entry);
     Err_Assert(sym && sym->sym_sec, ERR_LINK_ENTRY_NOT_DEFINED, entry);
     Elf_SetEntry(elf, sym->sym_sec->sec_addr + sym->sym_value);
 
