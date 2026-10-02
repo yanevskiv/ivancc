@@ -99,30 +99,30 @@ static Ar_Options Ar_Parse(const char *prog, const char *letters)
     const char *ptr = letters[0] == AR_DASH ? letters + 1 : letters;
     for (; *ptr != '\0'; ptr++) {
         switch (*ptr) {
-        case 'd': {
-            Ar_SetOp(prog, &opts, AR_OP_DELETE);
-        } break;
-        case 'r': {
-            Ar_SetOp(prog, &opts, AR_OP_REPLACE);
-        } break;
-        case 't': {
-            Ar_SetOp(prog, &opts, AR_OP_LIST);
-        } break;
-        case 'x': {
-            Ar_SetOp(prog, &opts, AR_OP_EXTRACT);
-        } break;
-        case 'c': {
-            opts.ao_quiet = true;
-        } break;
-        case 's': {
-            opts.ao_index = true;
-        } break;
-        case 'D': {
-            // empty
-        } break;
-        default: {
-            Ar_Usage(prog);
-        } break;
+            case 'd': {
+                Ar_SetOp(prog, &opts, AR_OP_DELETE);
+            } break;
+            case 'r': {
+                Ar_SetOp(prog, &opts, AR_OP_REPLACE);
+            } break;
+            case 't': {
+                Ar_SetOp(prog, &opts, AR_OP_LIST);
+            } break;
+            case 'x': {
+                Ar_SetOp(prog, &opts, AR_OP_EXTRACT);
+            } break;
+            case 'c': {
+                opts.ao_quiet = true;
+            } break;
+            case 's': {
+                opts.ao_index = true;
+            } break;
+            case 'D': {
+                // empty
+            } break;
+            default: {
+                Ar_Usage(prog);
+            } break;
         }
     }
 
@@ -274,27 +274,27 @@ int main(int argc, char **argv)
     Arc *arc = Ar_Open(path, &opts);
 
     switch (opts.ao_op) {
-    case AR_OP_INDEX: {
-        Ar_Save(arc, path);
-    } break;
-    case AR_OP_DELETE: {
-        Ar_Delete(arc, path, files, nfiles);
-        Ar_Save(arc, path);
-    } break;
-    case AR_OP_REPLACE: {
-        Ar_Replace(arc, files, nfiles);
-        Ar_Save(arc, path);
-    } break;
-    case AR_OP_LIST: {
-        Ar_List(arc, path, files, nfiles);
-    } break;
-    case AR_OP_EXTRACT: {
-        Ar_Extract(arc, path, files, nfiles);
-    } break;
-    case AR_OP_NONE:
-    case AR_OP_COUNT: {
-        // empty
-    } break;
+        case AR_OP_INDEX: {
+            Ar_Save(arc, path);
+        } break;
+        case AR_OP_DELETE: {
+            Ar_Delete(arc, path, files, nfiles);
+            Ar_Save(arc, path);
+        } break;
+        case AR_OP_REPLACE: {
+            Ar_Replace(arc, files, nfiles);
+            Ar_Save(arc, path);
+        } break;
+        case AR_OP_LIST: {
+            Ar_List(arc, path, files, nfiles);
+        } break;
+        case AR_OP_EXTRACT: {
+            Ar_Extract(arc, path, files, nfiles);
+        } break;
+        case AR_OP_NONE:
+        case AR_OP_COUNT: {
+            // empty
+        } break;
     }
 
     Arc_Free(arc);
