@@ -268,6 +268,27 @@ enum Err_Code {
     ERR_TXT_STRING_NOT_TERMINATED,         // can't leave a string without its closing quote
     ERR_TXT_ESCAPE_NOT_KNOWN,              // can't use an escape sequence the assembler does not know
 
+    ERR_CPU_READ_NOT_MAPPED,               // can't read unmapped memory
+    ERR_CPU_WRITE_NOT_MAPPED,              // can't write to unmapped memory
+    ERR_CPU_FETCH_NOT_MAPPED,              // can't run an instruction from unmapped memory
+    ERR_CPU_OPCODE_NOT_DECODABLE,          // can't run an instruction that does not decode
+    ERR_CPU_OPCODE_NOT_IMPLEMENTED,        // can't run a one-byte opcode the CPU does not implement
+    ERR_CPU_TWO_BYTE_NOT_IMPLEMENTED,      // can't run a two-byte opcode the CPU does not implement
+    ERR_CPU_GROUP1_NOT_IMPLEMENTED,        // can't run a group 1 operation the CPU does not implement
+    ERR_CPU_GROUP2_NOT_IMPLEMENTED,        // can't run a group 2 operation the CPU does not implement
+    ERR_CPU_GROUP3_NOT_IMPLEMENTED,        // can't run a group 3 operation the CPU does not implement
+    ERR_CPU_GROUP5_NOT_IMPLEMENTED,        // can't run a group 5 operation the CPU does not implement
+    ERR_CPU_SSE_DOUBLE_NOT_IMPLEMENTED,    // can't run a scalar double SSE operation the CPU does not implement
+    ERR_CPU_SSE_SINGLE_NOT_IMPLEMENTED,    // can't run a scalar single SSE operation the CPU does not implement
+    ERR_CPU_X87_MEM_NOT_IMPLEMENTED,       // can't run an x87 memory operation the CPU does not implement
+    ERR_CPU_X87_D9_NOT_IMPLEMENTED,        // can't run a D9 x87 operation the CPU does not implement
+    ERR_CPU_X87_DE_NOT_IMPLEMENTED,        // can't run a DE x87 operation the CPU does not implement
+    ERR_CPU_X87_DF_NOT_IMPLEMENTED,        // can't run a DF x87 operation the CPU does not implement
+    ERR_CPU_X87_DD_NOT_IMPLEMENTED,        // can't run a DD x87 operation the CPU does not implement
+    ERR_CPU_X87_NOT_IMPLEMENTED,           // can't run an x87 opcode the CPU does not implement
+    ERR_CPU_DIVIDE_BY_ZERO,                // can't divide by zero
+    ERR_CPU_QUOTIENT_TOO_LARGE,            // can't divide when the quotient overflows its register
+
     ERR_CC_ARCH_NOT_SUPPORTED,             // can't target an architecture other than x86_64
     ERR_CC_OUTPUT_NOT_WRITEABLE,           // can't create the compiler's output file
     ERR_CC_RUNTIME_NOT_FOUND,              // can't link without finding the runtime directory
@@ -283,26 +304,6 @@ enum Err_Code {
     ERR_EMU_ARCH_NOT_SUPPORTED,            // can't emulate an architecture other than x86_64
     ERR_EMU_PROGRAM_NOT_READABLE,          // can't read the executable to run
     ERR_EMU_ARCH_NOT_X86_64,               // can't run an executable that is not for x86_64
-    ERR_EMU_READ_NOT_MAPPED,               // can't read unmapped memory
-    ERR_EMU_WRITE_NOT_MAPPED,              // can't write to unmapped memory
-    ERR_EMU_FETCH_NOT_MAPPED,              // can't run an instruction from unmapped memory
-    ERR_EMU_OPCODE_NOT_DECODABLE,          // can't run an instruction that does not decode
-    ERR_EMU_OPCODE_NOT_IMPLEMENTED,        // can't run a one-byte opcode the emulator does not implement
-    ERR_EMU_TWO_BYTE_NOT_IMPLEMENTED,      // can't run a two-byte opcode the emulator does not implement
-    ERR_EMU_GROUP1_NOT_IMPLEMENTED,        // can't run a group 1 operation the emulator does not implement
-    ERR_EMU_GROUP2_NOT_IMPLEMENTED,        // can't run a group 2 operation the emulator does not implement
-    ERR_EMU_GROUP3_NOT_IMPLEMENTED,        // can't run a group 3 operation the emulator does not implement
-    ERR_EMU_GROUP5_NOT_IMPLEMENTED,        // can't run a group 5 operation the emulator does not implement
-    ERR_EMU_SSE_DOUBLE_NOT_IMPLEMENTED,    // can't run a scalar double SSE operation the emulator does not implement
-    ERR_EMU_SSE_SINGLE_NOT_IMPLEMENTED,    // can't run a scalar single SSE operation the emulator does not implement
-    ERR_EMU_X87_MEM_NOT_IMPLEMENTED,       // can't run an x87 memory operation the emulator does not implement
-    ERR_EMU_X87_D9_NOT_IMPLEMENTED,        // can't run a D9 x87 operation the emulator does not implement
-    ERR_EMU_X87_DE_NOT_IMPLEMENTED,        // can't run a DE x87 operation the emulator does not implement
-    ERR_EMU_X87_DF_NOT_IMPLEMENTED,        // can't run a DF x87 operation the emulator does not implement
-    ERR_EMU_X87_DD_NOT_IMPLEMENTED,        // can't run a DD x87 operation the emulator does not implement
-    ERR_EMU_X87_NOT_IMPLEMENTED,           // can't run an x87 opcode the emulator does not implement
-    ERR_EMU_DIVIDE_BY_ZERO,                // can't divide by zero
-    ERR_EMU_QUOTIENT_TOO_LARGE,            // can't divide when the quotient overflows its register
 
     ERR_CODE_COUNT
 };

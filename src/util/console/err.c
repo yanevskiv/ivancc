@@ -1485,6 +1485,146 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "unknown escape sequence '\\%c'"
     },
 
+    // Args: [address, instruction address]
+    [ERR_CPU_READ_NOT_MAPPED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_READ_NOT_MAPPED",
+        .ee_format = "read of unmapped memory at 0x%llx from %%rip = 0x%llx"
+    },
+
+    // Args: [address, instruction address]
+    [ERR_CPU_WRITE_NOT_MAPPED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_WRITE_NOT_MAPPED",
+        .ee_format = "write to unmapped memory at 0x%llx from %%rip = 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_FETCH_NOT_MAPPED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_FETCH_NOT_MAPPED",
+        .ee_format = "instruction fetch from unmapped memory at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_OPCODE_NOT_DECODABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_OPCODE_NOT_DECODABLE",
+        .ee_format = "undecodable instruction at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_OPCODE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_OPCODE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented one-byte opcode at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_TWO_BYTE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_TWO_BYTE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented two-byte opcode at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_GROUP1_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_GROUP1_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 1 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_GROUP2_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_GROUP2_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 2 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_GROUP3_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_GROUP3_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 3 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_GROUP5_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_GROUP5_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 5 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_SSE_DOUBLE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_SSE_DOUBLE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented scalar double SSE operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_SSE_SINGLE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_SSE_SINGLE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented scalar single SSE operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_X87_MEM_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_X87_MEM_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented x87 memory operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_X87_D9_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_X87_D9_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented D9 x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_X87_DE_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_X87_DE_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented DE x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_X87_DF_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_X87_DF_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented DF x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_X87_DD_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_X87_DD_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented DD x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_X87_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_X87_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented x87 opcode at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_DIVIDE_BY_ZERO] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_DIVIDE_BY_ZERO",
+        .ee_format = "divide by zero at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_QUOTIENT_TOO_LARGE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_QUOTIENT_TOO_LARGE",
+        .ee_format = "quotient too large for its register at 0x%llx"
+    },
+
     // Args: [architecture, supported architecture]
     [ERR_CC_ARCH_NOT_SUPPORTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
@@ -1567,146 +1707,6 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_EMU_ARCH_NOT_X86_64",
         .ee_format = "'%s' is not an x86_64 executable"
-    },
-
-    // Args: [address, instruction address]
-    [ERR_EMU_READ_NOT_MAPPED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_READ_NOT_MAPPED",
-        .ee_format = "read of unmapped memory at 0x%llx from %%rip = 0x%llx"
-    },
-
-    // Args: [address, instruction address]
-    [ERR_EMU_WRITE_NOT_MAPPED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_WRITE_NOT_MAPPED",
-        .ee_format = "write to unmapped memory at 0x%llx from %%rip = 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_FETCH_NOT_MAPPED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_FETCH_NOT_MAPPED",
-        .ee_format = "instruction fetch from unmapped memory at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_OPCODE_NOT_DECODABLE] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_OPCODE_NOT_DECODABLE",
-        .ee_format = "undecodable instruction at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_OPCODE_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_OPCODE_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented one-byte opcode at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_TWO_BYTE_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_TWO_BYTE_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented two-byte opcode at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_GROUP1_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_GROUP1_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented group 1 operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_GROUP2_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_GROUP2_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented group 2 operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_GROUP3_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_GROUP3_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented group 3 operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_GROUP5_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_GROUP5_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented group 5 operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_SSE_DOUBLE_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_SSE_DOUBLE_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented scalar double SSE operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_SSE_SINGLE_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_SSE_SINGLE_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented scalar single SSE operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_X87_MEM_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_X87_MEM_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented x87 memory operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_X87_D9_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_X87_D9_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented D9 x87 operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_X87_DE_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_X87_DE_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented DE x87 operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_X87_DF_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_X87_DF_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented DF x87 operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_X87_DD_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_X87_DD_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented DD x87 operation at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_X87_NOT_IMPLEMENTED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_X87_NOT_IMPLEMENTED",
-        .ee_format = "unimplemented x87 opcode at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_DIVIDE_BY_ZERO] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_DIVIDE_BY_ZERO",
-        .ee_format = "divide by zero at 0x%llx"
-    },
-
-    // Args: [instruction address]
-    [ERR_EMU_QUOTIENT_TOO_LARGE] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_EMU_QUOTIENT_TOO_LARGE",
-        .ee_format = "quotient too large for its register at 0x%llx"
     }
 };
 
