@@ -21,7 +21,7 @@
 #include "util/object/link.h"
 
 // Virtual address a symbol resolves to.
-uint64_t Link_RelSymbolAddr(const Elf_Sym *sym)
+uint64_t Link_ElfSymbolAddr(const Elf_Sym *sym)
 {
     if (sym->sym_sec) {
         return sym->sym_sec->sec_addr + sym->sym_value;
@@ -30,7 +30,7 @@ uint64_t Link_RelSymbolAddr(const Elf_Sym *sym)
 }
 
 // Patch width little-endian bytes at a section offset with value.
-void Link_RelPatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width)
+void Link_ElfPatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width)
 {
     uint8_t *at = Elf_BufferAt(Elf_SectionData(sec), offset);
     for (size_t i = 0; i < width; i++) {
@@ -39,36 +39,36 @@ void Link_RelPatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width
 }
 
 // Apply one x86-64 relocation from S (symbol), A (addend) and P (site).
-void Link_x86_64_RelApplyOne(Elf_Sec *sec, const Elf_Rela *rel)
+void Link_x86_64_ElfApplyRela(Elf_Sec *sec, const Elf_Rela *rela)
 {
-    uint64_t S = Link_RelSymbolAddr(rel->rel_sym);
-    int64_t A = rel->rel_addend;
-    uint64_t P = sec->sec_addr + rel->rel_offset;
+    uint64_t S = Link_ElfSymbolAddr(rela->rela_sym);
+    int64_t A = rela->rela_addend;
+    uint64_t P = sec->sec_addr + rela->rela_offset;
 
-    switch (rel->rel_type) {
+    switch (rela->rela_type) {
         case R_X86_64_PC32:
         case R_X86_64_PLT32: {
-            Link_RelPatchLE(sec, rel->rel_offset, (uint32_t) (int32_t) (S + A - P), 4);
+            Link_ElfPatchLE(sec, rela->rela_offset, (uint32_t) (int32_t) (S + A - P), 4);
         } break;
         case R_X86_64_32:
         case R_X86_64_32S: {
-            Link_RelPatchLE(sec, rel->rel_offset, (uint32_t) (S + A), 4);
+            Link_ElfPatchLE(sec, rela->rela_offset, (uint32_t) (S + A), 4);
         } break;
         case R_X86_64_64: {
-            Link_RelPatchLE(sec, rel->rel_offset, S + A, 8);
+            Link_ElfPatchLE(sec, rela->rela_offset, S + A, 8);
         } break;
         default: {
-            Err_Raise(ERR_LINK_RELOCATION_NOT_SUPPORTED, rel->rel_type);
+            Err_Raise(ERR_LINK_RELOCATION_NOT_SUPPORTED, rela->rela_type);
         }
     }
 }
 
 // Apply one relocation by the rules of the object's machine.
-void Link_RelApplyOne(const Elf *elf, Elf_Sec *sec, const Elf_Rela *rel)
+void Link_ElfApplyRela(const Elf *elf, Elf_Sec *sec, const Elf_Rela *rela)
 {
     switch (elf->elf_machine) {
         case ELF_EM_X86_64: {
-            Link_x86_64_RelApplyOne(sec, rel);
+            Link_x86_64_ElfApplyRela(sec, rela);
         } break;
         default: {
             Err_Raise(ERR_LINK_MACHINE_NOT_SUPPORTED, (unsigned) elf->elf_machine);
@@ -77,18 +77,18 @@ void Link_RelApplyOne(const Elf *elf, Elf_Sec *sec, const Elf_Rela *rel)
 }
 
 // Apply every relocation in a placed object, patching each section's bytes.
-void Link_RelApply(Elf *elf)
+void Link_ElfApplyRelas(Elf *elf)
 {
     for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
         Elf_Sec *sec = Elf_SectionAt(elf, i);
         for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
-            Link_RelApplyOne(elf, sec, Elf_RelaAt(sec, r));
+            Link_ElfApplyRela(elf, sec, Elf_RelaAt(sec, r));
         }
     }
 }
 
 // Index of a section within an object.
-int64_t Link_SectionIndex(const Elf *elf, const Elf_Sec *target)
+int64_t Link_ElfSectionIndex(const Elf *elf, const Elf_Sec *target)
 {
     for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
         if (Elf_SectionAt(elf, i) == target) {
@@ -99,7 +99,7 @@ int64_t Link_SectionIndex(const Elf *elf, const Elf_Sec *target)
 }
 
 // Index of a symbol within an object.
-int64_t Link_SymbolIndex(const Elf *elf, const Elf_Sym *target)
+int64_t Link_ElfSymbolIndex(const Elf *elf, const Elf_Sym *target)
 {
     for (size_t i = 0; i < Elf_SymbolCount(elf); i++) {
         if (Elf_SymbolAt(elf, i) == target) {
@@ -110,7 +110,7 @@ int64_t Link_SymbolIndex(const Elf *elf, const Elf_Sym *target)
 }
 
 // Find an existing global symbol by name.
-Elf_Sym *Link_SymbolFindGlobal(Elf *elf, const char *name)
+Elf_Sym *Link_ElfFindGlobal(Elf *elf, const char *name)
 {
     for (size_t i = 0; i < Elf_SymbolCount(elf); i++) {
         Elf_Sym *sym = Elf_SymbolAt(elf, i);
@@ -122,7 +122,7 @@ Elf_Sym *Link_SymbolFindGlobal(Elf *elf, const char *name)
 }
 
 // Merge one input object, named name, into the output.
-void Link_Merge(Elf *out, Elf *in, const char *name)
+void Link_ElfMerge(Elf *out, Elf *in, const char *name)
 {
     Err_Assert(in->elf_machine == out->elf_machine, ERR_LINK_MACHINE_MISMATCH, name, (unsigned) in->elf_machine, (unsigned) out->elf_machine);
     Err_Assert(in->elf_type == ELF_ET_REL, ERR_LINK_OBJECT_NOT_RELOCATABLE, name, (unsigned) in->elf_type);
@@ -154,7 +154,7 @@ void Link_Merge(Elf *out, Elf *in, const char *name)
         Elf_Sec *dsec = NULL;
         uint64_t value = 0;
         if (sym->sym_sec) {
-            int64_t j = Link_SectionIndex(in, sym->sym_sec);
+            int64_t j = Link_ElfSectionIndex(in, sym->sym_sec);
             dsec  = secmap[j];
             value = secbase[j] + sym->sym_value;
         }
@@ -164,7 +164,7 @@ void Link_Merge(Elf *out, Elf *in, const char *name)
             continue;
         }
 
-        Elf_Sym *existing = Link_SymbolFindGlobal(out, sym->sym_name);
+        Elf_Sym *existing = Link_ElfFindGlobal(out, sym->sym_name);
         if (! existing) {
             symmap[i] = Elf_SymbolAdd(out, sym->sym_name, dsec, value, sym->sym_bind, sym->sym_type);
             continue;
@@ -182,12 +182,12 @@ void Link_Merge(Elf *out, Elf *in, const char *name)
     for (size_t i = 0; i < nsec; i++) {
         Elf_Sec *sec = Elf_SectionAt(in, i);
         for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
-            Elf_Rela *rel = Elf_RelaAt(sec, r);
-            int64_t k = Link_SymbolIndex(in, rel->rel_sym);
+            Elf_Rela *rela = Elf_RelaAt(sec, r);
+            int64_t k = Link_ElfSymbolIndex(in, rela->rela_sym);
             if (k < 0) {
                 continue;
             }
-            Elf_RelaAdd(secmap[i], secbase[i] + rel->rel_offset, symmap[k], rel->rel_type, rel->rel_addend);
+            Elf_RelaAdd(secmap[i], secbase[i] + rela->rela_offset, symmap[k], rela->rela_type, rela->rela_addend);
         }
     }
 
@@ -211,7 +211,7 @@ Lib_Ar *Link_ArRead(const char *path, const uint8_t *bytes, size_t len)
 bool Link_ArMemberNeeded(Elf *out, const Lib_ArMember *member)
 {
     for (const char **iter = member->lam_globals; *iter; iter++) {
-        Elf_Sym *sym = Link_SymbolFindGlobal(out, *iter);
+        Elf_Sym *sym = Link_ElfFindGlobal(out, *iter);
         if (sym && ! sym->sym_sec) {
             return true;
         }
@@ -227,7 +227,7 @@ void Link_ArMergeMember(Elf *out, const char *path, const Lib_ArMember *member, 
     if (opts->lo_trace >= LINK_TRACE_MEMBERS) {
         printf("(%s)%s\n", path, member->lam_name);
     }
-    Link_Merge(out, in, member->lam_name);
+    Link_ElfMerge(out, in, member->lam_name);
     Elf_Free(in);
 }
 
@@ -297,7 +297,7 @@ void Link_ExecCheckDefined(Elf *elf)
     for (size_t i = 0; i < Elf_SectionCount(elf); i++) {
         Elf_Sec *sec = Elf_SectionAt(elf, i);
         for (size_t r = 0; r < Elf_RelaCount(sec); r++) {
-            Elf_Sym *sym = Elf_RelaAt(sec, r)->rel_sym;
+            Elf_Sym *sym = Elf_RelaAt(sec, r)->rela_sym;
             Err_Assert(sym && sym->sym_sec, ERR_LINK_SYMBOL_NOT_DEFINED, sym ? sym->sym_name : "?");
         }
     }
@@ -315,7 +315,7 @@ void Link_ExecFinalize(Elf *elf, const Link_Options *opts)
     Err_Assert(sym && sym->sym_sec, ERR_LINK_ENTRY_NOT_DEFINED, entry);
     Elf_SetEntry(elf, sym->sym_sec->sec_addr + sym->sym_value);
 
-    Link_RelApply(elf);
+    Link_ElfApplyRelas(elf);
     Elf_SetType(elf, ELF_ET_EXEC);
 }
 
@@ -337,7 +337,7 @@ void Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths, const Li
         } else {
             Elf *in = Elf_ReadMem(bytes, len);
             Err_Assert(in, ERR_LINK_OBJECT_NOT_READABLE, paths[i]);
-            Link_Merge(out, in, paths[i]);
+            Link_ElfMerge(out, in, paths[i]);
             Elf_Free(in);
         }
         free(bytes);

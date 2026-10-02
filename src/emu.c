@@ -77,9 +77,9 @@ enum Emu_Trace {
 typedef struct Emu_Guest Emu_Guest;
 struct Emu_Guest {
     const Load_Image *eg_img;
-    bool                     eg_halted; // the program asked to stop, or faulted
-    int32_t                  eg_status; // the status it stopped with
-    int32_t                  eg_signal; // the signal a fault ended it with, or 0
+    bool              eg_halted; // the program asked to stop, or faulted
+    int32_t           eg_status; // the status it stopped with
+    int32_t           eg_signal; // the signal a fault ended it with, or 0
 };
 
 // The host's environment.

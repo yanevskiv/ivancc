@@ -53,25 +53,25 @@ struct Link_Place {
 // Options controlling a link.
 typedef struct Link_Options Link_Options;
 struct Link_Options {
-    const char        *lo_entry;        // entry symbol (NULL selects _start)
-    bool               lo_relocatable;  // -r: merge into an ET_REL object, keep relocs
+    const char *lo_entry;        // entry symbol (NULL selects _start)
+    bool        lo_relocatable;  // -r: merge into an ET_REL object, keep relocs
     Link_Place *lo_places;       // -place requests, in the order given
-    size_t             lo_nplaces;      // requests lo_places holds
+    size_t      lo_nplaces;      // requests lo_places holds
     Link_Trace  lo_trace;        // -t: what to print as the inputs are read
 };
 
 // Relocations
-uint64_t Link_RelSymbolAddr(const Elf_Sym *sym);
-void     Link_RelPatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width);
-void     Link_x86_64_RelApplyOne(Elf_Sec *sec, const Elf_Rela *rel);
-void     Link_RelApplyOne(const Elf *elf, Elf_Sec *sec, const Elf_Rela *rel);
-void     Link_RelApply(Elf *elf);
+uint64_t Link_ElfSymbolAddr(const Elf_Sym *sym);
+void     Link_ElfPatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width);
+void     Link_x86_64_ElfApplyRela(Elf_Sec *sec, const Elf_Rela *rela);
+void     Link_ElfApplyRela(const Elf *elf, Elf_Sec *sec, const Elf_Rela *rela);
+void     Link_ElfApplyRelas(Elf *elf);
 
 // Objects
-int64_t  Link_SectionIndex(const Elf *elf, const Elf_Sec *target);
-int64_t  Link_SymbolIndex(const Elf *elf, const Elf_Sym *target);
-Elf_Sym *Link_SymbolFindGlobal(Elf *elf, const char *name);
-void     Link_Merge(Elf *out, Elf *in, const char *name);
+int64_t  Link_ElfSectionIndex(const Elf *elf, const Elf_Sec *target);
+int64_t  Link_ElfSymbolIndex(const Elf *elf, const Elf_Sym *target);
+Elf_Sym *Link_ElfFindGlobal(Elf *elf, const char *name);
+void     Link_ElfMerge(Elf *out, Elf *in, const char *name);
 
 // Archives
 Lib_Ar  *Link_ArRead(const char *path, const uint8_t *bytes, size_t len);
