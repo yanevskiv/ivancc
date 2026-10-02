@@ -115,8 +115,8 @@ struct Cc_Depend {
     Pp_Phony      cd_phony;
 };
 
-// Runtime objects the default (linked) output is always merged with.
-static const char *const Cc_RuntimeNames[] = { "crt0.o", "libc.o" };
+// Runtime files the default (linked) output is always linked with.
+static const char *const Cc_RuntimeNames[] = { "crt0.o", "libc.a" };
 
 // The output file this run created.
 static const char *Cc_OutputPath;
@@ -320,7 +320,7 @@ static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, c
     Link_x86_64_Options opts = {
         .lo_entry = "_start"
     };
-    Link_x86_64_MergeFiles(obj, (const char *const *) runtime, nruntime);
+    Link_x86_64_MergeFiles(obj, (const char *const *) runtime, nruntime, &opts);
     Link_x86_64_Exec(obj, &opts);
 
     Enc_x86_64_Write(out);

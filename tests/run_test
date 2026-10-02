@@ -113,7 +113,7 @@ pipeline_ivanas()
     stage_compile -S -o "${RUN}/a.s"
     stage_compile_ok || return 0
     stage_build ivanas "${BIN}/ivanas" -o "${RUN}/a.o" "${RUN}/a.s"
-    stage_build gcc gcc -nostdlib -static -no-pie -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.o"
+    stage_build gcc gcc -nostdlib -static -no-pie -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.a"
     stage_run_ok || return 0
     stage_run "${RUN}/a.out"
 }
@@ -126,7 +126,7 @@ pipeline_ivanar()
     stage_build ivanar "${BIN}/ivanar" rcs "${RUN}/a.a" "${RUN}/a.o"
     stage_build ar ar rcsD "${RUN}/gnu.a" "${RUN}/a.o"
     cmp -s "${RUN}/a.a" "${RUN}/gnu.a" || fail 'ivanar and ar rcsD wrote different archives:\n%s' "$(cmp "${RUN}/a.a" "${RUN}/gnu.a" 2>&1)"
-    stage_build gcc gcc -nostdlib -static -no-pie -o "${RUN}/a.out" "${LIB}/crt0.o" "${RUN}/a.a" "${LIB}/libc.o"
+    stage_build gcc gcc -nostdlib -static -no-pie -o "${RUN}/a.out" "${LIB}/crt0.o" "${RUN}/a.a" "${LIB}/libc.a"
     stage_run_ok || return 0
     stage_run "${RUN}/a.out"
 }
@@ -136,7 +136,7 @@ pipeline_ivanld()
 {
     stage_compile -c -o "${RUN}/a.o"
     stage_compile_ok || return 0
-    stage_build ivanld "${BIN}/ivanld" -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.o"
+    stage_build ivanld "${BIN}/ivanld" -o "${RUN}/a.out" "${RUN}/a.o" "${LIB}/crt0.o" "${LIB}/libc.a"
     stage_run_ok || return 0
     stage_run "${RUN}/a.out"
 }

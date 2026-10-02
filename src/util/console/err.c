@@ -1380,6 +1380,41 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "unsupported relocation type %u"
     },
 
+    // Args: [path, reason]
+    [ERR_LINK_INPUT_NOT_READABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LINK_INPUT_NOT_READABLE",
+        .ee_format = "%s: %s"
+    },
+
+    // Args: [path]
+    [ERR_LINK_MEMBER_TRUNCATED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LINK_MEMBER_TRUNCATED",
+        .ee_format = "'%s' ends inside a member"
+    },
+
+    // Args: [path]
+    [ERR_LINK_HEADER_MALFORMED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LINK_HEADER_MALFORMED",
+        .ee_format = "'%s' holds a malformed member header"
+    },
+
+    // Args: [path]
+    [ERR_LINK_NAME_NOT_FOUND] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LINK_NAME_NOT_FOUND",
+        .ee_format = "'%s' names a member outside its long-name table"
+    },
+
+    // Args: [member, path]
+    [ERR_LINK_MEMBER_NOT_READABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LINK_MEMBER_NOT_READABLE",
+        .ee_format = "cannot read member '%s' of '%s' as an object"
+    },
+
     // Args: [path]
     [ERR_LOAD_NOT_ELF] = {
         .ee_level  = ERR_LEVEL_FATAL,

@@ -246,10 +246,15 @@ enum Err_Code {
     ERR_GEN_INIT_FLOAT_NOT_CONSTANT,       // can't initialize a file-scope floating object with a run-time value
 
     ERR_LINK_MULTIPLE_DEFINITION,          // can't link two definitions of one symbol
-    ERR_LINK_OBJECT_NOT_READABLE,          // can't link an object file that can't be read
+    ERR_LINK_OBJECT_NOT_READABLE,          // can't link a file that is no archive and no object the linker reads
     ERR_LINK_SYMBOL_NOT_DEFINED,           // can't link a reference to a symbol no object defines
     ERR_LINK_ENTRY_NOT_DEFINED,            // can't link without a definition of the entry symbol
     ERR_LINK_RELOCATION_NOT_SUPPORTED,     // can't link a relocation type the linker does not know
+    ERR_LINK_INPUT_NOT_READABLE,           // can't link a file that can't be read
+    ERR_LINK_MEMBER_TRUNCATED,             // can't link an archive with a member that runs past its end
+    ERR_LINK_HEADER_MALFORMED,             // can't link an archive with a malformed member header
+    ERR_LINK_NAME_NOT_FOUND,               // can't link an archive naming a member outside its long-name table
+    ERR_LINK_MEMBER_NOT_READABLE,          // can't link an archive member needed but not an object
 
     ERR_LOAD_NOT_ELF,                      // can't load a file that is not ELF
     ERR_LOAD_NOT_ELF64_LSB,                // can't load an ELF file that is not 64-bit little-endian

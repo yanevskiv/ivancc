@@ -23,7 +23,7 @@ BUILD   := build
 
 LINUX_DIR := $(BUILD)/lib/linux
 EMU_DIR   := $(BUILD)/lib/ivanemu
-RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.o $(EMU_DIR)/crt0.o $(EMU_DIR)/libc.o
+RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.a $(EMU_DIR)/crt0.o $(EMU_DIR)/libc.a
 TARGET_SRC := src/libc/$(TARGET_ARCH)/target
 
 CC      := gcc
@@ -48,7 +48,7 @@ AS_OBJS := $(OUT)/as.o $(ELF_OBJS) $(OUT)/util/buf.o \
 	$(OUT)/arch/$(TARGET_ARCH)/enc.o
 AR_OBJS := $(OUT)/ar.o $(ELF_OBJS) $(OUT)/util/object/lib.o
 EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/util/fp.o $(OUT)/arch/$(TARGET_ARCH)/cpu.o $(OUT)/arch/$(TARGET_ARCH)/load.o
-LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/arch/$(TARGET_ARCH)/link.o
+LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/util/object/lib.o $(OUT)/arch/$(TARGET_ARCH)/link.o
 
 SYS_HEADERS := $(patsubst libc/include/%,$(BUILD)/include/%,$(shell find libc/include -name '*.h' 2>/dev/null))
 
@@ -134,8 +134,13 @@ $(OUT)/%.o: src/%.c $(OUT)/c.tab.h | $(OUT)
 $(LINUX_DIR)/crt0.o: $(TARGET_SRC)/linux/crt0.s $(AS_BIN) | $(LINUX_DIR)
 	$(AS_BIN) $< -o $@
 
-$(LINUX_DIR)/libc.o: src/libc/libc.c $(CC_BIN) | $(LINUX_DIR)
+$(OUT)/libc/linux/libc.o: src/libc/libc.c $(CC_BIN)
+	@mkdir -p $(dir $@)
 	$(CC_BIN) -c $< -o $@
+
+$(LINUX_DIR)/libc.a: $(OUT)/libc/linux/libc.o $(AR_BIN) | $(LINUX_DIR)
+	rm -f $@
+	$(AR_BIN) rcs $@ $(filter %.o,$^)
 
 $(EMU_DIR)/crt0.o: $(TARGET_SRC)/ivanemu/crt0.s $(AS_BIN) | $(EMU_DIR)
 	$(AS_BIN) $< -o $@
@@ -148,8 +153,9 @@ $(OUT)/libc/ivanemu/sys.o: $(TARGET_SRC)/ivanemu/sys.s $(AS_BIN)
 	@mkdir -p $(dir $@)
 	$(AS_BIN) $< -o $@
 
-$(EMU_DIR)/libc.o: $(OUT)/libc/ivanemu/libc.o $(OUT)/libc/ivanemu/sys.o $(LD_BIN) | $(EMU_DIR)
-	$(LD_BIN) -r $(OUT)/libc/ivanemu/libc.o $(OUT)/libc/ivanemu/sys.o -o $@
+$(EMU_DIR)/libc.a: $(OUT)/libc/ivanemu/libc.o $(OUT)/libc/ivanemu/sys.o $(AR_BIN) | $(EMU_DIR)
+	rm -f $@
+	$(AR_BIN) rcs $@ $(filter %.o,$^)
 
 # --- system header recipes ---
 $(BUILD)/include/%.h: libc/include/%.h
