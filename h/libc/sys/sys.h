@@ -13,8 +13,14 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
+ * Under Section 7 of GPL version 3, you are granted additional
+ * permissions described in the GCC Runtime Library Exception, version
+ * 3.1, as published by the Free Software Foundation.
+ *
+ * You should have received a copy of the GNU General Public License and
+ * a copy of the GCC Runtime Library Exception along with ivancc; see
+ * the files LICENSE and COPYING.RUNTIME respectively.  If not, see
+ * <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SYS_SYS_H__
