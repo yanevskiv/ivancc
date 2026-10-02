@@ -32,6 +32,7 @@
 #include "util/console/err.h"
 #include "util/console/log.h"
 #include "util/object/elf.h"
+#include "util/object/link.h"
 #include "util/buf.h"
 #include "util/str.h"
 #include "lang/ast.h"
@@ -40,7 +41,6 @@
 #include "lang/sem.h"
 #include "arch/x86_64/enc.h"
 #include "arch/x86_64/gen.h"
-#include "arch/x86_64/link.h"
 #include "arch/x86_64/txt.h"
 
 // Permission bits for the executables cc writes (rwxr-xr-x).
@@ -317,11 +317,11 @@ static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, c
     }
 
     Elf *obj = Enc_x86_64_GetObject();
-    Link_x86_64_Options opts = {
+    Link_Options opts = {
         .lo_entry = "_start"
     };
-    Link_x86_64_MergeFiles(obj, (const char *const *) runtime, nruntime, &opts);
-    Link_x86_64_Exec(obj, &opts);
+    Link_MergeFiles(obj, (const char *const *) runtime, nruntime, &opts);
+    Link_Exec(obj, &opts);
 
     Enc_x86_64_Write(out);
 

@@ -1,5 +1,5 @@
 /*
- * C header file for loading x86-64 executables.
+ * C header file for loading executables.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -17,8 +17,8 @@
  * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef LOAD_X86_64_H
-#define LOAD_X86_64_H
+#ifndef LOAD_H
+#define LOAD_H
 
 // Standard headers.
 #include <stdbool.h>
@@ -31,8 +31,8 @@
 #include "util/object/elf.h"
 
 // A loaded program: one flat buffer holding every PT_LOAD and a stack.
-typedef struct Load_x86_64_Image Load_x86_64_Image;
-struct Load_x86_64_Image {
+typedef struct Load_Image Load_Image;
+struct Load_Image {
     uint8_t  *li_mem;      // li_size bytes, zeroed and then filled
     uint64_t  li_base;     // virtual address li_mem[0] stands for
     uint64_t  li_size;     // bytes li_mem holds
@@ -42,10 +42,10 @@ struct Load_x86_64_Image {
 };
 
 // Loading
-uint64_t Load_x86_64_AlignDown(uint64_t addr, uint64_t align);
-uint64_t Load_x86_64_AlignUp(uint64_t addr, uint64_t align);
-bool     Load_x86_64_ReadExec(const char *path, Load_x86_64_Image *img);
-void    *Load_x86_64_At(const Load_x86_64_Image *img, uint64_t vaddr, uint64_t size);
-void     Load_x86_64_Free(Load_x86_64_Image *img);
+uint64_t Load_AlignDown(uint64_t addr, uint64_t align);
+uint64_t Load_AlignUp(uint64_t addr, uint64_t align);
+bool     Load_ReadExec(const char *path, Load_Image *img);
+void    *Load_At(const Load_Image *img, uint64_t vaddr, uint64_t size);
+void     Load_Free(Load_Image *img);
 
-#endif // LOAD_X86_64_H
+#endif // LOAD_H
