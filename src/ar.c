@@ -27,7 +27,7 @@
 // Project headers.
 #include "util/console/err.h"
 #include "util/console/log.h"
-#include "util/object/arc.h"
+#include "util/object/lib.h"
 #include "util/object/elf.h"
 
 // Positions of the letters, the archive and the first file on the command line.
@@ -143,41 +143,41 @@ static const char *Ar_Basename(const char *path)
 }
 
 // Read the archive at path, or start an empty one where r may create it.
-static Arc *Ar_Open(const char *path, const Ar_Options *opts)
+static Lib_Ar *Ar_Open(const char *path, const Ar_Options *opts)
 {
     size_t len = 0;
-    Arc_Status status = ARC_STATUS_OK;
+    Lib_ArStatus status = LIB_AR_STATUS_OK;
     uint8_t *bytes = Elf_ReadBytes(path, &len);
 
     if (! bytes && errno == ENOENT && opts->ao_op == AR_OP_REPLACE) {
         if (! opts->ao_quiet) {
             Log_ShowInfo("creating %s", path);
         }
-        return Arc_New();
+        return Lib_ArNew();
     }
     Err_Assert(bytes, ERR_AR_ARCHIVE_NOT_READABLE, path, strerror(errno));
 
-    Arc *arc = Arc_ReadMem(bytes, len, &status);
+    Lib_Ar *ar = Lib_ArReadMem(bytes, len, &status);
     free(bytes);
-    Err_Assert(status != ARC_STATUS_NOT_ARCHIVE, ERR_AR_NOT_ARCHIVE, path);
-    Err_Assert(status != ARC_STATUS_MEMBER_TRUNCATED, ERR_AR_MEMBER_TRUNCATED, path);
-    Err_Assert(status != ARC_STATUS_HEADER_MALFORMED, ERR_AR_HEADER_MALFORMED, path);
-    Err_Assert(status != ARC_STATUS_NAME_NOT_FOUND, ERR_AR_NAME_NOT_FOUND, path);
-    return arc;
+    Err_Assert(status != LIB_AR_STATUS_NOT_ARCHIVE, ERR_AR_NOT_ARCHIVE, path);
+    Err_Assert(status != LIB_AR_STATUS_MEMBER_TRUNCATED, ERR_AR_MEMBER_TRUNCATED, path);
+    Err_Assert(status != LIB_AR_STATUS_HEADER_MALFORMED, ERR_AR_HEADER_MALFORMED, path);
+    Err_Assert(status != LIB_AR_STATUS_NAME_NOT_FOUND, ERR_AR_NAME_NOT_FOUND, path);
+    return ar;
 }
 
 // Find the member a file names, refusing one the archive lacks.
-static Arc_Member *Ar_Find(const Arc *arc, const char *path, const char *file)
+static Lib_ArMember *Ar_Find(const Lib_Ar *ar, const char *path, const char *file)
 {
-    Arc_Member *member = Arc_MemberFind(arc, Ar_Basename(file));
+    Lib_ArMember *member = Lib_ArMemberFind(ar, Ar_Basename(file));
     Err_Assert(member, ERR_AR_MEMBER_NOT_FOUND, file, path);
     return member;
 }
 
 // Add each file, replacing a member of its name the archive held before.
-static void Ar_Replace(Arc *arc, const char *const *files, size_t nfiles)
+static void Ar_Replace(Lib_Ar *ar, const char *const *files, size_t nfiles)
 {
-    size_t nheld = Arc_MemberCount(arc);
+    size_t nheld = Lib_ArMemberCount(ar);
     bool *replaced = calloc(nheld + 1, sizeof(*replaced));
 
     for (size_t i = 0; i < nfiles; i++) {
@@ -186,14 +186,14 @@ static void Ar_Replace(Arc *arc, const char *const *files, size_t nfiles)
         const char *name = Ar_Basename(files[i]);
         uint8_t *bytes = Elf_ReadBytes(files[i], &len);
         Err_Assert(bytes, ERR_AR_INPUT_NOT_READABLE, files[i], strerror(errno));
-        while (held < nheld && (replaced[held] || strcmp(Arc_MemberAt(arc, held)->am_name, name) != 0)) {
+        while (held < nheld && (replaced[held] || strcmp(Lib_ArMemberAt(ar, held)->lam_name, name) != 0)) {
             held++;
         }
         if (held < nheld) {
-            Arc_MemberReplace(Arc_MemberAt(arc, held), bytes, len);
+            Lib_ArMemberReplace(Lib_ArMemberAt(ar, held), bytes, len);
             replaced[held] = true;
         } else {
-            Arc_MemberAdd(arc, name, bytes, len);
+            Lib_ArMemberAdd(ar, name, bytes, len);
         }
         free(bytes);
     }
@@ -201,56 +201,56 @@ static void Ar_Replace(Arc *arc, const char *const *files, size_t nfiles)
 }
 
 // Delete the member each file names.
-static void Ar_Delete(Arc *arc, const char *path, const char *const *files, size_t nfiles)
+static void Ar_Delete(Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
 {
     for (size_t i = 0; i < nfiles; i++) {
-        Arc_MemberDelete(arc, Ar_Find(arc, path, files[i]));
+        Lib_ArMemberDelete(ar, Ar_Find(ar, path, files[i]));
     }
 }
 
 // Print the name of every member, or of each one a file names.
-static void Ar_List(const Arc *arc, const char *path, const char *const *files, size_t nfiles)
+static void Ar_List(const Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
 {
     if (nfiles == 0) {
-        for (size_t i = 0; i < Arc_MemberCount(arc); i++) {
-            printf("%s\n", Arc_MemberAt(arc, i)->am_name);
+        for (size_t i = 0; i < Lib_ArMemberCount(ar); i++) {
+            printf("%s\n", Lib_ArMemberAt(ar, i)->lam_name);
         }
         return;
     }
     for (size_t i = 0; i < nfiles; i++) {
-        printf("%s\n", Ar_Find(arc, path, files[i])->am_name);
+        printf("%s\n", Ar_Find(ar, path, files[i])->lam_name);
     }
 }
 
 // Write a member to the file of its name in the current directory.
-static void Ar_ExtractOne(const Arc_Member *member)
+static void Ar_ExtractOne(const Lib_ArMember *member)
 {
-    Err_Assert(! strchr(member->am_name, AR_PATH_SEP), ERR_AR_EXTRACT_NAME_NOT_PLAIN, member->am_name);
+    Err_Assert(! strchr(member->lam_name, AR_PATH_SEP), ERR_AR_EXTRACT_NAME_NOT_PLAIN, member->lam_name);
 
-    FILE *out = fopen(member->am_name, "wb");
-    bool written = out != NULL && fwrite(member->am_data, 1, member->am_size, out) == member->am_size;
+    FILE *out = fopen(member->lam_name, "wb");
+    bool written = out != NULL && fwrite(member->lam_data, 1, member->lam_size, out) == member->lam_size;
     bool closed = out != NULL && fclose(out) == 0;
-    Err_Assert(written && closed, ERR_AR_EXTRACT_NOT_WRITEABLE, member->am_name, strerror(errno));
+    Err_Assert(written && closed, ERR_AR_EXTRACT_NOT_WRITEABLE, member->lam_name, strerror(errno));
 }
 
 // Extract every member, or each one a file names.
-static void Ar_Extract(const Arc *arc, const char *path, const char *const *files, size_t nfiles)
+static void Ar_Extract(const Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
 {
     if (nfiles == 0) {
-        for (size_t i = 0; i < Arc_MemberCount(arc); i++) {
-            Ar_ExtractOne(Arc_MemberAt(arc, i));
+        for (size_t i = 0; i < Lib_ArMemberCount(ar); i++) {
+            Ar_ExtractOne(Lib_ArMemberAt(ar, i));
         }
         return;
     }
     for (size_t i = 0; i < nfiles; i++) {
-        Ar_ExtractOne(Ar_Find(arc, path, files[i]));
+        Ar_ExtractOne(Ar_Find(ar, path, files[i]));
     }
 }
 
 // Write the archive back to path.
-static void Ar_Save(const Arc *arc, const char *path)
+static void Ar_Save(const Lib_Ar *ar, const char *path)
 {
-    Err_Assert(Arc_WritePath(arc, path), ERR_AR_OUTPUT_NOT_WRITEABLE, path, strerror(errno));
+    Err_Assert(Lib_ArWritePath(ar, path), ERR_AR_OUTPUT_NOT_WRITEABLE, path, strerror(errno));
 }
 
 // Main function
@@ -271,25 +271,25 @@ int main(int argc, char **argv)
         Ar_Usage(argv[0]);
     }
 
-    Arc *arc = Ar_Open(path, &opts);
+    Lib_Ar *ar = Ar_Open(path, &opts);
 
     switch (opts.ao_op) {
         case AR_OP_INDEX: {
-            Ar_Save(arc, path);
+            Ar_Save(ar, path);
         } break;
         case AR_OP_DELETE: {
-            Ar_Delete(arc, path, files, nfiles);
-            Ar_Save(arc, path);
+            Ar_Delete(ar, path, files, nfiles);
+            Ar_Save(ar, path);
         } break;
         case AR_OP_REPLACE: {
-            Ar_Replace(arc, files, nfiles);
-            Ar_Save(arc, path);
+            Ar_Replace(ar, files, nfiles);
+            Ar_Save(ar, path);
         } break;
         case AR_OP_LIST: {
-            Ar_List(arc, path, files, nfiles);
+            Ar_List(ar, path, files, nfiles);
         } break;
         case AR_OP_EXTRACT: {
-            Ar_Extract(arc, path, files, nfiles);
+            Ar_Extract(ar, path, files, nfiles);
         } break;
         case AR_OP_NONE:
         case AR_OP_COUNT: {
@@ -297,6 +297,6 @@ int main(int argc, char **argv)
         } break;
     }
 
-    Arc_Free(arc);
+    Lib_ArFree(ar);
     return 0;
 }
