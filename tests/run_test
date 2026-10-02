@@ -156,6 +156,7 @@ setup()
     get_line "${SOURCE}" '(Test) Compiler warning' > "${TMP}/expected_compiler_warning"
     get_line "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
     get_text "${SOURCE}" '(Test) Output' > "${TMP}/expected_output"
+    get_line "${SOURCE}" '(Test) Emulator error' > "${TMP}/expected_emulator_error"
 
     NAME="$(basename -- "$SOURCE")"
     cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
@@ -170,6 +171,7 @@ test_declared()
     [ -s "${TMP}/expected_compiler_warning" ] && return
     [ -s "${TMP}/expected_status" ] && return
     [ -s "${TMP}/expected_output" ] && return
+    [ -s "${TMP}/expected_emulator_error" ] && return
     fail 'No expectation declared'
 }
 
@@ -251,6 +253,18 @@ test_output()
     [ "$GOT" = "$EXP" ] || fail 'Printed:\n%s\nbut expected:\n%s' "$GOT" "$EXP"
 }
 
+# Check the emulator's diagnostics against `// (Test) Emulator error:`, which only ivanemu prints.
+test_emulator_error()
+{
+    EXP="$(cat "${TMP}/expected_emulator_error")"
+    GOT="$(cat "${RUN}/output")"
+
+    [ -n "$EXP" ] || return 0
+    [ "$PIPELINE" = ivanemu ] || return 0
+
+    grep -qF "$EXP" "${RUN}/output" || fail 'Emulator printed:\n%s\nbut expected %s' "$GOT" "$EXP"
+}
+
 # Check one pipeline's results against the expectations.
 test_pipeline()
 {
@@ -263,6 +277,7 @@ test_pipeline()
     test_compiler_warning
     test_status
     test_output
+    test_emulator_error
 }
 
 # Build, run and check the test through each pipeline in turn.
