@@ -307,12 +307,12 @@ Elf_Rela *Elf_RelaAdd(Elf_Sec *target, uint64_t offset, Elf_Sym *sym, uint32_t t
         target->sec_caprelas = target->sec_caprelas ? target->sec_caprelas * 2 : 8;
         target->sec_relas = realloc(target->sec_relas, target->sec_caprelas * sizeof(*target->sec_relas));
     }
-    Elf_Rela *rel = &target->sec_relas[target->sec_nrelas++];
-    rel->rel_offset = offset;
-    rel->rel_sym    = sym;
-    rel->rel_type   = type;
-    rel->rel_addend = addend;
-    return rel;
+    Elf_Rela *rela = &target->sec_relas[target->sec_nrelas++];
+    rela->rela_offset = offset;
+    rela->rela_sym    = sym;
+    rela->rela_type   = type;
+    rela->rela_addend = addend;
+    return rela;
 }
 
 // Return the number of relocations patching a section.
@@ -585,17 +585,17 @@ void Elf_WriteRelas(const Elf_Sec *sec, const uint32_t *slot, const Elf *elf, El
 {
     for (size_t r = 0; r < sec->sec_nrelas; r++) {
         uint32_t symi = 0;
-        Elf_Rela *rel = &sec->sec_relas[r];
+        Elf_Rela *rela = &sec->sec_relas[r];
         for (size_t i = 0; i < elf->elf_nsyms; i++) {
-            if (elf->elf_syms[i] == rel->rel_sym) {
+            if (elf->elf_syms[i] == rela->rela_sym) {
                 symi = slot[i];
                 break;
             }
         }
         Elf64_Rela disk = {
-            .r_offset = rel->rel_offset,
-            .r_info   = ELF_R_INFO(symi, rel->rel_type),
-            .r_addend = rel->rel_addend
+            .r_offset = rela->rela_offset,
+            .r_info   = ELF_R_INFO(symi, rela->rela_type),
+            .r_addend = rela->rela_addend
         };
         Elf_BufferData(out, &disk, sizeof(disk));
     }

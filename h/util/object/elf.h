@@ -36,7 +36,7 @@
 // Target machine (e_machine).
 #define ELF_EM_X86_64 62
 
-// x86-64 relocation types, stored opaquely as an Elf_Rela's rel_type.
+// x86-64 relocation types, stored opaquely as an Elf_Rela's rela_type.
 #define R_X86_64_64    1
 #define R_X86_64_PC32  2
 #define R_X86_64_PLT32 4
@@ -187,10 +187,10 @@ struct Elf_Sym {
 // One relocation.
 typedef struct Elf_Rela Elf_Rela;
 struct Elf_Rela {
-    uint64_t  rel_offset;    // within the patched section
-    Elf_Sym  *rel_sym;       // referenced symbol
-    uint32_t  rel_type;      // R_<machine>_* (opaque here)
-    int64_t   rel_addend;    // constant added to the symbol's address
+    uint64_t  rela_offset;    // within the patched section
+    Elf_Sym  *rela_sym;       // referenced symbol
+    uint32_t  rela_type;      // R_<machine>_* (opaque here)
+    int64_t   rela_addend;    // constant added to the symbol's address
 };
 
 // One section.
