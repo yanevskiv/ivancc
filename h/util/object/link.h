@@ -67,21 +67,29 @@ void     Link_x86_64_RelApplyOne(Elf_Sec *sec, const Elf_Rela *rel);
 void     Link_RelApplyOne(const Elf *elf, Elf_Sec *sec, const Elf_Rela *rel);
 void     Link_RelApply(Elf *elf);
 
-// Linking
+// Objects
 int64_t  Link_SectionIndex(const Elf *elf, const Elf_Sec *target);
 int64_t  Link_SymbolIndex(const Elf *elf, const Elf_Sym *target);
-Elf_Sym *Link_FindGlobal(Elf *elf, const char *name);
+Elf_Sym *Link_SymbolFindGlobal(Elf *elf, const char *name);
 void     Link_Merge(Elf *out, Elf *in, const char *name);
-bool     Link_MemberNeeded(Elf *out, const Lib_ArMember *member);
-void     Link_MergeMember(Elf *out, const char *path, const Lib_ArMember *member, const Link_Options *opts);
-void     Link_MergeArchive(Elf *out, const char *path, const Lib_Ar *ar, const Link_Options *opts);
-Lib_Ar  *Link_ReadArchive(const char *path, const uint8_t *bytes, size_t len);
-void     Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths, const Link_Options *opts);
-void     Link_AddPlace(Link_Options *opts, const char *name, uint64_t addr);
-uint64_t Link_PlacedAddr(const Link_Options *opts, const char *name, bool *placed);
+
+// Archives
+Lib_Ar  *Link_ArRead(const char *path, const uint8_t *bytes, size_t len);
+bool     Link_ArMemberNeeded(Elf *out, const Lib_ArMember *member);
+void     Link_ArMergeMember(Elf *out, const char *path, const Lib_ArMember *member, const Link_Options *opts);
+void     Link_ArMerge(Elf *out, const char *path, const Lib_Ar *ar, const Link_Options *opts);
+
+// Placement
+void     Link_PlaceAdd(Link_Options *opts, const char *name, uint64_t addr);
+uint64_t Link_PlaceAddr(const Link_Options *opts, const char *name, bool *placed);
 void     Link_PlaceSections(Elf *elf, const Link_Options *opts);
-void     Link_CheckDefined(Elf *elf);
-void     Link_Exec(Elf *elf, const Link_Options *opts);
-Elf     *Link_Run(const char *const *paths, size_t npaths, const Link_Options *opts);
+
+// Executables
+void     Link_ExecCheckDefined(Elf *elf);
+void     Link_ExecFinalize(Elf *elf, const Link_Options *opts);
+
+// Linking
+void     Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths, const Link_Options *opts);
+Elf     *Link_Build(const char *const *paths, size_t npaths, const Link_Options *opts);
 
 #endif // LINK_H
