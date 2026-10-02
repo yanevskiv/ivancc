@@ -115,8 +115,31 @@ struct Cc_Depend {
     Pp_Phony      cd_phony;
 };
 
-// Runtime files the default (linked) output is always linked with.
-static const char *const Cc_RuntimeNames[] = { "crt0.o", "libc.a" };
+// A runtime target: the macros it predefines and the files it links.
+typedef struct Cc_Target Cc_Target;
+struct Cc_Target {
+    const char        *ct_name;
+    const char *const *ct_macros;   // NULL-terminated
+    const char *const *ct_runtime;  // NULL-terminated, in link order
+};
+
+// The macros -mtarget=linux predefines, as gcc's under -std=c99.
+static const char *const Cc_LinuxMacros[] = { "__linux__", "__linux", "__gnu_linux__", "__unix__", "__unix", NULL };
+
+// The runtime files -mtarget=linux links.
+static const char *const Cc_LinuxRuntime[] = { "crt0.o", "libc.a", NULL };
+
+// The macros -mtarget=ivanemu predefines.
+static const char *const Cc_EmuMacros[] = { "__ivanemu__", NULL };
+
+// The runtime files -mtarget=ivanemu links.
+static const char *const Cc_EmuRuntime[] = { "crt0.o", NULL };
+
+// Every runtime target -mtarget accepts.
+static const Cc_Target Cc_Targets[] = {
+    { "linux",   Cc_LinuxMacros, Cc_LinuxRuntime },
+    { "ivanemu", Cc_EmuMacros,   Cc_EmuRuntime }
+};
 
 // The output file this run created.
 static const char *Cc_OutputPath;
@@ -180,7 +203,7 @@ static char *Cc_GetExeDir(void)
 }
 
 // Return the directory to read the target's runtime objects from, honouring -B.
-static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
+static char *Cc_GetRuntimeDir(const char *prefix, const char *arch, const Cc_Target *target)
 {
     if (prefix) {
         return Str_Clone(prefix);
@@ -188,7 +211,7 @@ static char *Cc_GetRuntimeDir(const char *prefix, const char *target)
 
     char *exedir = Cc_GetExeDir();
     Err_Assert(exedir, ERR_CC_RUNTIME_NOT_FOUND);
-    char *dir = Str_Format("%s" CC_RUNTIME_DIR "%s", exedir, target);
+    char *dir = Str_Format("%s" CC_RUNTIME_DIR "%s/%s", exedir, arch, target->ct_name);
     Str_Free(exedir);
     return dir;
 }
@@ -206,6 +229,26 @@ static char *Cc_GetIncludeDir(void)
 
     Str_Free(exedir);
     return dir;
+}
+
+// Return the runtime target -mtarget names.
+static const Cc_Target *Cc_FindTarget(const char *name)
+{
+    for (size_t i = 0; i < sizeof(Cc_Targets) / sizeof(Cc_Targets[0]); i++) {
+        if (Str_Equals(Cc_Targets[i].ct_name, name)) {
+            return &Cc_Targets[i];
+        }
+    }
+    Err_Raise(ERR_CC_TARGET_NOT_SUPPORTED, name);
+    return NULL;
+}
+
+// Append the directives that predefine the target's macros.
+static void Cc_PutTargetMacros(Buf *out, const Cc_Target *target)
+{
+    for (const char *const *iter = target->ct_macros; *iter; iter++) {
+        Pp_PutDefine(out, *iter);
+    }
 }
 
 // Open the output stream.
@@ -304,16 +347,19 @@ static void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
 }
 
 // Write the program linked against the runtime as a static executable.
-static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *target)
+static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();
 
-    size_t nruntime = sizeof(Cc_RuntimeNames) / sizeof(Cc_RuntimeNames[0]);
-    char *libdir = Cc_GetRuntimeDir(prefix, target);
-    char *runtime[sizeof(Cc_RuntimeNames) / sizeof(Cc_RuntimeNames[0])];
+    size_t nruntime = 0;
+    while (target->ct_runtime[nruntime]) {
+        nruntime++;
+    }
+    char *libdir = Cc_GetRuntimeDir(prefix, arch, target);
+    char **runtime = calloc(nruntime, sizeof(*runtime));
     for (size_t i = 0; i < nruntime; i++) {
-        runtime[i] = Str_Format("%s/%s", libdir, Cc_RuntimeNames[i]);
+        runtime[i] = Str_Format("%s/%s", libdir, target->ct_runtime[i]);
     }
 
     Elf *obj = Enc_x86_64_GetObject();
@@ -328,6 +374,7 @@ static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, c
     for (size_t i = 0; i < nruntime; i++) {
         Str_Free(runtime[i]);
     }
+    free(runtime);
     Str_Free(libdir);
 }
 
@@ -470,9 +517,14 @@ int main(int argc, char **argv)
         }
     }
 
-    Buf_PutBytes(cmdline, Buf_Data(forced), Buf_Len(forced));
-    Buf_Free(forced);
     Err_Assert(Str_Equals(arch, CC_DEFAULT_ARCH), ERR_CC_ARCH_NOT_SUPPORTED, arch, CC_DEFAULT_ARCH);
+    const Cc_Target *runtime = Cc_FindTarget(target);
+    Buf *directives = Buf_New();
+    Cc_PutTargetMacros(directives, runtime);
+    Buf_PutBytes(directives, Buf_Data(cmdline), Buf_Len(cmdline));
+    Buf_PutBytes(directives, Buf_Data(forced), Buf_Len(forced));
+    Buf_Free(cmdline);
+    Buf_Free(forced);
 
     if (optind >= argc) {
         Cc_ShowUsage(argv[0]);
@@ -499,11 +551,11 @@ int main(int argc, char **argv)
         .po_dirs    = incdirs,
         .po_ndirs   = nincdirs,
         .po_sysdir  = sysdir,
-        .po_cmdline = Buf_Data(cmdline)
+        .po_cmdline = Buf_Data(directives)
     };
 
     Pp_Run(input, &pp_opts, text);
-    Buf_Free(cmdline);
+    Buf_Free(directives);
     Str_Free(sysdir);
     free(incdirs);
     Log_SetLineLocator(Pp_Locate);
@@ -535,7 +587,7 @@ int main(int argc, char **argv)
     } else if (mode == CC_MODE_OBJECT) {
         Cc_x86_64_WriteObject(out, Ast_Program);
     } else {
-        Cc_x86_64_WriteExec(out, Ast_Program, prefix, target);
+        Cc_x86_64_WriteExec(out, Ast_Program, prefix, arch, runtime);
     }
     Cc_CloseOutput(out);
 

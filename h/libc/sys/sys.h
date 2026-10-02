@@ -1,5 +1,5 @@
 /*
- * C source file for the freestanding libc.
+ * C header file for the system layer.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -17,19 +17,12 @@
  * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Print one byte to standard output.
-int putchar(int c);
+#ifndef __SYS_SYS_H__
+#define __SYS_SYS_H__
 
-// Print the decimal digits of n, sign included, and return n.
-int putd(int n)
-{
-    if (n < 0) {
-        putchar('-');
-        return putd(-n);
-    }
-    if (n >= 10) {
-        putd(n / 10);
-    }
-    putchar(n % 10 + '0');
-    return n;
-}
+// System calls
+long __libc_syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+long __libc_write(int fd, const void *buf, unsigned long len);
+void __libc_exit(int status);
+
+#endif // __SYS_SYS_H__
