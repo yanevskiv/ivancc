@@ -448,31 +448,6 @@ int32_t Txt_x86_64_XmmByName(const char *name)
     return -1;
 }
 
-// Parse an x87 stack register, `%st` or `%st(i)`.
-bool Txt_x86_64_Att_ParseSt(const char *text, Asm_x86_64_Operand *op)
-{
-    int64_t index = 0;
-    const char *end;
-
-    if (! Str_StartsWith(text, TXT_X86_64_ST_PREFIX)) {
-        return false;
-    }
-    text += strlen(TXT_X86_64_ST_PREFIX);
-    if (*text == '\0') {
-        *op = Asm_x86_64_St(0);
-        return true;
-    }
-    if (*text != '(') {
-        return false;
-    }
-    end = Txt_x86_64_Att_ScanNumber(text + 1, &index);
-    if (! Str_Equals(end, ")") || index < 0 || index >= TXT_X86_64_ST_COUNT) {
-        return false;
-    }
-    *op = Asm_x86_64_St((int32_t) index);
-    return true;
-}
-
 // Return the opcode for a mnemonic.
 int32_t Txt_x86_64_OpByName(const char *name)
 {
@@ -661,6 +636,31 @@ const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
         }
     }
     return ptr + 1;
+}
+
+// Parse an x87 stack register, `%st` or `%st(i)`.
+bool Txt_x86_64_Att_ParseSt(const char *text, Asm_x86_64_Operand *op)
+{
+    int64_t index = 0;
+    const char *end;
+
+    if (! Str_StartsWith(text, TXT_X86_64_ST_PREFIX)) {
+        return false;
+    }
+    text += strlen(TXT_X86_64_ST_PREFIX);
+    if (*text == '\0') {
+        *op = Asm_x86_64_St(0);
+        return true;
+    }
+    if (*text != '(') {
+        return false;
+    }
+    end = Txt_x86_64_Att_ScanNumber(text + 1, &index);
+    if (! Str_Equals(end, ")") || index < 0 || index >= TXT_X86_64_ST_COUNT) {
+        return false;
+    }
+    *op = Asm_x86_64_St((int32_t) index);
+    return true;
 }
 
 // Parse one AT&T operand into op.

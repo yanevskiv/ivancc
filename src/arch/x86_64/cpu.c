@@ -916,35 +916,6 @@ bool Cpu_x86_64_HasModRM(int32_t op)
     }
 }
 
-// Return whether a one-byte opcode is an x87 escape the interpreter answers.
-bool Cpu_x86_64_IsX87(int32_t op)
-{
-    return op == ENC_X86_64_OPCODE_X87_D9 || op == ENC_X86_64_OPCODE_X87_DB || op == ENC_X86_64_OPCODE_X87_DD
-        || op == ENC_X86_64_OPCODE_X87_DE || op == ENC_X86_64_OPCODE_X87_DF;
-}
-
-// Return whether a two-byte opcode is a scalar SSE operation or conversion.
-bool Cpu_x86_64_IsSse(int32_t op2)
-{
-    switch (op2) {
-        case ENC_X86_64_OPCODE2_CVTSI2S:
-        case ENC_X86_64_OPCODE2_CVTTS2SI:
-        case ENC_X86_64_OPCODE2_UCOMIS:
-        case ENC_X86_64_OPCODE2_ADDS:
-        case ENC_X86_64_OPCODE2_MULS:
-        case ENC_X86_64_OPCODE2_CVTS2S:
-        case ENC_X86_64_OPCODE2_SUBS:
-        case ENC_X86_64_OPCODE2_DIVS:
-        case ENC_X86_64_OPCODE2_MOVQ_XMM_RM:
-        case ENC_X86_64_OPCODE2_MOVQ_RM_XMM: {
-            return true;
-        } break;
-        default: {
-            return false;
-        }
-    }
-}
-
 // Return whether a two-byte opcode is followed by a ModRM byte.
 bool Cpu_x86_64_HasModRM2(int32_t op2)
 {
@@ -1441,6 +1412,35 @@ const char *Cpu_x86_64_X87Mnemonic(const Cpu_x86_64_Insn *insn)
             return "(bad)";
         }
     }
+}
+
+// Return whether a two-byte opcode is a scalar SSE operation or conversion.
+bool Cpu_x86_64_IsSse(int32_t op2)
+{
+    switch (op2) {
+        case ENC_X86_64_OPCODE2_CVTSI2S:
+        case ENC_X86_64_OPCODE2_CVTTS2SI:
+        case ENC_X86_64_OPCODE2_UCOMIS:
+        case ENC_X86_64_OPCODE2_ADDS:
+        case ENC_X86_64_OPCODE2_MULS:
+        case ENC_X86_64_OPCODE2_CVTS2S:
+        case ENC_X86_64_OPCODE2_SUBS:
+        case ENC_X86_64_OPCODE2_DIVS:
+        case ENC_X86_64_OPCODE2_MOVQ_XMM_RM:
+        case ENC_X86_64_OPCODE2_MOVQ_RM_XMM: {
+            return true;
+        } break;
+        default: {
+            return false;
+        }
+    }
+}
+
+// Return whether a one-byte opcode is an x87 escape the interpreter answers.
+bool Cpu_x86_64_IsX87(int32_t op)
+{
+    return op == ENC_X86_64_OPCODE_X87_D9 || op == ENC_X86_64_OPCODE_X87_DB || op == ENC_X86_64_OPCODE_X87_DD
+        || op == ENC_X86_64_OPCODE_X87_DE || op == ENC_X86_64_OPCODE_X87_DF;
 }
 
 // Write the r/m operand into out, as a register, disp(%base) or disp(%rip).
