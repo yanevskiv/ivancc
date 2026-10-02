@@ -29,8 +29,8 @@
 #include "util/console/err.h"
 #include "util/console/log.h"
 #include "util/object/elf.h"
+#include "util/object/link.h"
 #include "util/str.h"
-#include "arch/x86_64/link.h"
 
 // Permission bits for the executable ld writes (rwxr-xr-x).
 #define LD_MODE 0755
@@ -72,18 +72,18 @@ static char *Ld_PlaceName(const char *spec, size_t len)
 }
 
 // Parse a -place=SEC@ADDR argument into opts.
-static void Ld_ParsePlace(const char *spec, Link_x86_64_Options *opts)
+static void Ld_ParsePlace(const char *spec, Link_Options *opts)
 {
     const char *at = strchr(spec, '@');
     Err_Assert(at, ERR_LD_PLACE_MALFORMED, spec);
-    Link_x86_64_AddPlace(opts, Ld_PlaceName(spec, (size_t) (at - spec)), strtoull(at + 1, NULL, 0));
+    Link_AddPlace(opts, Ld_PlaceName(spec, (size_t) (at - spec)), strtoull(at + 1, NULL, 0));
 }
 
 // Main function
 int main(int argc, char **argv)
 {
     const char  *output = LD_DEFAULT_OUTPUT;
-    Link_x86_64_Options opts = {0};
+    Link_Options opts = {0};
 
     size_t nobjs = 0;
     const char **objs = calloc(argc, sizeof(*objs));
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
         } else if (Str_Equals(arg, "-r")) {
             opts.lo_relocatable = true;
         } else if (Str_Equals(arg, "-t") || Str_Equals(arg, "--trace")) {
-            opts.lo_trace = opts.lo_trace == LINK_X86_64_TRACE_NONE ? LINK_X86_64_TRACE_FILES : LINK_X86_64_TRACE_MEMBERS;
+            opts.lo_trace = opts.lo_trace == LINK_TRACE_NONE ? LINK_TRACE_FILES : LINK_TRACE_MEMBERS;
         } else if (strncmp(arg, "-place=", 7) == 0) {
             Ld_ParsePlace(arg + 7, &opts);
         } else if (arg[0] == '-') {
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
         Ld_Usage(argv[0]);
     }
 
-    Elf *e = Link_x86_64_Run((const char *const *) objs, nobjs, &opts);
+    Elf *e = Link_Run((const char *const *) objs, nobjs, &opts);
     Err_Assert(Elf_WritePath(e, output), ERR_LD_OUTPUT_NOT_WRITEABLE, output, strerror(errno));
     Elf_Free(e);
     if (! opts.lo_relocatable) {

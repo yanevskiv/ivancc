@@ -31,9 +31,9 @@
 #include "util/console/err.h"
 #include "util/console/log.h"
 #include "util/object/elf.h"
+#include "util/object/load.h"
 #include "util/str.h"
 #include "arch/x86_64/cpu.h"
-#include "arch/x86_64/load.h"
 
 // Target architecture selected when no -march= is given.
 #define EMU_DEFAULT_ARCH "x86_64"
@@ -76,7 +76,7 @@ enum Emu_Trace {
 // A running program: its image, and how it stopped.
 typedef struct Emu_Guest Emu_Guest;
 struct Emu_Guest {
-    const Load_x86_64_Image *eg_img;
+    const Load_Image *eg_img;
     bool                     eg_halted; // the program asked to stop, or faulted
     int32_t                  eg_status; // the status it stopped with
     int32_t                  eg_signal; // the signal a fault ended it with, or 0
@@ -96,7 +96,7 @@ static void Emu_Usage(const char *prog)
 }
 
 // Print what the loader made of an executable.
-static void Emu_ShowImage(const Load_x86_64_Image *img)
+static void Emu_ShowImage(const Load_Image *img)
 {
     fprintf(stdout, "entry  0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_entry);
     fprintf(stdout, "base   0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_base);
@@ -105,12 +105,12 @@ static void Emu_ShowImage(const Load_x86_64_Image *img)
 }
 
 // Disassemble forward from the image's base until the bytes stop decoding.
-static void Emu_Disassemble(const Load_x86_64_Image *img)
+static void Emu_Disassemble(const Load_Image *img)
 {
     uint64_t rip = img->li_base;
     for (;;) {
         size_t avail = img->li_base + img->li_size - rip;
-        const uint8_t *code = Load_x86_64_At(img, rip, 1);
+        const uint8_t *code = Load_At(img, rip, 1);
         Cpu_x86_64_Insn insn;
         char text[128];
 
@@ -174,7 +174,7 @@ static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
             uint64_t fd = cpu->cs_reg[CPU_X86_64_REG_RDI];
             uint64_t buf = cpu->cs_reg[CPU_X86_64_REG_RSI];
             uint64_t len = cpu->cs_reg[CPU_X86_64_REG_RDX];
-            const uint8_t *p = Load_x86_64_At(guest->eg_img, buf, len);
+            const uint8_t *p = Load_At(guest->eg_img, buf, len);
             if (! p && len) {
                 *rax = -(uint64_t) EMU_ERRNO_FAULT;
             } else {
@@ -224,7 +224,7 @@ static void Emu_ShowStep(Emu_Guest *guest, uint64_t rip)
 }
 
 // Run a loaded program to completion and return its status and fault signal.
-static int32_t Emu_Run(const Load_x86_64_Image *img, Emu_Trace trace, int32_t *sig)
+static int32_t Emu_Run(const Load_Image *img, Emu_Trace trace, int32_t *sig)
 {
     Emu_Guest guest = {
         .eg_img = img
@@ -312,8 +312,8 @@ int main(int argc, char **argv)
     }
     Err_Assert(Str_Equals(arch, EMU_DEFAULT_ARCH), ERR_EMU_ARCH_NOT_SUPPORTED, arch, EMU_DEFAULT_ARCH);
 
-    Load_x86_64_Image img = {0};
-    Err_Assert(Load_x86_64_ReadExec(program, &img), ERR_EMU_PROGRAM_NOT_READABLE, program, strerror(errno));
+    Load_Image img = {0};
+    Err_Assert(Load_ReadExec(program, &img), ERR_EMU_PROGRAM_NOT_READABLE, program, strerror(errno));
     Err_Assert(img.li_machine == ELF_EM_X86_64, ERR_EMU_ARCH_NOT_X86_64, program);
 
     int32_t status = 0;
@@ -326,7 +326,7 @@ int main(int argc, char **argv)
         status = Emu_Run(&img, trace, &sig);
     }
 
-    Load_x86_64_Free(&img);
+    Load_Free(&img);
     if (sig) {
         Emu_Raise(sig);
     }
