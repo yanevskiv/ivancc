@@ -18,6 +18,7 @@
  */
 
 %option noyywrap nounput noinput
+%option nounistd never-interactive
 %option yylineno
 %option prefix="pp"
 

@@ -1429,6 +1429,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "cannot apply relocations for machine %u"
     },
 
+    // Args: [path, type]
+    [ERR_LINK_OBJECT_NOT_RELOCATABLE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_LINK_OBJECT_NOT_RELOCATABLE",
+        .ee_format = "'%s' is not a relocatable object (ELF type %u)"
+    },
+
     // Args: [path]
     [ERR_LOAD_NOT_ELF] = {
         .ee_level  = ERR_LEVEL_FATAL,

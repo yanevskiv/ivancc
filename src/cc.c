@@ -367,7 +367,7 @@ static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, c
         .lo_entry = "_start"
     };
     Link_MergeFiles(obj, (const char *const *) runtime, nruntime, &opts);
-    Link_Exec(obj, &opts);
+    Link_ExecFinalize(obj, &opts);
 
     Enc_x86_64_Write(out);
 

@@ -76,7 +76,7 @@ static void Ld_ParsePlace(const char *spec, Link_Options *opts)
 {
     const char *at = strchr(spec, '@');
     Err_Assert(at, ERR_LD_PLACE_MALFORMED, spec);
-    Link_AddPlace(opts, Ld_PlaceName(spec, (size_t) (at - spec)), strtoull(at + 1, NULL, 0));
+    Link_PlaceAdd(opts, Ld_PlaceName(spec, (size_t) (at - spec)), strtoull(at + 1, NULL, 0));
 }
 
 // Main function
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
         Ld_Usage(argv[0]);
     }
 
-    Elf *e = Link_Run((const char *const *) objs, nobjs, &opts);
+    Elf *e = Link_Build((const char *const *) objs, nobjs, &opts);
     Err_Assert(Elf_WritePath(e, output), ERR_LD_OUTPUT_NOT_WRITEABLE, output, strerror(errno));
     Elf_Free(e);
     if (! opts.lo_relocatable) {
