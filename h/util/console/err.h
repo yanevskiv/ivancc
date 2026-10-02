@@ -255,6 +255,8 @@ enum Err_Code {
     ERR_LINK_HEADER_MALFORMED,             // can't link an archive with a malformed member header
     ERR_LINK_NAME_NOT_FOUND,               // can't link an archive naming a member outside its long-name table
     ERR_LINK_MEMBER_NOT_READABLE,          // can't link an archive member needed but not an object
+    ERR_LINK_MACHINE_MISMATCH,             // can't link an object for another machine than the output's
+    ERR_LINK_MACHINE_NOT_SUPPORTED,        // can't apply relocations for a machine the linker does not know
 
     ERR_LOAD_NOT_ELF,                      // can't load a file that is not ELF
     ERR_LOAD_NOT_ELF64_LSB,                // can't load an ELF file that is not 64-bit little-endian

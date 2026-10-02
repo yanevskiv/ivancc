@@ -64,13 +64,14 @@ struct Link_Options {
 uint64_t Link_RelSymbolAddr(const Elf_Sym *sym);
 void     Link_RelPatchLE(Elf_Sec *sec, uint64_t offset, uint64_t value, size_t width);
 void     Link_x86_64_RelApplyOne(Elf_Sec *sec, const Elf_Rela *rel);
+void     Link_RelApplyOne(const Elf *elf, Elf_Sec *sec, const Elf_Rela *rel);
 void     Link_RelApply(Elf *elf);
 
 // Linking
 int64_t  Link_SectionIndex(const Elf *elf, const Elf_Sec *target);
 int64_t  Link_SymbolIndex(const Elf *elf, const Elf_Sym *target);
 Elf_Sym *Link_FindGlobal(Elf *elf, const char *name);
-void     Link_Merge(Elf *out, Elf *in);
+void     Link_Merge(Elf *out, Elf *in, const char *name);
 bool     Link_MemberNeeded(Elf *out, const Lib_ArMember *member);
 void     Link_MergeMember(Elf *out, const char *path, const Lib_ArMember *member, const Link_Options *opts);
 void     Link_MergeArchive(Elf *out, const char *path, const Lib_Ar *ar, const Link_Options *opts);
