@@ -21,10 +21,9 @@ TARGET_ARCH := x86_64
 OUT     := out
 BUILD   := build
 
-LINUX_DIR := $(BUILD)/lib/linux
-EMU_DIR   := $(BUILD)/lib/ivanemu
-RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.a $(EMU_DIR)/crt0.o $(EMU_DIR)/libc.a
-TARGET_SRC := src/libc/$(TARGET_ARCH)/target
+LINUX_DIR := $(BUILD)/lib/$(TARGET_ARCH)/linux
+EMU_DIR   := $(BUILD)/lib/$(TARGET_ARCH)/ivanemu
+RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.a $(EMU_DIR)/crt0.o
 
 CC      := gcc
 CFLAGS  := -std=gnu99 -O2 -Ih -Iout -DTARGET_ARCH=$(TARGET_ARCH)
@@ -50,7 +49,9 @@ AR_OBJS := $(OUT)/ar.o $(ELF_OBJS) $(OUT)/util/object/lib.o
 EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/util/fp.o $(OUT)/arch/$(TARGET_ARCH)/cpu.o $(OUT)/util/object/load.o
 LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/util/object/lib.o $(OUT)/util/object/link.o
 
-SYS_HEADERS := $(patsubst libc/include/%,$(BUILD)/include/%,$(shell find libc/include -name '*.h' 2>/dev/null))
+SYS_HEADERS := $(patsubst h/libc/%,$(BUILD)/include/%,$(shell find h/libc -name '*.h'))
+LIBC_SRCS   := $(wildcard src/libc/*.c) src/libc/sys/sys.c
+LIBC_OBJS   := $(patsubst src/libc/%.c,$(OUT)/libc/linux/%.o,$(LIBC_SRCS))
 
 TEST_TOOL    := tests/run_test
 SYNTAX_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/syntax/syntax*.c)))
@@ -66,7 +67,7 @@ AR_BIN := $(BUILD)/bin/$(TARGET)ar
 LD_BIN := $(BUILD)/bin/$(TARGET)ld
 EMU_BIN := $(BUILD)/bin/$(TARGET)emu
 
-TEST_DEPS := $(TEST_TOOL) $(CC_BIN) $(AS_BIN) $(AR_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME)
+TEST_DEPS := $(TEST_TOOL) $(CC_BIN) $(AS_BIN) $(AR_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
 
 # --- phony recipes ---
 all: $(CC_BIN) $(AS_BIN) $(AR_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS)
@@ -131,34 +132,22 @@ $(OUT)/%.o: src/%.c $(OUT)/c.tab.h | $(OUT)
 	$(CC) $(CFLAGS) $(WARN) $(DEPFLAGS) -c $< -o $@
 
 # --- runtime recipes ---
-$(LINUX_DIR)/crt0.o: $(TARGET_SRC)/linux/crt0.s $(AS_BIN) | $(LINUX_DIR)
-	$(AS_BIN) $< -o $@
+$(LINUX_DIR)/crt0.o: src/libc/crt/crt.c $(CC_BIN) $(SYS_HEADERS) | $(LINUX_DIR)
+	$(CC_BIN) -mtarget=linux -c $< -o $@
 
-$(OUT)/libc/linux/libc.o: src/libc/libc.c $(CC_BIN)
+$(OUT)/libc/linux/%.o: src/libc/%.c $(CC_BIN) $(SYS_HEADERS)
 	@mkdir -p $(dir $@)
-	$(CC_BIN) -c $< -o $@
+	$(CC_BIN) -mtarget=linux -c $< -o $@
 
-$(LINUX_DIR)/libc.a: $(OUT)/libc/linux/libc.o $(AR_BIN) | $(LINUX_DIR)
+$(LINUX_DIR)/libc.a: $(LIBC_OBJS) $(AR_BIN) | $(LINUX_DIR)
 	rm -f $@
-	$(AR_BIN) rcs $@ $(filter %.o,$^)
+	$(AR_BIN) rcs $@ $(LIBC_OBJS)
 
-$(EMU_DIR)/crt0.o: $(TARGET_SRC)/ivanemu/crt0.s $(AS_BIN) | $(EMU_DIR)
-	$(AS_BIN) $< -o $@
-
-$(OUT)/libc/ivanemu/libc.o: src/libc/libc.c $(CC_BIN)
-	@mkdir -p $(dir $@)
-	$(CC_BIN) -c $< -o $@
-
-$(OUT)/libc/ivanemu/sys.o: $(TARGET_SRC)/ivanemu/sys.s $(AS_BIN)
-	@mkdir -p $(dir $@)
-	$(AS_BIN) $< -o $@
-
-$(EMU_DIR)/libc.a: $(OUT)/libc/ivanemu/libc.o $(OUT)/libc/ivanemu/sys.o $(AR_BIN) | $(EMU_DIR)
-	rm -f $@
-	$(AR_BIN) rcs $@ $(filter %.o,$^)
+$(EMU_DIR)/crt0.o: src/libc/crt/crt.c $(CC_BIN) $(SYS_HEADERS) | $(EMU_DIR)
+	$(CC_BIN) -mtarget=ivanemu -c $< -o $@
 
 # --- system header recipes ---
-$(BUILD)/include/%.h: libc/include/%.h
+$(BUILD)/include/%.h: h/libc/%.h
 	@mkdir -p $(dir $@)
 	cp $< $@
 

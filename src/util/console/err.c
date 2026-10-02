@@ -1702,6 +1702,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "unsupported standard '%s' (only %s is supported)"
     },
 
+    // Args: [target]
+    [ERR_CC_TARGET_NOT_SUPPORTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CC_TARGET_NOT_SUPPORTED",
+        .ee_format = "unsupported target '%s' (only linux and ivanemu are supported)"
+    },
+
     // Args: [path, reason]
     [ERR_AS_INPUT_NOT_READABLE] = {
         .ee_level  = ERR_LEVEL_FATAL,

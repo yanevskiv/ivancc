@@ -1,0 +1,61 @@
+/*
+ * C source file for the system layer.
+ *
+ * Copyright (C) 2026 Ivan Janevski
+ *
+ * ivancc is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * ivancc is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+// Module header.
+#include <sys/sys.h>
+
+#ifndef __linux__
+#error "sys.c: the system layer is Linux's alone"
+#endif
+
+// Linux's syscall numbers.
+#define SYS_NR_WRITE 1
+#define SYS_NR_EXIT  60
+
+#ifdef __x86_64__
+// Make a syscall with its number and six arguments.
+__asm__(
+    "  .text\n"
+    "  .globl __libc_syscall\n"
+    "__libc_syscall:\n"
+    "  mov %rdi, %rax\n"
+    "  mov %rsi, %rdi\n"
+    "  mov %rdx, %rsi\n"
+    "  mov %rcx, %rdx\n"
+    "  mov %r8, %r10\n"
+    "  mov %r9, %r8\n"
+    "  mov 8(%rsp), %r9\n"
+    "  syscall\n"
+    "  ret\n"
+);
+#else
+#error "sys.c: no system calls for this architecture"
+#endif
+
+// Write len bytes of buf to the descriptor fd.
+long __libc_write(int fd, const void *buf, unsigned long len)
+{
+    return __libc_syscall(SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
+}
+
+// End the program with a status.
+void __libc_exit(int status)
+{
+    __libc_syscall(SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
+}
