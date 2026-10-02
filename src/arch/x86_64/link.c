@@ -180,14 +180,79 @@ void Link_x86_64_Merge(Elf *out, Elf *in)
     free(symmap);
 }
 
-// Read each object file and merge it into out.
-void Link_x86_64_MergeFiles(Elf *out, const char *const *paths, size_t npaths)
+// True if a member defines a symbol out references but has not defined.
+bool Link_x86_64_MemberNeeded(Elf *out, const Lib_ArMember *member)
+{
+    for (const char **iter = member->lam_globals; *iter; iter++) {
+        Elf_Sym *sym = Link_x86_64_FindGlobal(out, *iter);
+        if (sym && ! sym->sym_sec) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Read one archive member as an object and merge it into out.
+void Link_x86_64_MergeMember(Elf *out, const char *path, const Lib_ArMember *member, const Link_x86_64_Options *opts)
+{
+    Elf *in = Elf_ReadMem(member->lam_data, member->lam_size);
+    Err_Assert(in, ERR_LINK_MEMBER_NOT_READABLE, member->lam_name, path);
+    if (opts->lo_trace >= LINK_X86_64_TRACE_MEMBERS) {
+        printf("(%s)%s\n", path, member->lam_name);
+    }
+    Link_x86_64_Merge(out, in);
+    Elf_Free(in);
+}
+
+// Merge each member out needs, scanning again until a pass pulls in none.
+void Link_x86_64_MergeArchive(Elf *out, const char *path, const Lib_Ar *ar, const Link_x86_64_Options *opts)
+{
+    bool pulled = true;
+    while (pulled) {
+        pulled = false;
+        for (size_t i = 0; i < Lib_ArMemberCount(ar); i++) {
+            Lib_ArMember *member = Lib_ArMemberAt(ar, i);
+            if (Link_x86_64_MemberNeeded(out, member)) {
+                Link_x86_64_MergeMember(out, path, member, opts);
+                pulled = true;
+            }
+        }
+    }
+}
+
+// Read archive bytes, refusing an archive that is malformed.
+Lib_Ar *Link_x86_64_ReadArchive(const char *path, const uint8_t *bytes, size_t len)
+{
+    Lib_ArStatus status = LIB_AR_STATUS_OK;
+    Lib_Ar *ar = Lib_ArReadMem(bytes, len, &status);
+    Err_Assert(status != LIB_AR_STATUS_MEMBER_TRUNCATED, ERR_LINK_MEMBER_TRUNCATED, path);
+    Err_Assert(status != LIB_AR_STATUS_HEADER_MALFORMED, ERR_LINK_HEADER_MALFORMED, path);
+    Err_Assert(status != LIB_AR_STATUS_NAME_NOT_FOUND, ERR_LINK_NAME_NOT_FOUND, path);
+    return ar;
+}
+
+// Merge each object into out, and of each archive the members out needs.
+void Link_x86_64_MergeFiles(Elf *out, const char *const *paths, size_t npaths, const Link_x86_64_Options *opts)
 {
     for (size_t i = 0; i < npaths; i++) {
-        Elf *in = Elf_ReadPath(paths[i]);
-        Err_Assert(in, ERR_LINK_OBJECT_NOT_READABLE, paths[i]);
-        Link_x86_64_Merge(out, in);
-        Elf_Free(in);
+        size_t len = 0;
+        uint8_t *bytes = Elf_ReadBytes(paths[i], &len);
+        Err_Assert(bytes, ERR_LINK_INPUT_NOT_READABLE, paths[i], strerror(errno));
+        if (opts->lo_trace >= LINK_X86_64_TRACE_FILES) {
+            printf("%s\n", paths[i]);
+        }
+
+        if (Lib_ArReadMagic(bytes, len)) {
+            Lib_Ar *ar = Link_x86_64_ReadArchive(paths[i], bytes, len);
+            Link_x86_64_MergeArchive(out, paths[i], ar, opts);
+            Lib_ArFree(ar);
+        } else {
+            Elf *in = Elf_ReadMem(bytes, len);
+            Err_Assert(in, ERR_LINK_OBJECT_NOT_READABLE, paths[i]);
+            Link_x86_64_Merge(out, in);
+            Elf_Free(in);
+        }
+        free(bytes);
     }
 }
 
@@ -263,11 +328,11 @@ void Link_x86_64_Exec(Elf *elf, const Link_x86_64_Options *opts)
     Elf_SetType(elf, ELF_ET_EXEC);
 }
 
-// Read and link the given objects into one Elf.
+// Read and link the given objects and archives into one Elf.
 Elf *Link_x86_64_Run(const char *const *paths, size_t npaths, const Link_x86_64_Options *opts)
 {
     Elf *out = Elf_New(ELF_ET_REL, ELF_EM_X86_64);
-    Link_x86_64_MergeFiles(out, paths, npaths);
+    Link_x86_64_MergeFiles(out, paths, npaths, opts);
 
     if (! opts->lo_relocatable) {
         Link_x86_64_Exec(out, opts);

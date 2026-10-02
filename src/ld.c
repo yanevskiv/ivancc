@@ -42,10 +42,14 @@
 static void Ld_Usage(const char *prog)
 {
     fprintf(stderr,
-        "Usage: %s [options] INPUT.o...\n"
+        "Usage: %s [options] INPUT...\n"
+        "  INPUT              an object, or an archive whose members are linked\n"
+        "                     where they define a symbol the inputs before it need\n"
         "  -o OUTPUT          write the output to OUTPUT (default: " LD_DEFAULT_OUTPUT ")\n"
         "  -e ENTRY           set the entry symbol (default: _start)\n"
         "  -r                 merge the inputs into one relocatable object\n"
+        "  -t, --trace        print each input as it is read; twice, each archive\n"
+        "                     member linked too, as (ARCHIVE)MEMBER\n"
         "  -place=SEC@ADDR    place output section SEC at ADDR (text/data name a\n"
         "                     default section; any other name is used verbatim)\n",
         prog);
@@ -94,6 +98,8 @@ int main(int argc, char **argv)
             opts.lo_entry = argv[++i];
         } else if (Str_Equals(arg, "-r")) {
             opts.lo_relocatable = true;
+        } else if (Str_Equals(arg, "-t") || Str_Equals(arg, "--trace")) {
+            opts.lo_trace = opts.lo_trace == LINK_X86_64_TRACE_NONE ? LINK_X86_64_TRACE_FILES : LINK_X86_64_TRACE_MEMBERS;
         } else if (strncmp(arg, "-place=", 7) == 0) {
             Ld_ParsePlace(arg + 7, &opts);
         } else if (arg[0] == '-') {
