@@ -751,21 +751,15 @@ Asm_x86_64_Item *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *mat
         item->ai_dst = Txt_x86_64_Att_ReadOperand(text);
         Str_Free(text);
     }
-    if (item->ai_src.ao_kind == ASM_X86_64_OPERAND_MEM) {
+    if (opcode == ASM_X86_64_OP_MOVSX || opcode == ASM_X86_64_OP_MOVZX) {
+        char *mnemonic = Str_RegexFieldText(line, match, 0);
+        char ch = mnemonic[strlen(Txt_x86_64_OpName[opcode])];
+
+        item->ai_src.ao_width = ch == 'b' ? ASM_X86_64_WIDTH_8 : ch == 'w' ? ASM_X86_64_WIDTH_16 : ASM_X86_64_WIDTH_32;
+        Str_Free(mnemonic);
+    } else if (item->ai_src.ao_kind == ASM_X86_64_OPERAND_MEM) {
         item->ai_src.ao_width = item->ai_dst.ao_width;
     }
-    return item;
-}
-
-// Build a movs or movz of opcode, its source as wide as its mnemonic says.
-Asm_x86_64_Item *Txt_x86_64_Att_NewExtend(const char *line, const regmatch_t *match, int32_t opcode)
-{
-    char *mnemonic = Str_RegexFieldText(line, match, 0);
-    char ch = mnemonic[strlen(Txt_x86_64_OpName[opcode])];
-    Asm_x86_64_Item *item = Txt_x86_64_Att_NewInstr(line, match, opcode);
-
-    item->ai_src.ao_width = ch == 'b' ? ASM_X86_64_WIDTH_8 : ch == 'w' ? ASM_X86_64_WIDTH_16 : ASM_X86_64_WIDTH_32;
-    Str_Free(mnemonic);
     return item;
 }
 
@@ -784,9 +778,9 @@ void Txt_x86_64_Att_ReadInstr(const char *line)
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MEM_FORM], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOVSX], line, match)) {
-        Txt_x86_64_Att_NewExtend(line, match, ASM_X86_64_OP_MOVSX);
+        Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_MOVSX);
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOVZX], line, match)) {
-        Txt_x86_64_Att_NewExtend(line, match, ASM_X86_64_OP_MOVZX);
+        Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_MOVZX);
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LEA_RIP], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_GRP_UNARY], line, match)) {

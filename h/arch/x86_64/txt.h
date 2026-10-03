@@ -132,7 +132,6 @@ void   Txt_x86_64_Att_Write(FILE *out);
 // AT&T syntax reader
 Asm_x86_64_Operand Txt_x86_64_Att_ReadOperand(const char *text);
 Asm_x86_64_Item   *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *match, int32_t opcode);
-Asm_x86_64_Item   *Txt_x86_64_Att_NewExtend(const char *line, const regmatch_t *match, int32_t opcode);
 void               Txt_x86_64_Att_ReadInstr(const char *line);
 void               Txt_x86_64_Att_ReadString(const char *text, Txt_x86_64_Terminate terminate);
 void               Txt_x86_64_Att_ReadInts(const char *args, Asm_x86_64_Width width);
