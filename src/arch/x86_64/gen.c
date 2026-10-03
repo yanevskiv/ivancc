@@ -1803,7 +1803,7 @@ void Gen_x86_64_EmitStmt(Ast_Node *node)
             Gen_x86_64_EmitExpr(node->an_lhs);
         } break;
         case AST_NODE_KIND_ASM: {
-            Txt_x86_64_Att_ParseText(node->an_asm);
+            Txt_x86_64_Att_ReadText(node->an_asm);
         } break;
         case AST_NODE_KIND_ZERO: {
             Gen_x86_64_EmitAddr(node->an_lhs);
@@ -2082,7 +2082,7 @@ void Gen_x86_64_EmitFileAsms(void)
 {
     for (Ast_Node *iter = Ast_FileAsms; iter; iter = iter->an_next) {
         Asm_x86_64_EmitSection(".text", ELF_SHT_PROGBITS, ELF_SHF_ALLOC | ELF_SHF_EXECINSTR);
-        Txt_x86_64_Att_ParseText(iter->an_asm);
+        Txt_x86_64_Att_ReadText(iter->an_asm);
     }
 }
 

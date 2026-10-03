@@ -139,6 +139,115 @@
 // The instructions Enc_x86_64_EmitInstr encodes without operands.
 #define TXT_X86_64_REGEX_BARE "^(cqo|syscall)$|^(ret)q?$"
 
+// A label's name, which may open with `$`.
+#define LABEL "[._$a-zA-Z][._$a-zA-Z0-9]*"
+
+// A section's name.
+#define SECNAME "[._a-zA-Z][._a-zA-Z0-9-]*"
+
+// A quoted string, its escapes passed over.
+#define QUOTED "\"([^\"\\\\]|\\\\.)*\""
+
+// A quoted string whose escapes the assembler reads.
+#define STRING "\"([^\"\\\\]|\\\\([0-7]{1,3}|[xX][0-9a-fA-F]+|[bfnrt\"\\\\]))*\""
+
+// A general register operand.
+#define TXT_X86_64_REGEX_REG "^(" R64 "|" R32 "|" R16 "|" R8 ")$"
+
+// An immediate operand.
+#define TXT_X86_64_REGEX_IMM "^\\$(" NUM ")$"
+
+// A memory operand, its displacement and its base.
+#define TXT_X86_64_REGEX_MEM "^((" NUM ")?)\\(" R64 "\\)$"
+
+// A RIP-relative operand.
+#define TXT_X86_64_REGEX_RIP "^(" NAME ")\\(%rip\\)$"
+
+// A branch target operand.
+#define TXT_X86_64_REGEX_LABEL "^(" NAME ")$"
+
+// An SSE register operand.
+#define TXT_X86_64_REGEX_XMM "^" XMM "$"
+
+// An x87 stack register operand, and its index.
+#define TXT_X86_64_REGEX_ST "^%st((\\([0-7]\\))?)$"
+
+// An escape that gives a byte in octal.
+#define TXT_X86_64_REGEX_OCTAL "^\\\\[0-7]{1,3}"
+
+// An escape that gives a byte in hex.
+#define TXT_X86_64_REGEX_HEX "^\\\\[xX][0-9a-fA-F]+"
+
+// An escape that names a byte.
+#define TXT_X86_64_REGEX_ESCAPE "^\\\\[bfnrt\"\\\\]"
+
+// A run of bytes that are their own.
+#define TXT_X86_64_REGEX_PLAIN "^[^\"\\\\]+"
+
+// A number in a data list.
+#define TXT_X86_64_REGEX_NUMBER "^[ \t]*(" NUM ")[ \t]*(,|$)"
+
+// A symbol and its addend in a data list.
+#define TXT_X86_64_REGEX_ADDRESS "^[ \t]*(" NAME ")(([+-](0[xX][0-9a-fA-F]+|[0-9]+))?)[ \t]*(,|$)"
+
+// A section named by a directive of its own.
+#define TXT_X86_64_REGEX_SECTION_SHORT "^(\\.text|\\.data|\\.rodata)$"
+
+// A section with its flags and type.
+#define TXT_X86_64_REGEX_SECTION \
+    "^\\.section" S "(" SECNAME ")((" C "\"[awx]*\")?)((" C "@(progbits|nobits))?)$"
+
+// A symbol made global.
+#define TXT_X86_64_REGEX_GLOBL "^\\.globa?l" S "(" NAME ")$"
+
+// A list of bytes.
+#define TXT_X86_64_REGEX_BYTE "^\\.byte" S "(.*)$"
+
+// A list of 16-bit values.
+#define TXT_X86_64_REGEX_WORD "^\\.(word|short|value)" S "(.*)$"
+
+// A list of 32-bit values.
+#define TXT_X86_64_REGEX_LONG "^\\.(long|int)" S "(.*)$"
+
+// A list of 64-bit values and addresses.
+#define TXT_X86_64_REGEX_QUAD "^\\.quad" S "(.*)$"
+
+// A run of zero bytes.
+#define TXT_X86_64_REGEX_ZERO "^\\.(zero|skip|space)" S "(" NUM ")$"
+
+// A string without a terminating NUL.
+#define TXT_X86_64_REGEX_ASCII "^\\.ascii" S "(" STRING ")$"
+
+// A string with a terminating NUL.
+#define TXT_X86_64_REGEX_ASCIZ "^\\.(asciz|string)" S "(" STRING ")$"
+
+// The directives the assembler passes over.
+#define TXT_X86_64_REGEX_IGNORED "^\\.(file|ident|type|size)(" S ".*)?$"
+
+// The blanks that open a statement.
+#define TXT_X86_64_REGEX_LEADING "^[ \t]*"
+
+// The blanks that close a statement.
+#define TXT_X86_64_REGEX_TRAILING "[ \t]*$"
+
+// A statement that holds nothing.
+#define TXT_X86_64_REGEX_BLANK "^$"
+
+// A label, before the statement after it.
+#define TXT_X86_64_REGEX_LABEL_DEF "^(" LABEL ")[ \t]*:"
+
+// A directive.
+#define TXT_X86_64_REGEX_DIRECTIVE "^\\."
+
+// A statement and the `;` that ends it.
+#define TXT_X86_64_REGEX_SEPARATED "^([^\"#;]|" QUOTED ")*;"
+
+// A statement and the `#` that opens the comment after it.
+#define TXT_X86_64_REGEX_COMMENTED "^([^\"#;]|" QUOTED ")*#"
+
+// A statement that runs to the end of its line.
+#define TXT_X86_64_REGEX_STATEMENT "^([^\"#;]|" QUOTED ")*$"
+
 // 64-bit register names.
 static const char *Txt_x86_64_Reg64Name[ASM_X86_64_REG_COUNT] = {
     [ASM_X86_64_REG_RAX] = "rax",
@@ -311,6 +420,12 @@ static const char *Txt_x86_64_OpName[ASM_X86_64_OP_COUNT] = {
     [ASM_X86_64_OP_FUCOMIP] = "fucomip",
     [ASM_X86_64_OP_FSTP]    = "fstp"
 };
+
+// The compiled patterns, by Txt_x86_64_Pattern.
+static regex_t Txt_x86_64_Regex[TXT_X86_64_PATTERN_COUNT];
+
+// Whether Txt_x86_64_RegexPrecompile has compiled the patterns.
+static bool Txt_x86_64_RegexCompiled = false;
 
 // Write one operand in AT&T syntax.
 void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
@@ -547,172 +662,82 @@ int32_t Txt_x86_64_OpByName(const char *name)
     return -1;
 }
 
-// True if ch can open a symbol name.
-bool Txt_x86_64_Att_IsNameStart(char ch)
+// Compile source into the regex of pattern.
+void Txt_x86_64_Att_Compile(Txt_x86_64_Pattern pattern, const char *source)
 {
-    return ch == '.' || ch == '_' || isalpha((uint8_t) ch);
+    regex_t *regex = &Txt_x86_64_Regex[pattern];
+    bool fits = regcomp(regex, source, REG_EXTENDED) == 0 && regex->re_nsub < TXT_X86_64_REGEX_GROUPS;
+
+    Err_Assert(fits, ERR_TXT_REGEX_NOT_COMPILED, source);
 }
 
-// True if ch can continue a symbol name.
-bool Txt_x86_64_Att_IsNameChar(char ch)
+// Compile every pattern, once.
+void Txt_x86_64_RegexPrecompile(void)
 {
-    return ch == '.' || ch == '_' || ch == '$' || isalnum((uint8_t) ch);
+    if (Txt_x86_64_RegexCompiled) {
+        return;
+    }
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_RR, TXT_X86_64_REGEX_RR);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_GRP_IMM, TXT_X86_64_REGEX_GRP_IMM);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_MOV_IMM, TXT_X86_64_REGEX_MOV_IMM);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_MEM_FORM, TXT_X86_64_REGEX_MEM_FORM);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_MOVSX, TXT_X86_64_REGEX_MOVSX);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_MOVZX, TXT_X86_64_REGEX_MOVZX);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_LEA_RIP, TXT_X86_64_REGEX_LEA_RIP);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_GRP_UNARY, TXT_X86_64_REGEX_GRP_UNARY);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_SHIFT, TXT_X86_64_REGEX_SHIFT);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_SETCC, TXT_X86_64_REGEX_SETCC);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_BRANCH, TXT_X86_64_REGEX_BRANCH);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_MOV_RR, TXT_X86_64_REGEX_MOV_RR);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_SSE, TXT_X86_64_REGEX_SSE);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_X87, TXT_X86_64_REGEX_X87);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_CALL_REG, TXT_X86_64_REGEX_CALL_REG);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_BARE, TXT_X86_64_REGEX_BARE);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_REG, TXT_X86_64_REGEX_REG);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_IMM, TXT_X86_64_REGEX_IMM);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_MEM, TXT_X86_64_REGEX_MEM);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_RIP, TXT_X86_64_REGEX_RIP);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_LABEL, TXT_X86_64_REGEX_LABEL);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_XMM, TXT_X86_64_REGEX_XMM);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_ST, TXT_X86_64_REGEX_ST);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_OCTAL, TXT_X86_64_REGEX_OCTAL);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_HEX, TXT_X86_64_REGEX_HEX);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_ESCAPE, TXT_X86_64_REGEX_ESCAPE);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_PLAIN, TXT_X86_64_REGEX_PLAIN);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_NUMBER, TXT_X86_64_REGEX_NUMBER);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_ADDRESS, TXT_X86_64_REGEX_ADDRESS);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_SECTION_SHORT, TXT_X86_64_REGEX_SECTION_SHORT);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_SECTION, TXT_X86_64_REGEX_SECTION);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_GLOBL, TXT_X86_64_REGEX_GLOBL);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_BYTE, TXT_X86_64_REGEX_BYTE);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_WORD, TXT_X86_64_REGEX_WORD);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_LONG, TXT_X86_64_REGEX_LONG);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_QUAD, TXT_X86_64_REGEX_QUAD);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_ZERO, TXT_X86_64_REGEX_ZERO);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_ASCII, TXT_X86_64_REGEX_ASCII);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_ASCIZ, TXT_X86_64_REGEX_ASCIZ);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_IGNORED, TXT_X86_64_REGEX_IGNORED);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_LEADING, TXT_X86_64_REGEX_LEADING);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_TRAILING, TXT_X86_64_REGEX_TRAILING);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_BLANK, TXT_X86_64_REGEX_BLANK);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_LABEL_DEF, TXT_X86_64_REGEX_LABEL_DEF);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_DIRECTIVE, TXT_X86_64_REGEX_DIRECTIVE);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_SEPARATED, TXT_X86_64_REGEX_SEPARATED);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_COMMENTED, TXT_X86_64_REGEX_COMMENTED);
+    Txt_x86_64_Att_Compile(TXT_X86_64_PATTERN_STATEMENT, TXT_X86_64_REGEX_STATEMENT);
+    Txt_x86_64_RegexCompiled = true;
 }
 
-// True if ch can open a label.
-bool Txt_x86_64_Att_IsLabelStart(char ch)
+// True if pattern matches line, whose groups go to match.
+bool Txt_x86_64_Att_Match(Txt_x86_64_Pattern pattern, const char *line, regmatch_t *match)
 {
-    return ch == '$' || Txt_x86_64_Att_IsNameStart(ch);
+    return regexec(&Txt_x86_64_Regex[pattern], line, TXT_X86_64_REGEX_GROUPS, match, 0) == 0;
 }
 
-// Scan a symbol and the offset a `.quad` adds to it.
-const char *Txt_x86_64_Att_ScanAddress(const char *text, int64_t *addend)
+// True if pattern matches line, whose span alone goes to match.
+bool Txt_x86_64_Att_Span(Txt_x86_64_Pattern pattern, const char *line, regmatch_t *match)
 {
-    const char *name = text;
-    const char *end = NULL;
-
-    *addend = 0;
-    if (! Txt_x86_64_Att_IsNameStart(*text)) {
-        return NULL;
-    }
-    while (Txt_x86_64_Att_IsNameChar(*name)) {
-        name++;
-    }
-    if (*name == '\0') {
-        return name;
-    }
-    if (*name != '+' && *name != '-') {
-        return NULL;
-    }
-    end = Txt_x86_64_Att_ScanNumber(*name == '+' ? name + 1 : name, addend);
-    return end && *end == '\0' ? name : NULL;
-}
-
-// Scan a decimal, octal or hex integer, or return NULL where none stands.
-const char *Txt_x86_64_Att_ScanNumber(const char *text, int64_t *value)
-{
-    const char *ptr = text;
-
-    if (*ptr == '-') {
-        ptr++;
-    }
-    if (Str_StartsWith(ptr, TXT_X86_64_HEX_PREFIX) || Str_StartsWith(ptr, TXT_X86_64_HEX_PREFIX_UPPER)) {
-        ptr += strlen(TXT_X86_64_HEX_PREFIX);
-        if (! isxdigit((uint8_t) *ptr)) {
-            return NULL;
-        }
-        while (isxdigit((uint8_t) *ptr)) {
-            ptr++;
-        }
-    } else {
-        if (! isdigit((uint8_t) *ptr)) {
-            return NULL;
-        }
-        while (isdigit((uint8_t) *ptr)) {
-            ptr++;
-        }
-    }
-    *value = strtol(text, NULL, 0);
-    return ptr;
-}
-
-// Return the value of a digit in base, or -1 when it is not one.
-int32_t Txt_x86_64_Att_DigitValue(char ch, Txt_x86_64_Base base)
-{
-    int32_t value = -1;
-
-    if (isdigit((uint8_t) ch)) {
-        value = ch - '0';
-    } else if (isxdigit((uint8_t) ch)) {
-        value = tolower((uint8_t) ch) - 'a' + TXT_X86_64_BASE_DECIMAL;
-    }
-    return value < (int32_t) base ? value : -1;
-}
-
-// Decode the quoted string at text.
-const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
-{
-    const char *ptr = text;
-
-    for (ptr++; *ptr != '"'; ptr++) {
-        Err_Assert(*ptr != '\0' && (*ptr != '\\' || ptr[1] != '\0'), ERR_TXT_STRING_NOT_TERMINATED, text);
-        if (*ptr != '\\') {
-            Buf_PutByte(bytes, *ptr);
-            continue;
-        }
-        ptr++;
-        switch (*ptr) {
-            case 'b': {
-                Buf_PutByte(bytes, '\b');
-            } break;
-            case 'f': {
-                Buf_PutByte(bytes, '\f');
-            } break;
-            case 'n': {
-                Buf_PutByte(bytes, '\n');
-            } break;
-            case 'r': {
-                Buf_PutByte(bytes, '\r');
-            } break;
-            case 't': {
-                Buf_PutByte(bytes, '\t');
-            } break;
-            case '\\':
-            case '"': {
-                Buf_PutByte(bytes, *ptr);
-            } break;
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7': {
-                uint32_t value = 0;
-
-                for (size_t n = 0; n < TXT_X86_64_ESCAPE_OCTAL_DIGITS; n++) {
-                    int32_t digit = Txt_x86_64_Att_DigitValue(*ptr, TXT_X86_64_BASE_OCTAL);
-
-                    if (digit < 0) {
-                        break;
-                    }
-                    value = value * TXT_X86_64_BASE_OCTAL + (uint32_t) digit;
-                    ptr++;
-                }
-                ptr--;
-                Buf_PutByte(bytes, (char) value);
-            } break;
-            case 'x':
-            case 'X': {
-                uint32_t value = 0;
-
-                while (Txt_x86_64_Att_DigitValue(ptr[1], TXT_X86_64_BASE_HEX) >= 0) {
-                    ptr++;
-                    value = value * TXT_X86_64_BASE_HEX + (uint32_t) Txt_x86_64_Att_DigitValue(*ptr, TXT_X86_64_BASE_HEX);
-                }
-                Buf_PutByte(bytes, (char) value);
-            } break;
-            default: {
-                Err_Raise(ERR_TXT_ESCAPE_NOT_KNOWN, *ptr);
-            } break;
-        }
-    }
-    return ptr + 1;
-}
-
-// Compile pattern into regex.
-void Txt_x86_64_Att_Compile(regex_t *regex, const char *pattern)
-{
-    bool fits = regcomp(regex, pattern, REG_EXTENDED) == 0 && regex->re_nsub < TXT_X86_64_REGEX_GROUPS;
-
-    Err_Assert(fits, ERR_TXT_REGEX_NOT_COMPILED, pattern);
-}
-
-// True if regex matches line, whose groups go to match.
-bool Txt_x86_64_Att_Match(const regex_t *regex, const char *line, regmatch_t *match)
-{
-    return regexec(regex, line, TXT_X86_64_REGEX_GROUPS, match, 0) == 0;
+    return regexec(&Txt_x86_64_Regex[pattern], line, 1, match, 0) == 0;
 }
 
 // Return the group that holds field index of a match, or -1 past the last.
@@ -741,6 +766,12 @@ char *Txt_x86_64_Att_FieldText(const char *line, const regmatch_t *match, size_t
     return Str_Slice(line, (size_t) match[group].rm_so, (size_t) match[group].rm_eo);
 }
 
+// Return where field index of a match opens, for a field that runs to the end.
+const char *Txt_x86_64_Att_FieldTail(const char *line, const regmatch_t *match, size_t index)
+{
+    return line + match[Txt_x86_64_Att_Field(match, index)].rm_so;
+}
+
 // Return the opcode field index of a match names.
 int32_t Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index)
 {
@@ -751,43 +782,39 @@ int32_t Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t
     return opcode;
 }
 
-// Return the operand field index of a match spells.
-Asm_x86_64_Operand Txt_x86_64_Att_FieldOperand(const char *line, const regmatch_t *match, size_t index)
+// Read one operand in AT&T syntax.
+Asm_x86_64_Operand Txt_x86_64_Att_ReadOperand(const char *text)
 {
-    char *text = Txt_x86_64_Att_FieldText(line, match, index);
-    char *paren = strchr(text, '(');
-    int64_t value = 0;
+    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
     Asm_x86_64_Width width = ASM_X86_64_WIDTH_NONE;
-    Asm_x86_64_Operand op;
+    Asm_x86_64_Operand op = {0};
 
-    if (Str_StartsWith(text, TXT_X86_64_ST_PREFIX)) {
-        if (paren) {
-            Txt_x86_64_Att_ScanNumber(paren + 1, &value);
-        }
-        op = Asm_x86_64_St((int32_t) value);
-    } else if (text[0] == '%' && Txt_x86_64_XmmByName(text + 1) >= 0) {
-        op = Asm_x86_64_XmmReg(Txt_x86_64_XmmByName(text + 1));
-    } else if (text[0] == '%') {
-        int32_t reg = Txt_x86_64_RegByName(text + 1, &width);
+    Txt_x86_64_RegexPrecompile();
+    if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_REG, text, match)) {
+        int32_t index = Txt_x86_64_RegByName(text + 1, &width);
 
-        op = Asm_x86_64_RegWidth(reg, width);
-    } else if (text[0] == '$') {
-        Txt_x86_64_Att_ScanNumber(text + 1, &value);
-        op = Asm_x86_64_Imm(value);
-    } else if (paren && Str_Equals(paren, TXT_X86_64_RIP_SUFFIX)) {
-        op = Asm_x86_64_Rip(Str_Slice(text, 0, (size_t) (paren - text)));
-    } else if (paren) {
-        char *base = Str_Slice(paren, strlen(TXT_X86_64_MEM_PREFIX), strlen(paren) - 1);
+        op = Asm_x86_64_RegWidth(index, width);
+    } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_IMM, text, match)) {
+        op = Asm_x86_64_Imm(strtol(text + 1, NULL, 0));
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_MEM, text, match)) {
+        char *base = Txt_x86_64_Att_FieldText(text, match, 1);
 
-        if (paren > text) {
-            Txt_x86_64_Att_ScanNumber(text, &value);
-        }
-        op = Asm_x86_64_Mem(Txt_x86_64_RegByName(base, &width), (int32_t) value);
+        op = Asm_x86_64_Mem(Txt_x86_64_RegByName(base + 1, &width), (int32_t) strtol(text, NULL, 0));
         Str_Free(base);
-    } else {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_RIP, text, match)) {
+        op = Asm_x86_64_Rip(Txt_x86_64_Att_FieldText(text, match, 0));
+    } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_LABEL, text, match)) {
         op = Asm_x86_64_Target(Str_Clone(text));
+    } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_XMM, text, match)) {
+        op = Asm_x86_64_XmmReg(Txt_x86_64_XmmByName(text + 1));
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_ST, text, match)) {
+        char *index = Txt_x86_64_Att_FieldText(text, match, 0);
+
+        op = Asm_x86_64_St(*index ? (int32_t) strtol(index + 1, NULL, 0) : 0);
+        Str_Free(index);
+    } else {
+        Err_Raise(ERR_TXT_OPERAND_NOT_KNOWN, text);
     }
-    Str_Free(text);
     return op;
 }
 
@@ -797,11 +824,12 @@ Asm_x86_64_Item *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *mat
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
 
     item->ai_op = opcode;
-    if (Txt_x86_64_Att_Field(match, 2) >= 0) {
-        item->ai_src = Txt_x86_64_Att_FieldOperand(line, match, 1);
-        item->ai_dst = Txt_x86_64_Att_FieldOperand(line, match, 2);
-    } else if (Txt_x86_64_Att_Field(match, 1) >= 0) {
-        item->ai_dst = Txt_x86_64_Att_FieldOperand(line, match, 1);
+    for (size_t index = 1; Txt_x86_64_Att_Field(match, index) >= 0; index++) {
+        char *text = Txt_x86_64_Att_FieldText(line, match, index);
+
+        item->ai_src = item->ai_dst;
+        item->ai_dst = Txt_x86_64_Att_ReadOperand(text);
+        Str_Free(text);
     }
     if (item->ai_src.ao_kind == ASM_X86_64_OPERAND_MEM) {
         item->ai_src.ao_width = item->ai_dst.ao_width;
@@ -820,265 +848,236 @@ Asm_x86_64_Item *Txt_x86_64_Att_NewExtend(const char *line, const regmatch_t *ma
     return item;
 }
 
-// Emit a .byte/.word/.long/.quad list, little-endian or as an address.
-void Txt_x86_64_Att_EmitInts(const char *args, Asm_x86_64_Width width)
+// Read one instruction by the first form the encoder has for it.
+void Txt_x86_64_Att_ReadInstr(const char *line)
 {
-    char **parts = Str_Tokenize(args, ",");
-    for (char **iter = parts; *iter; iter++) {
-        char *text = Str_Trim(*iter);
-        if (! *text) {
-            continue;
-        }
-        if (Txt_x86_64_Att_EmitAddress(text, width)) {
-            continue;
-        }
-        int64_t value = strtol(text, NULL, 0);
-        size_t size = (size_t) width / ASM_X86_64_BITS_PER_BYTE;
-        uint8_t bytes[sizeof(value)];
-        for (size_t i = 0; i < size; i++) {
-            bytes[i] = (value >> (ASM_X86_64_BITS_PER_BYTE * i)) & UINT8_MAX;
-        }
-        Asm_x86_64_EmitBytes(bytes, size);
-    }
-    Str_FreeTokens(parts);
-}
-
-// Emit a `.quad` item that names a symbol.
-bool Txt_x86_64_Att_EmitAddress(const char *text, Asm_x86_64_Width width)
-{
-    if (! Txt_x86_64_Att_IsNameStart(text[0])) {
-        return false;
-    }
-    int64_t addend = 0;
-    const char *end = Txt_x86_64_Att_ScanAddress(text, &addend);
-
-    Err_Assert(width == ASM_X86_64_WIDTH_64 && end, ERR_TXT_QUAD_NOT_ADDRESS, text);
-    char *name = Str_Slice(text, 0, (size_t) (end - text));
-    Asm_x86_64_EmitAddress(name, addend);
-    Str_Free(name);
-    return true;
-}
-
-// Emit the bytes of a quoted string.
-void Txt_x86_64_Att_EmitString(const char *args, Txt_x86_64_Terminate terminate)
-{
-    Buf *bytes = NULL;
-    const char *quote = strchr(args, '"');
-
-    if (! quote) {
-        return;
-    }
-    bytes = Buf_New();
-    Txt_x86_64_Att_ScanString(quote, bytes);
-    Asm_x86_64_EmitBytes(Buf_Data(bytes), Buf_Len(bytes) + (terminate == TXT_X86_64_TERMINATED ? 1 : 0));
-    Buf_Free(bytes);
-}
-
-// Parse one instruction line by the first form the encoder has for it.
-void Txt_x86_64_Att_ParseInstr(const char *line)
-{
-    static regex_t rr, grp_imm, mov_imm, mem_form, movsx, movzx, lea_rip, grp_unary;
-    static regex_t shift, setcc, branch, mov_rr, sse, x87, call_reg, bare;
-    static bool compiled = false;
     regmatch_t match[TXT_X86_64_REGEX_GROUPS];
 
-    if (! compiled) {
-        Txt_x86_64_Att_Compile(&rr, TXT_X86_64_REGEX_RR);
-        Txt_x86_64_Att_Compile(&grp_imm, TXT_X86_64_REGEX_GRP_IMM);
-        Txt_x86_64_Att_Compile(&mov_imm, TXT_X86_64_REGEX_MOV_IMM);
-        Txt_x86_64_Att_Compile(&mem_form, TXT_X86_64_REGEX_MEM_FORM);
-        Txt_x86_64_Att_Compile(&movsx, TXT_X86_64_REGEX_MOVSX);
-        Txt_x86_64_Att_Compile(&movzx, TXT_X86_64_REGEX_MOVZX);
-        Txt_x86_64_Att_Compile(&lea_rip, TXT_X86_64_REGEX_LEA_RIP);
-        Txt_x86_64_Att_Compile(&grp_unary, TXT_X86_64_REGEX_GRP_UNARY);
-        Txt_x86_64_Att_Compile(&shift, TXT_X86_64_REGEX_SHIFT);
-        Txt_x86_64_Att_Compile(&setcc, TXT_X86_64_REGEX_SETCC);
-        Txt_x86_64_Att_Compile(&branch, TXT_X86_64_REGEX_BRANCH);
-        Txt_x86_64_Att_Compile(&mov_rr, TXT_X86_64_REGEX_MOV_RR);
-        Txt_x86_64_Att_Compile(&sse, TXT_X86_64_REGEX_SSE);
-        Txt_x86_64_Att_Compile(&x87, TXT_X86_64_REGEX_X87);
-        Txt_x86_64_Att_Compile(&call_reg, TXT_X86_64_REGEX_CALL_REG);
-        Txt_x86_64_Att_Compile(&bare, TXT_X86_64_REGEX_BARE);
-        compiled = true;
-    }
-    if (Txt_x86_64_Att_Match(&rr, line, match)) {
+    Txt_x86_64_RegexPrecompile();
+    if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_RR, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&grp_imm, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_GRP_IMM, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&mov_imm, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_MOV_IMM, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&mem_form, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_MEM_FORM, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&movsx, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_MOVSX, line, match)) {
         Txt_x86_64_Att_NewExtend(line, match, ASM_X86_64_OP_MOVSX);
-    } else if (Txt_x86_64_Att_Match(&movzx, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_MOVZX, line, match)) {
         Txt_x86_64_Att_NewExtend(line, match, ASM_X86_64_OP_MOVZX);
-    } else if (Txt_x86_64_Att_Match(&lea_rip, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_LEA_RIP, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&grp_unary, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_GRP_UNARY, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&shift, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_SHIFT, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&setcc, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_SETCC, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&branch, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_BRANCH, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&mov_rr, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_MOV_RR, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&sse, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_SSE, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&x87, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_X87, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(&call_reg, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_CALL_REG, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_CALL_REG);
-    } else if (Txt_x86_64_Att_Match(&bare, line, match)) {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_BARE, line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
     } else {
         Err_Raise(ERR_TXT_INSTRUCTION_NOT_KNOWN, line);
     }
 }
 
-// Parse one directive line, lowering data directives to raw bytes.
-void Txt_x86_64_Att_ParseDirective(const char *line)
+// Read the quoted string at text into a bytes item.
+void Txt_x86_64_Att_ReadString(const char *text, Txt_x86_64_Terminate terminate)
 {
-    size_t namelen = Str_FindFirst(line, TXT_X86_64_BLANKS);
-    char name[TXT_X86_64_NAME_MAX];
-    if (namelen >= sizeof(name)) {
-        namelen = sizeof(name) - 1;
-    }
-    memcpy(name, line, namelen);
-    name[namelen] = '\0';
+    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+    Buf *bytes = Buf_New();
 
-    const char *args = line + namelen;
-    while (*args && strchr(TXT_X86_64_BLANKS, *args)) {
-        args++;
-    }
+    Txt_x86_64_RegexPrecompile();
+    for (const char *ptr = text + 1; *ptr != '"'; ptr += match[0].rm_eo) {
+        if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_OCTAL, ptr, match)) {
+            char *digits = Str_Slice(ptr, 1, (size_t) match[0].rm_eo);
 
-    if (Str_Equals(name, ".text")) {
-        Asm_x86_64_EmitSection(".text", ELF_SHT_PROGBITS, ELF_SHF_ALLOC | ELF_SHF_EXECINSTR);
-    } else if (Str_Equals(name, ".data")) {
-        Asm_x86_64_EmitSection(".data", ELF_SHT_PROGBITS, ELF_SHF_ALLOC | ELF_SHF_WRITE);
-    } else if (Str_Equals(name, ".rodata")) {
-        Asm_x86_64_EmitSection(".rodata", ELF_SHT_PROGBITS, ELF_SHF_ALLOC);
-    } else if (Str_Equals(name, ".section")) {
-        char *secname = Str_Slice(args, 0, Str_FindFirst(args, TXT_X86_64_NAME_END));
-        uint32_t type = ELF_SHT_PROGBITS;
-        uint64_t flags;
-        const char *quote = strchr(args, '"');
-        if (quote) {
-            flags = 0;
-            for (const char *flag = quote + 1; *flag && *flag != '"'; flag++) {
-                if (*flag == 'a') {
-                    flags |= ELF_SHF_ALLOC;
-                }
-                if (*flag == 'w') {
-                    flags |= ELF_SHF_WRITE;
-                }
-                if (*flag == 'x') {
-                    flags |= ELF_SHF_EXECINSTR;
-                }
-            }
-            const char *at = strchr(args, '@');
-            if (at && Str_StartsWith(at + 1, "nobits")) {
-                type = ELF_SHT_NOBITS;
-            }
-        } else if (Str_Equals(secname, ".text")) {
-            flags = ELF_SHF_ALLOC | ELF_SHF_EXECINSTR;
-        } else if (Str_Equals(secname, ".data")) {
-            flags = ELF_SHF_ALLOC | ELF_SHF_WRITE;
-        } else if (Str_Equals(secname, ".bss")) {
-            type  = ELF_SHT_NOBITS;
-            flags = ELF_SHF_ALLOC | ELF_SHF_WRITE;
-        } else {
-            flags = ELF_SHF_ALLOC;
+            Buf_PutByte(bytes, (char) strtol(digits, NULL, TXT_X86_64_BASE_OCTAL));
+            Str_Free(digits);
+        } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_HEX, ptr, match)) {
+            Buf_PutByte(bytes, (char) strtol(ptr + 2, NULL, TXT_X86_64_BASE_HEX));
+        } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_ESCAPE, ptr, match)) {
+            Buf_PutByte(bytes, TXT_X86_64_ESCAPED[strchr(TXT_X86_64_ESCAPES, ptr[1]) - TXT_X86_64_ESCAPES]);
+        } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_PLAIN, ptr, match)) {
+            Buf_PutBytes(bytes, ptr, (size_t) match[0].rm_eo);
         }
-        Asm_x86_64_EmitSection(secname, type, flags);
-    } else if (Str_Equals(name, ".globl") || Str_Equals(name, ".global")) {
-        char *sym = Str_Slice(args, 0, Str_FindFirst(args, TXT_X86_64_NAME_END));
-        Asm_x86_64_EmitGlobl("%s", sym);
-        Str_Free(sym);
-    } else if (Str_Equals(name, ".byte")) {
-        Txt_x86_64_Att_EmitInts(args, ASM_X86_64_WIDTH_8);
-    } else if (Str_Equals(name, ".word") || Str_Equals(name, ".short") || Str_Equals(name, ".value")) {
-        Txt_x86_64_Att_EmitInts(args, ASM_X86_64_WIDTH_16);
-    } else if (Str_Equals(name, ".long") || Str_Equals(name, ".int")) {
-        Txt_x86_64_Att_EmitInts(args, ASM_X86_64_WIDTH_32);
-    } else if (Str_Equals(name, ".quad")) {
-        Txt_x86_64_Att_EmitInts(args, ASM_X86_64_WIDTH_64);
-    } else if (Str_Equals(name, ".string") || Str_Equals(name, ".asciz")) {
-        Txt_x86_64_Att_EmitString(args, TXT_X86_64_TERMINATED);
-    } else if (Str_Equals(name, ".ascii")) {
-        Txt_x86_64_Att_EmitString(args, TXT_X86_64_BARE);
-    } else if (Str_Equals(name, ".skip") || Str_Equals(name, ".zero") || Str_Equals(name, ".space")) {
-        int64_t count = strtol(args, NULL, 0);
+    }
+    Asm_x86_64_EmitBytes(Buf_Data(bytes), Buf_Len(bytes) + (terminate == TXT_X86_64_TERMINATED ? 1 : 0));
+    Buf_Free(bytes);
+}
+
+// Read a .byte/.word/.long/.quad list, little-endian or as addresses.
+void Txt_x86_64_Att_ReadInts(const char *args, Asm_x86_64_Width width)
+{
+    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+
+    Txt_x86_64_RegexPrecompile();
+    for (const char *ptr = args; *ptr; ptr += match[0].rm_eo) {
+        if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_NUMBER, ptr, match)) {
+            int64_t value = strtol(ptr, NULL, 0);
+            size_t size = (size_t) width / ASM_X86_64_BITS_PER_BYTE;
+            uint8_t bytes[sizeof(value)];
+
+            for (size_t i = 0; i < size; i++) {
+                bytes[i] = (value >> (ASM_X86_64_BITS_PER_BYTE * i)) & UINT8_MAX;
+            }
+            Asm_x86_64_EmitBytes(bytes, size);
+        } else if (width == ASM_X86_64_WIDTH_64 && Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_ADDRESS, ptr, match)) {
+            char *name = Txt_x86_64_Att_FieldText(ptr, match, 0);
+            char *addend = Txt_x86_64_Att_FieldText(ptr, match, 1);
+
+            Asm_x86_64_EmitAddress(name, strtol(addend, NULL, 0));
+            Str_Free(name);
+            Str_Free(addend);
+        } else {
+            Err_Raise(ERR_TXT_DATA_NOT_KNOWN, ptr);
+        }
+    }
+}
+
+// Read a section, keeping name, with its flags and type if given.
+void Txt_x86_64_Att_ReadSection(char *name, const char *flags, const char *type)
+{
+    uint32_t sectype = ELF_SHT_PROGBITS;
+    uint64_t secflags = ELF_SHF_ALLOC;
+
+    if (*flags) {
+        secflags = (strchr(flags, 'a') ? ELF_SHF_ALLOC : 0)
+                 | (strchr(flags, 'w') ? ELF_SHF_WRITE : 0)
+                 | (strchr(flags, 'x') ? ELF_SHF_EXECINSTR : 0);
+    } else if (Str_Equals(name, ".text")) {
+        secflags |= ELF_SHF_EXECINSTR;
+    } else if (Str_Equals(name, ".data") || Str_Equals(name, ".bss")) {
+        secflags |= ELF_SHF_WRITE;
+    }
+    if (strstr(type, "nobits") || (! *flags && Str_Equals(name, ".bss"))) {
+        sectype = ELF_SHT_NOBITS;
+    }
+    Asm_x86_64_EmitSection(name, sectype, secflags);
+}
+
+// Read one directive into the items it stands for.
+void Txt_x86_64_Att_ReadDirective(const char *line)
+{
+    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+
+    Txt_x86_64_RegexPrecompile();
+    if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_SECTION_SHORT, line, match)) {
+        Txt_x86_64_Att_ReadSection(Str_Clone(line), "", "");
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_SECTION, line, match)) {
+        char *flags = Txt_x86_64_Att_FieldText(line, match, 1);
+        char *type = Txt_x86_64_Att_FieldText(line, match, 2);
+
+        Txt_x86_64_Att_ReadSection(Txt_x86_64_Att_FieldText(line, match, 0), flags, type);
+        Str_Free(flags);
+        Str_Free(type);
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_GLOBL, line, match)) {
+        char *name = Txt_x86_64_Att_FieldText(line, match, 0);
+
+        Asm_x86_64_EmitGlobl("%s", name);
+        Str_Free(name);
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_BYTE, line, match)) {
+        Txt_x86_64_Att_ReadInts(Txt_x86_64_Att_FieldTail(line, match, 0), ASM_X86_64_WIDTH_8);
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_WORD, line, match)) {
+        Txt_x86_64_Att_ReadInts(Txt_x86_64_Att_FieldTail(line, match, 1), ASM_X86_64_WIDTH_16);
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_LONG, line, match)) {
+        Txt_x86_64_Att_ReadInts(Txt_x86_64_Att_FieldTail(line, match, 1), ASM_X86_64_WIDTH_32);
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_QUAD, line, match)) {
+        Txt_x86_64_Att_ReadInts(Txt_x86_64_Att_FieldTail(line, match, 0), ASM_X86_64_WIDTH_64);
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_ZERO, line, match)) {
+        int64_t count = strtol(Txt_x86_64_Att_FieldTail(line, match, 1), NULL, 0);
         size_t n = count > 0 ? (size_t) count : 0;
         uint8_t *zeros = calloc(n ? n : 1, sizeof(uint8_t));
+
         Asm_x86_64_EmitBytes(zeros, n);
         free(zeros);
-    } else {
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_ASCII, line, match)) {
+        Txt_x86_64_Att_ReadString(Txt_x86_64_Att_FieldTail(line, match, 0), TXT_X86_64_BARE);
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_ASCIZ, line, match)) {
+        Txt_x86_64_Att_ReadString(Txt_x86_64_Att_FieldTail(line, match, 1), TXT_X86_64_TERMINATED);
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_IGNORED, line, match)) {
         Asm_x86_64_EmitDirective("%s", line);
+    } else {
+        Err_Raise(ERR_TXT_DIRECTIVE_NOT_KNOWN, line);
     }
 }
 
-// Parse one line.
-void Txt_x86_64_Att_ParseLine(char *line)
+// Read one statement: blank, a label, a directive or an instruction.
+void Txt_x86_64_Att_ReadStatement(const char *text)
 {
-    char *rest = NULL;
-    bool quoted = false;
-    for (char *ptr = line; *ptr; ptr++) {
-        if (*ptr == '"') {
-            quoted = ! quoted;
-        } else if (*ptr == '#' && ! quoted) {
-            *ptr = '\0';
-            break;
-        } else if (*ptr == TXT_X86_64_SEPARATOR && ! quoted) {
-            *ptr = '\0';
-            rest = ptr + 1;
-            break;
-        }
-    }
+    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
 
-    char *text = Str_Trim(line);
-    char *ptr = text;
-    if (Txt_x86_64_Att_IsLabelStart(*ptr)) {
-        while (Txt_x86_64_Att_IsNameChar(*ptr)) {
-            ptr++;
-        }
-    }
-    if (ptr > text && *ptr == ':') {
-        char *name = Str_Slice(text, 0, (size_t) (ptr - text));
+    Txt_x86_64_RegexPrecompile();
+    Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_LEADING, text, match);
+    text += match[0].rm_eo;
+    Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_TRAILING, text, match);
+
+    char *body = Str_Slice(text, 0, (size_t) match[0].rm_so);
+
+    if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_BLANK, body, match)) {
+        // empty
+    } else if (Txt_x86_64_Att_Match(TXT_X86_64_PATTERN_LABEL_DEF, body, match)) {
+        char *name = Txt_x86_64_Att_FieldText(body, match, 0);
+
         Asm_x86_64_EmitLabel("%s", name);
         Str_Free(name);
-        ptr++;
-        while (*ptr && strchr(TXT_X86_64_BLANKS, *ptr)) {
-            ptr++;
-        }
-        if (*ptr) {
-            Txt_x86_64_Att_ParseLine(ptr);
-        }
-    } else if (text[0] == '.') {
-        Txt_x86_64_Att_ParseDirective(text);
-    } else if (*text != '\0') {
-        Txt_x86_64_Att_ParseInstr(text);
+        Txt_x86_64_Att_ReadStatement(body + match[0].rm_eo);
+    } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_DIRECTIVE, body, match)) {
+        Txt_x86_64_Att_ReadDirective(body);
+    } else {
+        Txt_x86_64_Att_ReadInstr(body);
     }
-    if (rest) {
-        Txt_x86_64_Att_ParseLine(rest);
+    Str_Free(body);
+}
+
+// Read one line, statement by statement, up to its comment.
+void Txt_x86_64_Att_ReadLine(const char *line)
+{
+    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+
+    Txt_x86_64_RegexPrecompile();
+    if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_SEPARATED, line, match)) {
+        char *text = Str_Slice(line, 0, (size_t) match[0].rm_eo - 1);
+
+        Txt_x86_64_Att_ReadStatement(text);
+        Str_Free(text);
+        Txt_x86_64_Att_ReadLine(line + match[0].rm_eo);
+    } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_COMMENTED, line, match)) {
+        char *text = Str_Slice(line, 0, (size_t) match[0].rm_eo - 1);
+
+        Txt_x86_64_Att_ReadStatement(text);
+        Str_Free(text);
+    } else if (Txt_x86_64_Att_Span(TXT_X86_64_PATTERN_STATEMENT, line, match)) {
+        Txt_x86_64_Att_ReadStatement(line);
+    } else {
+        Err_Raise(ERR_TXT_STRING_NOT_TERMINATED, line);
     }
 }
 
-// Parse AT&T-syntax assembly text onto the end of the instruction list.
-void Txt_x86_64_Att_ParseText(const char *text)
+// Read AT&T-syntax text onto the end of the item list.
+void Txt_x86_64_Att_ReadText(const char *text)
 {
     char **lines = Str_Tokenize(text, "\n");
+
     for (char **iter = lines; *iter; iter++) {
-        Txt_x86_64_Att_ParseLine(*iter);
+        Txt_x86_64_Att_ReadLine(*iter);
     }
     Str_FreeTokens(lines);
 }
 
-// Parse AT&T-syntax assembly text into the instruction list.
-void Txt_x86_64_Att_Parse(const char *text)
+// Read AT&T-syntax text into the item list.
+void Txt_x86_64_Att_Read(const char *text)
 {
     Asm_x86_64_Reset();
-    Txt_x86_64_Att_ParseText(text);
+    Txt_x86_64_Att_ReadText(text);
 }
