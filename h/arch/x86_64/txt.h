@@ -52,7 +52,7 @@
 // Longest mnemonic or directive name.
 #define TXT_X86_64_NAME_MAX 32
 
-// Most groups a pattern of one Txt_x86_64_Att_Emit function holds, plus one.
+// Most groups one instruction pattern holds, plus one.
 #define TXT_X86_64_REGEX_GROUPS 128
 
 // The character that ends a statement before the end of its line.
@@ -113,30 +113,14 @@ int32_t     Txt_x86_64_Att_DigitValue(char ch, Txt_x86_64_Base base);
 const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes);
 
 // Regex matches
-bool               Txt_x86_64_Att_Match(regex_t *regex, bool *compiled, const char *pattern, const char *line, regmatch_t *match);
+void               Txt_x86_64_Att_Compile(regex_t *regex, const char *pattern);
+bool               Txt_x86_64_Att_Match(const regex_t *regex, const char *line, regmatch_t *match);
 int32_t            Txt_x86_64_Att_Field(const regmatch_t *match, size_t index);
 char              *Txt_x86_64_Att_FieldText(const char *line, const regmatch_t *match, size_t index);
 int32_t            Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index);
 Asm_x86_64_Operand Txt_x86_64_Att_FieldOperand(const char *line, const regmatch_t *match, size_t index);
 Asm_x86_64_Item   *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *match, int32_t opcode);
-
-// Instruction forms, one for each the encoder has
-bool Txt_x86_64_Att_EmitRR(const char *line);
-bool Txt_x86_64_Att_EmitGrpImm(const char *line);
-bool Txt_x86_64_Att_EmitMovImm(const char *line);
-bool Txt_x86_64_Att_EmitMemForm(const char *line);
-bool Txt_x86_64_Att_EmitMovsx(const char *line);
-bool Txt_x86_64_Att_EmitMovzx(const char *line);
-bool Txt_x86_64_Att_EmitLeaRip(const char *line);
-bool Txt_x86_64_Att_EmitGrpUnary(const char *line);
-bool Txt_x86_64_Att_EmitShift(const char *line);
-bool Txt_x86_64_Att_EmitSetcc(const char *line);
-bool Txt_x86_64_Att_EmitBranch(const char *line);
-bool Txt_x86_64_Att_EmitMovRR(const char *line);
-bool Txt_x86_64_Att_EmitSse(const char *line);
-bool Txt_x86_64_Att_EmitX87(const char *line);
-bool Txt_x86_64_Att_EmitCallReg(const char *line);
-bool Txt_x86_64_Att_EmitBare(const char *line);
+Asm_x86_64_Item   *Txt_x86_64_Att_NewExtend(const char *line, const regmatch_t *match, int32_t opcode);
 
 // AT&T syntax parser
 void Txt_x86_64_Att_EmitInts(const char *args, Asm_x86_64_Width width);

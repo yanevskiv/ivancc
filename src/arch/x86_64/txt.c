@@ -701,15 +701,17 @@ const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes)
     return ptr + 1;
 }
 
-// Match line against pattern, compiling regex on its first use.
-bool Txt_x86_64_Att_Match(regex_t *regex, bool *compiled, const char *pattern, const char *line, regmatch_t *match)
+// Compile pattern into regex.
+void Txt_x86_64_Att_Compile(regex_t *regex, const char *pattern)
 {
-    if (! *compiled) {
-        bool fits = regcomp(regex, pattern, REG_EXTENDED) == 0 && regex->re_nsub < TXT_X86_64_REGEX_GROUPS;
+    bool fits = regcomp(regex, pattern, REG_EXTENDED) == 0 && regex->re_nsub < TXT_X86_64_REGEX_GROUPS;
 
-        Err_Assert(fits, ERR_TXT_REGEX_NOT_COMPILED, pattern);
-        *compiled = true;
-    }
+    Err_Assert(fits, ERR_TXT_REGEX_NOT_COMPILED, pattern);
+}
+
+// True if regex matches line, whose groups go to match.
+bool Txt_x86_64_Att_Match(const regex_t *regex, const char *line, regmatch_t *match)
+{
     return regexec(regex, line, TXT_X86_64_REGEX_GROUPS, match, 0) == 0;
 }
 
@@ -807,236 +809,15 @@ Asm_x86_64_Item *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *mat
     return item;
 }
 
-// Parse `<op> %r64, %r64`, the operands Enc_x86_64_EmitRR encodes.
-bool Txt_x86_64_Att_EmitRR(const char *line)
+// Build a movs or movz of opcode, its source as wide as its mnemonic says.
+Asm_x86_64_Item *Txt_x86_64_Att_NewExtend(const char *line, const regmatch_t *match, int32_t opcode)
 {
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_RR, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse `<op> $imm, %r64`, the operands Enc_x86_64_EmitGrpImm encodes.
-bool Txt_x86_64_Att_EmitGrpImm(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_GRP_IMM, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse `mov $imm, %reg`, the operands Enc_x86_64_EmitMovImm encodes.
-bool Txt_x86_64_Att_EmitMovImm(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_MOV_IMM, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_MOV);
-    return true;
-}
-
-// Parse a load, store or lea, the operands Enc_x86_64_EmitMemForm encodes.
-bool Txt_x86_64_Att_EmitMemForm(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_MEM_FORM, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse `movs<w>q`, the operands Enc_x86_64_EmitMovsx encodes.
-bool Txt_x86_64_Att_EmitMovsx(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_MOVSX, line, match)) {
-        return false;
-    }
     char *mnemonic = Txt_x86_64_Att_FieldText(line, match, 0);
-    Asm_x86_64_Item *item = Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_MOVSX);
+    Asm_x86_64_Item *item = Txt_x86_64_Att_NewInstr(line, match, opcode);
 
-    item->ai_src.ao_width = Txt_x86_64_Att_SuffixWidth(mnemonic[strlen(Txt_x86_64_OpName[ASM_X86_64_OP_MOVSX])]);
+    item->ai_src.ao_width = Txt_x86_64_Att_SuffixWidth(mnemonic[strlen(Txt_x86_64_OpName[opcode])]);
     Str_Free(mnemonic);
-    return true;
-}
-
-// Parse `movz<w>q`, the operands Enc_x86_64_EmitMovzx encodes.
-bool Txt_x86_64_Att_EmitMovzx(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_MOVZX, line, match)) {
-        return false;
-    }
-    char *mnemonic = Txt_x86_64_Att_FieldText(line, match, 0);
-    Asm_x86_64_Item *item = Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_MOVZX);
-
-    item->ai_src.ao_width = Txt_x86_64_Att_SuffixWidth(mnemonic[strlen(Txt_x86_64_OpName[ASM_X86_64_OP_MOVZX])]);
-    Str_Free(mnemonic);
-    return true;
-}
-
-// Parse `lea label(%rip), %r64`, the operands Enc_x86_64_EmitLeaRip encodes.
-bool Txt_x86_64_Att_EmitLeaRip(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_LEA_RIP, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_LEA);
-    return true;
-}
-
-// Parse `<op> %r64`, the operand Enc_x86_64_EmitGrpUnary encodes.
-bool Txt_x86_64_Att_EmitGrpUnary(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_GRP_UNARY, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse `<op> %cl, %r64`, the operands Enc_x86_64_EmitShift encodes.
-bool Txt_x86_64_Att_EmitShift(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_SHIFT, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse `set<cc> %r8`, the operand Enc_x86_64_EmitSetcc encodes.
-bool Txt_x86_64_Att_EmitSetcc(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_SETCC, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse `<op> label`, the operand Enc_x86_64_EmitBranch encodes.
-bool Txt_x86_64_Att_EmitBranch(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_BRANCH, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse `mov %reg, %reg`, the operands Enc_x86_64_EmitMov encodes.
-bool Txt_x86_64_Att_EmitMovRR(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_MOV_RR, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_MOV);
-    return true;
-}
-
-// Parse an SSE operation, the operands Enc_x86_64_EmitSse encodes.
-bool Txt_x86_64_Att_EmitSse(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_SSE, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse an x87 operation, the operands Enc_x86_64_EmitX87 encodes.
-bool Txt_x86_64_Att_EmitX87(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_X87, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
-}
-
-// Parse `call *%r64`, the operand Enc_x86_64_EmitInstr encodes.
-bool Txt_x86_64_Att_EmitCallReg(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_CALL_REG, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_CALL_REG);
-    return true;
-}
-
-// Parse an instruction without operands, as Enc_x86_64_EmitInstr encodes it.
-bool Txt_x86_64_Att_EmitBare(const char *line)
-{
-    static regex_t regex;
-    static bool compiled = false;
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
-
-    if (! Txt_x86_64_Att_Match(&regex, &compiled, TXT_X86_64_REGEX_BARE, line, match)) {
-        return false;
-    }
-    Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    return true;
+    return item;
 }
 
 // Emit a .byte/.word/.long/.quad list, little-endian or as an address.
@@ -1096,39 +877,65 @@ void Txt_x86_64_Att_EmitString(const char *args, Txt_x86_64_Terminate terminate)
 // Parse one instruction line by the first form the encoder has for it.
 void Txt_x86_64_Att_ParseInstr(const char *line)
 {
-    if (Txt_x86_64_Att_EmitRR(line))
-        return;
-    if (Txt_x86_64_Att_EmitGrpImm(line))
-        return;
-    if (Txt_x86_64_Att_EmitMovImm(line))
-        return;
-    if (Txt_x86_64_Att_EmitMemForm(line))
-        return;
-    if (Txt_x86_64_Att_EmitMovsx(line))
-        return;
-    if (Txt_x86_64_Att_EmitMovzx(line))
-        return;
-    if (Txt_x86_64_Att_EmitLeaRip(line))
-        return;
-    if (Txt_x86_64_Att_EmitGrpUnary(line))
-        return;
-    if (Txt_x86_64_Att_EmitShift(line))
-        return;
-    if (Txt_x86_64_Att_EmitSetcc(line))
-        return;
-    if (Txt_x86_64_Att_EmitBranch(line))
-        return;
-    if (Txt_x86_64_Att_EmitMovRR(line))
-        return;
-    if (Txt_x86_64_Att_EmitSse(line))
-        return;
-    if (Txt_x86_64_Att_EmitX87(line))
-        return;
-    if (Txt_x86_64_Att_EmitCallReg(line))
-        return;
-    if (Txt_x86_64_Att_EmitBare(line))
-        return;
-    Err_Raise(ERR_TXT_INSTRUCTION_NOT_KNOWN, line);
+    static regex_t rr, grp_imm, mov_imm, mem_form, movsx, movzx, lea_rip, grp_unary;
+    static regex_t shift, setcc, branch, mov_rr, sse, x87, call_reg, bare;
+    static bool compiled = false;
+    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+
+    if (! compiled) {
+        Txt_x86_64_Att_Compile(&rr, TXT_X86_64_REGEX_RR);
+        Txt_x86_64_Att_Compile(&grp_imm, TXT_X86_64_REGEX_GRP_IMM);
+        Txt_x86_64_Att_Compile(&mov_imm, TXT_X86_64_REGEX_MOV_IMM);
+        Txt_x86_64_Att_Compile(&mem_form, TXT_X86_64_REGEX_MEM_FORM);
+        Txt_x86_64_Att_Compile(&movsx, TXT_X86_64_REGEX_MOVSX);
+        Txt_x86_64_Att_Compile(&movzx, TXT_X86_64_REGEX_MOVZX);
+        Txt_x86_64_Att_Compile(&lea_rip, TXT_X86_64_REGEX_LEA_RIP);
+        Txt_x86_64_Att_Compile(&grp_unary, TXT_X86_64_REGEX_GRP_UNARY);
+        Txt_x86_64_Att_Compile(&shift, TXT_X86_64_REGEX_SHIFT);
+        Txt_x86_64_Att_Compile(&setcc, TXT_X86_64_REGEX_SETCC);
+        Txt_x86_64_Att_Compile(&branch, TXT_X86_64_REGEX_BRANCH);
+        Txt_x86_64_Att_Compile(&mov_rr, TXT_X86_64_REGEX_MOV_RR);
+        Txt_x86_64_Att_Compile(&sse, TXT_X86_64_REGEX_SSE);
+        Txt_x86_64_Att_Compile(&x87, TXT_X86_64_REGEX_X87);
+        Txt_x86_64_Att_Compile(&call_reg, TXT_X86_64_REGEX_CALL_REG);
+        Txt_x86_64_Att_Compile(&bare, TXT_X86_64_REGEX_BARE);
+        compiled = true;
+    }
+    if (Txt_x86_64_Att_Match(&rr, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&grp_imm, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&mov_imm, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&mem_form, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&movsx, line, match)) {
+        Txt_x86_64_Att_NewExtend(line, match, ASM_X86_64_OP_MOVSX);
+    } else if (Txt_x86_64_Att_Match(&movzx, line, match)) {
+        Txt_x86_64_Att_NewExtend(line, match, ASM_X86_64_OP_MOVZX);
+    } else if (Txt_x86_64_Att_Match(&lea_rip, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&grp_unary, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&shift, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&setcc, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&branch, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&mov_rr, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&sse, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&x87, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Txt_x86_64_Att_Match(&call_reg, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_CALL_REG);
+    } else if (Txt_x86_64_Att_Match(&bare, line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else {
+        Err_Raise(ERR_TXT_INSTRUCTION_NOT_KNOWN, line);
+    }
 }
 
 // Parse one directive line, lowering data directives to raw bytes.
