@@ -56,58 +56,58 @@ enum Txt_x86_64_Terminate {
     TXT_X86_64_TERMINATED // .string and .asciz
 };
 
-// The patterns the reader matches, in the order txt.c defines them.
-typedef enum Txt_x86_64_Pattern Txt_x86_64_Pattern;
-enum Txt_x86_64_Pattern {
-    TXT_X86_64_PATTERN_RR,
-    TXT_X86_64_PATTERN_GRP_IMM,
-    TXT_X86_64_PATTERN_MOV_IMM,
-    TXT_X86_64_PATTERN_MEM_FORM,
-    TXT_X86_64_PATTERN_MOVSX,
-    TXT_X86_64_PATTERN_MOVZX,
-    TXT_X86_64_PATTERN_LEA_RIP,
-    TXT_X86_64_PATTERN_GRP_UNARY,
-    TXT_X86_64_PATTERN_SHIFT,
-    TXT_X86_64_PATTERN_SETCC,
-    TXT_X86_64_PATTERN_BRANCH,
-    TXT_X86_64_PATTERN_MOV_RR,
-    TXT_X86_64_PATTERN_SSE,
-    TXT_X86_64_PATTERN_X87,
-    TXT_X86_64_PATTERN_CALL_REG,
-    TXT_X86_64_PATTERN_BARE,
-    TXT_X86_64_PATTERN_REG,
-    TXT_X86_64_PATTERN_IMM,
-    TXT_X86_64_PATTERN_MEM,
-    TXT_X86_64_PATTERN_RIP,
-    TXT_X86_64_PATTERN_LABEL,
-    TXT_X86_64_PATTERN_XMM,
-    TXT_X86_64_PATTERN_ST,
-    TXT_X86_64_PATTERN_OCTAL,
-    TXT_X86_64_PATTERN_HEX,
-    TXT_X86_64_PATTERN_ESCAPE,
-    TXT_X86_64_PATTERN_PLAIN,
-    TXT_X86_64_PATTERN_NUMBER,
-    TXT_X86_64_PATTERN_ADDRESS,
-    TXT_X86_64_PATTERN_SECTION_SHORT,
-    TXT_X86_64_PATTERN_SECTION,
-    TXT_X86_64_PATTERN_GLOBL,
-    TXT_X86_64_PATTERN_BYTE,
-    TXT_X86_64_PATTERN_WORD,
-    TXT_X86_64_PATTERN_LONG,
-    TXT_X86_64_PATTERN_QUAD,
-    TXT_X86_64_PATTERN_ZERO,
-    TXT_X86_64_PATTERN_ASCII,
-    TXT_X86_64_PATTERN_ASCIZ,
-    TXT_X86_64_PATTERN_IGNORED,
-    TXT_X86_64_PATTERN_LEADING,
-    TXT_X86_64_PATTERN_TRAILING,
-    TXT_X86_64_PATTERN_BLANK,
-    TXT_X86_64_PATTERN_LABEL_DEF,
-    TXT_X86_64_PATTERN_DIRECTIVE,
-    TXT_X86_64_PATTERN_SEPARATED,
-    TXT_X86_64_PATTERN_COMMENTED,
-    TXT_X86_64_PATTERN_STATEMENT,
-    TXT_X86_64_PATTERN_COUNT
+// The regexes the reader matches, in the order txt.c defines their patterns.
+typedef enum Txt_x86_64_RegexIndex Txt_x86_64_RegexIndex;
+enum Txt_x86_64_RegexIndex {
+    TXT_X86_64_REGEX_RR,
+    TXT_X86_64_REGEX_GRP_IMM,
+    TXT_X86_64_REGEX_MOV_IMM,
+    TXT_X86_64_REGEX_MEM_FORM,
+    TXT_X86_64_REGEX_MOVSX,
+    TXT_X86_64_REGEX_MOVZX,
+    TXT_X86_64_REGEX_LEA_RIP,
+    TXT_X86_64_REGEX_GRP_UNARY,
+    TXT_X86_64_REGEX_SHIFT,
+    TXT_X86_64_REGEX_SETCC,
+    TXT_X86_64_REGEX_BRANCH,
+    TXT_X86_64_REGEX_MOV_RR,
+    TXT_X86_64_REGEX_SSE,
+    TXT_X86_64_REGEX_X87,
+    TXT_X86_64_REGEX_CALL_REG,
+    TXT_X86_64_REGEX_BARE,
+    TXT_X86_64_REGEX_REG,
+    TXT_X86_64_REGEX_IMM,
+    TXT_X86_64_REGEX_MEM,
+    TXT_X86_64_REGEX_RIP,
+    TXT_X86_64_REGEX_LABEL,
+    TXT_X86_64_REGEX_XMM,
+    TXT_X86_64_REGEX_ST,
+    TXT_X86_64_REGEX_OCTAL,
+    TXT_X86_64_REGEX_HEX,
+    TXT_X86_64_REGEX_ESCAPE,
+    TXT_X86_64_REGEX_PLAIN,
+    TXT_X86_64_REGEX_NUMBER,
+    TXT_X86_64_REGEX_ADDRESS,
+    TXT_X86_64_REGEX_SECTION_SHORT,
+    TXT_X86_64_REGEX_SECTION,
+    TXT_X86_64_REGEX_GLOBL,
+    TXT_X86_64_REGEX_BYTE,
+    TXT_X86_64_REGEX_WORD,
+    TXT_X86_64_REGEX_LONG,
+    TXT_X86_64_REGEX_QUAD,
+    TXT_X86_64_REGEX_ZERO,
+    TXT_X86_64_REGEX_ASCII,
+    TXT_X86_64_REGEX_ASCIZ,
+    TXT_X86_64_REGEX_IGNORED,
+    TXT_X86_64_REGEX_LEADING,
+    TXT_X86_64_REGEX_TRAILING,
+    TXT_X86_64_REGEX_BLANK,
+    TXT_X86_64_REGEX_LABEL_DEF,
+    TXT_X86_64_REGEX_DIRECTIVE,
+    TXT_X86_64_REGEX_SEPARATED,
+    TXT_X86_64_REGEX_COMMENTED,
+    TXT_X86_64_REGEX_STATEMENT,
+    TXT_X86_64_REGEX_COUNT
 };
 
 // The bases a string escape is written in.
@@ -117,12 +117,15 @@ enum Txt_x86_64_Base {
     TXT_X86_64_BASE_HEX   = 16
 };
 
-// AT&T syntax writer
-void   Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
-void   Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
-size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len);
-void   Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len);
-void   Txt_x86_64_Att_Write(FILE *out);
+// Regex matches
+void        Txt_x86_64_Att_Compile(Txt_x86_64_RegexIndex index, const char *source);
+void        Txt_x86_64_Att_RegexPrecompile(void);
+bool        Txt_x86_64_Att_Match(Txt_x86_64_RegexIndex index, const char *line, regmatch_t *match);
+bool        Txt_x86_64_Att_Span(Txt_x86_64_RegexIndex index, const char *line, regmatch_t *match);
+int32_t     Txt_x86_64_Att_Field(const regmatch_t *match, size_t index);
+char       *Txt_x86_64_Att_FieldText(const char *line, const regmatch_t *match, size_t index);
+const char *Txt_x86_64_Att_FieldTail(const char *line, const regmatch_t *match, size_t index);
+int32_t     Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index);
 
 // Name-to-value lookups
 char             Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width);
@@ -130,16 +133,6 @@ Asm_x86_64_Width Txt_x86_64_Att_SuffixWidth(char ch);
 int32_t          Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width);
 int32_t          Txt_x86_64_XmmByName(const char *name);
 int32_t          Txt_x86_64_OpByName(const char *name);
-
-// Regex matches
-void        Txt_x86_64_Att_Compile(Txt_x86_64_Pattern pattern, const char *source);
-void        Txt_x86_64_RegexPrecompile(void);
-bool        Txt_x86_64_Att_Match(Txt_x86_64_Pattern pattern, const char *line, regmatch_t *match);
-bool        Txt_x86_64_Att_Span(Txt_x86_64_Pattern pattern, const char *line, regmatch_t *match);
-int32_t     Txt_x86_64_Att_Field(const regmatch_t *match, size_t index);
-char       *Txt_x86_64_Att_FieldText(const char *line, const regmatch_t *match, size_t index);
-const char *Txt_x86_64_Att_FieldTail(const char *line, const regmatch_t *match, size_t index);
-int32_t     Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index);
 
 // AT&T syntax reader
 Asm_x86_64_Operand Txt_x86_64_Att_ReadOperand(const char *text);
@@ -154,5 +147,12 @@ void               Txt_x86_64_Att_ReadStatement(const char *text);
 void               Txt_x86_64_Att_ReadLine(const char *line);
 void               Txt_x86_64_Att_ReadText(const char *text);
 void               Txt_x86_64_Att_Read(const char *text);
+
+// AT&T syntax writer
+void   Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
+void   Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
+size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len);
+void   Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len);
+void   Txt_x86_64_Att_Write(FILE *out);
 
 #endif // TXT_X86_64_H
