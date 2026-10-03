@@ -1478,18 +1478,18 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "arguments and environment take %llu bytes, more than the %llu the stack allows"
     },
 
-    // Args: [operand]
-    [ERR_TXT_QUAD_NOT_ADDRESS] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_QUAD_NOT_ADDRESS",
-        .ee_format = "'%s' is not an address a .quad can hold"
-    },
-
     // Args: [pattern]
     [ERR_TXT_REGEX_NOT_COMPILED] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_TXT_REGEX_NOT_COMPILED",
         .ee_format = "pattern '%s' does not compile"
+    },
+
+    // Args: [operand]
+    [ERR_TXT_OPERAND_NOT_KNOWN] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_TXT_OPERAND_NOT_KNOWN",
+        .ee_format = "no operand the assembler reads is '%s'"
     },
 
     // Args: [line]
@@ -1499,18 +1499,25 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "no instruction the assembler encodes reads '%s'"
     },
 
-    // Args: [string]
+    // Args: [items]
+    [ERR_TXT_DATA_NOT_KNOWN] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_TXT_DATA_NOT_KNOWN",
+        .ee_format = "'%s' is neither a number nor, in a .quad, an address"
+    },
+
+    // Args: [line]
+    [ERR_TXT_DIRECTIVE_NOT_KNOWN] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_TXT_DIRECTIVE_NOT_KNOWN",
+        .ee_format = "no directive the assembler reads is '%s'"
+    },
+
+    // Args: [line]
     [ERR_TXT_STRING_NOT_TERMINATED] = {
         .ee_level  = ERR_LEVEL_ERROR,
         .ee_name   = "ERR_TXT_STRING_NOT_TERMINATED",
         .ee_format = "missing closing quote in '%s'"
-    },
-
-    // Args: [character]
-    [ERR_TXT_ESCAPE_NOT_KNOWN] = {
-        .ee_level  = ERR_LEVEL_ERROR,
-        .ee_name   = "ERR_TXT_ESCAPE_NOT_KNOWN",
-        .ee_format = "unknown escape sequence '\\%c'"
     },
 
     // Args: [address, instruction address]

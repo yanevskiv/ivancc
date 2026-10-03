@@ -266,11 +266,12 @@ enum Err_Code {
     ERR_LOAD_SEGMENT_TRUNCATED,            // can't load a segment that runs past the end of its file
     ERR_LOAD_ARGS_TOO_LARGE,               // can't fit the arguments and environment in a quarter of the stack
 
-    ERR_TXT_QUAD_NOT_ADDRESS,              // can't give `.quad` an operand that is not an address
-    ERR_TXT_REGEX_NOT_COMPILED,            // can't compile a pattern the assembler parses with
+    ERR_TXT_REGEX_NOT_COMPILED,            // can't compile a pattern the assembler reads with
+    ERR_TXT_OPERAND_NOT_KNOWN,             // can't read an operand of a kind the assembler does not know
     ERR_TXT_INSTRUCTION_NOT_KNOWN,         // can't assemble an instruction the encoder has no form for
+    ERR_TXT_DATA_NOT_KNOWN,                // can't give a data directive an item that is neither a number nor, in `.quad`, an address
+    ERR_TXT_DIRECTIVE_NOT_KNOWN,           // can't read a directive the assembler does not know, or its arguments
     ERR_TXT_STRING_NOT_TERMINATED,         // can't leave a string without its closing quote
-    ERR_TXT_ESCAPE_NOT_KNOWN,              // can't use an escape sequence the assembler does not know
 
     ERR_CPU_READ_NOT_MAPPED,               // can't read unmapped memory
     ERR_CPU_WRITE_NOT_MAPPED,              // can't write to unmapped memory
