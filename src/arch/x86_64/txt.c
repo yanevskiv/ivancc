@@ -631,6 +631,157 @@ int32_t Txt_x86_64_OpByName(const char *name)
     return -1;
 }
 
+// Write one operand in AT&T syntax.
+void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
+{
+    switch (op->ao_kind) {
+        case ASM_X86_64_OPERAND_REG: {
+            const char *name = Txt_x86_64_Reg64Name[op->ao_reg];
+            if (op->ao_width == ASM_X86_64_WIDTH_8) {
+                name = Txt_x86_64_Reg8Name[op->ao_reg];
+            } else if (op->ao_width == ASM_X86_64_WIDTH_16) {
+                name = Txt_x86_64_Reg16Name[op->ao_reg];
+            } else if (op->ao_width == ASM_X86_64_WIDTH_32) {
+                name = Txt_x86_64_Reg32Name[op->ao_reg];
+            }
+            fprintf(out, "%%%s", name);
+        } break;
+        case ASM_X86_64_OPERAND_IMM: {
+            fprintf(out, "$%ld", op->ao_imm);
+        } break;
+        case ASM_X86_64_OPERAND_MEM: {
+            if (op->ao_disp) {
+                fprintf(out, "%d(%%%s)", op->ao_disp, Txt_x86_64_Reg64Name[op->ao_reg]);
+            } else {
+                fprintf(out, "(%%%s)", Txt_x86_64_Reg64Name[op->ao_reg]);
+            }
+        } break;
+        case ASM_X86_64_OPERAND_RIP: {
+            fprintf(out, "%s(%%rip)", op->ao_label);
+        } break;
+        case ASM_X86_64_OPERAND_LABEL: {
+            fprintf(out, "%s", op->ao_label);
+        } break;
+        case ASM_X86_64_OPERAND_XMM: {
+            fprintf(out, "%%%s", Txt_x86_64_XmmName[op->ao_xmm]);
+        } break;
+        case ASM_X86_64_OPERAND_ST: {
+            if (op->ao_st) {
+                fprintf(out, "%%st(%d)", op->ao_st);
+            } else {
+                fprintf(out, "%%st");
+            }
+        } break;
+        case ASM_X86_64_OPERAND_NONE:
+        case ASM_X86_64_OPERAND_COUNT: {
+            // empty
+        } break;
+    }
+}
+
+// Write one instruction: mnemonic plus operands in AT&T order.
+void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
+{
+    if (item->ai_op == ASM_X86_64_OP_MOVSX || item->ai_op == ASM_X86_64_OP_MOVZX) {
+        fprintf(out, "  %s%cq", Txt_x86_64_OpName[item->ai_op], Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
+    } else if (item->ai_op == ASM_X86_64_OP_MOV && (item->ai_src.ao_kind == ASM_X86_64_OPERAND_XMM || item->ai_dst.ao_kind == ASM_X86_64_OPERAND_XMM)) {
+        fprintf(out, "  movq");
+    } else {
+        fprintf(out, "  %s", Txt_x86_64_OpName[item->ai_op]);
+    }
+
+    bool have_src = item->ai_src.ao_kind != ASM_X86_64_OPERAND_NONE;
+    bool have_dst = item->ai_dst.ao_kind != ASM_X86_64_OPERAND_NONE;
+
+    if (have_src) {
+        fputc(' ', out);
+        Txt_x86_64_Att_WriteOperand(out, &item->ai_src);
+    }
+    if (have_dst) {
+        fputs(have_src ? ", " : " ", out);
+        if (item->ai_op == ASM_X86_64_OP_CALL_REG) {
+            fputc('*', out);
+        }
+        Txt_x86_64_Att_WriteOperand(out, &item->ai_dst);
+    }
+    fputc('\n', out);
+}
+
+// Count the zero bytes starting at one offset.
+size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len)
+{
+    size_t end = at;
+
+    while (end < len && bytes[end] == 0) {
+        end++;
+    }
+    return end - at;
+}
+
+// Write data bytes as `.zero` runs and `.byte` lines.
+void Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len)
+{
+    size_t i = 0;
+
+    while (i < len) {
+        size_t zeros = Txt_x86_64_Att_ZeroRun(bytes, i, len);
+        if (zeros >= TXT_X86_64_ZERO_RUN_MIN) {
+            fprintf(out, "  .zero %zu\n", zeros);
+            i += zeros;
+            continue;
+        }
+        fprintf(out, "  .byte %d", bytes[i]);
+        for (size_t count = 1; ++i < len && count < TXT_X86_64_BYTES_PER_LINE; count++) {
+            if (Txt_x86_64_Att_ZeroRun(bytes, i, len) >= TXT_X86_64_ZERO_RUN_MIN) {
+                break;
+            }
+            fprintf(out, ", %d", bytes[i]);
+        }
+        fputc('\n', out);
+    }
+}
+
+// Walk the instruction list and write AT&T-syntax assembly to out.
+void Txt_x86_64_Att_Write(FILE *out)
+{
+    for (Asm_x86_64_Item *item = Asm_x86_64_Items(); item; item = item->ai_next) {
+        switch (item->ai_kind) {
+            case ASM_X86_64_ITEM_INSTR: {
+                Txt_x86_64_Att_WriteInstr(out, item);
+            } break;
+            case ASM_X86_64_ITEM_LABEL: {
+                fprintf(out, "%s:\n", item->ai_label);
+            } break;
+            case ASM_X86_64_ITEM_GLOBL: {
+                fprintf(out, "  .globl %s\n", item->ai_label);
+            } break;
+            case ASM_X86_64_ITEM_SECTION: {
+                if (Str_Equals(item->ai_secname, ".text")) {
+                    fprintf(out, "  .text\n");
+                } else {
+                    fprintf(out, "  .section %s\n", item->ai_secname);
+                }
+            } break;
+            case ASM_X86_64_ITEM_BYTES: {
+                Txt_x86_64_Att_WriteBytes(out, item->ai_bytes, item->ai_nbytes);
+            } break;
+            case ASM_X86_64_ITEM_ADDR: {
+                if (item->ai_addend) {
+                    fprintf(out, "  .quad %s%+lld\n", item->ai_label, (long long) item->ai_addend);
+                } else {
+                    fprintf(out, "  .quad %s\n", item->ai_label);
+                }
+            } break;
+            case ASM_X86_64_ITEM_DIRECTIVE: {
+                fprintf(out, "  %s\n", item->ai_text);
+            } break;
+            case ASM_X86_64_ITEM_COUNT: {
+                // empty
+            } break;
+        }
+    }
+}
+
 // Read one operand in AT&T syntax.
 Asm_x86_64_Operand Txt_x86_64_Att_ReadOperand(const char *text)
 {
@@ -929,155 +1080,4 @@ void Txt_x86_64_Att_Read(const char *text)
 {
     Asm_x86_64_Reset();
     Txt_x86_64_Att_ReadText(text);
-}
-
-// Write one operand in AT&T syntax.
-void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
-{
-    switch (op->ao_kind) {
-        case ASM_X86_64_OPERAND_REG: {
-            const char *name = Txt_x86_64_Reg64Name[op->ao_reg];
-            if (op->ao_width == ASM_X86_64_WIDTH_8) {
-                name = Txt_x86_64_Reg8Name[op->ao_reg];
-            } else if (op->ao_width == ASM_X86_64_WIDTH_16) {
-                name = Txt_x86_64_Reg16Name[op->ao_reg];
-            } else if (op->ao_width == ASM_X86_64_WIDTH_32) {
-                name = Txt_x86_64_Reg32Name[op->ao_reg];
-            }
-            fprintf(out, "%%%s", name);
-        } break;
-        case ASM_X86_64_OPERAND_IMM: {
-            fprintf(out, "$%ld", op->ao_imm);
-        } break;
-        case ASM_X86_64_OPERAND_MEM: {
-            if (op->ao_disp) {
-                fprintf(out, "%d(%%%s)", op->ao_disp, Txt_x86_64_Reg64Name[op->ao_reg]);
-            } else {
-                fprintf(out, "(%%%s)", Txt_x86_64_Reg64Name[op->ao_reg]);
-            }
-        } break;
-        case ASM_X86_64_OPERAND_RIP: {
-            fprintf(out, "%s(%%rip)", op->ao_label);
-        } break;
-        case ASM_X86_64_OPERAND_LABEL: {
-            fprintf(out, "%s", op->ao_label);
-        } break;
-        case ASM_X86_64_OPERAND_XMM: {
-            fprintf(out, "%%%s", Txt_x86_64_XmmName[op->ao_xmm]);
-        } break;
-        case ASM_X86_64_OPERAND_ST: {
-            if (op->ao_st) {
-                fprintf(out, "%%st(%d)", op->ao_st);
-            } else {
-                fprintf(out, "%%st");
-            }
-        } break;
-        case ASM_X86_64_OPERAND_NONE:
-        case ASM_X86_64_OPERAND_COUNT: {
-            // empty
-        } break;
-    }
-}
-
-// Write one instruction: mnemonic plus operands in AT&T order.
-void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
-{
-    if (item->ai_op == ASM_X86_64_OP_MOVSX || item->ai_op == ASM_X86_64_OP_MOVZX) {
-        fprintf(out, "  %s%cq", Txt_x86_64_OpName[item->ai_op], Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
-    } else if (item->ai_op == ASM_X86_64_OP_MOV && (item->ai_src.ao_kind == ASM_X86_64_OPERAND_XMM || item->ai_dst.ao_kind == ASM_X86_64_OPERAND_XMM)) {
-        fprintf(out, "  movq");
-    } else {
-        fprintf(out, "  %s", Txt_x86_64_OpName[item->ai_op]);
-    }
-
-    bool have_src = item->ai_src.ao_kind != ASM_X86_64_OPERAND_NONE;
-    bool have_dst = item->ai_dst.ao_kind != ASM_X86_64_OPERAND_NONE;
-
-    if (have_src) {
-        fputc(' ', out);
-        Txt_x86_64_Att_WriteOperand(out, &item->ai_src);
-    }
-    if (have_dst) {
-        fputs(have_src ? ", " : " ", out);
-        if (item->ai_op == ASM_X86_64_OP_CALL_REG) {
-            fputc('*', out);
-        }
-        Txt_x86_64_Att_WriteOperand(out, &item->ai_dst);
-    }
-    fputc('\n', out);
-}
-
-// Count the zero bytes starting at one offset.
-size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len)
-{
-    size_t end = at;
-
-    while (end < len && bytes[end] == 0) {
-        end++;
-    }
-    return end - at;
-}
-
-// Write data bytes as `.zero` runs and `.byte` lines.
-void Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len)
-{
-    size_t i = 0;
-
-    while (i < len) {
-        size_t zeros = Txt_x86_64_Att_ZeroRun(bytes, i, len);
-        if (zeros >= TXT_X86_64_ZERO_RUN_MIN) {
-            fprintf(out, "  .zero %zu\n", zeros);
-            i += zeros;
-            continue;
-        }
-        fprintf(out, "  .byte %d", bytes[i]);
-        for (size_t count = 1; ++i < len && count < TXT_X86_64_BYTES_PER_LINE; count++) {
-            if (Txt_x86_64_Att_ZeroRun(bytes, i, len) >= TXT_X86_64_ZERO_RUN_MIN) {
-                break;
-            }
-            fprintf(out, ", %d", bytes[i]);
-        }
-        fputc('\n', out);
-    }
-}
-
-// Walk the instruction list and write AT&T-syntax assembly to out.
-void Txt_x86_64_Att_Write(FILE *out)
-{
-    for (Asm_x86_64_Item *item = Asm_x86_64_Items(); item; item = item->ai_next) {
-        switch (item->ai_kind) {
-            case ASM_X86_64_ITEM_INSTR: {
-                Txt_x86_64_Att_WriteInstr(out, item);
-            } break;
-            case ASM_X86_64_ITEM_LABEL: {
-                fprintf(out, "%s:\n", item->ai_label);
-            } break;
-            case ASM_X86_64_ITEM_GLOBL: {
-                fprintf(out, "  .globl %s\n", item->ai_label);
-            } break;
-            case ASM_X86_64_ITEM_SECTION: {
-                if (Str_Equals(item->ai_secname, ".text")) {
-                    fprintf(out, "  .text\n");
-                } else {
-                    fprintf(out, "  .section %s\n", item->ai_secname);
-                }
-            } break;
-            case ASM_X86_64_ITEM_BYTES: {
-                Txt_x86_64_Att_WriteBytes(out, item->ai_bytes, item->ai_nbytes);
-            } break;
-            case ASM_X86_64_ITEM_ADDR: {
-                if (item->ai_addend) {
-                    fprintf(out, "  .quad %s%+lld\n", item->ai_label, (long long) item->ai_addend);
-                } else {
-                    fprintf(out, "  .quad %s\n", item->ai_label);
-                }
-            } break;
-            case ASM_X86_64_ITEM_DIRECTIVE: {
-                fprintf(out, "  %s\n", item->ai_text);
-            } break;
-            case ASM_X86_64_ITEM_COUNT: {
-                // empty
-            } break;
-        }
-    }
 }
