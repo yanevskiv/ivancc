@@ -503,44 +503,6 @@ int32_t Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t
     return opcode;
 }
 
-// Return the AT&T letter naming an operand width.
-char Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width)
-{
-    switch (width) {
-        case ASM_X86_64_WIDTH_8: {
-            return 'b';
-        } break;
-        case ASM_X86_64_WIDTH_16: {
-            return 'w';
-        } break;
-        case ASM_X86_64_WIDTH_64: {
-            return 'q';
-        } break;
-        default: {
-            return 'l';
-        }
-    }
-}
-
-// Return the operand width an AT&T letter names.
-Asm_x86_64_Width Txt_x86_64_Att_SuffixWidth(char ch)
-{
-    switch (ch) {
-        case 'b': {
-            return ASM_X86_64_WIDTH_8;
-        } break;
-        case 'w': {
-            return ASM_X86_64_WIDTH_16;
-        } break;
-        case 'q': {
-            return ASM_X86_64_WIDTH_64;
-        } break;
-        default: {
-            return ASM_X86_64_WIDTH_32;
-        }
-    }
-}
-
 // Return the register index for an AT&T name like "rax"/"al".
 int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
 {
@@ -639,7 +601,9 @@ void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op)
 void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
 {
     if (item->ai_op == ASM_X86_64_OP_MOVSX || item->ai_op == ASM_X86_64_OP_MOVZX) {
-        fprintf(out, "  %s%cq", Txt_x86_64_OpName[item->ai_op], Txt_x86_64_Att_WidthSuffix(item->ai_src.ao_width));
+        Asm_x86_64_Width width = item->ai_src.ao_width;
+
+        fprintf(out, "  %s%cq", Txt_x86_64_OpName[item->ai_op], width == ASM_X86_64_WIDTH_8 ? 'b' : width == ASM_X86_64_WIDTH_16 ? 'w' : 'l');
     } else if (item->ai_op == ASM_X86_64_OP_MOV && (item->ai_src.ao_kind == ASM_X86_64_OPERAND_XMM || item->ai_dst.ao_kind == ASM_X86_64_OPERAND_XMM)) {
         fprintf(out, "  movq");
     } else {
@@ -797,9 +761,10 @@ Asm_x86_64_Item *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *mat
 Asm_x86_64_Item *Txt_x86_64_Att_NewExtend(const char *line, const regmatch_t *match, int32_t opcode)
 {
     char *mnemonic = Str_RegexFieldText(line, match, 0);
+    char ch = mnemonic[strlen(Txt_x86_64_OpName[opcode])];
     Asm_x86_64_Item *item = Txt_x86_64_Att_NewInstr(line, match, opcode);
 
-    item->ai_src.ao_width = Txt_x86_64_Att_SuffixWidth(mnemonic[strlen(Txt_x86_64_OpName[opcode])]);
+    item->ai_src.ao_width = ch == 'b' ? ASM_X86_64_WIDTH_8 : ch == 'w' ? ASM_X86_64_WIDTH_16 : ASM_X86_64_WIDTH_32;
     Str_Free(mnemonic);
     return item;
 }
@@ -996,44 +961,33 @@ void Txt_x86_64_Att_ReadStatement(const char *text)
     Str_Free(body);
 }
 
-// Read one line, statement by statement, up to its comment.
-void Txt_x86_64_Att_ReadLine(const char *line)
+// Read AT&T-syntax text onto the end of the item list, line by line.
+void Txt_x86_64_Att_Read(const char *text)
 {
+    char **lines = Str_Tokenize(text, "\n");
     regmatch_t match[STR_REGEX_GROUPS];
 
     Txt_x86_64_Att_RegexPrecompile();
-    if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SEPARATED], line, match)) {
-        char *text = Str_Slice(line, 0, (size_t) match[0].rm_eo - 1);
-
-        Txt_x86_64_Att_ReadStatement(text);
-        Str_Free(text);
-        Txt_x86_64_Att_ReadLine(line + match[0].rm_eo);
-    } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_COMMENTED], line, match)) {
-        char *text = Str_Slice(line, 0, (size_t) match[0].rm_eo - 1);
-
-        Txt_x86_64_Att_ReadStatement(text);
-        Str_Free(text);
-    } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_STATEMENT], line, match)) {
-        Txt_x86_64_Att_ReadStatement(line);
-    } else {
-        Err_Raise(ERR_TXT_STRING_NOT_TERMINATED, line);
-    }
-}
-
-// Read AT&T-syntax text onto the end of the item list.
-void Txt_x86_64_Att_ReadText(const char *text)
-{
-    char **lines = Str_Tokenize(text, "\n");
-
     for (char **iter = lines; *iter; iter++) {
-        Txt_x86_64_Att_ReadLine(*iter);
+        const char *ptr = *iter;
+
+        while (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SEPARATED], ptr, match)) {
+            char *statement = Str_Slice(ptr, 0, (size_t) match[0].rm_eo - 1);
+
+            Txt_x86_64_Att_ReadStatement(statement);
+            Str_Free(statement);
+            ptr += match[0].rm_eo;
+        }
+        if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_COMMENTED], ptr, match)) {
+            char *statement = Str_Slice(ptr, 0, (size_t) match[0].rm_eo - 1);
+
+            Txt_x86_64_Att_ReadStatement(statement);
+            Str_Free(statement);
+        } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_STATEMENT], ptr, match)) {
+            Txt_x86_64_Att_ReadStatement(ptr);
+        } else {
+            Err_Raise(ERR_TXT_STRING_NOT_TERMINATED, ptr);
+        }
     }
     Str_FreeTokens(lines);
-}
-
-// Read AT&T-syntax text into the item list.
-void Txt_x86_64_Att_Read(const char *text)
-{
-    Asm_x86_64_Reset();
-    Txt_x86_64_Att_ReadText(text);
 }
