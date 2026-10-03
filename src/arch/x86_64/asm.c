@@ -124,7 +124,7 @@ Asm_x86_64_Item *Asm_x86_64_New(Asm_x86_64_ItemKind kind)
 }
 
 // Clear the instruction list before a fresh translation unit.
-void Asm_x86_64_Reset(void)
+void Asm_x86_64_Clear(void)
 {
     Asm_x86_64_Item *item = Asm_x86_64_Head;
     while (item) {

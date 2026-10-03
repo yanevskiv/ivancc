@@ -2097,7 +2097,7 @@ void Gen_x86_64_EmitTextSection(Ast_Func *prog)
 // Build the instruction list for the whole program.
 void Gen_x86_64_BuildProgram(Ast_Func *prog)
 {
-    Asm_x86_64_Reset();
+    Asm_x86_64_Clear();
     Gen_x86_64_Depth = 0;
     Gen_x86_64_LabelId = 0;
 

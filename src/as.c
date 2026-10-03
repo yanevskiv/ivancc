@@ -75,7 +75,7 @@ static void As_Assemble(const char *input, const char *output)
     char *text = As_ReadSource(input);
 
     Err_Assert(text, ERR_AS_INPUT_NOT_READABLE, input, strerror(errno));
-    Asm_x86_64_Reset();
+    Asm_x86_64_Clear();
     Txt_x86_64_Att_Read(text);
     free(text);
 
