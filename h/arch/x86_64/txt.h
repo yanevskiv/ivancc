@@ -22,6 +22,7 @@
 
 // Standard headers.
 #include <ctype.h>
+#include <regex.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -42,9 +43,6 @@
 // The `%st` that opens an x87 stack register.
 #define TXT_X86_64_ST_PREFIX "%st"
 
-// Number of x87 stack registers.
-#define TXT_X86_64_ST_COUNT 8
-
 // Shortest run of zero bytes written as one `.zero`.
 #define TXT_X86_64_ZERO_RUN_MIN 8
 
@@ -54,8 +52,8 @@
 // Longest mnemonic or directive name.
 #define TXT_X86_64_NAME_MAX 32
 
-// Most operands an instruction takes.
-#define TXT_X86_64_OPERANDS_MAX 2
+// Most groups a pattern of one Txt_x86_64_Att_Emit function holds, plus one.
+#define TXT_X86_64_REGEX_GROUPS 128
 
 // The character that ends a statement before the end of its line.
 #define TXT_X86_64_SEPARATOR ';'
@@ -65,9 +63,6 @@
 
 // Characters that end a section or symbol name.
 #define TXT_X86_64_NAME_END " ,\t"
-
-// Width letters a mnemonic may end with.
-#define TXT_X86_64_WIDTH_SUFFIXES "bwlq"
 
 // The prefixes that open a hex number.
 #define TXT_X86_64_HEX_PREFIX       "0x"
@@ -102,28 +97,48 @@ void   Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len);
 void   Txt_x86_64_Att_Write(FILE *out);
 
 // Name-to-value lookups
-char    Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width);
-int32_t Txt_x86_64_Att_ExtendOp(const char *mnemonic, Asm_x86_64_Width *width);
-int32_t Txt_x86_64_Att_IndirectOp(int32_t opcode);
-bool    Txt_x86_64_Att_IsDirectBranch(int32_t opcode);
-int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width);
-int32_t Txt_x86_64_XmmByName(const char *name);
-int32_t Txt_x86_64_OpByName(const char *name);
+char             Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width);
+Asm_x86_64_Width Txt_x86_64_Att_SuffixWidth(char ch);
+int32_t          Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width);
+int32_t          Txt_x86_64_XmmByName(const char *name);
+int32_t          Txt_x86_64_OpByName(const char *name);
 
 // Text scanning
 bool        Txt_x86_64_Att_IsNameStart(char ch);
 bool        Txt_x86_64_Att_IsNameChar(char ch);
 bool        Txt_x86_64_Att_IsLabelStart(char ch);
-bool        Txt_x86_64_Att_IsTarget(const char *text);
 const char *Txt_x86_64_Att_ScanAddress(const char *text, int64_t *addend);
-const char *Txt_x86_64_Att_ScanReg(const char *text);
 const char *Txt_x86_64_Att_ScanNumber(const char *text, int64_t *value);
 int32_t     Txt_x86_64_Att_DigitValue(char ch, Txt_x86_64_Base base);
 const char *Txt_x86_64_Att_ScanString(const char *text, Buf *bytes);
 
+// Regex matches
+bool               Txt_x86_64_Att_Match(regex_t *regex, bool *compiled, const char *pattern, const char *line, regmatch_t *match);
+int32_t            Txt_x86_64_Att_Field(const regmatch_t *match, size_t index);
+char              *Txt_x86_64_Att_FieldText(const char *line, const regmatch_t *match, size_t index);
+int32_t            Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index);
+Asm_x86_64_Operand Txt_x86_64_Att_FieldOperand(const char *line, const regmatch_t *match, size_t index);
+Asm_x86_64_Item   *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *match, int32_t opcode);
+
+// Instruction forms, one for each the encoder has
+bool Txt_x86_64_Att_EmitRR(const char *line);
+bool Txt_x86_64_Att_EmitGrpImm(const char *line);
+bool Txt_x86_64_Att_EmitMovImm(const char *line);
+bool Txt_x86_64_Att_EmitMemForm(const char *line);
+bool Txt_x86_64_Att_EmitMovsx(const char *line);
+bool Txt_x86_64_Att_EmitMovzx(const char *line);
+bool Txt_x86_64_Att_EmitLeaRip(const char *line);
+bool Txt_x86_64_Att_EmitGrpUnary(const char *line);
+bool Txt_x86_64_Att_EmitShift(const char *line);
+bool Txt_x86_64_Att_EmitSetcc(const char *line);
+bool Txt_x86_64_Att_EmitBranch(const char *line);
+bool Txt_x86_64_Att_EmitMovRR(const char *line);
+bool Txt_x86_64_Att_EmitSse(const char *line);
+bool Txt_x86_64_Att_EmitX87(const char *line);
+bool Txt_x86_64_Att_EmitCallReg(const char *line);
+bool Txt_x86_64_Att_EmitBare(const char *line);
+
 // AT&T syntax parser
-bool Txt_x86_64_Att_ParseSt(const char *text, Asm_x86_64_Operand *op);
-bool Txt_x86_64_Att_ParseOperand(const char *text, Asm_x86_64_Operand *op);
 void Txt_x86_64_Att_EmitInts(const char *args, Asm_x86_64_Width width);
 bool Txt_x86_64_Att_EmitAddress(const char *text, Asm_x86_64_Width width);
 void Txt_x86_64_Att_EmitString(const char *args, Txt_x86_64_Terminate terminate);

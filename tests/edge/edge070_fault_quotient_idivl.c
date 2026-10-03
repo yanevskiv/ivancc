@@ -5,8 +5,8 @@
 int main(void)
 {
 #ifdef __x86_64__
-    __asm__ ("movl $-2147483648, %eax\n"
-             "movl $-1, %ecx\n"
+    __asm__ ("movq $-2147483648, %rax\n"
+             "movq $-1, %rcx\n"
              ".byte 0x99 # cltd\n"
              ".byte 0xf7, 0xf9 # idivl %ecx");
 #endif

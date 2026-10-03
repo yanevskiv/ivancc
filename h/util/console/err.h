@@ -267,13 +267,8 @@ enum Err_Code {
     ERR_LOAD_ARGS_TOO_LARGE,               // can't fit the arguments and environment in a quarter of the stack
 
     ERR_TXT_QUAD_NOT_ADDRESS,              // can't give `.quad` an operand that is not an address
-    ERR_TXT_MNEMONIC_MALFORMED,            // can't assemble a line whose mnemonic is malformed
-    ERR_TXT_MNEMONIC_NOT_KNOWN,            // can't assemble a mnemonic the assembler does not know
-    ERR_TXT_OPERANDS_TOO_MANY,             // can't give an instruction too many operands
-    ERR_TXT_OPERAND_NOT_INDIRECT,          // can't give an indirect operand to an instruction that takes none
-    ERR_TXT_OPERAND_MALFORMED,             // can't assemble a malformed operand
-    ERR_TXT_BRANCH_OPERAND_COUNT,          // can't give a branch anything but one operand
-    ERR_TXT_BRANCH_NOT_LABEL,              // can't branch to anything but a label
+    ERR_TXT_REGEX_NOT_COMPILED,            // can't compile a pattern the assembler parses with
+    ERR_TXT_INSTRUCTION_NOT_KNOWN,         // can't assemble an instruction the encoder has no form for
     ERR_TXT_STRING_NOT_TERMINATED,         // can't leave a string without its closing quote
     ERR_TXT_ESCAPE_NOT_KNOWN,              // can't use an escape sequence the assembler does not know
 
