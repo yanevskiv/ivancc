@@ -123,11 +123,10 @@ int32_t Txt_x86_64_XmmByName(const char *name);
 int32_t Txt_x86_64_OpByName(const char *name);
 
 // AT&T syntax writer
-void   Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
-void   Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
-size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len);
-void   Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len);
-void   Txt_x86_64_Att_Write(FILE *out);
+void Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
+void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
+void Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len);
+void Txt_x86_64_Att_Write(FILE *out);
 
 // AT&T syntax reader
 Asm_x86_64_Operand Txt_x86_64_Att_ReadOperand(const char *text);
