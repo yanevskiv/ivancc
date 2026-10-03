@@ -118,11 +118,9 @@ void    Txt_x86_64_Att_RegexPrecompile(void);
 int32_t Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index);
 
 // Name-to-value lookups
-char             Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width);
-Asm_x86_64_Width Txt_x86_64_Att_SuffixWidth(char ch);
-int32_t          Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width);
-int32_t          Txt_x86_64_XmmByName(const char *name);
-int32_t          Txt_x86_64_OpByName(const char *name);
+int32_t Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width);
+int32_t Txt_x86_64_XmmByName(const char *name);
+int32_t Txt_x86_64_OpByName(const char *name);
 
 // AT&T syntax writer
 void   Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
@@ -141,8 +139,6 @@ void               Txt_x86_64_Att_ReadInts(const char *args, Asm_x86_64_Width wi
 void               Txt_x86_64_Att_ReadSection(char *name, const char *flags, const char *type);
 void               Txt_x86_64_Att_ReadDirective(const char *line);
 void               Txt_x86_64_Att_ReadStatement(const char *text);
-void               Txt_x86_64_Att_ReadLine(const char *line);
-void               Txt_x86_64_Att_ReadText(const char *text);
 void               Txt_x86_64_Att_Read(const char *text);
 
 #endif // TXT_X86_64_H
