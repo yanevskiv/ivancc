@@ -21,7 +21,6 @@
 #define TXT_X86_64_H
 
 // Standard headers.
-#include <regex.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -41,9 +40,6 @@
 
 // Most values one `.byte` line holds.
 #define TXT_X86_64_BYTES_PER_LINE 16
-
-// Most groups one pattern holds, plus one.
-#define TXT_X86_64_REGEX_GROUPS 128
 
 // The letters a named escape is written with, and the bytes they name.
 #define TXT_X86_64_ESCAPES "bfnrt\"\\"
@@ -118,14 +114,8 @@ enum Txt_x86_64_Base {
 };
 
 // Regex matches
-void        Txt_x86_64_Att_Compile(Txt_x86_64_RegexIndex index, const char *source);
-void        Txt_x86_64_Att_RegexPrecompile(void);
-bool        Txt_x86_64_Att_Match(Txt_x86_64_RegexIndex index, const char *line, regmatch_t *match);
-bool        Txt_x86_64_Att_Span(Txt_x86_64_RegexIndex index, const char *line, regmatch_t *match);
-int32_t     Txt_x86_64_Att_Field(const regmatch_t *match, size_t index);
-char       *Txt_x86_64_Att_FieldText(const char *line, const regmatch_t *match, size_t index);
-const char *Txt_x86_64_Att_FieldTail(const char *line, const regmatch_t *match, size_t index);
-int32_t     Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index);
+void    Txt_x86_64_Att_RegexPrecompile(void);
+int32_t Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index);
 
 // Name-to-value lookups
 char             Txt_x86_64_Att_WidthSuffix(Asm_x86_64_Width width);

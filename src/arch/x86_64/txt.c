@@ -427,120 +427,67 @@ static regex_t Txt_x86_64_Regex[TXT_X86_64_REGEX_COUNT];
 // Whether Txt_x86_64_Att_RegexPrecompile has compiled the regexes.
 static bool Txt_x86_64_RegexCompiled = false;
 
-// Compile source into the regex at index.
-void Txt_x86_64_Att_Compile(Txt_x86_64_RegexIndex index, const char *source)
-{
-    regex_t *regex = &Txt_x86_64_Regex[index];
-    bool fits = regcomp(regex, source, REG_EXTENDED) == 0 && regex->re_nsub < TXT_X86_64_REGEX_GROUPS;
-
-    Err_Assert(fits, ERR_TXT_REGEX_NOT_COMPILED, source);
-}
-
 // Compile every regex from its pattern, once.
 void Txt_x86_64_Att_RegexPrecompile(void)
 {
     if (Txt_x86_64_RegexCompiled) {
         return;
     }
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_RR, TXT_X86_64_PATTERN_RR);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_GRP_IMM, TXT_X86_64_PATTERN_GRP_IMM);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_MOV_IMM, TXT_X86_64_PATTERN_MOV_IMM);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_MEM_FORM, TXT_X86_64_PATTERN_MEM_FORM);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_MOVSX, TXT_X86_64_PATTERN_MOVSX);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_MOVZX, TXT_X86_64_PATTERN_MOVZX);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_LEA_RIP, TXT_X86_64_PATTERN_LEA_RIP);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_GRP_UNARY, TXT_X86_64_PATTERN_GRP_UNARY);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_SHIFT, TXT_X86_64_PATTERN_SHIFT);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_SETCC, TXT_X86_64_PATTERN_SETCC);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_BRANCH, TXT_X86_64_PATTERN_BRANCH);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_MOV_RR, TXT_X86_64_PATTERN_MOV_RR);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_SSE, TXT_X86_64_PATTERN_SSE);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_X87, TXT_X86_64_PATTERN_X87);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_CALL_REG, TXT_X86_64_PATTERN_CALL_REG);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_BARE, TXT_X86_64_PATTERN_BARE);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_REG, TXT_X86_64_PATTERN_REG);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_IMM, TXT_X86_64_PATTERN_IMM);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_MEM, TXT_X86_64_PATTERN_MEM);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_RIP, TXT_X86_64_PATTERN_RIP);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_LABEL, TXT_X86_64_PATTERN_LABEL);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_XMM, TXT_X86_64_PATTERN_XMM);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_ST, TXT_X86_64_PATTERN_ST);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_OCTAL, TXT_X86_64_PATTERN_OCTAL);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_HEX, TXT_X86_64_PATTERN_HEX);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_ESCAPE, TXT_X86_64_PATTERN_ESCAPE);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_PLAIN, TXT_X86_64_PATTERN_PLAIN);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_NUMBER, TXT_X86_64_PATTERN_NUMBER);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_ADDRESS, TXT_X86_64_PATTERN_ADDRESS);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_SECTION_SHORT, TXT_X86_64_PATTERN_SECTION_SHORT);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_SECTION, TXT_X86_64_PATTERN_SECTION);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_GLOBL, TXT_X86_64_PATTERN_GLOBL);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_BYTE, TXT_X86_64_PATTERN_BYTE);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_WORD, TXT_X86_64_PATTERN_WORD);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_LONG, TXT_X86_64_PATTERN_LONG);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_QUAD, TXT_X86_64_PATTERN_QUAD);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_ZERO, TXT_X86_64_PATTERN_ZERO);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_ASCII, TXT_X86_64_PATTERN_ASCII);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_ASCIZ, TXT_X86_64_PATTERN_ASCIZ);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_IGNORED, TXT_X86_64_PATTERN_IGNORED);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_LEADING, TXT_X86_64_PATTERN_LEADING);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_TRAILING, TXT_X86_64_PATTERN_TRAILING);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_BLANK, TXT_X86_64_PATTERN_BLANK);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_LABEL_DEF, TXT_X86_64_PATTERN_LABEL_DEF);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_DIRECTIVE, TXT_X86_64_PATTERN_DIRECTIVE);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_SEPARATED, TXT_X86_64_PATTERN_SEPARATED);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_COMMENTED, TXT_X86_64_PATTERN_COMMENTED);
-    Txt_x86_64_Att_Compile(TXT_X86_64_REGEX_STATEMENT, TXT_X86_64_PATTERN_STATEMENT);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_RR], TXT_X86_64_PATTERN_RR);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_GRP_IMM], TXT_X86_64_PATTERN_GRP_IMM);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOV_IMM], TXT_X86_64_PATTERN_MOV_IMM);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MEM_FORM], TXT_X86_64_PATTERN_MEM_FORM);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOVSX], TXT_X86_64_PATTERN_MOVSX);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOVZX], TXT_X86_64_PATTERN_MOVZX);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LEA_RIP], TXT_X86_64_PATTERN_LEA_RIP);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_GRP_UNARY], TXT_X86_64_PATTERN_GRP_UNARY);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SHIFT], TXT_X86_64_PATTERN_SHIFT);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SETCC], TXT_X86_64_PATTERN_SETCC);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_BRANCH], TXT_X86_64_PATTERN_BRANCH);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOV_RR], TXT_X86_64_PATTERN_MOV_RR);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SSE], TXT_X86_64_PATTERN_SSE);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_X87], TXT_X86_64_PATTERN_X87);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_CALL_REG], TXT_X86_64_PATTERN_CALL_REG);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_BARE], TXT_X86_64_PATTERN_BARE);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_REG], TXT_X86_64_PATTERN_REG);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_IMM], TXT_X86_64_PATTERN_IMM);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MEM], TXT_X86_64_PATTERN_MEM);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_RIP], TXT_X86_64_PATTERN_RIP);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LABEL], TXT_X86_64_PATTERN_LABEL);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_XMM], TXT_X86_64_PATTERN_XMM);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ST], TXT_X86_64_PATTERN_ST);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_OCTAL], TXT_X86_64_PATTERN_OCTAL);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_HEX], TXT_X86_64_PATTERN_HEX);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ESCAPE], TXT_X86_64_PATTERN_ESCAPE);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_PLAIN], TXT_X86_64_PATTERN_PLAIN);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_NUMBER], TXT_X86_64_PATTERN_NUMBER);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ADDRESS], TXT_X86_64_PATTERN_ADDRESS);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SECTION_SHORT], TXT_X86_64_PATTERN_SECTION_SHORT);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SECTION], TXT_X86_64_PATTERN_SECTION);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_GLOBL], TXT_X86_64_PATTERN_GLOBL);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_BYTE], TXT_X86_64_PATTERN_BYTE);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_WORD], TXT_X86_64_PATTERN_WORD);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LONG], TXT_X86_64_PATTERN_LONG);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_QUAD], TXT_X86_64_PATTERN_QUAD);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ZERO], TXT_X86_64_PATTERN_ZERO);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ASCII], TXT_X86_64_PATTERN_ASCII);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ASCIZ], TXT_X86_64_PATTERN_ASCIZ);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_IGNORED], TXT_X86_64_PATTERN_IGNORED);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LEADING], TXT_X86_64_PATTERN_LEADING);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_TRAILING], TXT_X86_64_PATTERN_TRAILING);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_BLANK], TXT_X86_64_PATTERN_BLANK);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LABEL_DEF], TXT_X86_64_PATTERN_LABEL_DEF);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_DIRECTIVE], TXT_X86_64_PATTERN_DIRECTIVE);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SEPARATED], TXT_X86_64_PATTERN_SEPARATED);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_COMMENTED], TXT_X86_64_PATTERN_COMMENTED);
+    Str_RegexCompile(&Txt_x86_64_Regex[TXT_X86_64_REGEX_STATEMENT], TXT_X86_64_PATTERN_STATEMENT);
     Txt_x86_64_RegexCompiled = true;
-}
-
-// True if the regex at index matches line, whose groups go to match.
-bool Txt_x86_64_Att_Match(Txt_x86_64_RegexIndex index, const char *line, regmatch_t *match)
-{
-    return regexec(&Txt_x86_64_Regex[index], line, TXT_X86_64_REGEX_GROUPS, match, 0) == 0;
-}
-
-// True if the regex at index matches line, whose span alone goes to match.
-bool Txt_x86_64_Att_Span(Txt_x86_64_RegexIndex index, const char *line, regmatch_t *match)
-{
-    return regexec(&Txt_x86_64_Regex[index], line, 1, match, 0) == 0;
-}
-
-// Return the group that holds field index of a match, or -1 past the last.
-int32_t Txt_x86_64_Att_Field(const regmatch_t *match, size_t index)
-{
-    regoff_t end = -1;
-
-    for (int32_t group = 1; group < TXT_X86_64_REGEX_GROUPS; group++) {
-        if (match[group].rm_so < 0 || match[group].rm_so < end) {
-            continue;
-        }
-        end = match[group].rm_eo;
-        if (index == 0) {
-            return group;
-        }
-        index--;
-    }
-    return -1;
-}
-
-// Copy field index of a match out of line.
-char *Txt_x86_64_Att_FieldText(const char *line, const regmatch_t *match, size_t index)
-{
-    int32_t group = Txt_x86_64_Att_Field(match, index);
-
-    return Str_Slice(line, (size_t) match[group].rm_so, (size_t) match[group].rm_eo);
-}
-
-// Return where field index of a match opens, for a field that runs to the end.
-const char *Txt_x86_64_Att_FieldTail(const char *line, const regmatch_t *match, size_t index)
-{
-    return line + match[Txt_x86_64_Att_Field(match, index)].rm_so;
 }
 
 // Return the opcode field index of a match names.
 int32_t Txt_x86_64_Att_FieldOp(const char *line, const regmatch_t *match, size_t index)
 {
-    char *name = Txt_x86_64_Att_FieldText(line, match, index);
+    char *name = Str_RegexFieldText(line, match, index);
     int32_t opcode = Txt_x86_64_OpByName(name);
 
     Str_Free(name);
@@ -785,30 +732,30 @@ void Txt_x86_64_Att_Write(FILE *out)
 // Read one operand in AT&T syntax.
 Asm_x86_64_Operand Txt_x86_64_Att_ReadOperand(const char *text)
 {
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+    regmatch_t match[STR_REGEX_GROUPS];
     Asm_x86_64_Width width = ASM_X86_64_WIDTH_NONE;
     Asm_x86_64_Operand op = {0};
 
     Txt_x86_64_Att_RegexPrecompile();
-    if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_REG, text, match)) {
+    if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_REG], text, match)) {
         int32_t index = Txt_x86_64_RegByName(text + 1, &width);
 
         op = Asm_x86_64_RegWidth(index, width);
-    } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_IMM, text, match)) {
+    } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_IMM], text, match)) {
         op = Asm_x86_64_Imm(strtol(text + 1, NULL, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_MEM, text, match)) {
-        char *base = Txt_x86_64_Att_FieldText(text, match, 1);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MEM], text, match)) {
+        char *base = Str_RegexFieldText(text, match, 1);
 
         op = Asm_x86_64_Mem(Txt_x86_64_RegByName(base + 1, &width), (int32_t) strtol(text, NULL, 0));
         Str_Free(base);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_RIP, text, match)) {
-        op = Asm_x86_64_Rip(Txt_x86_64_Att_FieldText(text, match, 0));
-    } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_LABEL, text, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_RIP], text, match)) {
+        op = Asm_x86_64_Rip(Str_RegexFieldText(text, match, 0));
+    } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LABEL], text, match)) {
         op = Asm_x86_64_Target(Str_Clone(text));
-    } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_XMM, text, match)) {
+    } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_XMM], text, match)) {
         op = Asm_x86_64_XmmReg(Txt_x86_64_XmmByName(text + 1));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_ST, text, match)) {
-        char *index = Txt_x86_64_Att_FieldText(text, match, 0);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ST], text, match)) {
+        char *index = Str_RegexFieldText(text, match, 0);
 
         op = Asm_x86_64_St(*index ? (int32_t) strtol(index + 1, NULL, 0) : 0);
         Str_Free(index);
@@ -824,8 +771,8 @@ Asm_x86_64_Item *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *mat
     Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
 
     item->ai_op = opcode;
-    for (size_t index = 1; Txt_x86_64_Att_Field(match, index) >= 0; index++) {
-        char *text = Txt_x86_64_Att_FieldText(line, match, index);
+    for (size_t index = 1; Str_RegexField(match, index) >= 0; index++) {
+        char *text = Str_RegexFieldText(line, match, index);
 
         item->ai_src = item->ai_dst;
         item->ai_dst = Txt_x86_64_Att_ReadOperand(text);
@@ -840,7 +787,7 @@ Asm_x86_64_Item *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *mat
 // Build a movs or movz of opcode, its source as wide as its mnemonic says.
 Asm_x86_64_Item *Txt_x86_64_Att_NewExtend(const char *line, const regmatch_t *match, int32_t opcode)
 {
-    char *mnemonic = Txt_x86_64_Att_FieldText(line, match, 0);
+    char *mnemonic = Str_RegexFieldText(line, match, 0);
     Asm_x86_64_Item *item = Txt_x86_64_Att_NewInstr(line, match, opcode);
 
     item->ai_src.ao_width = Txt_x86_64_Att_SuffixWidth(mnemonic[strlen(Txt_x86_64_OpName[opcode])]);
@@ -851,40 +798,40 @@ Asm_x86_64_Item *Txt_x86_64_Att_NewExtend(const char *line, const regmatch_t *ma
 // Read one instruction by the first form the encoder has for it.
 void Txt_x86_64_Att_ReadInstr(const char *line)
 {
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+    regmatch_t match[STR_REGEX_GROUPS];
 
     Txt_x86_64_Att_RegexPrecompile();
-    if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_RR, line, match)) {
+    if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_RR], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_GRP_IMM, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_GRP_IMM], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_MOV_IMM, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOV_IMM], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_MEM_FORM, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MEM_FORM], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_MOVSX, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOVSX], line, match)) {
         Txt_x86_64_Att_NewExtend(line, match, ASM_X86_64_OP_MOVSX);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_MOVZX, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOVZX], line, match)) {
         Txt_x86_64_Att_NewExtend(line, match, ASM_X86_64_OP_MOVZX);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_LEA_RIP, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LEA_RIP], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_GRP_UNARY, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_GRP_UNARY], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_SHIFT, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SHIFT], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_SETCC, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SETCC], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_BRANCH, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_BRANCH], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_MOV_RR, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_MOV_RR], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_SSE, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SSE], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_X87, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_X87], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_CALL_REG, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_CALL_REG], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_CALL_REG);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_BARE, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_BARE], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
     } else {
         Err_Raise(ERR_TXT_INSTRUCTION_NOT_KNOWN, line);
@@ -894,21 +841,21 @@ void Txt_x86_64_Att_ReadInstr(const char *line)
 // Read the quoted string at text into a bytes item.
 void Txt_x86_64_Att_ReadString(const char *text, Txt_x86_64_Terminate terminate)
 {
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+    regmatch_t match[STR_REGEX_GROUPS];
     Buf *bytes = Buf_New();
 
     Txt_x86_64_Att_RegexPrecompile();
     for (const char *ptr = text + 1; *ptr != '"'; ptr += match[0].rm_eo) {
-        if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_OCTAL, ptr, match)) {
+        if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_OCTAL], ptr, match)) {
             char *digits = Str_Slice(ptr, 1, (size_t) match[0].rm_eo);
 
             Buf_PutByte(bytes, (char) strtol(digits, NULL, TXT_X86_64_BASE_OCTAL));
             Str_Free(digits);
-        } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_HEX, ptr, match)) {
+        } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_HEX], ptr, match)) {
             Buf_PutByte(bytes, (char) strtol(ptr + 2, NULL, TXT_X86_64_BASE_HEX));
-        } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_ESCAPE, ptr, match)) {
+        } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ESCAPE], ptr, match)) {
             Buf_PutByte(bytes, TXT_X86_64_ESCAPED[strchr(TXT_X86_64_ESCAPES, ptr[1]) - TXT_X86_64_ESCAPES]);
-        } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_PLAIN, ptr, match)) {
+        } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_PLAIN], ptr, match)) {
             Buf_PutBytes(bytes, ptr, (size_t) match[0].rm_eo);
         }
     }
@@ -919,11 +866,11 @@ void Txt_x86_64_Att_ReadString(const char *text, Txt_x86_64_Terminate terminate)
 // Read a .byte/.word/.long/.quad list, little-endian or as addresses.
 void Txt_x86_64_Att_ReadInts(const char *args, Asm_x86_64_Width width)
 {
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+    regmatch_t match[STR_REGEX_GROUPS];
 
     Txt_x86_64_Att_RegexPrecompile();
     for (const char *ptr = args; *ptr; ptr += match[0].rm_eo) {
-        if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_NUMBER, ptr, match)) {
+        if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_NUMBER], ptr, match)) {
             int64_t value = strtol(ptr, NULL, 0);
             size_t size = (size_t) width / ASM_X86_64_BITS_PER_BYTE;
             uint8_t bytes[sizeof(value)];
@@ -932,9 +879,9 @@ void Txt_x86_64_Att_ReadInts(const char *args, Asm_x86_64_Width width)
                 bytes[i] = (value >> (ASM_X86_64_BITS_PER_BYTE * i)) & UINT8_MAX;
             }
             Asm_x86_64_EmitBytes(bytes, size);
-        } else if (width == ASM_X86_64_WIDTH_64 && Txt_x86_64_Att_Match(TXT_X86_64_REGEX_ADDRESS, ptr, match)) {
-            char *name = Txt_x86_64_Att_FieldText(ptr, match, 0);
-            char *addend = Txt_x86_64_Att_FieldText(ptr, match, 1);
+        } else if (width == ASM_X86_64_WIDTH_64 && Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ADDRESS], ptr, match)) {
+            char *name = Str_RegexFieldText(ptr, match, 0);
+            char *addend = Str_RegexFieldText(ptr, match, 1);
 
             Asm_x86_64_EmitAddress(name, strtol(addend, NULL, 0));
             Str_Free(name);
@@ -969,43 +916,43 @@ void Txt_x86_64_Att_ReadSection(char *name, const char *flags, const char *type)
 // Read one directive into the items it stands for.
 void Txt_x86_64_Att_ReadDirective(const char *line)
 {
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+    regmatch_t match[STR_REGEX_GROUPS];
 
     Txt_x86_64_Att_RegexPrecompile();
-    if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_SECTION_SHORT, line, match)) {
+    if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SECTION_SHORT], line, match)) {
         Txt_x86_64_Att_ReadSection(Str_Clone(line), "", "");
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_SECTION, line, match)) {
-        char *flags = Txt_x86_64_Att_FieldText(line, match, 1);
-        char *type = Txt_x86_64_Att_FieldText(line, match, 2);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SECTION], line, match)) {
+        char *flags = Str_RegexFieldText(line, match, 1);
+        char *type = Str_RegexFieldText(line, match, 2);
 
-        Txt_x86_64_Att_ReadSection(Txt_x86_64_Att_FieldText(line, match, 0), flags, type);
+        Txt_x86_64_Att_ReadSection(Str_RegexFieldText(line, match, 0), flags, type);
         Str_Free(flags);
         Str_Free(type);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_GLOBL, line, match)) {
-        char *name = Txt_x86_64_Att_FieldText(line, match, 0);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_GLOBL], line, match)) {
+        char *name = Str_RegexFieldText(line, match, 0);
 
         Asm_x86_64_EmitGlobl("%s", name);
         Str_Free(name);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_BYTE, line, match)) {
-        Txt_x86_64_Att_ReadInts(Txt_x86_64_Att_FieldTail(line, match, 0), ASM_X86_64_WIDTH_8);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_WORD, line, match)) {
-        Txt_x86_64_Att_ReadInts(Txt_x86_64_Att_FieldTail(line, match, 1), ASM_X86_64_WIDTH_16);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_LONG, line, match)) {
-        Txt_x86_64_Att_ReadInts(Txt_x86_64_Att_FieldTail(line, match, 1), ASM_X86_64_WIDTH_32);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_QUAD, line, match)) {
-        Txt_x86_64_Att_ReadInts(Txt_x86_64_Att_FieldTail(line, match, 0), ASM_X86_64_WIDTH_64);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_ZERO, line, match)) {
-        int64_t count = strtol(Txt_x86_64_Att_FieldTail(line, match, 1), NULL, 0);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_BYTE], line, match)) {
+        Txt_x86_64_Att_ReadInts(Str_RegexFieldTail(line, match, 0), ASM_X86_64_WIDTH_8);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_WORD], line, match)) {
+        Txt_x86_64_Att_ReadInts(Str_RegexFieldTail(line, match, 1), ASM_X86_64_WIDTH_16);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LONG], line, match)) {
+        Txt_x86_64_Att_ReadInts(Str_RegexFieldTail(line, match, 1), ASM_X86_64_WIDTH_32);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_QUAD], line, match)) {
+        Txt_x86_64_Att_ReadInts(Str_RegexFieldTail(line, match, 0), ASM_X86_64_WIDTH_64);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ZERO], line, match)) {
+        int64_t count = strtol(Str_RegexFieldTail(line, match, 1), NULL, 0);
         size_t n = count > 0 ? (size_t) count : 0;
         uint8_t *zeros = calloc(n ? n : 1, sizeof(uint8_t));
 
         Asm_x86_64_EmitBytes(zeros, n);
         free(zeros);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_ASCII, line, match)) {
-        Txt_x86_64_Att_ReadString(Txt_x86_64_Att_FieldTail(line, match, 0), TXT_X86_64_BARE);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_ASCIZ, line, match)) {
-        Txt_x86_64_Att_ReadString(Txt_x86_64_Att_FieldTail(line, match, 1), TXT_X86_64_TERMINATED);
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_IGNORED, line, match)) {
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ASCII], line, match)) {
+        Txt_x86_64_Att_ReadString(Str_RegexFieldTail(line, match, 0), TXT_X86_64_BARE);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ASCIZ], line, match)) {
+        Txt_x86_64_Att_ReadString(Str_RegexFieldTail(line, match, 1), TXT_X86_64_TERMINATED);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_IGNORED], line, match)) {
         Asm_x86_64_EmitDirective("%s", line);
     } else {
         Err_Raise(ERR_TXT_DIRECTIVE_NOT_KNOWN, line);
@@ -1015,24 +962,24 @@ void Txt_x86_64_Att_ReadDirective(const char *line)
 // Read one statement: blank, a label, a directive or an instruction.
 void Txt_x86_64_Att_ReadStatement(const char *text)
 {
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+    regmatch_t match[STR_REGEX_GROUPS];
 
     Txt_x86_64_Att_RegexPrecompile();
-    Txt_x86_64_Att_Span(TXT_X86_64_REGEX_LEADING, text, match);
+    Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LEADING], text, match);
     text += match[0].rm_eo;
-    Txt_x86_64_Att_Span(TXT_X86_64_REGEX_TRAILING, text, match);
+    Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_TRAILING], text, match);
 
     char *body = Str_Slice(text, 0, (size_t) match[0].rm_so);
 
-    if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_BLANK, body, match)) {
+    if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_BLANK], body, match)) {
         // empty
-    } else if (Txt_x86_64_Att_Match(TXT_X86_64_REGEX_LABEL_DEF, body, match)) {
-        char *name = Txt_x86_64_Att_FieldText(body, match, 0);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_LABEL_DEF], body, match)) {
+        char *name = Str_RegexFieldText(body, match, 0);
 
         Asm_x86_64_EmitLabel("%s", name);
         Str_Free(name);
         Txt_x86_64_Att_ReadStatement(body + match[0].rm_eo);
-    } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_DIRECTIVE, body, match)) {
+    } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_DIRECTIVE], body, match)) {
         Txt_x86_64_Att_ReadDirective(body);
     } else {
         Txt_x86_64_Att_ReadInstr(body);
@@ -1043,21 +990,21 @@ void Txt_x86_64_Att_ReadStatement(const char *text)
 // Read one line, statement by statement, up to its comment.
 void Txt_x86_64_Att_ReadLine(const char *line)
 {
-    regmatch_t match[TXT_X86_64_REGEX_GROUPS];
+    regmatch_t match[STR_REGEX_GROUPS];
 
     Txt_x86_64_Att_RegexPrecompile();
-    if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_SEPARATED, line, match)) {
+    if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SEPARATED], line, match)) {
         char *text = Str_Slice(line, 0, (size_t) match[0].rm_eo - 1);
 
         Txt_x86_64_Att_ReadStatement(text);
         Str_Free(text);
         Txt_x86_64_Att_ReadLine(line + match[0].rm_eo);
-    } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_COMMENTED, line, match)) {
+    } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_COMMENTED], line, match)) {
         char *text = Str_Slice(line, 0, (size_t) match[0].rm_eo - 1);
 
         Txt_x86_64_Att_ReadStatement(text);
         Str_Free(text);
-    } else if (Txt_x86_64_Att_Span(TXT_X86_64_REGEX_STATEMENT, line, match)) {
+    } else if (Str_RegexSpan(&Txt_x86_64_Regex[TXT_X86_64_REGEX_STATEMENT], line, match)) {
         Txt_x86_64_Att_ReadStatement(line);
     } else {
         Err_Raise(ERR_TXT_STRING_NOT_TERMINATED, line);

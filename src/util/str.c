@@ -172,3 +172,55 @@ void Str_FreeTokens(char **tokens)
     }
     free(tokens);
 }
+
+// Compile source into regex.
+void Str_RegexCompile(regex_t *regex, const char *source)
+{
+    bool fits = regcomp(regex, source, REG_EXTENDED) == 0 && regex->re_nsub < STR_REGEX_GROUPS;
+
+    Err_Assert(fits, ERR_STR_REGEX_NOT_COMPILED, source);
+}
+
+// True if regex matches str, whose groups go to match.
+bool Str_RegexMatch(const regex_t *regex, const char *str, regmatch_t *match)
+{
+    return regexec(regex, str, STR_REGEX_GROUPS, match, 0) == 0;
+}
+
+// True if regex matches str, whose span alone goes to match.
+bool Str_RegexSpan(const regex_t *regex, const char *str, regmatch_t *match)
+{
+    return regexec(regex, str, 1, match, 0) == 0;
+}
+
+// Return the group that holds field index of a match, or -1 past the last.
+int32_t Str_RegexField(const regmatch_t *match, size_t index)
+{
+    regoff_t end = -1;
+
+    for (int32_t group = 1; group < STR_REGEX_GROUPS; group++) {
+        if (match[group].rm_so < 0 || match[group].rm_so < end) {
+            continue;
+        }
+        end = match[group].rm_eo;
+        if (index == 0) {
+            return group;
+        }
+        index--;
+    }
+    return -1;
+}
+
+// Copy field index of a match out of str.
+char *Str_RegexFieldText(const char *str, const regmatch_t *match, size_t index)
+{
+    int32_t group = Str_RegexField(match, index);
+
+    return Str_Slice(str, (size_t) match[group].rm_so, (size_t) match[group].rm_eo);
+}
+
+// Return where field index of a match opens, for a field that runs to the end.
+const char *Str_RegexFieldTail(const char *str, const regmatch_t *match, size_t index)
+{
+    return str + match[Str_RegexField(match, index)].rm_so;
+}
