@@ -173,12 +173,17 @@ void Str_FreeTokens(char **tokens)
     free(tokens);
 }
 
-// Compile source into regex.
-void Str_RegexCompile(regex_t *regex, const char *source)
+// Compile source into regex, false if it fails or holds too many groups.
+bool Str_RegexCompile(regex_t *regex, const char *source)
 {
-    bool fits = regcomp(regex, source, REG_EXTENDED) == 0 && regex->re_nsub < STR_REGEX_GROUPS;
-
-    Err_Assert(fits, ERR_STR_REGEX_NOT_COMPILED, source);
+    if (regcomp(regex, source, REG_EXTENDED) != 0) {
+        return false;
+    }
+    if (regex->re_nsub >= STR_REGEX_GROUPS) {
+        regfree(regex);
+        return false;
+    }
+    return true;
 }
 
 // True if regex matches str, whose groups go to match.

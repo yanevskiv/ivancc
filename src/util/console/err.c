@@ -1479,9 +1479,9 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [pattern]
-    [ERR_STR_REGEX_NOT_COMPILED] = {
+    [ERR_TXT_REGEX_NOT_COMPILED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_STR_REGEX_NOT_COMPILED",
+        .ee_name   = "ERR_TXT_REGEX_NOT_COMPILED",
         .ee_format = "pattern '%s' does not compile"
     },
 
