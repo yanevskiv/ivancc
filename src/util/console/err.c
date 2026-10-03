@@ -1485,53 +1485,18 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "'%s' is not an address a .quad can hold"
     },
 
-    // Args: [line]
-    [ERR_TXT_MNEMONIC_MALFORMED] = {
+    // Args: [pattern]
+    [ERR_TXT_REGEX_NOT_COMPILED] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_MNEMONIC_MALFORMED",
-        .ee_format = "bad mnemonic in '%s'"
-    },
-
-    // Args: [mnemonic length, mnemonic]
-    [ERR_TXT_MNEMONIC_NOT_KNOWN] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_MNEMONIC_NOT_KNOWN",
-        .ee_format = "unknown mnemonic '%.*s'"
+        .ee_name   = "ERR_TXT_REGEX_NOT_COMPILED",
+        .ee_format = "pattern '%s' does not compile"
     },
 
     // Args: [line]
-    [ERR_TXT_OPERANDS_TOO_MANY] = {
+    [ERR_TXT_INSTRUCTION_NOT_KNOWN] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_OPERANDS_TOO_MANY",
-        .ee_format = "too many operands in '%s'"
-    },
-
-    // Args: [line]
-    [ERR_TXT_OPERAND_NOT_INDIRECT] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_OPERAND_NOT_INDIRECT",
-        .ee_format = "'%s' takes no indirect operand"
-    },
-
-    // Args: [operand]
-    [ERR_TXT_OPERAND_MALFORMED] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_OPERAND_MALFORMED",
-        .ee_format = "bad operand '%s'"
-    },
-
-    // Args: [line]
-    [ERR_TXT_BRANCH_OPERAND_COUNT] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_BRANCH_OPERAND_COUNT",
-        .ee_format = "'%s' takes one operand"
-    },
-
-    // Args: [line]
-    [ERR_TXT_BRANCH_NOT_LABEL] = {
-        .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_TXT_BRANCH_NOT_LABEL",
-        .ee_format = "'%s' needs a label"
+        .ee_name   = "ERR_TXT_INSTRUCTION_NOT_KNOWN",
+        .ee_format = "no instruction the assembler encodes reads '%s'"
     },
 
     // Args: [string]
