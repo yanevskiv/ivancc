@@ -266,8 +266,7 @@ enum Err_Code {
     ERR_LOAD_SEGMENT_TRUNCATED,            // can't load a segment that runs past the end of its file
     ERR_LOAD_ARGS_TOO_LARGE,               // can't fit the arguments and environment in a quarter of the stack
 
-    ERR_STR_REGEX_NOT_COMPILED,            // can't compile a regex pattern
-
+    ERR_TXT_REGEX_NOT_COMPILED,            // can't compile a pattern the assembler reads with
     ERR_TXT_OPERAND_NOT_KNOWN,             // can't read an operand of a kind the assembler does not know
     ERR_TXT_INSTRUCTION_NOT_KNOWN,         // can't assemble an instruction the encoder has no form for
     ERR_TXT_DATA_NOT_KNOWN,                // can't give a data directive an item that is neither a number nor, in `.quad`, an address

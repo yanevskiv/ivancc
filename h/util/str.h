@@ -30,9 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Project headers.
-#include "util/console/err.h"
-
 // Most groups one pattern holds, plus one.
 #define STR_REGEX_GROUPS 128
 
@@ -53,7 +50,7 @@ char **Str_Tokenize(const char *str, const char *sep);
 void   Str_FreeTokens(char **tokens);
 
 // Regex matches
-void        Str_RegexCompile(regex_t *regex, const char *source);
+bool        Str_RegexCompile(regex_t *regex, const char *source);
 bool        Str_RegexMatch(const regex_t *regex, const char *str, regmatch_t *match);
 bool        Str_RegexSpan(const regex_t *regex, const char *str, regmatch_t *match);
 int32_t     Str_RegexField(const regmatch_t *match, size_t index);
