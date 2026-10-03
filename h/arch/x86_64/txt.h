@@ -134,6 +134,13 @@ int32_t          Txt_x86_64_RegByName(const char *name, Asm_x86_64_Width *width)
 int32_t          Txt_x86_64_XmmByName(const char *name);
 int32_t          Txt_x86_64_OpByName(const char *name);
 
+// AT&T syntax writer
+void   Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
+void   Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
+size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len);
+void   Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len);
+void   Txt_x86_64_Att_Write(FILE *out);
+
 // AT&T syntax reader
 Asm_x86_64_Operand Txt_x86_64_Att_ReadOperand(const char *text);
 Asm_x86_64_Item   *Txt_x86_64_Att_NewInstr(const char *line, const regmatch_t *match, int32_t opcode);
@@ -147,12 +154,5 @@ void               Txt_x86_64_Att_ReadStatement(const char *text);
 void               Txt_x86_64_Att_ReadLine(const char *line);
 void               Txt_x86_64_Att_ReadText(const char *text);
 void               Txt_x86_64_Att_Read(const char *text);
-
-// AT&T syntax writer
-void   Txt_x86_64_Att_WriteOperand(FILE *out, const Asm_x86_64_Operand *op);
-void   Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item);
-size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len);
-void   Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len);
-void   Txt_x86_64_Att_Write(FILE *out);
 
 #endif // TXT_X86_64_H
