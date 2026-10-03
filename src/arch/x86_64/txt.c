@@ -627,36 +627,34 @@ void Txt_x86_64_Att_WriteInstr(FILE *out, const Asm_x86_64_Item *item)
     fputc('\n', out);
 }
 
-// Count the zero bytes starting at one offset.
-size_t Txt_x86_64_Att_ZeroRun(const uint8_t *bytes, size_t at, size_t len)
-{
-    size_t end = at;
-
-    while (end < len && bytes[end] == 0) {
-        end++;
-    }
-    return end - at;
-}
-
 // Write data bytes as `.zero` runs and `.byte` lines.
 void Txt_x86_64_Att_WriteBytes(FILE *out, const uint8_t *bytes, size_t len)
 {
     size_t i = 0;
+    size_t count = 0;
 
     while (i < len) {
-        size_t zeros = Txt_x86_64_Att_ZeroRun(bytes, i, len);
-        if (zeros >= TXT_X86_64_ZERO_RUN_MIN) {
-            fprintf(out, "  .zero %zu\n", zeros);
-            i += zeros;
+        size_t end = i;
+
+        while (end < len && bytes[end] == 0) {
+            end++;
+        }
+        if (end - i >= TXT_X86_64_ZERO_RUN_MIN) {
+            if (count > 0) {
+                fputc('\n', out);
+                count = 0;
+            }
+            fprintf(out, "  .zero %zu\n", end - i);
+            i = end;
             continue;
         }
-        fprintf(out, "  .byte %d", bytes[i]);
-        for (size_t count = 1; ++i < len && count < TXT_X86_64_BYTES_PER_LINE; count++) {
-            if (Txt_x86_64_Att_ZeroRun(bytes, i, len) >= TXT_X86_64_ZERO_RUN_MIN) {
-                break;
-            }
-            fprintf(out, ", %d", bytes[i]);
+        fprintf(out, count > 0 ? ", %d" : "  .byte %d", bytes[i++]);
+        if (++count == TXT_X86_64_BYTES_PER_LINE) {
+            fputc('\n', out);
+            count = 0;
         }
+    }
+    if (count > 0) {
         fputc('\n', out);
     }
 }
