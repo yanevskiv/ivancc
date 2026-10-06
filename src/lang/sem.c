@@ -353,6 +353,41 @@ Ast_Type *Sem_FoldType(const Ast_Node *node)
     }
 }
 
+// Tell whether Sem_FoldType() types an expression right: one built only from numbers, floating numbers, casts, sizeof, arithmetic and conditionals.
+static bool Sem_IsFoldTyped(const Ast_Node *node)
+{
+    switch (node->an_kind) {
+        case AST_NODE_KIND_NUM:
+        case AST_NODE_KIND_FNUM:
+        case AST_NODE_KIND_CAST:
+        case AST_NODE_KIND_SIZEOF: {
+            return true;
+        } break;
+        case AST_NODE_KIND_NEG:
+        case AST_NODE_KIND_BITNOT: {
+            return Sem_IsFoldTyped(node->an_lhs);
+        } break;
+        case AST_NODE_KIND_ADD:
+        case AST_NODE_KIND_SUB:
+        case AST_NODE_KIND_MUL:
+        case AST_NODE_KIND_DIV:
+        case AST_NODE_KIND_MOD:
+        case AST_NODE_KIND_BITAND:
+        case AST_NODE_KIND_BITOR:
+        case AST_NODE_KIND_BITXOR:
+        case AST_NODE_KIND_SHL:
+        case AST_NODE_KIND_SHR: {
+            return Sem_IsFoldTyped(node->an_lhs) && Sem_IsFoldTyped(node->an_rhs);
+        } break;
+        case AST_NODE_KIND_COND: {
+            return Sem_IsFoldTyped(node->an_then) && Sem_IsFoldTyped(node->an_els);
+        } break;
+        default: {
+            return false;
+        }
+    }
+}
+
 // Return the type an operator's operands fold in.
 Ast_Type *Sem_FoldOperandType(const Ast_Node *node)
 {
@@ -495,7 +530,7 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
         } break;
         case AST_NODE_KIND_SIZEOF: {
             Ast_Type *type = node->an_lhs->an_type;
-            if (! type && Sem_Fold(node->an_lhs, &lhs)) {
+            if (! type && (Sem_Fold(node->an_lhs, &lhs) || Sem_IsFoldTyped(node->an_lhs))) {
                 type = Sem_FoldType(node->an_lhs);
             }
             if (! type || Ast_IsVla(type)) {
