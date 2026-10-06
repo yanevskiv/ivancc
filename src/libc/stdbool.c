@@ -27,8 +27,8 @@
 #include <stdbool.h>
 
 // Check the header against the compiler.
-typedef char Stdbool_CheckSize[sizeof(bool) == sizeof(_Bool) ? 1 : -1];
-typedef char Stdbool_CheckTrue[true == 1 ? 1 : -1];
-typedef char Stdbool_CheckFalse[false == 0 ? 1 : -1];
-typedef char Stdbool_CheckDefined[__bool_true_false_are_defined == 1 ? 1 : -1];
-typedef char Stdbool_CheckConvert[(bool) 2 == 1 ? 1 : -1];
+typedef char __libc_stdbool_check_size[sizeof(bool) == sizeof(_Bool) ? 1 : -1];
+typedef char __libc_stdbool_check_true[true == 1 ? 1 : -1];
+typedef char __libc_stdbool_check_false[false == 0 ? 1 : -1];
+typedef char __libc_stdbool_check_defined[__bool_true_false_are_defined == 1 ? 1 : -1];
+typedef char __libc_stdbool_check_convert[(bool) 2 == 1 ? 1 : -1];

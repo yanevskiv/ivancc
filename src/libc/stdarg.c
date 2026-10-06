@@ -27,4 +27,4 @@
 #include <stdarg.h>
 
 // Check the header against the compiler.
-typedef char Stdarg_CheckList[sizeof(va_list) > 0 ? 1 : -1];
+typedef char __libc_stdarg_check_list[sizeof(va_list) > 0 ? 1 : -1];
