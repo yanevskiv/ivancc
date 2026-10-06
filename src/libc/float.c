@@ -27,8 +27,8 @@
 #include <float.h>
 
 // Check the header against the compiler.
-typedef char Float_CheckRadix[FLT_RADIX == 2 ? 1 : -1];
-typedef char Float_CheckFloat[sizeof(float) == 4 && FLT_MANT_DIG == 24 && FLT_DIG == 6 ? 1 : -1];
-typedef char Float_CheckDouble[sizeof(double) == 8 && DBL_MANT_DIG == 53 && DBL_DIG == 15 ? 1 : -1];
-typedef char Float_CheckLongDouble[LDBL_MANT_DIG == 64 && LDBL_DIG == 18 && DECIMAL_DIG == 21 ? 1 : -1];
-typedef char Float_CheckExponent[DBL_MAX_EXP == 1024 && DBL_MIN_EXP == -1021 && LDBL_MAX_EXP == 16384 ? 1 : -1];
+typedef char __libc_float_check_radix[FLT_RADIX == 2 ? 1 : -1];
+typedef char __libc_float_check_float[sizeof(float) == 4 && FLT_MANT_DIG == 24 && FLT_DIG == 6 ? 1 : -1];
+typedef char __libc_float_check_double[sizeof(double) == 8 && DBL_MANT_DIG == 53 && DBL_DIG == 15 ? 1 : -1];
+typedef char __libc_float_check_long_double[LDBL_MANT_DIG == 64 && LDBL_DIG == 18 && DECIMAL_DIG == 21 ? 1 : -1];
+typedef char __libc_float_check_exponent[DBL_MAX_EXP == 1024 && DBL_MIN_EXP == -1021 && LDBL_MAX_EXP == 16384 ? 1 : -1];

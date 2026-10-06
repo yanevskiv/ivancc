@@ -27,11 +27,11 @@
 #include <limits.h>
 
 // Check the header against the compiler.
-typedef char Limits_CheckByte[CHAR_BIT == 8 && sizeof(char) * CHAR_BIT == 8 ? 1 : -1];
-typedef char Limits_CheckChar[((char) -1 < 0) == (CHAR_MIN < 0) && CHAR_MAX == (char) CHAR_MAX ? 1 : -1];
-typedef char Limits_CheckSchar[SCHAR_MAX == (signed char) SCHAR_MAX && SCHAR_MIN == -SCHAR_MAX - 1 ? 1 : -1];
-typedef char Limits_CheckUchar[UCHAR_MAX == (unsigned char) -1 ? 1 : -1];
-typedef char Limits_CheckShort[SHRT_MAX == (short) SHRT_MAX && SHRT_MIN == -SHRT_MAX - 1 && USHRT_MAX == (unsigned short) -1 ? 1 : -1];
-typedef char Limits_CheckInt[INT_MAX == (int) (~0U >> 1) && INT_MIN == -INT_MAX - 1 && UINT_MAX == ~0U ? 1 : -1];
-typedef char Limits_CheckLong[LONG_MAX == (long) (~0UL >> 1) && LONG_MIN == -LONG_MAX - 1 && ULONG_MAX == ~0UL ? 1 : -1];
-typedef char Limits_CheckLongLong[LLONG_MAX == (long long) (~0ULL >> 1) && LLONG_MIN == -LLONG_MAX - 1 && ULLONG_MAX == ~0ULL ? 1 : -1];
+typedef char __libc_limits_check_byte[CHAR_BIT == 8 && sizeof(char) * CHAR_BIT == 8 ? 1 : -1];
+typedef char __libc_limits_check_char[((char) -1 < 0) == (CHAR_MIN < 0) && CHAR_MAX == (char) CHAR_MAX ? 1 : -1];
+typedef char __libc_limits_check_schar[SCHAR_MAX == (signed char) SCHAR_MAX && SCHAR_MIN == -SCHAR_MAX - 1 ? 1 : -1];
+typedef char __libc_limits_check_uchar[UCHAR_MAX == (unsigned char) -1 ? 1 : -1];
+typedef char __libc_limits_check_short[SHRT_MAX == (short) SHRT_MAX && SHRT_MIN == -SHRT_MAX - 1 && USHRT_MAX == (unsigned short) -1 ? 1 : -1];
+typedef char __libc_limits_check_int[INT_MAX == (int) (~0U >> 1) && INT_MIN == -INT_MAX - 1 && UINT_MAX == ~0U ? 1 : -1];
+typedef char __libc_limits_check_long[LONG_MAX == (long) (~0UL >> 1) && LONG_MIN == -LONG_MAX - 1 && ULONG_MAX == ~0UL ? 1 : -1];
+typedef char __libc_limits_check_long_long[LLONG_MAX == (long long) (~0ULL >> 1) && LLONG_MIN == -LLONG_MAX - 1 && ULLONG_MAX == ~0ULL ? 1 : -1];

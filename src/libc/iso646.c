@@ -27,6 +27,6 @@
 #include <iso646.h>
 
 // Check the header against the compiler.
-typedef char Iso646_CheckLogical[(1 and 2) == 1 && (0 or 0) == 0 && (not 0) == 1 ? 1 : -1];
-typedef char Iso646_CheckBitwise[(6 bitand 3) == 2 && (6 bitor 3) == 7 && (6 xor 3) == 5 && (compl 0) == -1 ? 1 : -1];
-typedef char Iso646_CheckCompare[(1 not_eq 2) == 1 ? 1 : -1];
+typedef char __libc_iso646_check_logical[(1 and 2) == 1 && (0 or 0) == 0 && (not 0) == 1 ? 1 : -1];
+typedef char __libc_iso646_check_bitwise[(6 bitand 3) == 2 && (6 bitor 3) == 7 && (6 xor 3) == 5 && (compl 0) == -1 ? 1 : -1];
+typedef char __libc_iso646_check_compare[(1 not_eq 2) == 1 ? 1 : -1];
