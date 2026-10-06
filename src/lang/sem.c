@@ -494,13 +494,14 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
             *value = node->an_val;
         } break;
         case AST_NODE_KIND_SIZEOF: {
-            if (! node->an_lhs->an_type) {
+            Ast_Type *type = node->an_lhs->an_type;
+            if (! type && Sem_Fold(node->an_lhs, &lhs)) {
+                type = Sem_FoldType(node->an_lhs);
+            }
+            if (! type || Ast_IsVla(type)) {
                 return false;
             }
-            if (Ast_IsVla(node->an_lhs->an_type)) {
-                return false;
-            }
-            *value = node->an_lhs->an_type->at_size;
+            *value = type->at_size;
         } break;
         case AST_NODE_KIND_CAST: {
             if (Ast_IsFloating(node->an_type) || ! Sem_Fold(node->an_lhs, &lhs)) {
