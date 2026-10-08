@@ -24,7 +24,7 @@
  */
 
 // The ivanemu machine's halt register.
-#define CRT_EMU_HALT "0x10000008"
+#define __LIBC_CRT_EMU_HALT "0x10000008"
 
 #ifdef __x86_64__
 #if defined(__linux__)
@@ -52,7 +52,7 @@ __asm__(
     "  .globl _start\n"
     "_start:\n"
     "  call main\n"
-    "  mov $" CRT_EMU_HALT ", %rdi\n"
+    "  mov $" __LIBC_CRT_EMU_HALT ", %rdi\n"
     "  mov %al, (%rdi)\n"
     ".Lhang:\n"
     "  jmp .Lhang\n"
