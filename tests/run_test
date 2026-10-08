@@ -89,14 +89,14 @@ stage_build()
 # True if the test expects something of the program.
 stage_run_ok()
 {
-    [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ]
+    [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ] || [ -s "${TMP}/expected_error" ] || [ -s "${TMP}/expected_emulator_error" ]
 }
 
-# Run the program with the test's arguments in a known environment, and record its output and status.
+# Run the program with the test's arguments in a known environment, and record its status, output and error.
 stage_run()
 {
     set -f
-    { timeout "$TIMEOUT" env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") >"${RUN}/output" 2>&1; } 2>/dev/null
+    timeout "$TIMEOUT" env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") >"${RUN}/output" 2>"${RUN}/error"
     echo $? > "${RUN}/status"
     set +f
 }
@@ -168,10 +168,11 @@ setup()
     get_line "${SOURCE}" '(Test) Compiler flags' > "${TMP}/compiler_flags"
     get_line "${SOURCE}" '(Test) Compiler status' > "${TMP}/expected_compiler_status"
     get_text "${SOURCE}" '(Test) Compiler output' > "${TMP}/expected_compiler_output"
-    get_line "${SOURCE}" '(Test) Compiler error' > "${TMP}/expected_compiler_error"
     get_line "${SOURCE}" '(Test) Compiler warning' > "${TMP}/expected_compiler_warning"
+    get_line "${SOURCE}" '(Test) Compiler error' > "${TMP}/expected_compiler_error"
     get_line "${SOURCE}" '(Test) Status' > "${TMP}/expected_status"
     get_text "${SOURCE}" '(Test) Output' > "${TMP}/expected_output"
+    get_text "${SOURCE}" '(Test) Error' > "${TMP}/expected_error"
     get_line "${SOURCE}" '(Test) Emulator error' > "${TMP}/expected_emulator_error"
     get_line "${SOURCE}" '(Test) Arguments' > "${TMP}/arguments"
 
@@ -182,26 +183,15 @@ setup()
 # Fail a test that declares no expectation.
 test_declared()
 {
-    [ -s "${TMP}/expected_compiler_error" ] && return
     [ -s "${TMP}/expected_compiler_status" ] && return
     [ -s "${TMP}/expected_compiler_output" ] && return
     [ -s "${TMP}/expected_compiler_warning" ] && return
+    [ -s "${TMP}/expected_compiler_error" ] && return
     [ -s "${TMP}/expected_status" ] && return
     [ -s "${TMP}/expected_output" ] && return
+    [ -s "${TMP}/expected_error" ] && return
     [ -s "${TMP}/expected_emulator_error" ] && return
     fail 'No expectation declared'
-}
-
-# Check the compile failure against `// (Test) Compiler error:`.
-test_compiler_error()
-{
-    EXP="$(cat "${TMP}/expected_compiler_error")"
-    GOT="$(cat "${RUN}/compiler_error")"
-
-    [ -n "$EXP" ] || return 0
-
-    grep -qx 0 "${RUN}/compiler_status" && fail 'Compiled but expected %s' "$EXP"
-    grep -qF "$EXP" "${RUN}/compiler_error" || fail 'Failed with:\n%s\nbut expected %s' "$GOT" "$EXP"
 }
 
 # Check the compiler's exit status against `// (Test) Compiler status:`.
@@ -240,6 +230,18 @@ test_compiler_warning()
     grep -qF "$EXP" "${RUN}/compiler_error" || fail 'Warned with:\n%s\nbut expected %s' "$GOT" "$EXP"
 }
 
+# Check the compile failure against `// (Test) Compiler error:`.
+test_compiler_error()
+{
+    EXP="$(cat "${TMP}/expected_compiler_error")"
+    GOT="$(cat "${RUN}/compiler_error")"
+
+    [ -n "$EXP" ] || return 0
+
+    grep -qx 0 "${RUN}/compiler_status" && fail 'Compiled but expected %s' "$EXP"
+    grep -qF "$EXP" "${RUN}/compiler_error" || fail 'Failed with:\n%s\nbut expected %s' "$GOT" "$EXP"
+}
+
 # Check the exit status against `// (Test) Status:`.
 test_status()
 {
@@ -270,16 +272,28 @@ test_output()
     [ "$GOT" = "$EXP" ] || fail 'Printed:\n%s\nbut expected:\n%s' "$GOT" "$EXP"
 }
 
+# Check the program's standard error against `// (Test) Error:`.
+test_error()
+{
+    EXP="$(cat "${TMP}/expected_error")"
+    GOT="$(cat "${RUN}/error")"
+
+    [ -n "$EXP" ] || return 0
+    [ "$(cat "${RUN}/status")" -ne 124 ] || fail 'Timed out after %ss' "$TIMEOUT"
+
+    [ "$GOT" = "$EXP" ] || fail 'Printed to standard error:\n%s\nbut expected:\n%s' "$GOT" "$EXP"
+}
+
 # Check the emulator's diagnostics against `// (Test) Emulator error:`, which only ivanemu prints.
 test_emulator_error()
 {
     EXP="$(cat "${TMP}/expected_emulator_error")"
-    GOT="$(cat "${RUN}/output")"
+    GOT="$(cat "${RUN}/error")"
 
     [ -n "$EXP" ] || return 0
     [ "$PIPELINE" = ivanemu ] || return 0
 
-    grep -qF "$EXP" "${RUN}/output" || fail 'Emulator printed:\n%s\nbut expected %s' "$GOT" "$EXP"
+    grep -qF "$EXP" "${RUN}/error" || fail 'Emulator printed:\n%s\nbut expected %s' "$GOT" "$EXP"
 }
 
 # Check one pipeline's results against the expectations.
@@ -294,6 +308,7 @@ test_pipeline()
     test_compiler_warning
     test_status
     test_output
+    test_error
     test_emulator_error
 }
 
@@ -303,8 +318,9 @@ run_pipelines()
     for PIPELINE in $PIPELINES; do
         RUN="${TMP}/${PIPELINE}"
         mkdir "$RUN" || error "cannot create $RUN"
-        : > "${RUN}/output"
         : > "${RUN}/status"
+        : > "${RUN}/output"
+        : > "${RUN}/error"
         "pipeline_${PIPELINE}"
         test_pipeline
     done
