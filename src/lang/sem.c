@@ -353,8 +353,8 @@ Ast_Type *Sem_FoldType(const Ast_Node *node)
     }
 }
 
-// Tell whether Sem_FoldType() types an expression right: one built only from numbers, floating numbers, casts, sizeof, arithmetic and conditionals.
-static bool Sem_IsFoldTyped(const Ast_Node *node)
+// Tell whether Sem_FoldType() types an expression right.
+bool Sem_IsFoldTyped(const Ast_Node *node)
 {
     switch (node->an_kind) {
         case AST_NODE_KIND_NUM:
