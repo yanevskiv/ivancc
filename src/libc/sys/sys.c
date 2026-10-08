@@ -31,8 +31,10 @@
 #endif
 
 // Linux's syscall numbers.
-#define __LIBC_SYS_NR_WRITE 1
-#define __LIBC_SYS_NR_EXIT  60
+#define __LIBC_SYS_NR_WRITE  1
+#define __LIBC_SYS_NR_GETPID 39
+#define __LIBC_SYS_NR_EXIT   60
+#define __LIBC_SYS_NR_KILL   62
 
 #ifdef __x86_64__
 // Make a syscall with its number and six arguments.
@@ -60,8 +62,20 @@ long __libc_write(int fd, const void *buf, unsigned long len)
     return __libc_syscall(__LIBC_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
 }
 
+// Return the program's process ID.
+int __libc_getpid(void)
+{
+    return (int) __libc_syscall(__LIBC_SYS_NR_GETPID, 0, 0, 0, 0, 0, 0);
+}
+
 // End the program with a status.
 void __libc_exit(int status)
 {
     __libc_syscall(__LIBC_SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
+}
+
+// Send the signal sig to the process pid.
+long __libc_kill(int pid, int sig)
+{
+    return __libc_syscall(__LIBC_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
 }
