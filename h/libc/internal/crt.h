@@ -1,5 +1,5 @@
 /*
- * C header file for the system layer.
+ * C header file for the startup.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -23,17 +23,10 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __SYS_SYS_H__
-#define __SYS_SYS_H__
+#ifndef __INTERNAL_CRT_H__
+#define __INTERNAL_CRT_H__
 
 // Startup
 extern char *__libc_crt_argv0;
 
-// System calls
-long __libc_syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
-long __libc_write(int fd, const void *buf, unsigned long len);
-int __libc_getpid(void);
-void __libc_exit(int status);
-long __libc_kill(int pid, int sig);
-
-#endif // __SYS_SYS_H__
+#endif // __INTERNAL_CRT_H__

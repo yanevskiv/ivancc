@@ -24,7 +24,7 @@
  */
 
 // Module header.
-#include <sys/sys.h>
+#include <internal/sys.h>
 
 #ifndef __linux__
 #error "sys.c: the system layer is Linux's alone"

@@ -26,8 +26,11 @@
 // Module header.
 #include <assert.h>
 
-// The program's name and the system calls that report and end it.
-#include <sys/sys.h>
+// The program's name.
+#include <internal/crt.h>
+
+// The system calls that report and end the program.
+#include <internal/sys.h>
 
 // The string functions the message is built with.
 #include <string.h>

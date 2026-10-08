@@ -50,7 +50,7 @@ EMU_OBJS := $(OUT)/emu.o $(ELF_OBJS) $(OUT)/util/fp.o $(OUT)/arch/$(TARGET_ARCH)
 LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/util/object/lib.o $(OUT)/util/object/link.o
 
 SYS_HEADERS := $(patsubst h/libc/%,$(BUILD)/include/%,$(shell find h/libc -name '*.h'))
-LIBC_SRCS   := $(wildcard src/libc/*.c) src/libc/sys/sys.c
+LIBC_SRCS   := $(wildcard src/libc/*.c) src/libc/internal/sys.c
 LIBC_OBJS   := $(patsubst src/libc/%.c,$(OUT)/libc/linux/%.o,$(LIBC_SRCS))
 
 TEST_TOOL    := tests/run_test
@@ -132,7 +132,7 @@ $(OUT)/%.o: src/%.c $(OUT)/c.tab.h | $(OUT)
 	$(CC) $(CFLAGS) $(WARN) $(DEPFLAGS) -c $< -o $@
 
 # --- runtime recipes ---
-$(LINUX_DIR)/crt0.o: src/libc/crt/crt.c $(CC_BIN) $(SYS_HEADERS) | $(LINUX_DIR)
+$(LINUX_DIR)/crt0.o: src/libc/internal/crt.c $(CC_BIN) $(SYS_HEADERS) | $(LINUX_DIR)
 	$(CC_BIN) -mtarget=linux -c $< -o $@
 
 $(OUT)/libc/linux/%.o: src/libc/%.c $(CC_BIN) $(SYS_HEADERS)
@@ -143,7 +143,7 @@ $(LINUX_DIR)/libc.a: $(LIBC_OBJS) $(AR_BIN) | $(LINUX_DIR)
 	rm -f $@
 	$(AR_BIN) rcs $@ $(LIBC_OBJS)
 
-$(EMU_DIR)/crt0.o: src/libc/crt/crt.c $(CC_BIN) $(SYS_HEADERS) | $(EMU_DIR)
+$(EMU_DIR)/crt0.o: src/libc/internal/crt.c $(CC_BIN) $(SYS_HEADERS) | $(EMU_DIR)
 	$(CC_BIN) -mtarget=ivanemu -c $< -o $@
 
 # --- system header recipes ---
