@@ -728,18 +728,24 @@ Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type)
     return type->at_size * ASM_X86_64_BITS_PER_BYTE;
 }
 
+// Compute into reg the address of a variable, touching no other register.
+void Gen_x86_64_EmitVarAddr(const Ast_Var *var, Asm_x86_64_Reg reg)
+{
+    if (var->av_global) {
+        Asm_x86_64_EmitLeaRip(reg, "%s", var->av_symbol);
+    } else if (Ast_IsVla(var->av_type)) {
+        Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, var->av_offset + GEN_X86_64_VLA_ADDR, reg, ASM_X86_64_WIDTH_64);
+    } else {
+        Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, var->av_offset, reg);
+    }
+}
+
 // Compute into %rax the address an expression designates, lvalue or not.
 void Gen_x86_64_EmitAddr(Ast_Node *node)
 {
     switch (node->an_kind) {
         case AST_NODE_KIND_VAR: {
-            if (node->an_var->av_global) {
-                Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_var->av_symbol);
-            } else if (Ast_IsVla(node->an_var->av_type)) {
-                Asm_x86_64_EmitMovLoad(ASM_X86_64_REG_RBP, node->an_var->av_offset + GEN_X86_64_VLA_ADDR, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_64);
-            } else {
-                Asm_x86_64_EmitLea(ASM_X86_64_REG_RBP, node->an_var->av_offset, ASM_X86_64_REG_RAX);
-            }
+            Gen_x86_64_EmitVarAddr(node->an_var, ASM_X86_64_REG_RAX);
         } break;
         case AST_NODE_KIND_DEREF: {
             Gen_x86_64_EmitExpr(node->an_lhs);
@@ -770,6 +776,25 @@ void Gen_x86_64_EmitAddr(Ast_Node *node)
             Err_RaiseAt(node->an_line, ERR_GEN_NOT_LVALUE);
         }
     }
+}
+
+// Check that an expression has no division, whose fold by zero raises.
+bool Gen_x86_64_IsDivisionFree(const Ast_Node *node)
+{
+    if (! node) {
+        return true;
+    }
+    if (node->an_kind == AST_NODE_KIND_DIV || node->an_kind == AST_NODE_KIND_MOD) {
+        return false;
+    }
+    return Gen_x86_64_IsDivisionFree(node->an_lhs) && Gen_x86_64_IsDivisionFree(node->an_rhs) && Gen_x86_64_IsDivisionFree(node->an_cond)
+        && Gen_x86_64_IsDivisionFree(node->an_then) && Gen_x86_64_IsDivisionFree(node->an_els);
+}
+
+// Fold an integer constant operand into value, if it is one without a division.
+bool Gen_x86_64_FoldOperand(const Ast_Node *node, int64_t *value)
+{
+    return Ast_IsInteger(node->an_type) && Gen_x86_64_IsDivisionFree(node) && Sem_Fold(node, value);
 }
 
 // Return the signedness an operator's operands give it.
@@ -1427,10 +1452,15 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
         } break;
         case AST_NODE_KIND_ASSIGN: {
             const Ast_Member *bits = Gen_x86_64_Bitfield(node->an_lhs);
-            Gen_x86_64_EmitAddr(node->an_lhs);
-            Gen_x86_64_EmitPush();
-            Gen_x86_64_EmitExpr(node->an_rhs);
-            Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
+            if (node->an_lhs->an_kind == AST_NODE_KIND_VAR) {
+                Gen_x86_64_EmitExpr(node->an_rhs);
+                Gen_x86_64_EmitVarAddr(node->an_lhs->an_var, ASM_X86_64_REG_RDI);
+            } else {
+                Gen_x86_64_EmitAddr(node->an_lhs);
+                Gen_x86_64_EmitPush();
+                Gen_x86_64_EmitExpr(node->an_rhs);
+                Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
+            }
             if (bits) {
                 Gen_x86_64_EmitBitfieldStore(bits);
             } else if (Gen_x86_64_ByAddress(node->an_type)) {
@@ -1570,11 +1600,17 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
         } break;
         default: {
             Ast_TypeSign sign = Gen_x86_64_Sign(node);
+            int64_t value;
 
-            Gen_x86_64_EmitExpr(node->an_rhs);
-            Gen_x86_64_EmitPush();
-            Gen_x86_64_EmitExpr(node->an_lhs);
-            Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
+            if (Gen_x86_64_FoldOperand(node->an_rhs, &value)) {
+                Gen_x86_64_EmitExpr(node->an_lhs);
+                Asm_x86_64_EmitMovImm(value, ASM_X86_64_REG_RDI);
+            } else {
+                Gen_x86_64_EmitExpr(node->an_rhs);
+                Gen_x86_64_EmitPush();
+                Gen_x86_64_EmitExpr(node->an_lhs);
+                Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
+            }
             if (Ast_IsFloating(node->an_lhs->an_type)) {
                 Gen_x86_64_EmitFloatBinary(node);
                 break;
