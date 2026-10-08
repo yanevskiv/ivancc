@@ -69,7 +69,7 @@
 #define EMU_ERRNO_INVAL 22
 #define EMU_ERRNO_NOSYS 38
 
-// Linux signals: the null one, the first real-time one and the last.
+// The signal numbers kill checks its argument against.
 #define EMU_SIGNAL_NONE   0
 #define EMU_SIGNAL_RT_MIN 32
 #define EMU_SIGNAL_MAX    64
@@ -176,7 +176,7 @@ static void Emu_StoreDevice(void *ctx, uint64_t addr, size_t size, uint64_t valu
     }
 }
 
-// Answer a kill the program sends itself, and fail the rest with ENOSYS.
+// Let the program signal itself, and keep kill from reaching other processes.
 static uint64_t Emu_Kill(Emu_Guest *guest, int32_t pid, int32_t sig)
 {
     if (sig < EMU_SIGNAL_NONE || sig > EMU_SIGNAL_MAX) {
