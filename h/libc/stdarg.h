@@ -26,7 +26,7 @@
 #ifndef __STDARG_H__
 #define __STDARG_H__
 
-// 7.15 Variable arguments
+// (S7.15) Variable arguments
 typedef __builtin_va_list va_list;
 
 #define va_start(ap, parmN) __builtin_va_start(ap, parmN)

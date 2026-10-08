@@ -20,7 +20,7 @@
 // Module header.
 #include "lang/pp.h"
 
-// Every punctuator spelling of 6.4.6.
+// Every punctuator spelling (S6.4.6).
 static const char *const Pp_Punctuators[] = {
     "[", "]", "(", ")", "{", "}", ".", "->",
     "++", "--", "&", "*", "+", "-", "~", "!",
@@ -1439,7 +1439,7 @@ size_t Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def)
     }
 }
 
-// Check a replacement list against the constraints of 6.10.3.
+// Check a replacement list against the constraints (S6.10.3).
 void Pp_CheckBody(const Pp_Macro *def, Ast_Line line)
 {
     size_t param = 0;

@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <string.h> declares the copying, concatenation, comparison, search and miscellaneous functions, 7.21.
+// <string.h> declares the copying, concatenation, comparison, search and miscellaneous functions (S7.21).
 
 #include <stddef.h>
 #include <stdbool.h>

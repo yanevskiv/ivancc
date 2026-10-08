@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <float.h> gives the characteristics of float, double and long double on x86-64 Linux, 7.7.
+// <float.h> gives the characteristics of float, double and long double on x86-64 Linux (S7.7).
 
 #include <stddef.h>
 #include <stdbool.h>

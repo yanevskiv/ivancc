@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <stdint.h> declares the integer types, their limits and constants, 7.18.
+// <stdint.h> declares the integer types, their limits and constants (S7.18).
 
 #include <stddef.h>
 #include <stdbool.h>

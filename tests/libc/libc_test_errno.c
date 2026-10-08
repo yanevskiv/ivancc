@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <errno.h> declares errno and the macros EDOM, EILSEQ and ERANGE, 7.5.
+// <errno.h> declares errno and the macros EDOM, EILSEQ and ERANGE (S7.5).
 
 #include <stddef.h>
 #include <stdbool.h>

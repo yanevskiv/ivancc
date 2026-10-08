@@ -26,7 +26,7 @@
 #ifndef __ERRNO_H__
 #define __ERRNO_H__
 
-// 7.5 Errors
+// (S7.5) Errors
 #define EDOM 33
 #define EILSEQ 84
 #define ERANGE 34

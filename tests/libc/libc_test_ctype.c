@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <ctype.h> declares the character classification and case mapping functions, 7.4.
+// <ctype.h> declares the character classification and case mapping functions (S7.4).
 
 #include <stddef.h>
 #include <stdbool.h>

@@ -26,7 +26,7 @@
 #ifndef __FLOAT_H__
 #define __FLOAT_H__
 
-// 7.7 Characteristics of floating types
+// (S7.7) Characteristics of floating types
 #define FLT_ROUNDS 1
 #define FLT_EVAL_METHOD 0
 #define FLT_RADIX 2

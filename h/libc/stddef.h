@@ -26,7 +26,7 @@
 #ifndef __STDDEF_H__
 #define __STDDEF_H__
 
-// 7.17 Common definitions
+// (S7.17) Common definitions
 #ifndef __PTRDIFF_T__
 #define __PTRDIFF_T__
 typedef long ptrdiff_t;
