@@ -29,12 +29,12 @@
 // The ivanemu machine's halt register.
 #define __LIBC_CRT_EMU_HALT "0x10000008"
 
-// The program's name, argv[0], or a null pointer where the startup has none.
+// The program's name for diagnostics, or a null pointer where it is unknown.
 char *__libc_crt_argv0;
 
 #ifdef __x86_64__
 #if defined(__linux__)
-// Save argv[0], then hand main its arguments and environment and exit.
+// Keep the program's name, run main, and exit with its status.
 __asm__(
     "  .text\n"
     "  .globl _start\n"

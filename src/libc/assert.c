@@ -29,7 +29,7 @@
 // The program's name and the system calls that report and end it.
 #include <sys/sys.h>
 
-// The lengths and the last slash of strings.
+// The string functions the message is built with.
 #include <string.h>
 
 // The descriptor of standard error.
@@ -68,7 +68,7 @@ static void __libc_assert_write_line(unsigned int line)
     __libc_assert_write(ptr);
 }
 
-// Return the program's name, the last part of argv[0], or an empty string.
+// Return the program's name as glibc's message gives it, or an empty string.
 static const char *__libc_assert_program(void)
 {
     const char *slash;
@@ -80,7 +80,7 @@ static const char *__libc_assert_program(void)
     return slash != NULL ? slash + 1 : __libc_crt_argv0;
 }
 
-// Report the failed assertion expr at file, line and func, and raise SIGABRT.
+// Report a failed assertion and end the program as abort would.
 void __libc_assert_fail(const char *expr, const char *file, unsigned int line, const char *func)
 {
     const char *program = __libc_assert_program();

@@ -93,14 +93,13 @@ stage_run_ok()
 }
 
 # Run the program with the test's arguments in a known environment, and record its status, output and error.
-# The subshell, and the shell's own error sent to /dev/null, keep sh's report of a death by signal out of both.
+# Keep sh's own report of a death by signal out of all three.
 stage_run()
 {
     set -f
-    exec 3>&2 2>/dev/null
-    (exec timeout "$TIMEOUT" env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") >"${RUN}/output" 2>"${RUN}/error")
+    sh -c 'err=$1; shift; exec "$@" 2>"$err"' sh "${RUN}/error" \
+        timeout "$TIMEOUT" env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") >"${RUN}/output" 2>/dev/null
     echo $? > "${RUN}/status"
-    exec 2>&3 3>&-
     set +f
 }
 
