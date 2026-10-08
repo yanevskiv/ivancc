@@ -31,8 +31,8 @@
 #endif
 
 // Linux's syscall numbers.
-#define SYS_NR_WRITE 1
-#define SYS_NR_EXIT  60
+#define __LIBC_SYS_NR_WRITE 1
+#define __LIBC_SYS_NR_EXIT  60
 
 #ifdef __x86_64__
 // Make a syscall with its number and six arguments.
@@ -57,11 +57,11 @@ __asm__(
 // Write len bytes of buf to the descriptor fd.
 long __libc_write(int fd, const void *buf, unsigned long len)
 {
-    return __libc_syscall(SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
+    return __libc_syscall(__LIBC_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
 }
 
 // End the program with a status.
 void __libc_exit(int status)
 {
-    __libc_syscall(SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
+    __libc_syscall(__LIBC_SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
 }
