@@ -178,6 +178,7 @@ setup()
 
     NAME="$(basename -- "$SOURCE")"
     cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
+    ulimit -c 0 || error "cannot turn off core dumps"
 }
 
 # Fail a test that declares no expectation.
