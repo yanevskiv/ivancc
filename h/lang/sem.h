@@ -57,6 +57,7 @@ void      Sem_PromoteShift(Ast_Node *node);
 // Constant expressions
 int64_t   Sem_Truncate(const Ast_Type *type, int64_t value);
 Ast_Type *Sem_FoldType(const Ast_Node *node);
+bool      Sem_IsFoldTyped(const Ast_Node *node);
 Ast_Type *Sem_FoldOperandType(const Ast_Node *node);
 bool      Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, Ast_Line line, int64_t *value);
 bool      Sem_FoldFromFloat(const Ast_Node *node, int64_t *value);
