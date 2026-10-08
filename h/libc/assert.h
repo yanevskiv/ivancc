@@ -1,5 +1,5 @@
 /*
- * C header file for the system layer.
+ * C header file for diagnostics.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -23,17 +23,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __SYS_SYS_H__
-#define __SYS_SYS_H__
+// No guard: (S7.2p1) redefines assert at each inclusion.
+#undef assert
 
-// Startup
-extern char *__libc_crt_argv0;
+// (S7.2.1.1) The assert macro
+void __libc_assert_fail(const char *expr, const char *file, unsigned int line, const char *func);
 
-// System calls
-long __libc_syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
-long __libc_write(int fd, const void *buf, unsigned long len);
-int __libc_getpid(void);
-void __libc_exit(int status);
-long __libc_kill(int pid, int sig);
-
-#endif // __SYS_SYS_H__
+#ifdef NDEBUG
+#define assert(ignore) ((void) 0)
+#else
+#define assert(expression) ((expression) ? (void) 0 : __libc_assert_fail(#expression, __FILE__, __LINE__, __func__))
+#endif

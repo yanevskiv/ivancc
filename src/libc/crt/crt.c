@@ -23,12 +23,18 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+// The startup's private names.
+#include <sys/sys.h>
+
 // The ivanemu machine's halt register.
 #define __LIBC_CRT_EMU_HALT "0x10000008"
 
+// The program's name, argv[0], or a null pointer where the startup has none.
+char *__libc_crt_argv0;
+
 #ifdef __x86_64__
 #if defined(__linux__)
-// Hand main its arguments and environment, then exit with its status.
+// Save argv[0], then hand main its arguments and environment and exit.
 __asm__(
     "  .text\n"
     "  .globl _start\n"
@@ -36,6 +42,9 @@ __asm__(
     "  xor %rbp, %rbp\n"
     "  mov (%rsp), %rdi\n"
     "  lea 8(%rsp), %rsi\n"
+    "  mov (%rsi), %rax\n"
+    "  lea __libc_crt_argv0(%rip), %rcx\n"
+    "  mov %rax, (%rcx)\n"
     "  mov %rdi, %rdx\n"
     "  mov $3, %rcx\n"
     "  shl %cl, %rdx\n"
