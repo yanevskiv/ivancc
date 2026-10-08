@@ -23,8 +23,11 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-// The startup's private names.
-#include <sys/sys.h>
+// Module header.
+#include <internal/crt.h>
+
+// The system call the startup exits with.
+#include <internal/sys.h>
 
 // The ivanemu machine's halt register.
 #define __LIBC_CRT_EMU_HALT "0x10000008"
