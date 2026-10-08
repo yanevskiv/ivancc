@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <stddef.h> declares size_t, ptrdiff_t, wchar_t, NULL and offsetof, 7.17.
+// <stddef.h> declares size_t, ptrdiff_t, wchar_t, NULL and offsetof (S7.17).
 
 #include <stddef.h>
 

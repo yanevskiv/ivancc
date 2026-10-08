@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <iso646.h> spells the operators as macros, 7.9.
+// <iso646.h> spells the operators as macros (S7.9).
 
 #include <stddef.h>
 #include <stdbool.h>

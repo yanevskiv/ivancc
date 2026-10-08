@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <stdbool.h> declares bool, true and false, 7.16.
+// <stdbool.h> declares bool, true and false (S7.16).
 
 #include <stddef.h>
 #include <stdbool.h>

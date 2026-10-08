@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <limits.h> gives the limits of the integer types on x86-64 Linux, 7.10.
+// <limits.h> gives the limits of the integer types on x86-64 Linux (S7.10).
 
 #include <stddef.h>
 #include <stdbool.h>

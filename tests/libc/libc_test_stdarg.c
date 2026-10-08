@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <stdarg.h> declares va_list and the macros that walk a variable argument list, 7.15.
+// <stdarg.h> declares va_list and the macros that walk a variable argument list (S7.15).
 
 #include <stddef.h>
 #include <stdbool.h>

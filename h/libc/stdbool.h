@@ -26,7 +26,7 @@
 #ifndef __STDBOOL_H__
 #define __STDBOOL_H__
 
-// 7.16 Boolean type and values
+// (S7.16) Boolean type and values
 #define bool _Bool
 #define true 1
 #define false 0
