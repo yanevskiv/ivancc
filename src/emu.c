@@ -59,12 +59,20 @@
 #define EMU_UART_FD 1
 
 // Linux syscall numbers the emulator answers.
-#define EMU_SYS_WRITE 1
-#define EMU_SYS_EXIT  60
+#define EMU_SYS_WRITE  1
+#define EMU_SYS_GETPID 39
+#define EMU_SYS_EXIT   60
+#define EMU_SYS_KILL   62
 
 // Linux errno values a failed syscall returns negated in %rax.
 #define EMU_ERRNO_FAULT 14
+#define EMU_ERRNO_INVAL 22
 #define EMU_ERRNO_NOSYS 38
+
+// Linux signals: the null one, the first real-time one and the last.
+#define EMU_SIGNAL_NONE   0
+#define EMU_SIGNAL_RT_MIN 32
+#define EMU_SIGNAL_MAX    64
 
 // Whether the emulator writes each instruction to stderr before it runs.
 typedef enum Emu_Trace Emu_Trace;
@@ -77,9 +85,9 @@ enum Emu_Trace {
 typedef struct Emu_Guest Emu_Guest;
 struct Emu_Guest {
     const Load_Image *eg_img;
-    bool              eg_halted; // the program asked to stop, or faulted
+    bool              eg_halted; // the program asked to stop, faulted or killed itself
     int32_t           eg_status; // the status it stopped with
-    int32_t           eg_signal; // the signal a fault ended it with, or 0
+    int32_t           eg_signal; // the signal a fault or kill ended it with, or 0
 };
 
 // The host's environment.
@@ -168,6 +176,37 @@ static void Emu_StoreDevice(void *ctx, uint64_t addr, size_t size, uint64_t valu
     }
 }
 
+// Answer a kill the program sends itself, and fail the rest with ENOSYS.
+static uint64_t Emu_Kill(Emu_Guest *guest, int32_t pid, int32_t sig)
+{
+    if (sig < EMU_SIGNAL_NONE || sig > EMU_SIGNAL_MAX) {
+        return -(uint64_t) EMU_ERRNO_INVAL;
+    }
+    if (pid != getpid() || sig >= EMU_SIGNAL_RT_MIN) {
+        return -(uint64_t) EMU_ERRNO_NOSYS;
+    }
+    switch (sig) {
+        case EMU_SIGNAL_NONE:
+        case SIGCHLD:
+        case SIGCONT:
+        case SIGURG:
+        case SIGWINCH: {
+            return 0;
+        } break;
+        case SIGSTOP:
+        case SIGTSTP:
+        case SIGTTIN:
+        case SIGTTOU: {
+            return -(uint64_t) EMU_ERRNO_NOSYS;
+        } break;
+        default: {
+            guest->eg_halted = true;
+            guest->eg_signal = sig;
+            return 0;
+        }
+    }
+}
+
 // Answer a syscall as Linux does and fail the ones it lacks with ENOSYS.
 static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
 {
@@ -185,9 +224,17 @@ static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
                 *rax = n < 0 ? -(uint64_t) errno : (uint64_t) n;
             }
         } break;
+        case EMU_SYS_GETPID: {
+            *rax = (uint64_t) getpid();
+        } break;
         case EMU_SYS_EXIT: {
             guest->eg_halted = true;
             guest->eg_status = cpu->cs_reg[CPU_X86_64_REG_RDI] & CPU_X86_64_MASK_8;
+        } break;
+        case EMU_SYS_KILL: {
+            int32_t pid = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
+            int32_t sig = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RSI];
+            *rax = Emu_Kill(guest, pid, sig);
         } break;
         default: {
             *rax = -(uint64_t) EMU_ERRNO_NOSYS;
@@ -226,7 +273,7 @@ static void Emu_ShowStep(Emu_Guest *guest, uint64_t rip)
     fprintf(stderr, "%016llx: %s\n", (Cpu_x86_64_TypeULLong) rip, text);
 }
 
-// Run a loaded program to completion and return its status and fault signal.
+// Run a loaded program to completion; return its status and ending signal.
 static int32_t Emu_Run(const Load_Image *img, Emu_Trace trace, int32_t *sig)
 {
     Emu_Guest guest = {
@@ -265,7 +312,7 @@ static int32_t Emu_Run(const Load_Image *img, Emu_Trace trace, int32_t *sig)
     return guest.eg_status;
 }
 
-// Die by the signal a program faulted with as the program would have died.
+// Die by the signal that ended a program as the program would have died.
 static void Emu_Raise(int32_t sig)
 {
     struct sigaction act = {0};
