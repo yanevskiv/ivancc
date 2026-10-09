@@ -26,11 +26,12 @@
 #ifndef __ERRNO_H__
 #define __ERRNO_H__
 
-// (S7.5) Errors
-#define EDOM 33
-#define EILSEQ 84
-#define ERANGE 34
+// The implementation, which declares errno.
+#include <libc/impl/libc_errno.h>
 
-extern int errno;
+// (S7.5) Errors
+#define EDOM __LIBC_IMPL_ERRNO_EDOM
+#define EILSEQ __LIBC_IMPL_ERRNO_EILSEQ
+#define ERANGE __LIBC_IMPL_ERRNO_ERANGE
 
 #endif // __ERRNO_H__

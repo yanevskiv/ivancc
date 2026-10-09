@@ -33,7 +33,7 @@
 #include <libc/libc_err.h>
 
 // The signal that ends the program.
-#include <signal.h>
+#include <libc/impl/libc_signal.h>
 
 // The system calls that report and end the program.
 #include <libc/libc_sys.h>
@@ -58,7 +58,7 @@ void __libc_impl_assert_fail(const char *expr, const char *file, unsigned int li
     __libc_impl_assert_write(__LIBC_ERR_ASSERT_FUNC);
     __libc_impl_assert_write(expr);
     __libc_impl_assert_write(__LIBC_ERR_ASSERT_EXPR);
-    __libc_sys_kill(__libc_sys_getpid(), SIGABRT);
+    __libc_sys_kill(__libc_sys_getpid(), __LIBC_IMPL_SIGNAL_SIGABRT);
     __libc_sys_exit(__LIBC_IMPL_ASSERT_STATUS);
 }
 
@@ -88,9 +88,9 @@ const char *__libc_impl_assert_program(void)
 {
     const char *slash;
 
-    if (__crt_argv0 == NULL) {
+    if (__crt_argv0 == __LIBC_IMPL_STDDEF_NULL) {
         return "";
     }
     slash = __libc_impl_string_strrchr(__crt_argv0, '/');
-    return slash != NULL ? slash + 1 : __crt_argv0;
+    return slash != __LIBC_IMPL_STDDEF_NULL ? slash + 1 : __crt_argv0;
 }

@@ -54,13 +54,13 @@ uintmax_t strtoumax(const char *restrict nptr, char **restrict endptr, int base)
 }
 
 // Convert the start of the wide string nptr to an intmax_t in base.
-intmax_t wcstoimax(const __libc_wchar_t *restrict nptr, __libc_wchar_t **restrict endptr, int base)
+intmax_t wcstoimax(const __libc_impl_stddef_wchar_t *restrict nptr, __libc_impl_stddef_wchar_t **restrict endptr, int base)
 {
     return __libc_impl_inttypes_wcstoimax(nptr, endptr, base);
 }
 
 // Convert the start of the wide string nptr to a uintmax_t in base.
-uintmax_t wcstoumax(const __libc_wchar_t *restrict nptr, __libc_wchar_t **restrict endptr, int base)
+uintmax_t wcstoumax(const __libc_impl_stddef_wchar_t *restrict nptr, __libc_impl_stddef_wchar_t **restrict endptr, int base)
 {
     return __libc_impl_inttypes_wcstoumax(nptr, endptr, base);
 }

@@ -27,10 +27,10 @@
 #include <libc/libc_err.h>
 
 // The error numbers the texts name.
-#include <errno.h>
+#include <libc/impl/libc_errno.h>
 
 // The null pointer.
-#include <stddef.h>
+#include <libc/impl/libc_stddef.h>
 
 // Return strerror's text for the error number errnum.
 const char *__libc_err_errno_text(int errnum)
@@ -39,17 +39,17 @@ const char *__libc_err_errno_text(int errnum)
         case __LIBC_ERR_ERRNO_NONE: {
             return __LIBC_ERR_ERRNO_SUCCESS;
         } break;
-        case EDOM: {
+        case __LIBC_IMPL_ERRNO_EDOM: {
             return __LIBC_ERR_ERRNO_EDOM;
         } break;
-        case EILSEQ: {
+        case __LIBC_IMPL_ERRNO_EILSEQ: {
             return __LIBC_ERR_ERRNO_EILSEQ;
         } break;
-        case ERANGE: {
+        case __LIBC_IMPL_ERRNO_ERANGE: {
             return __LIBC_ERR_ERRNO_ERANGE;
         } break;
         default: {
-            return NULL;
+            return __LIBC_IMPL_STDDEF_NULL;
         } break;
     }
 }

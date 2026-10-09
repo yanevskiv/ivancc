@@ -27,13 +27,13 @@
 #include <libc/impl/libc_time.h>
 
 // The range of a broken-down year.
-#include <limits.h>
+#include <libc/impl/libc_limits.h>
 
 // The length of a name written whole.
-#include <stdint.h>
+#include <libc/impl/libc_stdint.h>
 
 // The error number of a time out of range.
-#include <errno.h>
+#include <libc/impl/libc_errno.h>
 
 // The conversions strftime knows.
 #include <libc/impl/libc_string.h>
@@ -57,18 +57,18 @@ static struct tm __libc_impl_time_tm;
 static char __libc_impl_time_asctime_text[__LIBC_IMPL_TIME_ASCTIME_SIZE];
 
 // Return the processor time the program has used.
-clock_t __libc_impl_time_clock(void)
+__libc_impl_time_clock_t __libc_impl_time_clock(void)
 {
     struct __libc_sys_timespec spec;
 
     if (__libc_sys_clock_gettime(__LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID, &spec) != 0) {
-        return (clock_t) -1;
+        return (__libc_impl_time_clock_t) -1;
     }
-    return spec.tv_sec * CLOCKS_PER_SEC + spec.tv_nsec / __LIBC_IMPL_TIME_NSECS_PER_CLOCK;
+    return spec.tv_sec * __LIBC_IMPL_TIME_CLOCKS_PER_SEC + spec.tv_nsec / __LIBC_IMPL_TIME_NSECS_PER_CLOCK;
 }
 
 // Return the seconds from time0 to time1.
-double __libc_impl_time_difftime(time_t time1, time_t time0)
+double __libc_impl_time_difftime(__libc_impl_time_time_t time1, __libc_impl_time_time_t time0)
 {
     if (time1 >= time0) {
         return (double) ((unsigned long) time1 - (unsigned long) time0);
@@ -77,31 +77,31 @@ double __libc_impl_time_difftime(time_t time1, time_t time0)
 }
 
 // Convert the local time timeptr to a calendar time.
-time_t __libc_impl_time_mktime(struct tm *timeptr)
+__libc_impl_time_time_t __libc_impl_time_mktime(struct tm *timeptr)
 {
     long year = timeptr->tm_year + __LIBC_IMPL_TIME_YEAR_BASE + __libc_impl_time_floor_div(timeptr->tm_mon, __LIBC_IMPL_TIME_MONTHS_PER_YEAR);
     int mon = (int) __libc_impl_time_floor_mod(timeptr->tm_mon, __LIBC_IMPL_TIME_MONTHS_PER_YEAR);
     long days = __libc_impl_time_month_days(year, mon) + timeptr->tm_mday - __LIBC_IMPL_TIME_FIRST_MDAY;
-    time_t value = days * __LIBC_IMPL_TIME_SECS_PER_DAY + timeptr->tm_hour * __LIBC_IMPL_TIME_SECS_PER_HOUR + timeptr->tm_min * __LIBC_IMPL_TIME_SECS_PER_MIN + timeptr->tm_sec;
+    __libc_impl_time_time_t value = days * __LIBC_IMPL_TIME_SECS_PER_DAY + timeptr->tm_hour * __LIBC_IMPL_TIME_SECS_PER_HOUR + timeptr->tm_min * __LIBC_IMPL_TIME_SECS_PER_MIN + timeptr->tm_sec;
     struct tm result;
 
-    if (__libc_impl_time_break_down(value, &result, __LIBC_IMPL_TIME_ZONE_UTC) == NULL) {
-        return (time_t) -1;
+    if (__libc_impl_time_break_down(value, &result, __LIBC_IMPL_TIME_ZONE_UTC) == __LIBC_IMPL_STDDEF_NULL) {
+        return (__libc_impl_time_time_t) -1;
     }
     *timeptr = result;
     return value;
 }
 
 // Return the current calendar time.
-time_t __libc_impl_time_time(time_t *timer)
+__libc_impl_time_time_t __libc_impl_time_time(__libc_impl_time_time_t *timer)
 {
     struct __libc_sys_timespec spec;
-    time_t value = (time_t) -1;
+    __libc_impl_time_time_t value = (__libc_impl_time_time_t) -1;
 
     if (__libc_sys_clock_gettime(__LIBC_SYS_CLOCK_REALTIME, &spec) == 0) {
         value = spec.tv_sec;
     }
-    if (timer != NULL) {
+    if (timer != __LIBC_IMPL_STDDEF_NULL) {
         *timer = value;
     }
     return value;
@@ -116,9 +116,9 @@ char *__libc_impl_time_asctime(const struct tm *timeptr)
         .tt_len  = 0
     };
 
-    if (timeptr->tm_year > INT_MAX - __LIBC_IMPL_TIME_YEAR_BASE) {
+    if (timeptr->tm_year > __LIBC_IMPL_LIMITS_INT_MAX - __LIBC_IMPL_TIME_YEAR_BASE) {
         errno = __LIBC_SYS_EOVERFLOW;
-        return NULL;
+        return __LIBC_IMPL_STDDEF_NULL;
     }
     __libc_impl_time_put_name(&text, __libc_impl_time_wday_name(timeptr->tm_wday), __LIBC_IMPL_TIME_ABBREV_LEN, __LIBC_IMPL_TIME_UNKNOWN_ABBREV);
     __libc_impl_time_put_char(&text, ' ');
@@ -138,30 +138,30 @@ char *__libc_impl_time_asctime(const struct tm *timeptr)
 }
 
 // Write the local time of timer as text.
-char *__libc_impl_time_ctime(const time_t *timer)
+char *__libc_impl_time_ctime(const __libc_impl_time_time_t *timer)
 {
     struct tm *tm = __libc_impl_time_localtime(timer);
 
-    if (tm == NULL) {
-        return NULL;
+    if (tm == __LIBC_IMPL_STDDEF_NULL) {
+        return __LIBC_IMPL_STDDEF_NULL;
     }
     return __libc_impl_time_asctime(tm);
 }
 
 // Break the time timer down as a time of UTC.
-struct tm *__libc_impl_time_gmtime(const time_t *timer)
+struct tm *__libc_impl_time_gmtime(const __libc_impl_time_time_t *timer)
 {
     return __libc_impl_time_break_down(*timer, &__libc_impl_time_tm, __LIBC_IMPL_TIME_ZONE_GMT);
 }
 
 // Break the time timer down as a local time.
-struct tm *__libc_impl_time_localtime(const time_t *timer)
+struct tm *__libc_impl_time_localtime(const __libc_impl_time_time_t *timer)
 {
     return __libc_impl_time_break_down(*timer, &__libc_impl_time_tm, __LIBC_IMPL_TIME_ZONE_UTC);
 }
 
 // Write the conversions of timeptr that format names into str.
-size_t __libc_impl_time_strftime(char *restrict str, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr)
+__libc_impl_stddef_size_t __libc_impl_time_strftime(char *restrict str, __libc_impl_stddef_size_t maxsize, const char *restrict format, const struct tm *restrict timeptr)
 {
     struct __libc_impl_time_text text = {
         .tt_str  = str,
@@ -202,7 +202,7 @@ long __libc_impl_time_floor_mod(long value, long divisor)
 // Count the days of the year year.
 long __libc_impl_time_year_days(long year)
 {
-    bool leap = (year % __LIBC_IMPL_TIME_YEARS_PER_LEAP == 0 && year % __LIBC_IMPL_TIME_YEARS_PER_CENTURY != 0) || year % __LIBC_IMPL_TIME_YEARS_PER_ERA == 0;
+    _Bool leap = (year % __LIBC_IMPL_TIME_YEARS_PER_LEAP == 0 && year % __LIBC_IMPL_TIME_YEARS_PER_CENTURY != 0) || year % __LIBC_IMPL_TIME_YEARS_PER_ERA == 0;
 
     return leap ? __LIBC_IMPL_TIME_DAYS_PER_YEAR + 1 : __LIBC_IMPL_TIME_DAYS_PER_YEAR;
 }
@@ -220,7 +220,7 @@ long __libc_impl_time_month_days(long year, int mon)
 }
 
 // Break the time value down into tm as a time of the zone zone.
-struct tm *__libc_impl_time_break_down(time_t value, struct tm *tm, const char *zone)
+struct tm *__libc_impl_time_break_down(__libc_impl_time_time_t value, struct tm *tm, const char *zone)
 {
     long secs = __libc_impl_time_floor_mod(value, __LIBC_IMPL_TIME_SECS_PER_DAY);
     long days = __libc_impl_time_floor_div(value, __LIBC_IMPL_TIME_SECS_PER_DAY);
@@ -238,9 +238,9 @@ struct tm *__libc_impl_time_break_down(time_t value, struct tm *tm, const char *
     }
     mon = march < __LIBC_IMPL_TIME_MONTHS_PER_YEAR - __LIBC_IMPL_TIME_MARCH ? march + __LIBC_IMPL_TIME_MARCH : march - (__LIBC_IMPL_TIME_MONTHS_PER_YEAR - __LIBC_IMPL_TIME_MARCH);
     year = era * __LIBC_IMPL_TIME_YEARS_PER_ERA + yoe + (mon < __LIBC_IMPL_TIME_MARCH ? 1 : 0);
-    if (year - __LIBC_IMPL_TIME_YEAR_BASE < INT_MIN || year - __LIBC_IMPL_TIME_YEAR_BASE > INT_MAX) {
+    if (year - __LIBC_IMPL_TIME_YEAR_BASE < __LIBC_IMPL_LIMITS_INT_MIN || year - __LIBC_IMPL_TIME_YEAR_BASE > __LIBC_IMPL_LIMITS_INT_MAX) {
         errno = __LIBC_SYS_EOVERFLOW;
-        return NULL;
+        return __LIBC_IMPL_STDDEF_NULL;
     }
     tm->tm_sec = (int) (secs % __LIBC_IMPL_TIME_SECS_PER_MIN);
     tm->tm_min = (int) (secs / __LIBC_IMPL_TIME_SECS_PER_MIN % __LIBC_IMPL_TIME_MINS_PER_HOUR);
@@ -266,9 +266,9 @@ void __libc_impl_time_put_char(struct __libc_impl_time_text *text, char ch)
 }
 
 // Append at most len characters of the string str to text.
-void __libc_impl_time_put_string(struct __libc_impl_time_text *text, const char *str, size_t len)
+void __libc_impl_time_put_string(struct __libc_impl_time_text *text, const char *str, __libc_impl_stddef_size_t len)
 {
-    for (size_t i = 0; i < len && str[i] != '\0'; i++) {
+    for (__libc_impl_stddef_size_t i = 0; i < len && str[i] != '\0'; i++) {
         __libc_impl_time_put_char(text, str[i]);
     }
 }
@@ -318,7 +318,7 @@ void __libc_impl_time_put_two_digits(struct __libc_impl_time_text *text, int val
 const char *__libc_impl_time_wday_name(int wday)
 {
     if (wday < 0 || wday >= __LIBC_IMPL_TIME_DAYS_PER_WEEK) {
-        return NULL;
+        return __LIBC_IMPL_STDDEF_NULL;
     }
     return __libc_impl_time_wday_names[wday];
 }
@@ -327,15 +327,15 @@ const char *__libc_impl_time_wday_name(int wday)
 const char *__libc_impl_time_mon_name(int mon)
 {
     if (mon < 0 || mon >= __LIBC_IMPL_TIME_MONTHS_PER_YEAR) {
-        return NULL;
+        return __LIBC_IMPL_STDDEF_NULL;
     }
     return __libc_impl_time_mon_names[mon];
 }
 
 // Append at most len characters of the name name to text.
-void __libc_impl_time_put_name(struct __libc_impl_time_text *text, const char *name, size_t len, const char *unknown)
+void __libc_impl_time_put_name(struct __libc_impl_time_text *text, const char *name, __libc_impl_stddef_size_t len, const char *unknown)
 {
-    if (name == NULL) {
+    if (name == __LIBC_IMPL_STDDEF_NULL) {
         __libc_impl_time_put_string(text, unknown, __libc_impl_string_strlen(unknown));
     } else {
         __libc_impl_time_put_string(text, name, len);
@@ -370,7 +370,7 @@ long __libc_impl_time_iso_year(const struct tm *tm, long *days)
 }
 
 // Return true if strftime knows the conversion conv after the modifier mod.
-bool __libc_impl_time_is_conversion(char mod, char conv)
+_Bool __libc_impl_time_is_conversion(char mod, char conv)
 {
     const char *known = __LIBC_IMPL_TIME_CONVERSIONS;
 
@@ -379,7 +379,7 @@ bool __libc_impl_time_is_conversion(char mod, char conv)
     } else if (mod == 'O') {
         known = __LIBC_IMPL_TIME_CONVERSIONS_O;
     }
-    return conv != '\0' && __libc_impl_string_strchr(known, conv) != NULL;
+    return conv != '\0' && __libc_impl_string_strchr(known, conv) != __LIBC_IMPL_STDDEF_NULL;
 }
 
 // Return the format strftime's conversion conv stands for.
@@ -407,7 +407,7 @@ const char *__libc_impl_time_composite(char conv)
             return "%H:%M:%S";
         } break;
         default: {
-            return NULL;
+            return __LIBC_IMPL_STDDEF_NULL;
         } break;
     }
 }
@@ -425,14 +425,14 @@ void __libc_impl_time_put_conversion(struct __libc_impl_time_text *text, char co
             __libc_impl_time_put_name(text, __libc_impl_time_wday_name(tm->tm_wday), __LIBC_IMPL_TIME_ABBREV_LEN, __LIBC_IMPL_TIME_UNKNOWN_NAME);
         } break;
         case 'A': {
-            __libc_impl_time_put_name(text, __libc_impl_time_wday_name(tm->tm_wday), SIZE_MAX, __LIBC_IMPL_TIME_UNKNOWN_NAME);
+            __libc_impl_time_put_name(text, __libc_impl_time_wday_name(tm->tm_wday), __LIBC_IMPL_STDINT_SIZE_MAX, __LIBC_IMPL_TIME_UNKNOWN_NAME);
         } break;
         case 'b':
         case 'h': {
             __libc_impl_time_put_name(text, __libc_impl_time_mon_name(tm->tm_mon), __LIBC_IMPL_TIME_ABBREV_LEN, __LIBC_IMPL_TIME_UNKNOWN_NAME);
         } break;
         case 'B': {
-            __libc_impl_time_put_name(text, __libc_impl_time_mon_name(tm->tm_mon), SIZE_MAX, __LIBC_IMPL_TIME_UNKNOWN_NAME);
+            __libc_impl_time_put_name(text, __libc_impl_time_mon_name(tm->tm_mon), __LIBC_IMPL_STDINT_SIZE_MAX, __LIBC_IMPL_TIME_UNKNOWN_NAME);
         } break;
         case 'C': {
             __libc_impl_time_put_number(text, __libc_impl_time_floor_div(year, __LIBC_IMPL_TIME_YEARS_PER_CENTURY), __LIBC_IMPL_TIME_WIDTH_YEAR, '0');
@@ -473,7 +473,7 @@ void __libc_impl_time_put_conversion(struct __libc_impl_time_text *text, char co
             __libc_impl_time_put_char(text, '\n');
         } break;
         case 'p': {
-            __libc_impl_time_put_string(text, hour >= __LIBC_IMPL_TIME_HOURS_PER_HALF ? "PM" : "AM", SIZE_MAX);
+            __libc_impl_time_put_string(text, hour >= __LIBC_IMPL_TIME_HOURS_PER_HALF ? "PM" : "AM", __LIBC_IMPL_STDINT_SIZE_MAX);
         } break;
         case 'S': {
             __libc_impl_time_put_number(text, tm->tm_sec, __LIBC_IMPL_TIME_WIDTH_FIELD, '0');
@@ -512,7 +512,7 @@ void __libc_impl_time_put_conversion(struct __libc_impl_time_text *text, char co
             __libc_impl_time_put_number(text, mins / __LIBC_IMPL_TIME_MINS_PER_HOUR * __LIBC_IMPL_TIME_OFFSET_HOUR + mins % __LIBC_IMPL_TIME_MINS_PER_HOUR, __LIBC_IMPL_TIME_WIDTH_OFFSET, '0');
         } break;
         case 'Z': {
-            __libc_impl_time_put_string(text, tm->__libc_tm_zone != NULL ? tm->__libc_tm_zone : __LIBC_IMPL_TIME_ZONE_UTC, SIZE_MAX);
+            __libc_impl_time_put_string(text, tm->__libc_tm_zone != __LIBC_IMPL_STDDEF_NULL ? tm->__libc_tm_zone : __LIBC_IMPL_TIME_ZONE_UTC, __LIBC_IMPL_STDINT_SIZE_MAX);
         } break;
         default: {
             __libc_impl_time_put_char(text, '%');
@@ -544,11 +544,11 @@ void __libc_impl_time_put_format(struct __libc_impl_time_text *text, const char 
             if (*ptr != '\0') {
                 ptr++;
             }
-            __libc_impl_time_put_string(text, start, (size_t) (ptr - start));
+            __libc_impl_time_put_string(text, start, (__libc_impl_stddef_size_t) (ptr - start));
             continue;
         }
         composite = __libc_impl_time_composite(*ptr);
-        if (composite != NULL) {
+        if (composite != __LIBC_IMPL_STDDEF_NULL) {
             __libc_impl_time_put_format(text, composite, tm);
         } else {
             __libc_impl_time_put_conversion(text, *ptr, tm);

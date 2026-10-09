@@ -27,24 +27,24 @@
 #include <libc/impl/libc_inttypes.h>
 
 // The error number of a value out of range.
-#include <errno.h>
+#include <libc/impl/libc_errno.h>
 
 // The white space the conversions skip.
 #include <libc/impl/libc_ctype.h>
 
 // The range of a narrow character.
-#include <limits.h>
+#include <libc/impl/libc_limits.h>
 
 // Give the absolute value of j.
-intmax_t __libc_impl_inttypes_imaxabs(intmax_t j)
+__libc_impl_stdint_intmax_t __libc_impl_inttypes_imaxabs(__libc_impl_stdint_intmax_t j)
 {
     return j < 0 ? -j : j;
 }
 
 // Divide numer by denom, giving the quotient and the remainder.
-imaxdiv_t __libc_impl_inttypes_imaxdiv(intmax_t numer, intmax_t denom)
+__libc_impl_inttypes_imaxdiv_t __libc_impl_inttypes_imaxdiv(__libc_impl_stdint_intmax_t numer, __libc_impl_stdint_intmax_t denom)
 {
-    imaxdiv_t result;
+    __libc_impl_inttypes_imaxdiv_t result;
 
     result.quot = numer / denom;
     result.rem = numer % denom;
@@ -52,74 +52,74 @@ imaxdiv_t __libc_impl_inttypes_imaxdiv(intmax_t numer, intmax_t denom)
 }
 
 // Convert the start of the string nptr to an intmax_t in base.
-intmax_t __libc_impl_inttypes_strtoimax(const char *restrict nptr, char **restrict endptr, int base)
+__libc_impl_stdint_intmax_t __libc_impl_inttypes_strtoimax(const char *restrict nptr, char **restrict endptr, int base)
 {
-    size_t end;
-    bool negative;
-    bool overflow;
-    uintmax_t value = __libc_impl_inttypes_convert(nptr, false, &end, base, &negative, &overflow);
+    __libc_impl_stddef_size_t end;
+    _Bool negative;
+    _Bool overflow;
+    __libc_impl_stdint_uintmax_t value = __libc_impl_inttypes_convert(nptr, 0, &end, base, &negative, &overflow);
 
-    if (endptr != NULL) {
+    if (endptr != __LIBC_IMPL_STDDEF_NULL) {
         *endptr = (char *) nptr + end;
     }
     return __libc_impl_inttypes_to_signed(value, negative, overflow);
 }
 
 // Convert the start of the string nptr to a uintmax_t in base.
-uintmax_t __libc_impl_inttypes_strtoumax(const char *restrict nptr, char **restrict endptr, int base)
+__libc_impl_stdint_uintmax_t __libc_impl_inttypes_strtoumax(const char *restrict nptr, char **restrict endptr, int base)
 {
-    size_t end;
-    bool negative;
-    bool overflow;
-    uintmax_t value = __libc_impl_inttypes_convert(nptr, false, &end, base, &negative, &overflow);
+    __libc_impl_stddef_size_t end;
+    _Bool negative;
+    _Bool overflow;
+    __libc_impl_stdint_uintmax_t value = __libc_impl_inttypes_convert(nptr, 0, &end, base, &negative, &overflow);
 
-    if (endptr != NULL) {
+    if (endptr != __LIBC_IMPL_STDDEF_NULL) {
         *endptr = (char *) nptr + end;
     }
     return __libc_impl_inttypes_to_unsigned(value, negative, overflow);
 }
 
 // Convert the start of the wide string nptr to an intmax_t in base.
-intmax_t __libc_impl_inttypes_wcstoimax(const __libc_wchar_t *restrict nptr, __libc_wchar_t **restrict endptr, int base)
+__libc_impl_stdint_intmax_t __libc_impl_inttypes_wcstoimax(const __libc_impl_stddef_wchar_t *restrict nptr, __libc_impl_stddef_wchar_t **restrict endptr, int base)
 {
-    size_t end;
-    bool negative;
-    bool overflow;
-    uintmax_t value = __libc_impl_inttypes_convert(nptr, true, &end, base, &negative, &overflow);
+    __libc_impl_stddef_size_t end;
+    _Bool negative;
+    _Bool overflow;
+    __libc_impl_stdint_uintmax_t value = __libc_impl_inttypes_convert(nptr, 1, &end, base, &negative, &overflow);
 
-    if (endptr != NULL) {
-        *endptr = (__libc_wchar_t *) nptr + end;
+    if (endptr != __LIBC_IMPL_STDDEF_NULL) {
+        *endptr = (__libc_impl_stddef_wchar_t *) nptr + end;
     }
     return __libc_impl_inttypes_to_signed(value, negative, overflow);
 }
 
 // Convert the start of the wide string nptr to a uintmax_t in base.
-uintmax_t __libc_impl_inttypes_wcstoumax(const __libc_wchar_t *restrict nptr, __libc_wchar_t **restrict endptr, int base)
+__libc_impl_stdint_uintmax_t __libc_impl_inttypes_wcstoumax(const __libc_impl_stddef_wchar_t *restrict nptr, __libc_impl_stddef_wchar_t **restrict endptr, int base)
 {
-    size_t end;
-    bool negative;
-    bool overflow;
-    uintmax_t value = __libc_impl_inttypes_convert(nptr, true, &end, base, &negative, &overflow);
+    __libc_impl_stddef_size_t end;
+    _Bool negative;
+    _Bool overflow;
+    __libc_impl_stdint_uintmax_t value = __libc_impl_inttypes_convert(nptr, 1, &end, base, &negative, &overflow);
 
-    if (endptr != NULL) {
-        *endptr = (__libc_wchar_t *) nptr + end;
+    if (endptr != __LIBC_IMPL_STDDEF_NULL) {
+        *endptr = (__libc_impl_stddef_wchar_t *) nptr + end;
     }
     return __libc_impl_inttypes_to_unsigned(value, negative, overflow);
 }
 
 // Read character index of str, a wide string when wide.
-int __libc_impl_inttypes_char_at(const void *str, bool wide, size_t index)
+int __libc_impl_inttypes_char_at(const void *str, _Bool wide, __libc_impl_stddef_size_t index)
 {
     if (wide) {
-        return ((const __libc_wchar_t *) str)[index];
+        return ((const __libc_impl_stddef_wchar_t *) str)[index];
     }
     return ((const unsigned char *) str)[index];
 }
 
 // Check whether ch is white space in the "C" locale.
-bool __libc_impl_inttypes_is_space(int ch)
+_Bool __libc_impl_inttypes_is_space(int ch)
 {
-    return ch >= 0 && ch <= UCHAR_MAX && __libc_impl_ctype_isspace(ch);
+    return ch >= 0 && ch <= __LIBC_IMPL_LIMITS_UCHAR_MAX && __libc_impl_ctype_isspace(ch);
 }
 
 // Give the value of the digit ch, or __LIBC_IMPL_INTTYPES_BASE_MAX for none.
@@ -138,17 +138,17 @@ int __libc_impl_inttypes_digit(int ch)
 }
 
 // Convert the number at the start of str to its magnitude, ending at *end.
-uintmax_t __libc_impl_inttypes_convert(const void *str, bool wide, size_t *end, int base, bool *negative, bool *overflow)
+__libc_impl_stdint_uintmax_t __libc_impl_inttypes_convert(const void *str, _Bool wide, __libc_impl_stddef_size_t *end, int base, _Bool *negative, _Bool *overflow)
 {
-    size_t i = 0;
-    size_t start;
-    uintmax_t value = 0;
+    __libc_impl_stddef_size_t i = 0;
+    __libc_impl_stddef_size_t start;
+    __libc_impl_stdint_uintmax_t value = 0;
     int ch;
     int digit;
 
     *end = 0;
-    *negative = false;
-    *overflow = false;
+    *negative = 0;
+    *overflow = 0;
     if (base < 0 || base == 1 || base > __LIBC_IMPL_INTTYPES_BASE_MAX) {
         return 0;
     }
@@ -171,10 +171,10 @@ uintmax_t __libc_impl_inttypes_convert(const void *str, bool wide, size_t *end, 
     }
     start = i;
     while ((digit = __libc_impl_inttypes_digit(__libc_impl_inttypes_char_at(str, wide, i))) < base) {
-        if (value > (UINTMAX_MAX - (uintmax_t) digit) / (uintmax_t) base) {
-            *overflow = true;
+        if (value > (__LIBC_IMPL_STDINT_UINTMAX_MAX - (__libc_impl_stdint_uintmax_t) digit) / (__libc_impl_stdint_uintmax_t) base) {
+            *overflow = 1;
         } else {
-            value = value * (uintmax_t) base + (uintmax_t) digit;
+            value = value * (__libc_impl_stdint_uintmax_t) base + (__libc_impl_stdint_uintmax_t) digit;
         }
         i++;
     }
@@ -185,26 +185,26 @@ uintmax_t __libc_impl_inttypes_convert(const void *str, bool wide, size_t *end, 
 }
 
 // Give the intmax_t of a magnitude, clamped with ERANGE if out of range.
-intmax_t __libc_impl_inttypes_to_signed(uintmax_t value, bool negative, bool overflow)
+__libc_impl_stdint_intmax_t __libc_impl_inttypes_to_signed(__libc_impl_stdint_uintmax_t value, _Bool negative, _Bool overflow)
 {
-    uintmax_t limit = negative ? (uintmax_t) INTMAX_MAX + 1 : (uintmax_t) INTMAX_MAX;
+    __libc_impl_stdint_uintmax_t limit = negative ? (__libc_impl_stdint_uintmax_t) __LIBC_IMPL_STDINT_INTMAX_MAX + 1 : (__libc_impl_stdint_uintmax_t) __LIBC_IMPL_STDINT_INTMAX_MAX;
 
     if (overflow || value > limit) {
-        errno = ERANGE;
-        return negative ? INTMAX_MIN : INTMAX_MAX;
+        errno = __LIBC_IMPL_ERRNO_ERANGE;
+        return negative ? __LIBC_IMPL_STDINT_INTMAX_MIN : __LIBC_IMPL_STDINT_INTMAX_MAX;
     }
     if (negative && value == limit) {
-        return INTMAX_MIN;
+        return __LIBC_IMPL_STDINT_INTMAX_MIN;
     }
-    return negative ? -(intmax_t) value : (intmax_t) value;
+    return negative ? -(__libc_impl_stdint_intmax_t) value : (__libc_impl_stdint_intmax_t) value;
 }
 
 // Give the uintmax_t of a magnitude, UINTMAX_MAX with ERANGE if too big.
-uintmax_t __libc_impl_inttypes_to_unsigned(uintmax_t value, bool negative, bool overflow)
+__libc_impl_stdint_uintmax_t __libc_impl_inttypes_to_unsigned(__libc_impl_stdint_uintmax_t value, _Bool negative, _Bool overflow)
 {
     if (overflow) {
-        errno = ERANGE;
-        return UINTMAX_MAX;
+        errno = __LIBC_IMPL_ERRNO_ERANGE;
+        return __LIBC_IMPL_STDINT_UINTMAX_MAX;
     }
     return negative ? 0U - value : value;
 }

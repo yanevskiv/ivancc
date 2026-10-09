@@ -26,19 +26,22 @@
 #ifndef __SIGNAL_H__
 #define __SIGNAL_H__
 
+// The implementation.
+#include <libc/impl/libc_signal.h>
+
 // (S7.14) Signal handling
-#define SIG_DFL ((void (*)(int)) 0)
-#define SIG_ERR ((void (*)(int)) -1)
-#define SIG_IGN ((void (*)(int)) 1)
+#define SIG_DFL __LIBC_IMPL_SIGNAL_SIG_DFL
+#define SIG_ERR __LIBC_IMPL_SIGNAL_SIG_ERR
+#define SIG_IGN __LIBC_IMPL_SIGNAL_SIG_IGN
 
-#define SIGABRT 6
-#define SIGFPE  8
-#define SIGILL  4
-#define SIGINT  2
-#define SIGSEGV 11
-#define SIGTERM 15
+#define SIGABRT __LIBC_IMPL_SIGNAL_SIGABRT
+#define SIGFPE  __LIBC_IMPL_SIGNAL_SIGFPE
+#define SIGILL  __LIBC_IMPL_SIGNAL_SIGILL
+#define SIGINT  __LIBC_IMPL_SIGNAL_SIGINT
+#define SIGSEGV __LIBC_IMPL_SIGNAL_SIGSEGV
+#define SIGTERM __LIBC_IMPL_SIGNAL_SIGTERM
 
-typedef int sig_atomic_t;
+typedef __libc_impl_signal_sig_atomic_t sig_atomic_t;
 
 // (S7.14.1) Specify signal handling
 void (*signal(int sig, void (*func)(int)))(int);

@@ -26,11 +26,14 @@
 #ifndef __LIBC_IMPL_TIME_H__
 #define __LIBC_IMPL_TIME_H__
 
-// The types the functions take and return.
-#include <time.h>
+// The sizes and null pointer the functions take.
+#include <libc/impl/libc_stddef.h>
 
-// The truth values the helpers answer with.
-#include <stdbool.h>
+// (S7.23.1) Components of time
+#define __LIBC_IMPL_TIME_CLOCKS_PER_SEC ((__libc_impl_time_clock_t) 1000000)
+
+typedef long __libc_impl_time_clock_t;
+typedef long __libc_impl_time_time_t;
 
 // The units of time.
 #define __LIBC_IMPL_TIME_NSECS_PER_CLOCK 1000L
@@ -111,46 +114,61 @@
 #define __LIBC_IMPL_TIME_CONVERSIONS_E "cCnprRtTuxXyYzZ%"
 #define __LIBC_IMPL_TIME_CONVERSIONS_O "bBCdeghGHIjmMnprRStTuUVwWyzZ%"
 
+// The broken-down time, under C99's tag, which no typedef renames.
+struct tm {
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;
+    int tm_yday;
+    int tm_isdst;
+    long __libc_tm_gmtoff;
+    const char *__libc_tm_zone;
+};
+
 // Text written into a buffer.
 struct __libc_impl_time_text {
-    char   *tt_str;
-    size_t  tt_size;
-    size_t  tt_len;
+    char                      *tt_str;
+    __libc_impl_stddef_size_t  tt_size;
+    __libc_impl_stddef_size_t  tt_len;
 };
 
 // (S7.23.2) Time manipulation functions
-clock_t __libc_impl_time_clock(void);
-double __libc_impl_time_difftime(time_t time1, time_t time0);
-time_t __libc_impl_time_mktime(struct tm *timeptr);
-time_t __libc_impl_time_time(time_t *timer);
+__libc_impl_time_clock_t __libc_impl_time_clock(void);
+double __libc_impl_time_difftime(__libc_impl_time_time_t time1, __libc_impl_time_time_t time0);
+__libc_impl_time_time_t __libc_impl_time_mktime(struct tm *timeptr);
+__libc_impl_time_time_t __libc_impl_time_time(__libc_impl_time_time_t *timer);
 
 // (S7.23.3) Time conversion functions
 char *__libc_impl_time_asctime(const struct tm *timeptr);
-char *__libc_impl_time_ctime(const time_t *timer);
-struct tm *__libc_impl_time_gmtime(const time_t *timer);
-struct tm *__libc_impl_time_localtime(const time_t *timer);
-size_t __libc_impl_time_strftime(char *restrict str, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
+char *__libc_impl_time_ctime(const __libc_impl_time_time_t *timer);
+struct tm *__libc_impl_time_gmtime(const __libc_impl_time_time_t *timer);
+struct tm *__libc_impl_time_localtime(const __libc_impl_time_time_t *timer);
+__libc_impl_stddef_size_t __libc_impl_time_strftime(char *restrict str, __libc_impl_stddef_size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
 
 // Calendar
 long __libc_impl_time_floor_div(long value, long divisor);
 long __libc_impl_time_floor_mod(long value, long divisor);
 long __libc_impl_time_year_days(long year);
 long __libc_impl_time_month_days(long year, int mon);
-struct tm *__libc_impl_time_break_down(time_t value, struct tm *tm, const char *zone);
+struct tm *__libc_impl_time_break_down(__libc_impl_time_time_t value, struct tm *tm, const char *zone);
 
 // Text
 void __libc_impl_time_put_char(struct __libc_impl_time_text *text, char ch);
-void __libc_impl_time_put_string(struct __libc_impl_time_text *text, const char *str, size_t len);
+void __libc_impl_time_put_string(struct __libc_impl_time_text *text, const char *str, __libc_impl_stddef_size_t len);
 void __libc_impl_time_put_number(struct __libc_impl_time_text *text, long value, int width, char pad);
 void __libc_impl_time_put_two_digits(struct __libc_impl_time_text *text, int value);
 const char *__libc_impl_time_wday_name(int wday);
 const char *__libc_impl_time_mon_name(int mon);
-void __libc_impl_time_put_name(struct __libc_impl_time_text *text, const char *name, size_t len, const char *unknown);
+void __libc_impl_time_put_name(struct __libc_impl_time_text *text, const char *name, __libc_impl_stddef_size_t len, const char *unknown);
 
 // strftime
 long __libc_impl_time_iso_days(long yday, long wday);
 long __libc_impl_time_iso_year(const struct tm *tm, long *days);
-bool __libc_impl_time_is_conversion(char mod, char conv);
+_Bool __libc_impl_time_is_conversion(char mod, char conv);
 const char *__libc_impl_time_composite(char conv);
 void __libc_impl_time_put_conversion(struct __libc_impl_time_text *text, char conv, const struct tm *tm);
 void __libc_impl_time_put_format(struct __libc_impl_time_text *text, const char *format, const struct tm *tm);

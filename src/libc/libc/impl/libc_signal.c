@@ -27,7 +27,7 @@
 #include <libc/impl/libc_signal.h>
 
 // The error number a refused request sets.
-#include <errno.h>
+#include <libc/impl/libc_errno.h>
 
 // The system calls that install a handler and send a signal.
 #include <libc/libc_sys.h>
@@ -39,9 +39,9 @@ void (*__libc_impl_signal_signal(int sig, void (*func)(int)))(int)
     struct __libc_sys_sigaction old;
     long ret;
 
-    if (sig < __LIBC_SYS_SIGNAL_FIRST || sig > __LIBC_SYS_SIGNAL_LAST || func == SIG_ERR) {
+    if (sig < __LIBC_SYS_SIGNAL_FIRST || sig > __LIBC_SYS_SIGNAL_LAST || func == __LIBC_IMPL_SIGNAL_SIG_ERR) {
         errno = __LIBC_SYS_EINVAL;
-        return SIG_ERR;
+        return __LIBC_IMPL_SIGNAL_SIG_ERR;
     }
     act.sa_handler = func;
     act.sa_flags = __LIBC_SYS_SA_RESTORER | __LIBC_SYS_SA_RESTART;
@@ -50,7 +50,7 @@ void (*__libc_impl_signal_signal(int sig, void (*func)(int)))(int)
     ret = __libc_sys_rt_sigaction(sig, &act, &old);
     if (ret < 0) {
         errno = (int) -ret;
-        return SIG_ERR;
+        return __LIBC_IMPL_SIGNAL_SIG_ERR;
     }
     return old.sa_handler;
 }
