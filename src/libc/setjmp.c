@@ -26,47 +26,5 @@
 // Module header.
 #include <setjmp.h>
 
-#ifdef __x86_64__
-// Save the callee-saved registers, stack pointer and return address in env.
-__asm__(
-    "  .text\n"
-    "  .globl setjmp\n"
-    "setjmp:\n"
-    "  mov %rbx, (%rdi)\n"
-    "  mov %rbp, 8(%rdi)\n"
-    "  mov %r12, 16(%rdi)\n"
-    "  mov %r13, 24(%rdi)\n"
-    "  mov %r14, 32(%rdi)\n"
-    "  mov %r15, 40(%rdi)\n"
-    "  lea 8(%rsp), %rdx\n"
-    "  mov %rdx, 48(%rdi)\n"
-    "  mov (%rsp), %rdx\n"
-    "  mov %rdx, 56(%rdi)\n"
-    "  xor %rax, %rax\n"
-    "  ret\n"
-);
-
-// Return val, or 1 for 0, from the setjmp that saved env.
-__asm__(
-    "  .text\n"
-    "  .globl longjmp\n"
-    "longjmp:\n"
-    "  movslq %esi, %rax\n"
-    "  cmp $0, %rax\n"
-    "  jne .L__libc_setjmp_nonzero\n"
-    "  mov $1, %rax\n"
-    ".L__libc_setjmp_nonzero:\n"
-    "  mov (%rdi), %rbx\n"
-    "  mov 8(%rdi), %rbp\n"
-    "  mov 16(%rdi), %r12\n"
-    "  mov 24(%rdi), %r13\n"
-    "  mov 32(%rdi), %r14\n"
-    "  mov 40(%rdi), %r15\n"
-    "  mov 48(%rdi), %rsp\n"
-    "  mov 56(%rdi), %rdx\n"
-    "  push %rdx\n"
-    "  ret\n"
-);
-#else
-#error "setjmp.c: no nonlocal jumps for this architecture"
-#endif
+// The implementation.
+#include <ivancc/impl/libc_setjmp.h>
