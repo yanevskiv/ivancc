@@ -24,7 +24,7 @@
  */
 
 // Module header.
-#include <ivancc/impl/libc_time.h>
+#include <libc/impl/libc_time.h>
 
 // The range of a broken-down year.
 #include <limits.h>
@@ -36,10 +36,10 @@
 #include <errno.h>
 
 // The conversions strftime knows.
-#include <ivancc/impl/libc_string.h>
+#include <libc/impl/libc_string.h>
 
 // The clocks clock and time read.
-#include <ivancc/libc_sys.h>
+#include <libc/libc_sys.h>
 
 // The days before each month of a year that starts in March.
 static const long __libc_impl_time_march_days[__LIBC_IMPL_TIME_MONTHS_PER_YEAR] = { 0, 31, 61, 92, 122, 153, 184, 214, 245, 275, 306, 337 };

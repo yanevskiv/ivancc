@@ -27,7 +27,7 @@
 #include <time.h>
 
 // The implementation.
-#include <ivancc/impl/libc_time.h>
+#include <libc/impl/libc_time.h>
 
 // Return the processor time the program has used.
 clock_t clock(void)

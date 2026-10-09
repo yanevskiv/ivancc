@@ -24,7 +24,7 @@
  */
 
 // Module header.
-#include <ivancc/libc_sys.h>
+#include <libc/libc_sys.h>
 
 #ifndef __linux__
 #error "libc_sys.c: the system layer is Linux's alone"

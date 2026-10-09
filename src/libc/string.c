@@ -27,7 +27,7 @@
 #include <string.h>
 
 // The implementation.
-#include <ivancc/impl/libc_string.h>
+#include <libc/impl/libc_string.h>
 
 // Copy n bytes from str2 to str1, which must not overlap.
 void *memcpy(void *restrict str1, const void *restrict str2, size_t n)

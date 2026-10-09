@@ -27,7 +27,7 @@
 #include <crt/crt.h>
 
 // The system call the startup exits with.
-#include <ivancc/libc_sys.h>
+#include <libc/libc_sys.h>
 
 // The ivanemu machine's halt register.
 #define __CRT_IVANEMU_HALT "0x10000008"

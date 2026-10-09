@@ -27,4 +27,4 @@
 #include <assert.h>
 
 // The implementation.
-#include <ivancc/impl/libc_assert.h>
+#include <libc/impl/libc_assert.h>

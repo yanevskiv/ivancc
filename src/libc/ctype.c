@@ -27,7 +27,7 @@
 #include <ctype.h>
 
 // The implementation.
-#include <ivancc/impl/libc_ctype.h>
+#include <libc/impl/libc_ctype.h>
 
 // Tell whether c is a letter or a digit.
 int isalnum(int c)

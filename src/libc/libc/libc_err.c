@@ -24,7 +24,7 @@
  */
 
 // Module header.
-#include <ivancc/libc_err.h>
+#include <libc/libc_err.h>
 
 // The error numbers the texts name.
 #include <errno.h>

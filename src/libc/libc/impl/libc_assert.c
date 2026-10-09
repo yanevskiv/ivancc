@@ -24,22 +24,22 @@
  */
 
 // Module header.
-#include <ivancc/impl/libc_assert.h>
+#include <libc/impl/libc_assert.h>
 
 // The program's name.
 #include <crt/crt.h>
 
 // The message's texts.
-#include <ivancc/libc_err.h>
+#include <libc/libc_err.h>
 
 // The signal that ends the program.
 #include <signal.h>
 
 // The system calls that report and end the program.
-#include <ivancc/libc_sys.h>
+#include <libc/libc_sys.h>
 
 // The string functions the message is built with.
-#include <ivancc/impl/libc_string.h>
+#include <libc/impl/libc_string.h>
 
 // Report a failed assertion and end the program as abort would.
 void __libc_impl_assert_fail(const char *expr, const char *file, unsigned int line, const char *func)

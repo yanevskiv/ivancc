@@ -27,7 +27,7 @@
 #include <signal.h>
 
 // The implementation.
-#include <ivancc/impl/libc_signal.h>
+#include <libc/impl/libc_signal.h>
 
 // Install func as the handler of the signal sig.
 void (*signal(int sig, void (*func)(int)))(int)
