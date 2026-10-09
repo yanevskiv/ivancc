@@ -32,35 +32,35 @@
 // Give the absolute value of j.
 intmax_t imaxabs(intmax_t j)
 {
-    return __libc_inttypes_imaxabs(j);
+    return __libc_impl_inttypes_imaxabs(j);
 }
 
 // Divide numer by denom, giving the quotient and the remainder.
 imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom)
 {
-    return __libc_inttypes_imaxdiv(numer, denom);
+    return __libc_impl_inttypes_imaxdiv(numer, denom);
 }
 
 // Convert the start of the string nptr to an intmax_t in base.
 intmax_t strtoimax(const char *restrict nptr, char **restrict endptr, int base)
 {
-    return __libc_inttypes_strtoimax(nptr, endptr, base);
+    return __libc_impl_inttypes_strtoimax(nptr, endptr, base);
 }
 
 // Convert the start of the string nptr to a uintmax_t in base.
 uintmax_t strtoumax(const char *restrict nptr, char **restrict endptr, int base)
 {
-    return __libc_inttypes_strtoumax(nptr, endptr, base);
+    return __libc_impl_inttypes_strtoumax(nptr, endptr, base);
 }
 
 // Convert the start of the wide string nptr to an intmax_t in base.
 intmax_t wcstoimax(const __libc_wchar_t *restrict nptr, __libc_wchar_t **restrict endptr, int base)
 {
-    return __libc_inttypes_wcstoimax(nptr, endptr, base);
+    return __libc_impl_inttypes_wcstoimax(nptr, endptr, base);
 }
 
 // Convert the start of the wide string nptr to a uintmax_t in base.
 uintmax_t wcstoumax(const __libc_wchar_t *restrict nptr, __libc_wchar_t **restrict endptr, int base)
 {
-    return __libc_inttypes_wcstoumax(nptr, endptr, base);
+    return __libc_impl_inttypes_wcstoumax(nptr, endptr, base);
 }

@@ -30,13 +30,13 @@
 #include <ivancc/libc_err.h>
 
 // Where strtok's next search starts.
-static char *__libc_string_next;
+static char *__libc_impl_string_next;
 
 // strerror's text for an unknown error number.
-static char __libc_string_unknown[__LIBC_STRING_ERROR_SIZE];
+static char __libc_impl_string_unknown[__LIBC_IMPL_STRING_ERROR_SIZE];
 
 // Copy n bytes from str2 to str1, which must not overlap.
-void *__libc_string_memcpy(void *restrict str1, const void *restrict str2, size_t n)
+void *__libc_impl_string_memcpy(void *restrict str1, const void *restrict str2, size_t n)
 {
     unsigned char *to = str1;
     const unsigned char *from = str2;
@@ -48,7 +48,7 @@ void *__libc_string_memcpy(void *restrict str1, const void *restrict str2, size_
 }
 
 // Copy n bytes from str2 to str1, which may overlap.
-void *__libc_string_memmove(void *str1, const void *str2, size_t n)
+void *__libc_impl_string_memmove(void *str1, const void *str2, size_t n)
 {
     unsigned char *to = str1;
     const unsigned char *from = str2;
@@ -66,7 +66,7 @@ void *__libc_string_memmove(void *str1, const void *str2, size_t n)
 }
 
 // Copy the string str2 to str1.
-char *__libc_string_strcpy(char *restrict str1, const char *restrict str2)
+char *__libc_impl_string_strcpy(char *restrict str1, const char *restrict str2)
 {
     size_t i = 0;
 
@@ -79,7 +79,7 @@ char *__libc_string_strcpy(char *restrict str1, const char *restrict str2)
 }
 
 // Copy at most n characters of the string str2 to str1, padded to n with nulls.
-char *__libc_string_strncpy(char *restrict str1, const char *restrict str2, size_t n)
+char *__libc_impl_string_strncpy(char *restrict str1, const char *restrict str2, size_t n)
 {
     size_t i = 0;
 
@@ -95,16 +95,16 @@ char *__libc_string_strncpy(char *restrict str1, const char *restrict str2, size
 }
 
 // Append the string str2 to str1.
-char *__libc_string_strcat(char *restrict str1, const char *restrict str2)
+char *__libc_impl_string_strcat(char *restrict str1, const char *restrict str2)
 {
-    __libc_string_strcpy(str1 + __libc_string_strlen(str1), str2);
+    __libc_impl_string_strcpy(str1 + __libc_impl_string_strlen(str1), str2);
     return str1;
 }
 
 // Append at most n characters of the string str2 to str1, and a null character.
-char *__libc_string_strncat(char *restrict str1, const char *restrict str2, size_t n)
+char *__libc_impl_string_strncat(char *restrict str1, const char *restrict str2, size_t n)
 {
-    char *end = str1 + __libc_string_strlen(str1);
+    char *end = str1 + __libc_impl_string_strlen(str1);
     size_t i = 0;
 
     while (i < n && str2[i] != '\0') {
@@ -116,7 +116,7 @@ char *__libc_string_strncat(char *restrict str1, const char *restrict str2, size
 }
 
 // Compare n bytes of str1 and str2 as unsigned chars.
-int __libc_string_memcmp(const void *str1, const void *str2, size_t n)
+int __libc_impl_string_memcmp(const void *str1, const void *str2, size_t n)
 {
     const unsigned char *left = str1;
     const unsigned char *right = str2;
@@ -130,7 +130,7 @@ int __libc_string_memcmp(const void *str1, const void *str2, size_t n)
 }
 
 // Compare the strings str1 and str2 as unsigned chars.
-int __libc_string_strcmp(const char *str1, const char *str2)
+int __libc_impl_string_strcmp(const char *str1, const char *str2)
 {
     const unsigned char *left = (const unsigned char *) str1;
     const unsigned char *right = (const unsigned char *) str2;
@@ -143,13 +143,13 @@ int __libc_string_strcmp(const char *str1, const char *str2)
 }
 
 // Compare the strings str1 and str2 in the locale's collation order.
-int __libc_string_strcoll(const char *str1, const char *str2)
+int __libc_impl_string_strcoll(const char *str1, const char *str2)
 {
-    return __libc_string_strcmp(str1, str2);
+    return __libc_impl_string_strcmp(str1, str2);
 }
 
 // Compare at most n characters of the strings str1 and str2 as unsigned chars.
-int __libc_string_strncmp(const char *str1, const char *str2, size_t n)
+int __libc_impl_string_strncmp(const char *str1, const char *str2, size_t n)
 {
     const unsigned char *left = (const unsigned char *) str1;
     const unsigned char *right = (const unsigned char *) str2;
@@ -163,18 +163,18 @@ int __libc_string_strncmp(const char *str1, const char *str2, size_t n)
 }
 
 // Transform the string str2 into str1, which strcmp orders as strcoll would.
-size_t __libc_string_strxfrm(char *restrict str1, const char *restrict str2, size_t n)
+size_t __libc_impl_string_strxfrm(char *restrict str1, const char *restrict str2, size_t n)
 {
-    size_t len = __libc_string_strlen(str2);
+    size_t len = __libc_impl_string_strlen(str2);
 
     if (len < n) {
-        __libc_string_memcpy(str1, str2, len + 1);
+        __libc_impl_string_memcpy(str1, str2, len + 1);
     }
     return len;
 }
 
 // Find the first byte ch in n bytes of str.
-void *__libc_string_memchr(const void *str, int ch, size_t n)
+void *__libc_impl_string_memchr(const void *str, int ch, size_t n)
 {
     const unsigned char *ptr = str;
 
@@ -187,7 +187,7 @@ void *__libc_string_memchr(const void *str, int ch, size_t n)
 }
 
 // Find the first character ch in the string str, its null character included.
-char *__libc_string_strchr(const char *str, int ch)
+char *__libc_impl_string_strchr(const char *str, int ch)
 {
     const char *ptr = str;
 
@@ -201,20 +201,20 @@ char *__libc_string_strchr(const char *str, int ch)
 }
 
 // Count the characters at the start of the string str1 that are not in str2.
-size_t __libc_string_strcspn(const char *str1, const char *str2)
+size_t __libc_impl_string_strcspn(const char *str1, const char *str2)
 {
     size_t len = 0;
 
-    while (str1[len] != '\0' && __libc_string_strchr(str2, str1[len]) == NULL) {
+    while (str1[len] != '\0' && __libc_impl_string_strchr(str2, str1[len]) == NULL) {
         len++;
     }
     return len;
 }
 
 // Find the first character of the string str1 that is in str2.
-char *__libc_string_strpbrk(const char *str1, const char *str2)
+char *__libc_impl_string_strpbrk(const char *str1, const char *str2)
 {
-    const char *ptr = str1 + __libc_string_strcspn(str1, str2);
+    const char *ptr = str1 + __libc_impl_string_strcspn(str1, str2);
 
     if (*ptr == '\0') {
         return NULL;
@@ -223,7 +223,7 @@ char *__libc_string_strpbrk(const char *str1, const char *str2)
 }
 
 // Find the last character ch in the string str, its null character included.
-char *__libc_string_strrchr(const char *str, int ch)
+char *__libc_impl_string_strrchr(const char *str, int ch)
 {
     const char *found = NULL;
     const char *ptr = str;
@@ -237,23 +237,23 @@ char *__libc_string_strrchr(const char *str, int ch)
 }
 
 // Count the characters at the start of the string str1 that are in str2.
-size_t __libc_string_strspn(const char *str1, const char *str2)
+size_t __libc_impl_string_strspn(const char *str1, const char *str2)
 {
     size_t len = 0;
 
-    while (str1[len] != '\0' && __libc_string_strchr(str2, str1[len]) != NULL) {
+    while (str1[len] != '\0' && __libc_impl_string_strchr(str2, str1[len]) != NULL) {
         len++;
     }
     return len;
 }
 
 // Find the first occurrence of the string str2 in str1.
-char *__libc_string_strstr(const char *str1, const char *str2)
+char *__libc_impl_string_strstr(const char *str1, const char *str2)
 {
-    size_t len = __libc_string_strlen(str2);
+    size_t len = __libc_impl_string_strlen(str2);
 
     for (const char *ptr = str1; ; ptr++) {
-        if (__libc_string_strncmp(ptr, str2, len) == 0) {
+        if (__libc_impl_string_strncmp(ptr, str2, len) == 0) {
             return (char *) ptr;
         }
         if (*ptr == '\0') {
@@ -263,30 +263,30 @@ char *__libc_string_strstr(const char *str1, const char *str2)
 }
 
 // Split the string str1 into tokens between characters of str2, one per call.
-char *__libc_string_strtok(char *restrict str1, const char *restrict str2)
+char *__libc_impl_string_strtok(char *restrict str1, const char *restrict str2)
 {
-    char *start = str1 != NULL ? str1 : __libc_string_next;
+    char *start = str1 != NULL ? str1 : __libc_impl_string_next;
     char *end;
 
     if (start == NULL) {
         return NULL;
     }
-    start += __libc_string_strspn(start, str2);
+    start += __libc_impl_string_strspn(start, str2);
     if (*start == '\0') {
-        __libc_string_next = start;
+        __libc_impl_string_next = start;
         return NULL;
     }
-    end = start + __libc_string_strcspn(start, str2);
+    end = start + __libc_impl_string_strcspn(start, str2);
     if (*end != '\0') {
         *end = '\0';
         end++;
     }
-    __libc_string_next = end;
+    __libc_impl_string_next = end;
     return start;
 }
 
 // Set n bytes of str to the byte ch.
-void *__libc_string_memset(void *str, int ch, size_t n)
+void *__libc_impl_string_memset(void *str, int ch, size_t n)
 {
     unsigned char *to = str;
 
@@ -297,18 +297,18 @@ void *__libc_string_memset(void *str, int ch, size_t n)
 }
 
 // Name the error number errnum.
-char *__libc_string_strerror(int errnum)
+char *__libc_impl_string_strerror(int errnum)
 {
     const char *text = __libc_err_errno_text(errnum);
 
     if (text == NULL) {
-        return __libc_string_format_unknown(errnum);
+        return __libc_impl_string_format_unknown(errnum);
     }
     return (char *) text;
 }
 
 // Count the characters of the string str before its null character.
-size_t __libc_string_strlen(const char *str)
+size_t __libc_impl_string_strlen(const char *str)
 {
     size_t len = 0;
 
@@ -319,23 +319,23 @@ size_t __libc_string_strlen(const char *str)
 }
 
 // Write strerror's text for the unknown error number errnum.
-char *__libc_string_format_unknown(int errnum)
+char *__libc_impl_string_format_unknown(int errnum)
 {
-    char *ptr = __libc_string_unknown + __LIBC_STRING_ERROR_SIZE - 1;
+    char *ptr = __libc_impl_string_unknown + __LIBC_IMPL_STRING_ERROR_SIZE - 1;
     unsigned int value = errnum < 0 ? 0U - (unsigned int) errnum : (unsigned int) errnum;
-    size_t len = __libc_string_strlen(__LIBC_ERR_STRING_UNKNOWN);
+    size_t len = __libc_impl_string_strlen(__LIBC_ERR_STRING_UNKNOWN);
 
     *ptr = '\0';
     do {
         ptr--;
-        *ptr = (char) ('0' + value % __LIBC_STRING_ERROR_BASE);
-        value /= __LIBC_STRING_ERROR_BASE;
+        *ptr = (char) ('0' + value % __LIBC_IMPL_STRING_ERROR_BASE);
+        value /= __LIBC_IMPL_STRING_ERROR_BASE;
     } while (value != 0);
     if (errnum < 0) {
         ptr--;
         *ptr = '-';
     }
     ptr -= len;
-    __libc_string_memcpy(ptr, __LIBC_ERR_STRING_UNKNOWN, len);
+    __libc_impl_string_memcpy(ptr, __LIBC_ERR_STRING_UNKNOWN, len);
     return ptr;
 }

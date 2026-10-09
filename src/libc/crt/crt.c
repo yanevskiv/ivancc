@@ -24,16 +24,16 @@
  */
 
 // Module header.
-#include <ivancc/crt.h>
+#include <crt/crt.h>
 
 // The system call the startup exits with.
 #include <ivancc/libc_sys.h>
 
 // The ivanemu machine's halt register.
-#define __LIBC_CRT_EMU_HALT "0x10000008"
+#define __CRT_IVANEMU_HALT "0x10000008"
 
 // The program's name for diagnostics, or a null pointer where it is unknown.
-char *__libc_crt_argv0;
+char *__crt_argv0;
 
 #ifdef __x86_64__
 #if defined(__linux__)
@@ -46,7 +46,7 @@ __asm__(
     "  mov (%rsp), %rdi\n"
     "  lea 8(%rsp), %rsi\n"
     "  mov (%rsi), %rax\n"
-    "  lea __libc_crt_argv0(%rip), %rcx\n"
+    "  lea __crt_argv0(%rip), %rcx\n"
     "  mov %rax, (%rcx)\n"
     "  mov %rdi, %rdx\n"
     "  mov $3, %rcx\n"
@@ -64,7 +64,7 @@ __asm__(
     "  .globl _start\n"
     "_start:\n"
     "  call main\n"
-    "  mov $" __LIBC_CRT_EMU_HALT ", %rdi\n"
+    "  mov $" __CRT_IVANEMU_HALT ", %rdi\n"
     "  mov %al, (%rdi)\n"
     ".Lhang:\n"
     "  jmp .Lhang\n"

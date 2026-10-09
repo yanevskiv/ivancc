@@ -27,10 +27,10 @@
 #undef assert
 
 // (S7.2.1.1) The assert macro
-void __libc_assert_fail(const char *expr, const char *file, unsigned int line, const char *func);
+void __libc_impl_assert_fail(const char *expr, const char *file, unsigned int line, const char *func);
 
 #ifdef NDEBUG
 #define assert(ignore) ((void) 0)
 #else
-#define assert(expression) ((expression) ? (void) 0 : __libc_assert_fail(#expression, __FILE__, __LINE__, __func__))
+#define assert(expression) ((expression) ? (void) 0 : __libc_impl_assert_fail(#expression, __FILE__, __LINE__, __func__))
 #endif
