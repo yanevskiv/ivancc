@@ -32,6 +32,9 @@
 // The message's texts.
 #include <ivancc/libc_err.h>
 
+// The signal that ends the program.
+#include <signal.h>
+
 // The system calls that report and end the program.
 #include <ivancc/libc_sys.h>
 
@@ -55,7 +58,7 @@ void __libc_impl_assert_fail(const char *expr, const char *file, unsigned int li
     __libc_impl_assert_write(__LIBC_ERR_ASSERT_FUNC);
     __libc_impl_assert_write(expr);
     __libc_impl_assert_write(__LIBC_ERR_ASSERT_EXPR);
-    __libc_sys_kill(__libc_sys_getpid(), __LIBC_SYS_SIGABRT);
+    __libc_sys_kill(__libc_sys_getpid(), SIGABRT);
     __libc_sys_exit(__LIBC_IMPL_ASSERT_STATUS);
 }
 

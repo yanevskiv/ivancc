@@ -32,10 +32,17 @@
 
 // Linux's syscall numbers.
 #define __LIBC_SYS_NR_WRITE         1
+#define __LIBC_SYS_NR_RT_SIGACTION  13
 #define __LIBC_SYS_NR_GETPID        39
 #define __LIBC_SYS_NR_EXIT          60
 #define __LIBC_SYS_NR_KILL          62
 #define __LIBC_SYS_NR_CLOCK_GETTIME 228
+
+// Linux's rt_sigreturn number, as the restorer's assembly writes it.
+#define __LIBC_SYS_NR_RT_SIGRETURN "15"
+
+// The bytes of Linux's sigset_t.
+#define __LIBC_SYS_SIGSET_SIZE 8
 
 #ifdef __x86_64__
 // Make a syscall with its number and six arguments.
@@ -63,6 +70,12 @@ long __libc_sys_write(int fd, const void *buf, unsigned long len)
     return __libc_sys_syscall(__LIBC_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
 }
 
+// Install act as the action of the signal sig, and store the old one in oact.
+long __libc_sys_rt_sigaction(int sig, const struct __libc_sys_sigaction *act, struct __libc_sys_sigaction *oact)
+{
+    return __libc_sys_syscall(__LIBC_SYS_NR_RT_SIGACTION, sig, (long) act, (long) oact, __LIBC_SYS_SIGSET_SIZE, 0, 0);
+}
+
 // Return the program's process ID.
 int __libc_sys_getpid(void)
 {
@@ -86,3 +99,16 @@ long __libc_sys_clock_gettime(int clock, struct __libc_sys_timespec *spec)
 {
     return __libc_sys_syscall(__LIBC_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
 }
+
+#ifdef __x86_64__
+// Return from a signal handler to what the signal interrupted.
+__asm__(
+    "  .text\n"
+    "  .globl __libc_sys_restore_rt\n"
+    "__libc_sys_restore_rt:\n"
+    "  mov $" __LIBC_SYS_NR_RT_SIGRETURN ", %rax\n"
+    "  syscall\n"
+);
+#else
+#error "libc_sys.c: no signal handlers for this architecture"
+#endif
