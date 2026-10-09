@@ -32,53 +32,53 @@
 // Return the processor time the program has used.
 clock_t clock(void)
 {
-    return __libc_impl_time_clock();
+    return _Libc_Impl_Time_clock();
 }
 
 // Return the seconds from time0 to time1.
 double difftime(time_t time1, time_t time0)
 {
-    return __libc_impl_time_difftime(time1, time0);
+    return _Libc_Impl_Time_difftime(time1, time0);
 }
 
 // Convert the local time timeptr to a calendar time.
 time_t mktime(struct tm *timeptr)
 {
-    return __libc_impl_time_mktime(timeptr);
+    return _Libc_Impl_Time_mktime(timeptr);
 }
 
 // Return the current calendar time.
 time_t time(time_t *timer)
 {
-    return __libc_impl_time_time(timer);
+    return _Libc_Impl_Time_time(timer);
 }
 
 // Write the broken-down time timeptr as text.
 char *asctime(const struct tm *timeptr)
 {
-    return __libc_impl_time_asctime(timeptr);
+    return _Libc_Impl_Time_asctime(timeptr);
 }
 
 // Write the local time of timer as text.
 char *ctime(const time_t *timer)
 {
-    return __libc_impl_time_ctime(timer);
+    return _Libc_Impl_Time_ctime(timer);
 }
 
 // Break the time timer down as a time of UTC.
 struct tm *gmtime(const time_t *timer)
 {
-    return __libc_impl_time_gmtime(timer);
+    return _Libc_Impl_Time_gmtime(timer);
 }
 
 // Break the time timer down as a local time.
 struct tm *localtime(const time_t *timer)
 {
-    return __libc_impl_time_localtime(timer);
+    return _Libc_Impl_Time_localtime(timer);
 }
 
 // Write the conversions of timeptr that format names into str.
 size_t strftime(char *restrict str, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr)
 {
-    return __libc_impl_time_strftime(str, maxsize, format, timeptr);
+    return _Libc_Impl_Time_strftime(str, maxsize, format, timeptr);
 }

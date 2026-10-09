@@ -32,14 +32,14 @@
 // (S7.23.1) Components of time
 #ifndef __SIZE_T__
 #define __SIZE_T__
-typedef __libc_impl_stddef_size_t size_t;
+typedef _Libc_Impl_Stddef_size_t size_t;
 #endif
 
-#define NULL __LIBC_IMPL_STDDEF_NULL
-#define CLOCKS_PER_SEC __LIBC_IMPL_TIME_CLOCKS_PER_SEC
+#define NULL _LIBC_IMPL_STDDEF_NULL
+#define CLOCKS_PER_SEC _LIBC_IMPL_TIME_CLOCKS_PER_SEC
 
-typedef __libc_impl_time_clock_t clock_t;
-typedef __libc_impl_time_time_t time_t;
+typedef _Libc_Impl_Time_clock_t clock_t;
+typedef _Libc_Impl_Time_time_t time_t;
 
 // (S7.23.2) Time manipulation functions
 clock_t clock(void);

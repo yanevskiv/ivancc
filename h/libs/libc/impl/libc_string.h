@@ -23,51 +23,51 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_IMPL_STRING_H__
-#define __LIBC_IMPL_STRING_H__
+#ifndef _LIBC_IMPL_STRING_H
+#define _LIBC_IMPL_STRING_H
 
 // The size and null pointer the functions take.
 #include <libc/impl/libc_stddef.h>
 
 // The base strerror writes an unknown error number in.
-#define __LIBC_IMPL_STRING_ERROR_BASE 10
+#define _LIBC_IMPL_STRING_ERROR_BASE 10
 
 // The size of strerror's text for an unknown error number, INT_MIN's included.
-#define __LIBC_IMPL_STRING_ERROR_SIZE 32
+#define _LIBC_IMPL_STRING_ERROR_SIZE 32
 
 // Copying functions
-void *__libc_impl_string_memcpy(void *restrict str1, const void *restrict str2, __libc_impl_stddef_size_t n);
-void *__libc_impl_string_memmove(void *str1, const void *str2, __libc_impl_stddef_size_t n);
-char *__libc_impl_string_strcpy(char *restrict str1, const char *restrict str2);
-char *__libc_impl_string_strncpy(char *restrict str1, const char *restrict str2, __libc_impl_stddef_size_t n);
+void *_Libc_Impl_String_memcpy(void *restrict str1, const void *restrict str2, _Libc_Impl_Stddef_size_t n);
+void *_Libc_Impl_String_memmove(void *str1, const void *str2, _Libc_Impl_Stddef_size_t n);
+char *_Libc_Impl_String_strcpy(char *restrict str1, const char *restrict str2);
+char *_Libc_Impl_String_strncpy(char *restrict str1, const char *restrict str2, _Libc_Impl_Stddef_size_t n);
 
 // Concatenation functions
-char *__libc_impl_string_strcat(char *restrict str1, const char *restrict str2);
-char *__libc_impl_string_strncat(char *restrict str1, const char *restrict str2, __libc_impl_stddef_size_t n);
+char *_Libc_Impl_String_strcat(char *restrict str1, const char *restrict str2);
+char *_Libc_Impl_String_strncat(char *restrict str1, const char *restrict str2, _Libc_Impl_Stddef_size_t n);
 
 // Comparison functions
-int __libc_impl_string_memcmp(const void *str1, const void *str2, __libc_impl_stddef_size_t n);
-int __libc_impl_string_strcmp(const char *str1, const char *str2);
-int __libc_impl_string_strcoll(const char *str1, const char *str2);
-int __libc_impl_string_strncmp(const char *str1, const char *str2, __libc_impl_stddef_size_t n);
-__libc_impl_stddef_size_t __libc_impl_string_strxfrm(char *restrict str1, const char *restrict str2, __libc_impl_stddef_size_t n);
+int _Libc_Impl_String_memcmp(const void *str1, const void *str2, _Libc_Impl_Stddef_size_t n);
+int _Libc_Impl_String_strcmp(const char *str1, const char *str2);
+int _Libc_Impl_String_strcoll(const char *str1, const char *str2);
+int _Libc_Impl_String_strncmp(const char *str1, const char *str2, _Libc_Impl_Stddef_size_t n);
+_Libc_Impl_Stddef_size_t _Libc_Impl_String_strxfrm(char *restrict str1, const char *restrict str2, _Libc_Impl_Stddef_size_t n);
 
 // Search functions
-void *__libc_impl_string_memchr(const void *str, int ch, __libc_impl_stddef_size_t n);
-char *__libc_impl_string_strchr(const char *str, int ch);
-__libc_impl_stddef_size_t __libc_impl_string_strcspn(const char *str1, const char *str2);
-char *__libc_impl_string_strpbrk(const char *str1, const char *str2);
-char *__libc_impl_string_strrchr(const char *str, int ch);
-__libc_impl_stddef_size_t __libc_impl_string_strspn(const char *str1, const char *str2);
-char *__libc_impl_string_strstr(const char *str1, const char *str2);
-char *__libc_impl_string_strtok(char *restrict str1, const char *restrict str2);
+void *_Libc_Impl_String_memchr(const void *str, int ch, _Libc_Impl_Stddef_size_t n);
+char *_Libc_Impl_String_strchr(const char *str, int ch);
+_Libc_Impl_Stddef_size_t _Libc_Impl_String_strcspn(const char *str1, const char *str2);
+char *_Libc_Impl_String_strpbrk(const char *str1, const char *str2);
+char *_Libc_Impl_String_strrchr(const char *str, int ch);
+_Libc_Impl_Stddef_size_t _Libc_Impl_String_strspn(const char *str1, const char *str2);
+char *_Libc_Impl_String_strstr(const char *str1, const char *str2);
+char *_Libc_Impl_String_strtok(char *restrict str1, const char *restrict str2);
 
 // Miscellaneous functions
-void *__libc_impl_string_memset(void *str, int ch, __libc_impl_stddef_size_t n);
-char *__libc_impl_string_strerror(int errnum);
-__libc_impl_stddef_size_t __libc_impl_string_strlen(const char *str);
+void *_Libc_Impl_String_memset(void *str, int ch, _Libc_Impl_Stddef_size_t n);
+char *_Libc_Impl_String_strerror(int errnum);
+_Libc_Impl_Stddef_size_t _Libc_Impl_String_strlen(const char *str);
 
 // Error texts
-char *__libc_impl_string_format_unknown(int errnum);
+char *_Libc_Impl_String_FormatUnknown(int errnum);
 
-#endif // __LIBC_IMPL_STRING_H__
+#endif // _LIBC_IMPL_STRING_H

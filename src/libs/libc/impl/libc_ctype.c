@@ -27,90 +27,90 @@
 #include <libc/impl/libc_ctype.h>
 
 // Tell whether c is a letter or a digit.
-int __libc_impl_ctype_isalnum(int c)
+int _Libc_Impl_Ctype_isalnum(int c)
 {
-    return __libc_impl_ctype_isalpha(c) || __libc_impl_ctype_isdigit(c);
+    return _Libc_Impl_Ctype_isalpha(c) || _Libc_Impl_Ctype_isdigit(c);
 }
 
 // Tell whether c is a letter.
-int __libc_impl_ctype_isalpha(int c)
+int _Libc_Impl_Ctype_isalpha(int c)
 {
-    return __libc_impl_ctype_isupper(c) || __libc_impl_ctype_islower(c);
+    return _Libc_Impl_Ctype_isupper(c) || _Libc_Impl_Ctype_islower(c);
 }
 
 // Tell whether c is a blank.
-int __libc_impl_ctype_isblank(int c)
+int _Libc_Impl_Ctype_isblank(int c)
 {
     return c == ' ' || c == '\t';
 }
 
 // Tell whether c is a control character.
-int __libc_impl_ctype_iscntrl(int c)
+int _Libc_Impl_Ctype_iscntrl(int c)
 {
     return (c >= 0 && c < ' ') || c == 0x7F;
 }
 
 // Tell whether c is a decimal digit.
-int __libc_impl_ctype_isdigit(int c)
+int _Libc_Impl_Ctype_isdigit(int c)
 {
     return c >= '0' && c <= '9';
 }
 
 // Tell whether c is a printing character other than space.
-int __libc_impl_ctype_isgraph(int c)
+int _Libc_Impl_Ctype_isgraph(int c)
 {
     return c > ' ' && c < 0x7F;
 }
 
 // Tell whether c is a lowercase letter.
-int __libc_impl_ctype_islower(int c)
+int _Libc_Impl_Ctype_islower(int c)
 {
     return c >= 'a' && c <= 'z';
 }
 
 // Tell whether c is a printing character.
-int __libc_impl_ctype_isprint(int c)
+int _Libc_Impl_Ctype_isprint(int c)
 {
     return c >= ' ' && c < 0x7F;
 }
 
 // Tell whether c is a punctuation character.
-int __libc_impl_ctype_ispunct(int c)
+int _Libc_Impl_Ctype_ispunct(int c)
 {
-    return __libc_impl_ctype_isgraph(c) && ! __libc_impl_ctype_isalnum(c);
+    return _Libc_Impl_Ctype_isgraph(c) && ! _Libc_Impl_Ctype_isalnum(c);
 }
 
 // Tell whether c is a white-space character.
-int __libc_impl_ctype_isspace(int c)
+int _Libc_Impl_Ctype_isspace(int c)
 {
     return c == ' ' || (c >= '\t' && c <= '\r');
 }
 
 // Tell whether c is an uppercase letter.
-int __libc_impl_ctype_isupper(int c)
+int _Libc_Impl_Ctype_isupper(int c)
 {
     return c >= 'A' && c <= 'Z';
 }
 
 // Tell whether c is a hexadecimal digit.
-int __libc_impl_ctype_isxdigit(int c)
+int _Libc_Impl_Ctype_isxdigit(int c)
 {
-    return __libc_impl_ctype_isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    return _Libc_Impl_Ctype_isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 
 // Convert an uppercase letter to lowercase.
-int __libc_impl_ctype_tolower(int c)
+int _Libc_Impl_Ctype_tolower(int c)
 {
-    if (__libc_impl_ctype_isupper(c)) {
+    if (_Libc_Impl_Ctype_isupper(c)) {
         return c - 'A' + 'a';
     }
     return c;
 }
 
 // Convert a lowercase letter to uppercase.
-int __libc_impl_ctype_toupper(int c)
+int _Libc_Impl_Ctype_toupper(int c)
 {
-    if (__libc_impl_ctype_islower(c)) {
+    if (_Libc_Impl_Ctype_islower(c)) {
         return c - 'a' + 'A';
     }
     return c;

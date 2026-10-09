@@ -33,23 +33,23 @@
 #include <libc/impl/libc_stddef.h>
 
 // Return strerror's text for the error number errnum.
-const char *__libc_err_errno_text(int errnum)
+const char *_Libc_Err_ErrnoText(int errnum)
 {
     switch (errnum) {
-        case __LIBC_ERR_ERRNO_NONE: {
-            return __LIBC_ERR_ERRNO_SUCCESS;
+        case _LIBC_ERR_ERRNO_NONE: {
+            return _LIBC_ERR_ERRNO_SUCCESS;
         } break;
-        case __LIBC_IMPL_ERRNO_EDOM: {
-            return __LIBC_ERR_ERRNO_EDOM;
+        case _LIBC_IMPL_ERRNO_EDOM: {
+            return _LIBC_ERR_ERRNO_EDOM;
         } break;
-        case __LIBC_IMPL_ERRNO_EILSEQ: {
-            return __LIBC_ERR_ERRNO_EILSEQ;
+        case _LIBC_IMPL_ERRNO_EILSEQ: {
+            return _LIBC_ERR_ERRNO_EILSEQ;
         } break;
-        case __LIBC_IMPL_ERRNO_ERANGE: {
-            return __LIBC_ERR_ERRNO_ERANGE;
+        case _LIBC_IMPL_ERRNO_ERANGE: {
+            return _LIBC_ERR_ERRNO_ERANGE;
         } break;
         default: {
-            return __LIBC_IMPL_STDDEF_NULL;
+            return _LIBC_IMPL_STDDEF_NULL;
         } break;
     }
 }

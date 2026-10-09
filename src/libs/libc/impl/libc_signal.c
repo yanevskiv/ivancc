@@ -33,32 +33,32 @@
 #include <libc/libc_sys.h>
 
 // Install func as the handler of the signal sig.
-void (*__libc_impl_signal_signal(int sig, void (*func)(int)))(int)
+void (*_Libc_Impl_Signal_signal(int sig, void (*func)(int)))(int)
 {
-    struct __libc_sys_sigaction act;
-    struct __libc_sys_sigaction old;
+    struct _Libc_Sys_sigaction act;
+    struct _Libc_Sys_sigaction old;
     long ret;
 
-    if (sig < __LIBC_SYS_SIGNAL_FIRST || sig > __LIBC_SYS_SIGNAL_LAST || func == __LIBC_IMPL_SIGNAL_SIG_ERR) {
-        errno = __LIBC_SYS_EINVAL;
-        return __LIBC_IMPL_SIGNAL_SIG_ERR;
+    if (sig < _LIBC_SYS_SIGNAL_FIRST || sig > _LIBC_SYS_SIGNAL_LAST || func == _LIBC_IMPL_SIGNAL_SIG_ERR) {
+        errno = _LIBC_SYS_EINVAL;
+        return _LIBC_IMPL_SIGNAL_SIG_ERR;
     }
     act.sa_handler = func;
-    act.sa_flags = __LIBC_SYS_SA_RESTORER | __LIBC_SYS_SA_RESTART;
-    act.sa_restorer = __libc_sys_restore_rt;
-    act.sa_mask = 1UL << (sig - __LIBC_SYS_SIGNAL_FIRST);
-    ret = __libc_sys_rt_sigaction(sig, &act, &old);
+    act.sa_flags = _LIBC_SYS_SA_RESTORER | _LIBC_SYS_SA_RESTART;
+    act.sa_restorer = _Libc_Sys_restore_rt;
+    act.sa_mask = 1UL << (sig - _LIBC_SYS_SIGNAL_FIRST);
+    ret = _Libc_Sys_rt_sigaction(sig, &act, &old);
     if (ret < 0) {
         errno = (int) -ret;
-        return __LIBC_IMPL_SIGNAL_SIG_ERR;
+        return _LIBC_IMPL_SIGNAL_SIG_ERR;
     }
     return old.sa_handler;
 }
 
 // Send the signal sig to the program.
-int __libc_impl_signal_raise(int sig)
+int _Libc_Impl_Signal_raise(int sig)
 {
-    long ret = __libc_sys_kill(__libc_sys_getpid(), sig);
+    long ret = _Libc_Sys_kill(_Libc_Sys_getpid(), sig);
 
     if (ret < 0) {
         errno = (int) -ret;

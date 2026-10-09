@@ -23,10 +23,10 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __CRT_H__
-#define __CRT_H__
+#ifndef _CRT_H
+#define _CRT_H
 
 // Startup
-extern char *__crt_argv0;
+extern char *_Crt_Argv0;
 
-#endif // __CRT_H__
+#endif // _CRT_H

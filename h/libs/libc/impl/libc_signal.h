@@ -23,27 +23,27 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_IMPL_SIGNAL_H__
-#define __LIBC_IMPL_SIGNAL_H__
+#ifndef _LIBC_IMPL_SIGNAL_H
+#define _LIBC_IMPL_SIGNAL_H
 
 // Signal handling
-#define __LIBC_IMPL_SIGNAL_SIG_DFL ((void (*)(int)) 0)
-#define __LIBC_IMPL_SIGNAL_SIG_ERR ((void (*)(int)) -1)
-#define __LIBC_IMPL_SIGNAL_SIG_IGN ((void (*)(int)) 1)
+#define _LIBC_IMPL_SIGNAL_SIG_DFL ((void (*)(int)) 0)
+#define _LIBC_IMPL_SIGNAL_SIG_ERR ((void (*)(int)) -1)
+#define _LIBC_IMPL_SIGNAL_SIG_IGN ((void (*)(int)) 1)
 
-#define __LIBC_IMPL_SIGNAL_SIGABRT 6
-#define __LIBC_IMPL_SIGNAL_SIGFPE  8
-#define __LIBC_IMPL_SIGNAL_SIGILL  4
-#define __LIBC_IMPL_SIGNAL_SIGINT  2
-#define __LIBC_IMPL_SIGNAL_SIGSEGV 11
-#define __LIBC_IMPL_SIGNAL_SIGTERM 15
+#define _LIBC_IMPL_SIGNAL_SIGABRT 6
+#define _LIBC_IMPL_SIGNAL_SIGFPE  8
+#define _LIBC_IMPL_SIGNAL_SIGILL  4
+#define _LIBC_IMPL_SIGNAL_SIGINT  2
+#define _LIBC_IMPL_SIGNAL_SIGSEGV 11
+#define _LIBC_IMPL_SIGNAL_SIGTERM 15
 
-typedef int __libc_impl_signal_sig_atomic_t;
+typedef int _Libc_Impl_Signal_sig_atomic_t;
 
 // Specify signal handling
-void (*__libc_impl_signal_signal(int sig, void (*func)(int)))(int);
+void (*_Libc_Impl_Signal_signal(int sig, void (*func)(int)))(int);
 
 // Send signal
-int __libc_impl_signal_raise(int sig);
+int _Libc_Impl_Signal_raise(int sig);
 
-#endif // __LIBC_IMPL_SIGNAL_H__
+#endif // _LIBC_IMPL_SIGNAL_H

@@ -32,21 +32,21 @@
 // (S7.17) Common definitions
 #ifndef __PTRDIFF_T__
 #define __PTRDIFF_T__
-typedef __libc_impl_stddef_ptrdiff_t ptrdiff_t;
+typedef _Libc_Impl_Stddef_ptrdiff_t ptrdiff_t;
 #endif
 
 #ifndef __SIZE_T__
 #define __SIZE_T__
-typedef __libc_impl_stddef_size_t size_t;
+typedef _Libc_Impl_Stddef_size_t size_t;
 #endif
 
 #ifndef __WCHAR_T__
 #define __WCHAR_T__
-typedef __libc_impl_stddef_wchar_t wchar_t;
+typedef _Libc_Impl_Stddef_wchar_t wchar_t;
 #endif
 
-#define NULL __LIBC_IMPL_STDDEF_NULL
+#define NULL _LIBC_IMPL_STDDEF_NULL
 
-#define offsetof(type, member) __LIBC_IMPL_STDDEF_offsetof(type, member)
+#define offsetof(type, member) _LIBC_IMPL_STDDEF_offsetof(type, member)
 
 #endif // __STDDEF_H__

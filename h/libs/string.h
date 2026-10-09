@@ -32,10 +32,10 @@
 // (S7.21.1) String function conventions
 #ifndef __SIZE_T__
 #define __SIZE_T__
-typedef __libc_impl_stddef_size_t size_t;
+typedef _Libc_Impl_Stddef_size_t size_t;
 #endif
 
-#define NULL __LIBC_IMPL_STDDEF_NULL
+#define NULL _LIBC_IMPL_STDDEF_NULL
 
 // (S7.21.2) Copying functions
 void *memcpy(void *restrict str1, const void *restrict str2, size_t n);

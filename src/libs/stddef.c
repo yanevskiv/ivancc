@@ -27,8 +27,8 @@
 #include <stddef.h>
 
 // Check the header against the compiler.
-typedef char __libc_stddef_check_size[sizeof(size_t) == sizeof(sizeof 0) && (size_t) -1 > 0 ? 1 : -1];
-typedef char __libc_stddef_check_diff[sizeof(ptrdiff_t) == sizeof((char *) 0 - (char *) 0) && (ptrdiff_t) -1 < 0 ? 1 : -1];
-typedef char __libc_stddef_check_wchar[sizeof(wchar_t) == sizeof(L'a') ? 1 : -1];
-typedef char __libc_stddef_check_null[sizeof(NULL) == sizeof(void *) ? 1 : -1];
-typedef char __libc_stddef_check_offset[offsetof(struct { char c; int i; }, i) == 4 ? 1 : -1];
+typedef char _Libc_Stddef_CheckSize[sizeof(size_t) == sizeof(sizeof 0) && (size_t) -1 > 0 ? 1 : -1];
+typedef char _Libc_Stddef_CheckDiff[sizeof(ptrdiff_t) == sizeof((char *) 0 - (char *) 0) && (ptrdiff_t) -1 < 0 ? 1 : -1];
+typedef char _Libc_Stddef_CheckWchar[sizeof(wchar_t) == sizeof(L'a') ? 1 : -1];
+typedef char _Libc_Stddef_CheckNull[sizeof(NULL) == sizeof(void *) ? 1 : -1];
+typedef char _Libc_Stddef_CheckOffset[offsetof(struct { char c; int i; }, i) == 4 ? 1 : -1];

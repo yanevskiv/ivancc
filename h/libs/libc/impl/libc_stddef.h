@@ -23,16 +23,16 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_IMPL_STDDEF_H__
-#define __LIBC_IMPL_STDDEF_H__
+#ifndef _LIBC_IMPL_STDDEF_H
+#define _LIBC_IMPL_STDDEF_H
 
 // Common definitions
-typedef long __libc_impl_stddef_ptrdiff_t;
-typedef unsigned long __libc_impl_stddef_size_t;
-typedef int __libc_impl_stddef_wchar_t;
+typedef long _Libc_Impl_Stddef_ptrdiff_t;
+typedef unsigned long _Libc_Impl_Stddef_size_t;
+typedef int _Libc_Impl_Stddef_wchar_t;
 
-#define __LIBC_IMPL_STDDEF_NULL ((void *) 0)
+#define _LIBC_IMPL_STDDEF_NULL ((void *) 0)
 
-#define __LIBC_IMPL_STDDEF_offsetof(type, member) __builtin_offsetof(type, member)
+#define _LIBC_IMPL_STDDEF_offsetof(type, member) __builtin_offsetof(type, member)
 
-#endif // __LIBC_IMPL_STDDEF_H__
+#endif // _LIBC_IMPL_STDDEF_H

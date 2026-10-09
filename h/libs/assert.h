@@ -33,5 +33,5 @@
 #ifdef NDEBUG
 #define assert(ignore) ((void) 0)
 #else
-#define assert(expression) ((expression) ? (void) 0 : __libc_impl_assert_fail(#expression, __FILE__, __LINE__, __func__))
+#define assert(expression) ((expression) ? (void) 0 : _Libc_Impl_Assert_Fail(#expression, __FILE__, __LINE__, __func__))
 #endif

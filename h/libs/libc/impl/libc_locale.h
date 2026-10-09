@@ -23,41 +23,41 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_IMPL_LOCALE_H__
-#define __LIBC_IMPL_LOCALE_H__
+#ifndef _LIBC_IMPL_LOCALE_H
+#define _LIBC_IMPL_LOCALE_H
 
 // The sizes and null pointer the functions take.
 #include <libc/impl/libc_stddef.h>
 
 // Localization
-#define __LIBC_IMPL_LOCALE_LC_ALL      5
-#define __LIBC_IMPL_LOCALE_LC_COLLATE  3
-#define __LIBC_IMPL_LOCALE_LC_CTYPE    0
-#define __LIBC_IMPL_LOCALE_LC_MONETARY 4
-#define __LIBC_IMPL_LOCALE_LC_NUMERIC  1
-#define __LIBC_IMPL_LOCALE_LC_TIME     2
+#define _LIBC_IMPL_LOCALE_LC_ALL      5
+#define _LIBC_IMPL_LOCALE_LC_COLLATE  3
+#define _LIBC_IMPL_LOCALE_LC_CTYPE    0
+#define _LIBC_IMPL_LOCALE_LC_MONETARY 4
+#define _LIBC_IMPL_LOCALE_LC_NUMERIC  1
+#define _LIBC_IMPL_LOCALE_LC_TIME     2
 
 // The categories LC_ALL selects together, numbered from 0.
-#define __LIBC_IMPL_LOCALE_CATEGORIES 5
+#define _LIBC_IMPL_LOCALE_CATEGORIES 5
 
 // The names setlocale takes, "C" first, the locale a program starts in.
-#define __LIBC_IMPL_LOCALE_NAME_C        "C"
-#define __LIBC_IMPL_LOCALE_NAME_POSIX    "POSIX"
-#define __LIBC_IMPL_LOCALE_NAME_UTF8     "C.UTF-8"
-#define __LIBC_IMPL_LOCALE_NAME_UTF8_ALT "C.utf8"
+#define _LIBC_IMPL_LOCALE_NAME_C        "C"
+#define _LIBC_IMPL_LOCALE_NAME_POSIX    "POSIX"
+#define _LIBC_IMPL_LOCALE_NAME_UTF8     "C.UTF-8"
+#define _LIBC_IMPL_LOCALE_NAME_UTF8_ALT "C.utf8"
 
 // The count of the names setlocale takes.
-#define __LIBC_IMPL_LOCALE_NAMES 4
+#define _LIBC_IMPL_LOCALE_NAMES 4
 
 // The locale "" selects, the native environment.
-#define __LIBC_IMPL_LOCALE_NATIVE __LIBC_IMPL_LOCALE_NAME_UTF8
+#define _LIBC_IMPL_LOCALE_NATIVE _LIBC_IMPL_LOCALE_NAME_UTF8
 
 // The characters that join a composite name's categories and their locales.
-#define __LIBC_IMPL_LOCALE_ASSIGN    '='
-#define __LIBC_IMPL_LOCALE_SEPARATOR ';'
+#define _LIBC_IMPL_LOCALE_ASSIGN    '='
+#define _LIBC_IMPL_LOCALE_SEPARATOR ';'
 
 // The size of the longest composite name, five of "LC_MONETARY=C.UTF-8;".
-#define __LIBC_IMPL_LOCALE_COMPOSITE_SIZE 128
+#define _LIBC_IMPL_LOCALE_COMPOSITE_SIZE 128
 
 // The numeric and monetary formatting, under C99's tag, which no typedef renames.
 struct lconv {
@@ -88,26 +88,26 @@ struct lconv {
 };
 
 // A name setlocale takes, and the name it returns for it.
-struct __libc_impl_locale_name {
+struct _Libc_Impl_Locale_Name {
     const char *ln_name;
     const char *ln_reported;
 };
 
 // Locale control
-char *__libc_impl_locale_setlocale(int category, const char *locale);
+char *_Libc_Impl_Locale_setlocale(int category, const char *locale);
 
 // Numeric formatting convention inquiry
-struct lconv *__libc_impl_locale_localeconv(void);
+struct lconv *_Libc_Impl_Locale_localeconv(void);
 
 // Names
-_Bool __libc_impl_locale_is_name(const char *known, const char *str, __libc_impl_stddef_size_t len);
-int __libc_impl_locale_find_name(const char *str, __libc_impl_stddef_size_t len);
-int __libc_impl_locale_find_category(const char *str, __libc_impl_stddef_size_t len);
+_Bool _Libc_Impl_Locale_IsName(const char *known, const char *str, _Libc_Impl_Stddef_size_t len);
+int _Libc_Impl_Locale_FindName(const char *str, _Libc_Impl_Stddef_size_t len);
+int _Libc_Impl_Locale_FindCategory(const char *str, _Libc_Impl_Stddef_size_t len);
 
 // Composite names
-_Bool __libc_impl_locale_parse(const char *locale, int *selected);
-__libc_impl_stddef_size_t __libc_impl_locale_put_string(char *str, __libc_impl_stddef_size_t len, const char *src);
-char *__libc_impl_locale_composite(void);
-char *__libc_impl_locale_query(int category);
+_Bool _Libc_Impl_Locale_Parse(const char *locale, int *selected);
+_Libc_Impl_Stddef_size_t _Libc_Impl_Locale_PutString(char *str, _Libc_Impl_Stddef_size_t len, const char *src);
+char *_Libc_Impl_Locale_Composite(void);
+char *_Libc_Impl_Locale_Query(int category);
 
-#endif // __LIBC_IMPL_LOCALE_H__
+#endif // _LIBC_IMPL_LOCALE_H
