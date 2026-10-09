@@ -26,8 +26,8 @@
 #ifndef __LIBC_IMPL_ERRNO_H__
 #define __LIBC_IMPL_ERRNO_H__
 
-// (S7.5) Errors
-#define __LIBC_IMPL_ERRNO_EDOM 33
+// Errors
+#define __LIBC_IMPL_ERRNO_EDOM   33
 #define __LIBC_IMPL_ERRNO_EILSEQ 84
 #define __LIBC_IMPL_ERRNO_ERANGE 34
 

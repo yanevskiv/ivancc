@@ -26,7 +26,7 @@
 #ifndef __LIBC_IMPL_SIGNAL_H__
 #define __LIBC_IMPL_SIGNAL_H__
 
-// (S7.14) Signal handling
+// Signal handling
 #define __LIBC_IMPL_SIGNAL_SIG_DFL ((void (*)(int)) 0)
 #define __LIBC_IMPL_SIGNAL_SIG_ERR ((void (*)(int)) -1)
 #define __LIBC_IMPL_SIGNAL_SIG_IGN ((void (*)(int)) 1)
@@ -40,10 +40,10 @@
 
 typedef int __libc_impl_signal_sig_atomic_t;
 
-// (S7.14.1) Specify signal handling
+// Specify signal handling
 void (*__libc_impl_signal_signal(int sig, void (*func)(int)))(int);
 
-// (S7.14.2) Send signal
+// Send signal
 int __libc_impl_signal_raise(int sig);
 
 #endif // __LIBC_IMPL_SIGNAL_H__

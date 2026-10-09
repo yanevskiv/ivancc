@@ -26,7 +26,7 @@
 #ifndef __LIBC_IMPL_STDDEF_H__
 #define __LIBC_IMPL_STDDEF_H__
 
-// (S7.17) Common definitions
+// Common definitions
 typedef long __libc_impl_stddef_ptrdiff_t;
 typedef unsigned long __libc_impl_stddef_size_t;
 typedef int __libc_impl_stddef_wchar_t;

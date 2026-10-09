@@ -38,7 +38,7 @@
 // The size of a line number's text, UINT_MAX's included.
 #define __LIBC_IMPL_ASSERT_LINE_SIZE 16
 
-// (S7.2.1.1) The assert macro
+// The assert macro
 void __libc_impl_assert_fail(const char *expr, const char *file, unsigned int line, const char *func);
 
 // Report
