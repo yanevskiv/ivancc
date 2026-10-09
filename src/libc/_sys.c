@@ -32,6 +32,7 @@
 
 // Linux's syscall numbers.
 #define _SYS_NR_WRITE         1
+#define _SYS_NR_BRK           12
 #define _SYS_NR_RT_SIGACTION  13
 #define _SYS_NR_GETPID        39
 #define _SYS_NR_EXIT          60
@@ -68,6 +69,12 @@ __asm__(
 long _Sys_Write(int fd, const void *buf, unsigned long len)
 {
     return _Sys_Syscall(_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
+}
+
+// Move the program break to addr, and return where it stands.
+void *_Sys_Brk(void *addr)
+{
+    return (void *) _Sys_Syscall(_SYS_NR_BRK, (long) addr, 0, 0, 0, 0, 0);
 }
 
 // Install act as the action of the signal sig, and store the old one in oact.
