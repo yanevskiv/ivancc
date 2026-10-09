@@ -26,13 +26,16 @@
 #ifndef __STRING_H__
 #define __STRING_H__
 
+// The implementation.
+#include <libc/impl/libc_string.h>
+
 // (S7.21.1) String function conventions
 #ifndef __SIZE_T__
 #define __SIZE_T__
-typedef unsigned long size_t;
+typedef __libc_impl_stddef_size_t size_t;
 #endif
 
-#define NULL ((void *) 0)
+#define NULL __LIBC_IMPL_STDDEF_NULL
 
 // (S7.21.2) Copying functions
 void *memcpy(void *restrict str1, const void *restrict str2, size_t n);

@@ -1,5 +1,5 @@
 /*
- * C source file for the texts a running program prints.
+ * C header file for the common definitions.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -23,33 +23,16 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-// Module header.
-#include <libc/libc_err.h>
+#ifndef __LIBC_IMPL_STDDEF_H__
+#define __LIBC_IMPL_STDDEF_H__
 
-// The error numbers the texts name.
-#include <libc/impl/libc_errno.h>
+// (S7.17) Common definitions
+typedef long __libc_impl_stddef_ptrdiff_t;
+typedef unsigned long __libc_impl_stddef_size_t;
+typedef int __libc_impl_stddef_wchar_t;
 
-// The null pointer.
-#include <libc/impl/libc_stddef.h>
+#define __LIBC_IMPL_STDDEF_NULL ((void *) 0)
 
-// Return strerror's text for the error number errnum.
-const char *__libc_err_errno_text(int errnum)
-{
-    switch (errnum) {
-        case __LIBC_ERR_ERRNO_NONE: {
-            return __LIBC_ERR_ERRNO_SUCCESS;
-        } break;
-        case __LIBC_IMPL_ERRNO_EDOM: {
-            return __LIBC_ERR_ERRNO_EDOM;
-        } break;
-        case __LIBC_IMPL_ERRNO_EILSEQ: {
-            return __LIBC_ERR_ERRNO_EILSEQ;
-        } break;
-        case __LIBC_IMPL_ERRNO_ERANGE: {
-            return __LIBC_ERR_ERRNO_ERANGE;
-        } break;
-        default: {
-            return __LIBC_IMPL_STDDEF_NULL;
-        } break;
-    }
-}
+#define __LIBC_IMPL_STDDEF_offsetof(type, member) __builtin_offsetof(type, member)
+
+#endif // __LIBC_IMPL_STDDEF_H__

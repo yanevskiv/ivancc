@@ -26,31 +26,20 @@
 #ifndef __TIME_H__
 #define __TIME_H__
 
+// The implementation, which defines struct tm.
+#include <libc/impl/libc_time.h>
+
 // (S7.23.1) Components of time
 #ifndef __SIZE_T__
 #define __SIZE_T__
-typedef unsigned long size_t;
+typedef __libc_impl_stddef_size_t size_t;
 #endif
 
-#define NULL ((void *) 0)
-#define CLOCKS_PER_SEC ((clock_t) 1000000)
+#define NULL __LIBC_IMPL_STDDEF_NULL
+#define CLOCKS_PER_SEC __LIBC_IMPL_TIME_CLOCKS_PER_SEC
 
-typedef long clock_t;
-typedef long time_t;
-
-struct tm {
-    int tm_sec;
-    int tm_min;
-    int tm_hour;
-    int tm_mday;
-    int tm_mon;
-    int tm_year;
-    int tm_wday;
-    int tm_yday;
-    int tm_isdst;
-    long __libc_tm_gmtoff;
-    const char *__libc_tm_zone;
-};
+typedef __libc_impl_time_clock_t clock_t;
+typedef __libc_impl_time_time_t time_t;
 
 // (S7.23.2) Time manipulation functions
 clock_t clock(void);

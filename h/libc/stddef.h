@@ -26,24 +26,27 @@
 #ifndef __STDDEF_H__
 #define __STDDEF_H__
 
+// The implementation.
+#include <libc/impl/libc_stddef.h>
+
 // (S7.17) Common definitions
 #ifndef __PTRDIFF_T__
 #define __PTRDIFF_T__
-typedef long ptrdiff_t;
+typedef __libc_impl_stddef_ptrdiff_t ptrdiff_t;
 #endif
 
 #ifndef __SIZE_T__
 #define __SIZE_T__
-typedef unsigned long size_t;
+typedef __libc_impl_stddef_size_t size_t;
 #endif
 
 #ifndef __WCHAR_T__
 #define __WCHAR_T__
-typedef int wchar_t;
+typedef __libc_impl_stddef_wchar_t wchar_t;
 #endif
 
-#define NULL ((void *) 0)
+#define NULL __LIBC_IMPL_STDDEF_NULL
 
-#define offsetof(type, member) __builtin_offsetof(type, member)
+#define offsetof(type, member) __LIBC_IMPL_STDDEF_offsetof(type, member)
 
 #endif // __STDDEF_H__
