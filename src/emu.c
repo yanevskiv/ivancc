@@ -61,6 +61,7 @@
 
 // Linux syscall numbers the emulator answers.
 #define EMU_SYS_WRITE          1
+#define EMU_SYS_BRK            12
 #define EMU_SYS_RT_SIGACTION   13
 #define EMU_SYS_RT_SIGPROCMASK 14
 #define EMU_SYS_RT_SIGRETURN   15
@@ -228,7 +229,7 @@ struct Emu_Info {
 // A running program: its image, its signals and how it stopped.
 typedef struct Emu_Guest Emu_Guest;
 struct Emu_Guest {
-    const Load_Image *eg_img;
+    Load_Image       *eg_img;
     bool              eg_halted;                     // the program exited or a signal ended it
     int32_t           eg_status;                     // the status it exited with
     int32_t           eg_signal;                     // the signal that ended it, or 0
@@ -283,6 +284,7 @@ static void Emu_ShowImage(const Load_Image *img)
     fprintf(stdout, "entry  0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_entry);
     fprintf(stdout, "base   0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_base);
     fprintf(stdout, "size   0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_size);
+    fprintf(stdout, "brk    0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_brk);
     fprintf(stdout, "stack  0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_stack);
 }
 
@@ -291,12 +293,12 @@ static void Emu_Disassemble(const Load_Image *img)
 {
     uint64_t rip = img->li_base;
     for (;;) {
-        size_t avail = img->li_base + img->li_size - rip;
-        const uint8_t *code = Load_At(img, rip, 1);
+        uint64_t avail = 0;
+        const uint8_t *code = Load_Span(img, rip, &avail);
         Cpu_x86_64_Insn insn;
         char text[128];
 
-        if (! code || ! Cpu_x86_64_Decode(code, avail, &insn)) {
+        if (! code || ! Cpu_x86_64_Decode(code, (size_t) avail, &insn)) {
             fprintf(stdout, "%016llx: (bad)\n", (Cpu_x86_64_TypeULLong) rip);
             return;
         }
@@ -310,12 +312,10 @@ static void Emu_Disassemble(const Load_Image *img)
 static uint8_t *Emu_MapMemory(void *ctx, uint64_t addr, size_t *avail)
 {
     const Emu_Guest *guest = ctx;
-    uint64_t off = addr - guest->eg_img->li_base;
-    if (off >= guest->eg_img->li_size) {
-        return NULL;
-    }
-    *avail = guest->eg_img->li_size - off;
-    return guest->eg_img->li_mem + off;
+    uint64_t span = 0;
+    uint8_t *mem = Load_Span(guest->eg_img, addr, &span);
+    *avail = (size_t) span;
+    return mem;
 }
 
 // Read a device register, the UART being write-only and always ready.
@@ -807,6 +807,23 @@ static void Emu_Fault(Emu_Guest *guest, Cpu_x86_64_State *cpu, uint64_t rip)
     Emu_Force(guest, sig, info);
 }
 
+// Move the break as Linux's brk does, zeroing the pages a shrink gives back.
+static uint64_t Emu_Brk(Emu_Guest *guest, uint64_t addr)
+{
+    Load_Image *img = guest->eg_img;
+    if (addr < img->li_brk_base || addr > img->li_heap_end) {
+        return img->li_brk;
+    }
+
+    uint64_t keep = Load_AlignUp(addr, ELF_PAGE);
+    uint64_t mapped = Load_AlignUp(img->li_brk, ELF_PAGE);
+    if (keep < mapped) {
+        memset(img->li_mem + (keep - img->li_base), 0, mapped - keep);
+    }
+    img->li_brk = addr;
+    return addr;
+}
+
 // Read the host's clock into the program's struct timespec at addr.
 static uint64_t Emu_ClockGettime(Emu_Guest *guest, int32_t clock, uint64_t addr)
 {
@@ -840,6 +857,9 @@ static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
                 ssize_t n = write((int) fd, p, (size_t) len);
                 *rax = n < 0 ? -(uint64_t) errno : (uint64_t) n;
             }
+        } break;
+        case EMU_SYS_BRK: {
+            *rax = Emu_Brk(guest, cpu->cs_reg[CPU_X86_64_REG_RDI]);
         } break;
         case EMU_SYS_RT_SIGACTION: {
             int32_t sig = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
@@ -897,7 +917,7 @@ static void Emu_ShowStep(Emu_Guest *guest, uint64_t rip)
 }
 
 // Run a loaded program to completion; return its status and ending signal.
-static int32_t Emu_Run(const Load_Image *img, Emu_Trace trace, int32_t *sig)
+static int32_t Emu_Run(Load_Image *img, Emu_Trace trace, int32_t *sig)
 {
     Emu_Guest guest = {
         .eg_img = img
@@ -994,6 +1014,8 @@ int main(int argc, char **argv)
     Load_Image img = {0};
     Err_Assert(Load_ReadExec(program, &img), ERR_EMU_PROGRAM_NOT_READABLE, program, strerror(errno));
     Err_Assert(img.li_machine == ELF_EM_X86_64, ERR_EMU_ARCH_NOT_X86_64, program);
+    uint64_t end = img.li_base + img.li_size;
+    Err_Assert(end <= EMU_DEV_BASE || img.li_base >= EMU_DEV_BASE + EMU_DEV_SIZE, ERR_EMU_IMAGE_OVER_DEVICES, program, (Cpu_x86_64_TypeULLong) img.li_base, (Cpu_x86_64_TypeULLong) end, (Cpu_x86_64_TypeULLong) EMU_DEV_BASE);
 
     size_t nenv = 0;
     while (environ[nenv]) {

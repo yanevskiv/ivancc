@@ -1819,6 +1819,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_EMU_ARCH_NOT_X86_64",
         .ee_format = "'%s' is not an x86_64 executable"
+    },
+
+    // Args: [path, base, end, devices]
+    [ERR_EMU_IMAGE_OVER_DEVICES] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_EMU_IMAGE_OVER_DEVICES",
+        .ee_format = "'%s' takes 0x%llx to 0x%llx with its heap and stack, over the devices at 0x%llx"
     }
 };
 

@@ -321,6 +321,7 @@ enum Err_Code {
     ERR_EMU_ARCH_NOT_SUPPORTED,            // can't emulate an architecture other than x86_64
     ERR_EMU_PROGRAM_NOT_READABLE,          // can't read the executable to run
     ERR_EMU_ARCH_NOT_X86_64,               // can't run an executable that is not for x86_64
+    ERR_EMU_IMAGE_OVER_DEVICES,            // can't run an executable whose image, heap and stack reach the devices
 
     ERR_CODE_COUNT
 };

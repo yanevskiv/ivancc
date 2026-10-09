@@ -30,7 +30,7 @@
 #include "util/console/err.h"
 #include "util/object/elf.h"
 
-// A loaded program: one flat buffer holding every PT_LOAD and a stack.
+// A loaded program: one flat buffer holding every PT_LOAD, a heap and a stack.
 typedef struct Load_Image Load_Image;
 struct Load_Image {
     uint8_t  *li_mem;      // li_size bytes, zeroed and then filled
@@ -38,6 +38,9 @@ struct Load_Image {
     uint64_t  li_size;     // bytes li_mem holds
     uint64_t  li_entry;    // e_entry
     uint64_t  li_stack;    // initial %rsp, 16-byte aligned
+    uint64_t  li_brk_base; // the first break, the image's page-aligned end
+    uint64_t  li_brk;      // the program break, below which the heap is mapped
+    uint64_t  li_heap_end; // the farthest the break may go, the stack's foot
     uint16_t  li_machine;  // e_machine, for the caller to accept or reject
 };
 
@@ -48,6 +51,7 @@ bool     Load_ReadExec(const char *path, Load_Image *img);
 void     Load_PutWord(uint8_t *ptr, uint64_t value);
 void     Load_PushArgs(Load_Image *img, const char *const *argv, size_t argc, const char *const *envp, size_t nenv);
 uint8_t *Load_PutVector(Load_Image *img, uint8_t *word, uint64_t *text, const char *const *strs, size_t n);
+uint8_t *Load_Span(const Load_Image *img, uint64_t vaddr, uint64_t *avail);
 void    *Load_At(const Load_Image *img, uint64_t vaddr, uint64_t size);
 void     Load_Free(Load_Image *img);
 
