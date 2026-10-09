@@ -20,7 +20,10 @@
 // Module header.
 #include "util/object/load.h"
 
-// Bytes of stack reserved above the image.
+// Bytes of heap reserved above the image, for brk to map.
+#define LOAD_HEAP_SIZE 0x8000000
+
+// Bytes of stack reserved above the heap.
 #define LOAD_STACK_SIZE 0x100000
 
 // Alignment the SysV ABI requires of %rsp at a call boundary.
@@ -53,7 +56,7 @@ uint64_t Load_AlignUp(uint64_t addr, uint64_t align)
     return Load_AlignDown(addr + align - 1, align);
 }
 
-// Read an ET_EXEC file into a flat image, with a stack above it.
+// Read an ET_EXEC file into a flat image, with a heap and a stack above it.
 bool Load_ReadExec(const char *path, Load_Image *img)
 {
     size_t len = 0;
@@ -85,12 +88,15 @@ bool Load_ReadExec(const char *path, Load_Image *img)
     }
     Err_Assert(lo <= hi, ERR_LOAD_NO_SEGMENTS, path);
 
-    img->li_base    = Load_AlignDown(lo, ELF_PAGE);
-    img->li_size    = Load_AlignUp(hi, ELF_PAGE) - img->li_base + LOAD_STACK_SIZE;
-    img->li_entry   = eh->e_entry;
-    img->li_machine = eh->e_machine;
-    img->li_stack   = Load_AlignDown(img->li_base + img->li_size, LOAD_STACK_ALIGN);
-    img->li_mem     = calloc(img->li_size, 1);
+    img->li_base     = Load_AlignDown(lo, ELF_PAGE);
+    img->li_brk_base = Load_AlignUp(hi, ELF_PAGE);
+    img->li_brk      = img->li_brk_base;
+    img->li_heap_end = img->li_brk_base + LOAD_HEAP_SIZE;
+    img->li_size     = img->li_heap_end + LOAD_STACK_SIZE - img->li_base;
+    img->li_entry    = eh->e_entry;
+    img->li_machine  = eh->e_machine;
+    img->li_stack    = Load_AlignDown(img->li_base + img->li_size, LOAD_STACK_ALIGN);
+    img->li_mem      = calloc(img->li_size, 1);
 
     // Phase: the bytes themselves.
     for (uint16_t i = 0; i < eh->e_phnum; i++) {
@@ -156,17 +162,30 @@ uint8_t *Load_PutVector(Load_Image *img, uint8_t *word, uint64_t *text, const ch
     return word + LOAD_WORD_SIZE;
 }
 
+// Return the image at vaddr and the bytes mapped there, none past the break.
+uint8_t *Load_Span(const Load_Image *img, uint64_t vaddr, uint64_t *avail)
+{
+    uint64_t off = vaddr - img->li_base;
+    uint64_t hole = Load_AlignUp(img->li_brk, ELF_PAGE);
+    if (vaddr < img->li_base || off >= img->li_size) {
+        return NULL;
+    }
+    if (vaddr >= hole && vaddr < img->li_heap_end) {
+        return NULL;
+    }
+    *avail = (vaddr < hole ? hole : img->li_base + img->li_size) - vaddr;
+    return img->li_mem + off;
+}
+
 // Return a pointer to size bytes of the image at vaddr.
 void *Load_At(const Load_Image *img, uint64_t vaddr, uint64_t size)
 {
-    if (vaddr < img->li_base || size > img->li_size) {
+    uint64_t avail = 0;
+    uint8_t *mem = Load_Span(img, vaddr, &avail);
+    if (! mem || size > avail) {
         return NULL;
     }
-    uint64_t off = vaddr - img->li_base;
-    if (off > img->li_size - size) {
-        return NULL;
-    }
-    return img->li_mem + off;
+    return mem;
 }
 
 // Release an image's memory and leave it empty.
