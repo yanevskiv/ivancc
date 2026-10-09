@@ -26,8 +26,8 @@
 // Module header.
 #include <ivancc/impl/libc_string.h>
 
-// The error numbers strerror names.
-#include <errno.h>
+// The texts strerror gives.
+#include <ivancc/libc_err.h>
 
 // Where strtok's next search starts.
 static char *__libc_string_next;
@@ -299,23 +299,12 @@ void *__libc_string_memset(void *str, int ch, size_t n)
 // Name the error number errnum.
 char *__libc_string_strerror(int errnum)
 {
-    switch (errnum) {
-        case __LIBC_STRING_ERROR_NONE: {
-            return "Success";
-        } break;
-        case EDOM: {
-            return "Numerical argument out of domain";
-        } break;
-        case EILSEQ: {
-            return "Invalid or incomplete multibyte or wide character";
-        } break;
-        case ERANGE: {
-            return "Numerical result out of range";
-        } break;
-        default: {
-            return __libc_string_format_unknown(errnum);
-        } break;
+    const char *text = __libc_err_errno_text(errnum);
+
+    if (text == NULL) {
+        return __libc_string_format_unknown(errnum);
     }
+    return (char *) text;
 }
 
 // Count the characters of the string str before its null character.
@@ -334,7 +323,7 @@ char *__libc_string_format_unknown(int errnum)
 {
     char *ptr = __libc_string_unknown + __LIBC_STRING_ERROR_SIZE - 1;
     unsigned int value = errnum < 0 ? 0U - (unsigned int) errnum : (unsigned int) errnum;
-    size_t len = __libc_string_strlen(__LIBC_STRING_ERROR_UNKNOWN);
+    size_t len = __libc_string_strlen(__LIBC_ERR_STRING_UNKNOWN);
 
     *ptr = '\0';
     do {
@@ -347,6 +336,6 @@ char *__libc_string_format_unknown(int errnum)
         *ptr = '-';
     }
     ptr -= len;
-    __libc_string_memcpy(ptr, __LIBC_STRING_ERROR_UNKNOWN, len);
+    __libc_string_memcpy(ptr, __LIBC_ERR_STRING_UNKNOWN, len);
     return ptr;
 }

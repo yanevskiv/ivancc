@@ -29,12 +29,6 @@
 // The size and null pointer the functions take.
 #include <stddef.h>
 
-// The error number of no error.
-#define __LIBC_STRING_ERROR_NONE 0
-
-// The text strerror puts before an error number it does not know.
-#define __LIBC_STRING_ERROR_UNKNOWN "Unknown error "
-
 // The base strerror writes an unknown error number in.
 #define __LIBC_STRING_ERROR_BASE 10
 

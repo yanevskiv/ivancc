@@ -117,7 +117,7 @@ char *__libc_time_asctime(const struct tm *timeptr)
     };
 
     if (timeptr->tm_year > INT_MAX - __LIBC_TIME_YEAR_BASE) {
-        errno = __LIBC_TIME_EOVERFLOW;
+        errno = __LIBC_SYS_EOVERFLOW;
         return NULL;
     }
     __libc_time_put_name(&text, __libc_time_wday_name(timeptr->tm_wday), __LIBC_TIME_ABBREV_LEN, __LIBC_TIME_UNKNOWN_ABBREV);
@@ -239,7 +239,7 @@ struct tm *__libc_time_break_down(time_t value, struct tm *tm, const char *zone)
     mon = march < __LIBC_TIME_MONTHS_PER_YEAR - __LIBC_TIME_MARCH ? march + __LIBC_TIME_MARCH : march - (__LIBC_TIME_MONTHS_PER_YEAR - __LIBC_TIME_MARCH);
     year = era * __LIBC_TIME_YEARS_PER_ERA + yoe + (mon < __LIBC_TIME_MARCH ? 1 : 0);
     if (year - __LIBC_TIME_YEAR_BASE < INT_MIN || year - __LIBC_TIME_YEAR_BASE > INT_MAX) {
-        errno = __LIBC_TIME_EOVERFLOW;
+        errno = __LIBC_SYS_EOVERFLOW;
         return NULL;
     }
     tm->tm_sec = (int) (secs % __LIBC_TIME_SECS_PER_MIN);

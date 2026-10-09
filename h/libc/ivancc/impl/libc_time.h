@@ -32,9 +32,6 @@
 // The truth values the helpers answer with.
 #include <stdbool.h>
 
-// Linux's EOVERFLOW.
-#define __LIBC_TIME_EOVERFLOW 75
-
 // The units of time.
 #define __LIBC_TIME_NSECS_PER_CLOCK 1000L
 #define __LIBC_TIME_SECS_PER_MIN    60L

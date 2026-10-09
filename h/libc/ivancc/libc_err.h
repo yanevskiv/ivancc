@@ -1,5 +1,5 @@
 /*
- * C header file for the system layer.
+ * C header file for the texts a running program prints.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -23,31 +23,29 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_SYS_H__
-#define __LIBC_SYS_H__
+#ifndef __LIBC_ERR_H__
+#define __LIBC_ERR_H__
 
-// Linux's clocks.
-#define __LIBC_SYS_CLOCK_REALTIME           0
-#define __LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID 2
+// The error number of no error.
+#define __LIBC_ERR_ERRNO_NONE 0
 
-// Linux's error numbers C99 does not name.
-#define __LIBC_SYS_EOVERFLOW 75
+// strerror's texts for the error numbers.
+#define __LIBC_ERR_ERRNO_SUCCESS "Success"
+#define __LIBC_ERR_ERRNO_EDOM    "Numerical argument out of domain"
+#define __LIBC_ERR_ERRNO_EILSEQ  "Invalid or incomplete multibyte or wide character"
+#define __LIBC_ERR_ERRNO_ERANGE  "Numerical result out of range"
 
-// Linux's signals.
-#define __LIBC_SYS_SIGABRT 6
+// The text strerror puts before an error number it does not know.
+#define __LIBC_ERR_STRING_UNKNOWN "Unknown error "
 
-// Linux's struct timespec.
-struct __libc_sys_timespec {
-    long tv_sec;
-    long tv_nsec;
-};
+// The text assert's message puts after each of its parts.
+#define __LIBC_ERR_ASSERT_PROGRAM ": "
+#define __LIBC_ERR_ASSERT_FILE    ":"
+#define __LIBC_ERR_ASSERT_LINE    ": "
+#define __LIBC_ERR_ASSERT_FUNC    ": Assertion `"
+#define __LIBC_ERR_ASSERT_EXPR    "' failed.\n"
 
-// System calls
-long __libc_sys_syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
-long __libc_sys_write(int fd, const void *buf, unsigned long len);
-int __libc_sys_getpid(void);
-void __libc_sys_exit(int status);
-long __libc_sys_kill(int pid, int sig);
-long __libc_sys_clock_gettime(int clock, struct __libc_sys_timespec *spec);
+// Error numbers
+const char *__libc_err_errno_text(int errnum);
 
-#endif // __LIBC_SYS_H__
+#endif // __LIBC_ERR_H__

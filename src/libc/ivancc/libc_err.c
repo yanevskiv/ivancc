@@ -1,5 +1,5 @@
 /*
- * C header file for the system layer.
+ * C source file for the texts a running program prints.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -23,31 +23,33 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_SYS_H__
-#define __LIBC_SYS_H__
+// Module header.
+#include <ivancc/libc_err.h>
 
-// Linux's clocks.
-#define __LIBC_SYS_CLOCK_REALTIME           0
-#define __LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID 2
+// The error numbers the texts name.
+#include <errno.h>
 
-// Linux's error numbers C99 does not name.
-#define __LIBC_SYS_EOVERFLOW 75
+// The null pointer.
+#include <stddef.h>
 
-// Linux's signals.
-#define __LIBC_SYS_SIGABRT 6
-
-// Linux's struct timespec.
-struct __libc_sys_timespec {
-    long tv_sec;
-    long tv_nsec;
-};
-
-// System calls
-long __libc_sys_syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
-long __libc_sys_write(int fd, const void *buf, unsigned long len);
-int __libc_sys_getpid(void);
-void __libc_sys_exit(int status);
-long __libc_sys_kill(int pid, int sig);
-long __libc_sys_clock_gettime(int clock, struct __libc_sys_timespec *spec);
-
-#endif // __LIBC_SYS_H__
+// Return strerror's text for the error number errnum.
+const char *__libc_err_errno_text(int errnum)
+{
+    switch (errnum) {
+        case __LIBC_ERR_ERRNO_NONE: {
+            return __LIBC_ERR_ERRNO_SUCCESS;
+        } break;
+        case EDOM: {
+            return __LIBC_ERR_ERRNO_EDOM;
+        } break;
+        case EILSEQ: {
+            return __LIBC_ERR_ERRNO_EILSEQ;
+        } break;
+        case ERANGE: {
+            return __LIBC_ERR_ERRNO_ERANGE;
+        } break;
+        default: {
+            return NULL;
+        } break;
+    }
+}
