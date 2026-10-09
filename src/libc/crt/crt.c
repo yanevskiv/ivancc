@@ -24,10 +24,10 @@
  */
 
 // Module header.
-#include <internal/crt.h>
+#include <ivancc/crt.h>
 
 // The system call the startup exits with.
-#include <internal/sys.h>
+#include <ivancc/libc_sys.h>
 
 // The ivanemu machine's halt register.
 #define __LIBC_CRT_EMU_HALT "0x10000008"
@@ -55,7 +55,7 @@ __asm__(
     "  add $8, %rdx\n"
     "  call main\n"
     "  mov %rax, %rdi\n"
-    "  call __libc_exit\n"
+    "  call __libc_sys_exit\n"
 );
 #elif defined(__ivanemu__)
 // Call main, then halt the machine with its status.

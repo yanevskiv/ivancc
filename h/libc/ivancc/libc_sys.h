@@ -1,5 +1,5 @@
 /*
- * C header file for the startup.
+ * C header file for the system layer.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -23,10 +23,25 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __INTERNAL_CRT_H__
-#define __INTERNAL_CRT_H__
+#ifndef __LIBC_SYS_H__
+#define __LIBC_SYS_H__
 
-// Startup
-extern char *__libc_crt_argv0;
+// Linux's clocks.
+#define __LIBC_SYS_CLOCK_REALTIME           0
+#define __LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID 2
 
-#endif // __INTERNAL_CRT_H__
+// Linux's struct timespec.
+struct __libc_sys_timespec {
+    long tv_sec;
+    long tv_nsec;
+};
+
+// System calls
+long __libc_sys_syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+long __libc_sys_write(int fd, const void *buf, unsigned long len);
+int __libc_sys_getpid(void);
+void __libc_sys_exit(int status);
+long __libc_sys_kill(int pid, int sig);
+long __libc_sys_clock_gettime(int clock, struct __libc_sys_timespec *spec);
+
+#endif // __LIBC_SYS_H__

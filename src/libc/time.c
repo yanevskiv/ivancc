@@ -42,7 +42,7 @@
 #include <string.h>
 
 // The clocks clock and time read.
-#include <internal/sys.h>
+#include <ivancc/libc_sys.h>
 
 // Linux's EOVERFLOW.
 #define __LIBC_TIME_EOVERFLOW 75
@@ -531,9 +531,9 @@ static void __libc_time_put_format(struct __libc_time_text *text, const char *fo
 // Return the processor time the program has used.
 clock_t clock(void)
 {
-    struct __libc_timespec spec;
+    struct __libc_sys_timespec spec;
 
-    if (__libc_clock_gettime(__LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID, &spec) != 0) {
+    if (__libc_sys_clock_gettime(__LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID, &spec) != 0) {
         return (clock_t) -1;
     }
     return spec.tv_sec * CLOCKS_PER_SEC + spec.tv_nsec / __LIBC_TIME_NSECS_PER_CLOCK;
@@ -567,10 +567,10 @@ time_t mktime(struct tm *timeptr)
 // Return the current calendar time.
 time_t time(time_t *timer)
 {
-    struct __libc_timespec spec;
+    struct __libc_sys_timespec spec;
     time_t value = (time_t) -1;
 
-    if (__libc_clock_gettime(__LIBC_SYS_CLOCK_REALTIME, &spec) == 0) {
+    if (__libc_sys_clock_gettime(__LIBC_SYS_CLOCK_REALTIME, &spec) == 0) {
         value = spec.tv_sec;
     }
     if (timer != NULL) {
