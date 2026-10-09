@@ -27,10 +27,10 @@
 #include <assert.h>
 
 // The program's name.
-#include <internal/crt.h>
+#include <ivancc/crt.h>
 
 // The system calls that report and end the program.
-#include <internal/sys.h>
+#include <ivancc/libc_sys.h>
 
 // The string functions the message is built with.
 #include <string.h>
@@ -53,7 +53,7 @@
 // Write the string str to standard error.
 static void __libc_assert_write(const char *str)
 {
-    __libc_write(__LIBC_ASSERT_STDERR, str, strlen(str));
+    __libc_sys_write(__LIBC_ASSERT_STDERR, str, strlen(str));
 }
 
 // Write the line number line to standard error.
@@ -100,6 +100,6 @@ void __libc_assert_fail(const char *expr, const char *file, unsigned int line, c
     __libc_assert_write(": Assertion `");
     __libc_assert_write(expr);
     __libc_assert_write("' failed.\n");
-    __libc_kill(__libc_getpid(), __LIBC_ASSERT_SIGABRT);
-    __libc_exit(__LIBC_ASSERT_STATUS);
+    __libc_sys_kill(__libc_sys_getpid(), __LIBC_ASSERT_SIGABRT);
+    __libc_sys_exit(__LIBC_ASSERT_STATUS);
 }

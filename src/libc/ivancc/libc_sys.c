@@ -24,10 +24,10 @@
  */
 
 // Module header.
-#include <internal/sys.h>
+#include <ivancc/libc_sys.h>
 
 #ifndef __linux__
-#error "sys.c: the system layer is Linux's alone"
+#error "libc_sys.c: the system layer is Linux's alone"
 #endif
 
 // Linux's syscall numbers.
@@ -41,8 +41,8 @@
 // Make a syscall with its number and six arguments.
 __asm__(
     "  .text\n"
-    "  .globl __libc_syscall\n"
-    "__libc_syscall:\n"
+    "  .globl __libc_sys_syscall\n"
+    "__libc_sys_syscall:\n"
     "  mov %rdi, %rax\n"
     "  mov %rsi, %rdi\n"
     "  mov %rdx, %rsi\n"
@@ -54,35 +54,35 @@ __asm__(
     "  ret\n"
 );
 #else
-#error "sys.c: no system calls for this architecture"
+#error "libc_sys.c: no system calls for this architecture"
 #endif
 
 // Write len bytes of buf to the descriptor fd.
-long __libc_write(int fd, const void *buf, unsigned long len)
+long __libc_sys_write(int fd, const void *buf, unsigned long len)
 {
-    return __libc_syscall(__LIBC_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
+    return __libc_sys_syscall(__LIBC_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
 }
 
 // Return the program's process ID.
-int __libc_getpid(void)
+int __libc_sys_getpid(void)
 {
-    return (int) __libc_syscall(__LIBC_SYS_NR_GETPID, 0, 0, 0, 0, 0, 0);
+    return (int) __libc_sys_syscall(__LIBC_SYS_NR_GETPID, 0, 0, 0, 0, 0, 0);
 }
 
 // End the program with a status.
-void __libc_exit(int status)
+void __libc_sys_exit(int status)
 {
-    __libc_syscall(__LIBC_SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
+    __libc_sys_syscall(__LIBC_SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
 }
 
 // Send the signal sig to the process pid.
-long __libc_kill(int pid, int sig)
+long __libc_sys_kill(int pid, int sig)
 {
-    return __libc_syscall(__LIBC_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
+    return __libc_sys_syscall(__LIBC_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
 }
 
 // Read the clock clock into spec.
-long __libc_clock_gettime(int clock, struct __libc_timespec *spec)
+long __libc_sys_clock_gettime(int clock, struct __libc_sys_timespec *spec)
 {
-    return __libc_syscall(__LIBC_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
+    return __libc_sys_syscall(__LIBC_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
 }
