@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <time.h>
 #include <unistd.h>
 
 // Project headers.
@@ -59,10 +60,16 @@
 #define EMU_UART_FD 1
 
 // Linux syscall numbers the emulator answers.
-#define EMU_SYS_WRITE  1
-#define EMU_SYS_GETPID 39
-#define EMU_SYS_EXIT   60
-#define EMU_SYS_KILL   62
+#define EMU_SYS_WRITE         1
+#define EMU_SYS_GETPID        39
+#define EMU_SYS_EXIT          60
+#define EMU_SYS_KILL          62
+#define EMU_SYS_CLOCK_GETTIME 228
+
+// The layout of Linux's struct timespec.
+#define EMU_TIMESPEC_SEC_OFF  0
+#define EMU_TIMESPEC_NSEC_OFF 8
+#define EMU_TIMESPEC_SIZE     16
 
 // Linux errno values a failed syscall returns negated in %rax.
 #define EMU_ERRNO_FAULT 14
@@ -207,6 +214,23 @@ static uint64_t Emu_Kill(Emu_Guest *guest, int32_t pid, int32_t sig)
     }
 }
 
+// Read the host's clock into the program's struct timespec at addr.
+static uint64_t Emu_ClockGettime(Emu_Guest *guest, int32_t clock, uint64_t addr)
+{
+    uint8_t *spec = Load_At(guest->eg_img, addr, EMU_TIMESPEC_SIZE);
+    struct timespec now;
+
+    if (clock_gettime((clockid_t) clock, &now) != 0) {
+        return -(uint64_t) errno;
+    }
+    if (! spec) {
+        return -(uint64_t) EMU_ERRNO_FAULT;
+    }
+    Load_PutWord(spec + EMU_TIMESPEC_SEC_OFF, (uint64_t) now.tv_sec);
+    Load_PutWord(spec + EMU_TIMESPEC_NSEC_OFF, (uint64_t) now.tv_nsec);
+    return 0;
+}
+
 // Answer a syscall as Linux does and fail the ones it lacks with ENOSYS.
 static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
 {
@@ -235,6 +259,11 @@ static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
             int32_t pid = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
             int32_t sig = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RSI];
             *rax = Emu_Kill(guest, pid, sig);
+        } break;
+        case EMU_SYS_CLOCK_GETTIME: {
+            int32_t clock = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
+            uint64_t addr = cpu->cs_reg[CPU_X86_64_REG_RSI];
+            *rax = Emu_ClockGettime(guest, clock, addr);
         } break;
         default: {
             *rax = -(uint64_t) EMU_ERRNO_NOSYS;
