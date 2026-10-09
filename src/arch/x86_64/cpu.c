@@ -109,7 +109,7 @@ void Cpu_x86_64_Init(Cpu_x86_64_State *cpu, const Cpu_x86_64_Bus *bus, uint64_t 
     cpu->cs_reg[CPU_X86_64_REG_RSP] = rsp;
 }
 
-// Report the first fault of a step and stop the step with its exception.
+// Record the first fault of a step and stop the step with its exception.
 void Cpu_x86_64_Fault(Cpu_x86_64_State *cpu, Cpu_x86_64_Vector vector, Err_Code code, ...)
 {
     va_list ap;
@@ -117,11 +117,22 @@ void Cpu_x86_64_Fault(Cpu_x86_64_State *cpu, Cpu_x86_64_Vector vector, Err_Code 
     if (cpu->cs_trap != CPU_X86_64_TRAP_NONE) {
         return;
     }
+    free(cpu->cs_fault);
     va_start(ap, code);
-    Err_ShowVa(LOG_SEVERITY_ERROR, LOG_LINE_NONE, code, ap);
+    cpu->cs_fault = Err_FormatVa(code, ap);
     va_end(ap);
     cpu->cs_trap = CPU_X86_64_TRAP_EXCEPTION;
     cpu->cs_vector = vector;
+}
+
+// Record the address and error code of a step's first #PF.
+void Cpu_x86_64_PageFault(Cpu_x86_64_State *cpu, uint64_t addr, uint64_t error)
+{
+    if (cpu->cs_trap != CPU_X86_64_TRAP_NONE) {
+        return;
+    }
+    cpu->cs_cr2 = addr;
+    cpu->cs_pf_err = error;
 }
 
 // Read a register at the given width.
@@ -175,6 +186,7 @@ const uint8_t *Cpu_x86_64_ReadAt(Cpu_x86_64_State *cpu, uint64_t addr, size_t si
     size_t avail = 0;
     const uint8_t *ptr = cpu->cs_bus->cb_map(cpu->cs_bus->cb_ctx, addr, &avail);
     if (! ptr || avail < size) {
+        Cpu_x86_64_PageFault(cpu, addr, CPU_X86_64_PF_USER);
         Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_PF, ERR_CPU_READ_NOT_MAPPED, (Cpu_x86_64_TypeULLong) addr, (Cpu_x86_64_TypeULLong) cpu->cs_rip);
         return NULL;
     }
@@ -187,6 +199,7 @@ uint8_t *Cpu_x86_64_WriteAt(Cpu_x86_64_State *cpu, uint64_t addr, size_t size)
     size_t avail = 0;
     uint8_t *ptr = cpu->cs_bus->cb_map(cpu->cs_bus->cb_ctx, addr, &avail);
     if (! ptr || avail < size) {
+        Cpu_x86_64_PageFault(cpu, addr, CPU_X86_64_PF_USER | CPU_X86_64_PF_WRITE);
         Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_PF, ERR_CPU_WRITE_NOT_MAPPED, (Cpu_x86_64_TypeULLong) addr, (Cpu_x86_64_TypeULLong) cpu->cs_rip);
         return NULL;
     }
@@ -610,6 +623,7 @@ void Cpu_x86_64_Step(Cpu_x86_64_State *cpu)
 
     cpu->cs_trap = CPU_X86_64_TRAP_NONE;
     if (! code) {
+        Cpu_x86_64_PageFault(cpu, rip, CPU_X86_64_PF_USER | CPU_X86_64_PF_FETCH);
         Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_PF, ERR_CPU_FETCH_NOT_MAPPED, (Cpu_x86_64_TypeULLong) rip);
         return;
     }
@@ -872,6 +886,13 @@ void Cpu_x86_64_Step(Cpu_x86_64_State *cpu)
             Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_OPCODE_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
         }
     }
+}
+
+// Release what a CPU holds.
+void Cpu_x86_64_Free(Cpu_x86_64_State *cpu)
+{
+    free(cpu->cs_fault);
+    cpu->cs_fault = NULL;
 }
 
 // Read a little-endian signed value of n bytes.
