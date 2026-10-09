@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // Project headers.
@@ -77,6 +78,11 @@
 
 // The ModRM bits an x87 register form carries around its digit and register.
 #define CPU_X86_64_X87_REG_FORM 0xC0
+
+// The bits of a #PF's error code: a write, from user mode, and a fetch.
+#define CPU_X86_64_PF_WRITE 0x2
+#define CPU_X86_64_PF_USER  0x4
+#define CPU_X86_64_PF_FETCH 0x10
 
 // The integer a conversion leaves when its value is out of range.
 #define CPU_X86_64_INDEFINITE_32 ((uint64_t) 1 << 31)
@@ -188,12 +194,16 @@ struct Cpu_x86_64_State {
     int32_t               cs_top;    // the x87 register %st names
     Cpu_x86_64_Trap       cs_trap;   // what stopped the last step, or CPU_X86_64_TRAP_NONE
     Cpu_x86_64_Vector     cs_vector; // the exception a CPU_X86_64_TRAP_EXCEPTION raised
+    char                 *cs_fault;  // the diagnostic of the last exception
+    uint64_t              cs_cr2;    // the address the last #PF could not reach
+    uint64_t              cs_pf_err; // the error code of the last #PF
     const Cpu_x86_64_Bus *cs_bus;
 };
 
 // Running
 void Cpu_x86_64_Init(Cpu_x86_64_State *cpu, const Cpu_x86_64_Bus *bus, uint64_t rip, uint64_t rsp);
 void Cpu_x86_64_Fault(Cpu_x86_64_State *cpu, Cpu_x86_64_Vector vector, Err_Code code, ...);
+void Cpu_x86_64_PageFault(Cpu_x86_64_State *cpu, uint64_t addr, uint64_t error);
 uint64_t Cpu_x86_64_ReadReg(const Cpu_x86_64_State *cpu, Cpu_x86_64_Reg reg, Cpu_x86_64_OperandWidth width);
 void Cpu_x86_64_WriteReg(Cpu_x86_64_State *cpu, Cpu_x86_64_Reg reg, uint64_t value, Cpu_x86_64_OperandWidth width);
 bool Cpu_x86_64_IsDevice(const Cpu_x86_64_State *cpu, uint64_t addr);
@@ -218,6 +228,7 @@ void Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, u
 void Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void Cpu_x86_64_Divide(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Cpu_x86_64_OperandWidth width);
 void Cpu_x86_64_Step(Cpu_x86_64_State *cpu);
+void Cpu_x86_64_Free(Cpu_x86_64_State *cpu);
 
 // Decoding
 int64_t Cpu_x86_64_ReadImm(const uint8_t *p, size_t n);

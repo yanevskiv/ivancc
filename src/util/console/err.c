@@ -1862,6 +1862,15 @@ void Err_WarnAt(uint32_t line, Err_Code code, ...)
 // Print one diagnostic from an argument list.
 void Err_ShowVa(Log_Severity severity, uint32_t line, Err_Code code, va_list ap)
 {
+    char *text = Err_FormatVa(code, ap);
+
+    Log_Show(severity, line, "%s", text);
+    free(text);
+}
+
+// Write one diagnostic's text from an argument list into a new string.
+char *Err_FormatVa(Err_Code code, va_list ap)
+{
     if (code <= ERR_SUCCESS || code >= ERR_CODE_COUNT || ! Err_Table[code].ee_format) {
         Log_ShowError("diagnostic code %d has no entry", (int) code);
     }
@@ -1873,8 +1882,11 @@ void Err_ShowVa(Log_Severity severity, uint32_t line, Err_Code code, va_list ap)
 
     char *message = malloc(len + 1);
     vsnprintf(message, len + 1, Err_Table[code].ee_format, ap);
-    Log_Show(severity, line, "%s [%s]", message, Err_Table[code].ee_name);
+    size_t size = (size_t) snprintf(NULL, 0, "%s [%s]", message, Err_Table[code].ee_name) + 1;
+    char *text = malloc(size);
+    snprintf(text, size, "%s [%s]", message, Err_Table[code].ee_name);
     free(message);
+    return text;
 }
 
 // Return the code of the last error raised.
