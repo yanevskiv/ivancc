@@ -24,13 +24,13 @@
  */
 
 // Module header.
-#include <ivancc/impl/libc_signal.h>
+#include <libc/impl/libc_signal.h>
 
 // The error number a refused request sets.
 #include <errno.h>
 
 // The system calls that install a handler and send a signal.
-#include <ivancc/libc_sys.h>
+#include <libc/libc_sys.h>
 
 // Install func as the handler of the signal sig.
 void (*__libc_impl_signal_signal(int sig, void (*func)(int)))(int)

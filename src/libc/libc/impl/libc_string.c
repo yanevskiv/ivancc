@@ -24,10 +24,10 @@
  */
 
 // Module header.
-#include <ivancc/impl/libc_string.h>
+#include <libc/impl/libc_string.h>
 
 // The texts strerror gives.
-#include <ivancc/libc_err.h>
+#include <libc/libc_err.h>
 
 // Where strtok's next search starts.
 static char *__libc_impl_string_next;

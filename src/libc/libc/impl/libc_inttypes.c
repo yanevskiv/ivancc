@@ -24,13 +24,13 @@
  */
 
 // Module header.
-#include <ivancc/impl/libc_inttypes.h>
+#include <libc/impl/libc_inttypes.h>
 
 // The error number of a value out of range.
 #include <errno.h>
 
 // The white space the conversions skip.
-#include <ivancc/impl/libc_ctype.h>
+#include <libc/impl/libc_ctype.h>
 
 // The range of a narrow character.
 #include <limits.h>

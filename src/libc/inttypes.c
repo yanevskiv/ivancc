@@ -27,7 +27,7 @@
 #include <inttypes.h>
 
 // The implementation.
-#include <ivancc/impl/libc_inttypes.h>
+#include <libc/impl/libc_inttypes.h>
 
 // Give the absolute value of j.
 intmax_t imaxabs(intmax_t j)

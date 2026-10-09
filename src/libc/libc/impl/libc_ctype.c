@@ -24,7 +24,7 @@
  */
 
 // Module header.
-#include <ivancc/impl/libc_ctype.h>
+#include <libc/impl/libc_ctype.h>
 
 // Tell whether c is a letter or a digit.
 int __libc_impl_ctype_isalnum(int c)
