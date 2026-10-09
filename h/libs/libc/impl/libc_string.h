@@ -35,24 +35,24 @@
 // The size of strerror's text for an unknown error number, INT_MIN's included.
 #define __LIBC_IMPL_STRING_ERROR_SIZE 32
 
-// (S7.21.2) Copying functions
+// Copying functions
 void *__libc_impl_string_memcpy(void *restrict str1, const void *restrict str2, __libc_impl_stddef_size_t n);
 void *__libc_impl_string_memmove(void *str1, const void *str2, __libc_impl_stddef_size_t n);
 char *__libc_impl_string_strcpy(char *restrict str1, const char *restrict str2);
 char *__libc_impl_string_strncpy(char *restrict str1, const char *restrict str2, __libc_impl_stddef_size_t n);
 
-// (S7.21.3) Concatenation functions
+// Concatenation functions
 char *__libc_impl_string_strcat(char *restrict str1, const char *restrict str2);
 char *__libc_impl_string_strncat(char *restrict str1, const char *restrict str2, __libc_impl_stddef_size_t n);
 
-// (S7.21.4) Comparison functions
+// Comparison functions
 int __libc_impl_string_memcmp(const void *str1, const void *str2, __libc_impl_stddef_size_t n);
 int __libc_impl_string_strcmp(const char *str1, const char *str2);
 int __libc_impl_string_strcoll(const char *str1, const char *str2);
 int __libc_impl_string_strncmp(const char *str1, const char *str2, __libc_impl_stddef_size_t n);
 __libc_impl_stddef_size_t __libc_impl_string_strxfrm(char *restrict str1, const char *restrict str2, __libc_impl_stddef_size_t n);
 
-// (S7.21.5) Search functions
+// Search functions
 void *__libc_impl_string_memchr(const void *str, int ch, __libc_impl_stddef_size_t n);
 char *__libc_impl_string_strchr(const char *str, int ch);
 __libc_impl_stddef_size_t __libc_impl_string_strcspn(const char *str1, const char *str2);
@@ -62,7 +62,7 @@ __libc_impl_stddef_size_t __libc_impl_string_strspn(const char *str1, const char
 char *__libc_impl_string_strstr(const char *str1, const char *str2);
 char *__libc_impl_string_strtok(char *restrict str1, const char *restrict str2);
 
-// (S7.21.6) Miscellaneous functions
+// Miscellaneous functions
 void *__libc_impl_string_memset(void *str, int ch, __libc_impl_stddef_size_t n);
 char *__libc_impl_string_strerror(int errnum);
 __libc_impl_stddef_size_t __libc_impl_string_strlen(const char *str);

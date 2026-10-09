@@ -29,7 +29,7 @@
 // The sizes and null pointer the functions take.
 #include <libc/impl/libc_stddef.h>
 
-// (S7.23.1) Components of time
+// Components of time
 #define __LIBC_IMPL_TIME_CLOCKS_PER_SEC ((__libc_impl_time_clock_t) 1000000)
 
 typedef long __libc_impl_time_clock_t;
@@ -136,13 +136,13 @@ struct __libc_impl_time_text {
     __libc_impl_stddef_size_t  tt_len;
 };
 
-// (S7.23.2) Time manipulation functions
+// Time manipulation functions
 __libc_impl_time_clock_t __libc_impl_time_clock(void);
 double __libc_impl_time_difftime(__libc_impl_time_time_t time1, __libc_impl_time_time_t time0);
 __libc_impl_time_time_t __libc_impl_time_mktime(struct tm *timeptr);
 __libc_impl_time_time_t __libc_impl_time_time(__libc_impl_time_time_t *timer);
 
-// (S7.23.3) Time conversion functions
+// Time conversion functions
 char *__libc_impl_time_asctime(const struct tm *timeptr);
 char *__libc_impl_time_ctime(const __libc_impl_time_time_t *timer);
 struct tm *__libc_impl_time_gmtime(const __libc_impl_time_time_t *timer);
