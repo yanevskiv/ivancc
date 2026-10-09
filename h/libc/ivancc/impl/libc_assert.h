@@ -23,27 +23,27 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_ASSERT_H__
-#define __LIBC_ASSERT_H__
+#ifndef __LIBC_IMPL_ASSERT_H__
+#define __LIBC_IMPL_ASSERT_H__
 
 // The descriptor of standard error.
-#define __LIBC_ASSERT_STDERR 2
+#define __LIBC_IMPL_ASSERT_STDERR 2
 
 // The status the program exits with if SIGABRT did not end it.
-#define __LIBC_ASSERT_STATUS 127
+#define __LIBC_IMPL_ASSERT_STATUS 127
 
 // The base a line number is written in.
-#define __LIBC_ASSERT_LINE_BASE 10
+#define __LIBC_IMPL_ASSERT_LINE_BASE 10
 
 // The size of a line number's text, UINT_MAX's included.
-#define __LIBC_ASSERT_LINE_SIZE 16
+#define __LIBC_IMPL_ASSERT_LINE_SIZE 16
 
 // (S7.2.1.1) The assert macro
-void __libc_assert_fail(const char *expr, const char *file, unsigned int line, const char *func);
+void __libc_impl_assert_fail(const char *expr, const char *file, unsigned int line, const char *func);
 
 // Report
-void __libc_assert_write(const char *str);
-void __libc_assert_write_line(unsigned int line);
-const char *__libc_assert_program(void);
+void __libc_impl_assert_write(const char *str);
+void __libc_impl_assert_write_line(unsigned int line);
+const char *__libc_impl_assert_program(void);
 
-#endif // __LIBC_ASSERT_H__
+#endif // __LIBC_IMPL_ASSERT_H__
