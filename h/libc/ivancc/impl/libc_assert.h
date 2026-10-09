@@ -29,9 +29,6 @@
 // The descriptor of standard error.
 #define __LIBC_ASSERT_STDERR 2
 
-// Linux's SIGABRT, which ends a program whose assertion fails.
-#define __LIBC_ASSERT_SIGABRT 6
-
 // The status the program exits with if SIGABRT did not end it.
 #define __LIBC_ASSERT_STATUS 127
 

@@ -30,6 +30,12 @@
 #define __LIBC_SYS_CLOCK_REALTIME           0
 #define __LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID 2
 
+// Linux's error numbers C99 does not name.
+#define __LIBC_SYS_EOVERFLOW 75
+
+// Linux's signals.
+#define __LIBC_SYS_SIGABRT 6
+
 // Linux's struct timespec.
 struct __libc_sys_timespec {
     long tv_sec;

@@ -29,6 +29,9 @@
 // The program's name.
 #include <ivancc/crt.h>
 
+// The message's texts.
+#include <ivancc/libc_err.h>
+
 // The system calls that report and end the program.
 #include <ivancc/libc_sys.h>
 
@@ -42,17 +45,17 @@ void __libc_assert_fail(const char *expr, const char *file, unsigned int line, c
 
     if (*program != '\0') {
         __libc_assert_write(program);
-        __libc_assert_write(": ");
+        __libc_assert_write(__LIBC_ERR_ASSERT_PROGRAM);
     }
     __libc_assert_write(file);
-    __libc_assert_write(":");
+    __libc_assert_write(__LIBC_ERR_ASSERT_FILE);
     __libc_assert_write_line(line);
-    __libc_assert_write(": ");
+    __libc_assert_write(__LIBC_ERR_ASSERT_LINE);
     __libc_assert_write(func);
-    __libc_assert_write(": Assertion `");
+    __libc_assert_write(__LIBC_ERR_ASSERT_FUNC);
     __libc_assert_write(expr);
-    __libc_assert_write("' failed.\n");
-    __libc_sys_kill(__libc_sys_getpid(), __LIBC_ASSERT_SIGABRT);
+    __libc_assert_write(__LIBC_ERR_ASSERT_EXPR);
+    __libc_sys_kill(__libc_sys_getpid(), __LIBC_SYS_SIGABRT);
     __libc_sys_exit(__LIBC_ASSERT_STATUS);
 }
 
