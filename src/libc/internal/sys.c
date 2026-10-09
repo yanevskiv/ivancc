@@ -31,10 +31,11 @@
 #endif
 
 // Linux's syscall numbers.
-#define __LIBC_SYS_NR_WRITE  1
-#define __LIBC_SYS_NR_GETPID 39
-#define __LIBC_SYS_NR_EXIT   60
-#define __LIBC_SYS_NR_KILL   62
+#define __LIBC_SYS_NR_WRITE         1
+#define __LIBC_SYS_NR_GETPID        39
+#define __LIBC_SYS_NR_EXIT          60
+#define __LIBC_SYS_NR_KILL          62
+#define __LIBC_SYS_NR_CLOCK_GETTIME 228
 
 #ifdef __x86_64__
 // Make a syscall with its number and six arguments.
@@ -78,4 +79,10 @@ void __libc_exit(int status)
 long __libc_kill(int pid, int sig)
 {
     return __libc_syscall(__LIBC_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
+}
+
+// Read the clock clock into spec.
+long __libc_clock_gettime(int clock, struct __libc_timespec *spec)
+{
+    return __libc_syscall(__LIBC_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
 }
