@@ -42,55 +42,55 @@
 #include <libc/impl/libc_string.h>
 
 // Report a failed assertion and end the program as abort would.
-void __libc_impl_assert_fail(const char *expr, const char *file, unsigned int line, const char *func)
+void _Libc_Impl_Assert_Fail(const char *expr, const char *file, unsigned int line, const char *func)
 {
-    const char *program = __libc_impl_assert_program();
+    const char *program = _Libc_Impl_Assert_Program();
 
     if (*program != '\0') {
-        __libc_impl_assert_write(program);
-        __libc_impl_assert_write(__LIBC_ERR_ASSERT_PROGRAM);
+        _Libc_Impl_Assert_Write(program);
+        _Libc_Impl_Assert_Write(_LIBC_ERR_ASSERT_PROGRAM);
     }
-    __libc_impl_assert_write(file);
-    __libc_impl_assert_write(__LIBC_ERR_ASSERT_FILE);
-    __libc_impl_assert_write_line(line);
-    __libc_impl_assert_write(__LIBC_ERR_ASSERT_LINE);
-    __libc_impl_assert_write(func);
-    __libc_impl_assert_write(__LIBC_ERR_ASSERT_FUNC);
-    __libc_impl_assert_write(expr);
-    __libc_impl_assert_write(__LIBC_ERR_ASSERT_EXPR);
-    __libc_sys_kill(__libc_sys_getpid(), __LIBC_IMPL_SIGNAL_SIGABRT);
-    __libc_sys_exit(__LIBC_IMPL_ASSERT_STATUS);
+    _Libc_Impl_Assert_Write(file);
+    _Libc_Impl_Assert_Write(_LIBC_ERR_ASSERT_FILE);
+    _Libc_Impl_Assert_WriteLine(line);
+    _Libc_Impl_Assert_Write(_LIBC_ERR_ASSERT_LINE);
+    _Libc_Impl_Assert_Write(func);
+    _Libc_Impl_Assert_Write(_LIBC_ERR_ASSERT_FUNC);
+    _Libc_Impl_Assert_Write(expr);
+    _Libc_Impl_Assert_Write(_LIBC_ERR_ASSERT_EXPR);
+    _Libc_Sys_kill(_Libc_Sys_getpid(), _LIBC_IMPL_SIGNAL_SIGABRT);
+    _Libc_Sys_exit(_LIBC_IMPL_ASSERT_STATUS);
 }
 
 // Write the string str to standard error.
-void __libc_impl_assert_write(const char *str)
+void _Libc_Impl_Assert_Write(const char *str)
 {
-    __libc_sys_write(__LIBC_IMPL_ASSERT_STDERR, str, __libc_impl_string_strlen(str));
+    _Libc_Sys_write(_LIBC_IMPL_ASSERT_STDERR, str, _Libc_Impl_String_strlen(str));
 }
 
 // Write the line number line to standard error.
-void __libc_impl_assert_write_line(unsigned int line)
+void _Libc_Impl_Assert_WriteLine(unsigned int line)
 {
-    char text[__LIBC_IMPL_ASSERT_LINE_SIZE];
-    char *ptr = text + __LIBC_IMPL_ASSERT_LINE_SIZE - 1;
+    char text[_LIBC_IMPL_ASSERT_LINE_SIZE];
+    char *ptr = text + _LIBC_IMPL_ASSERT_LINE_SIZE - 1;
 
     *ptr = '\0';
     do {
         ptr--;
-        *ptr = (char) ('0' + line % __LIBC_IMPL_ASSERT_LINE_BASE);
-        line /= __LIBC_IMPL_ASSERT_LINE_BASE;
+        *ptr = (char) ('0' + line % _LIBC_IMPL_ASSERT_LINE_BASE);
+        line /= _LIBC_IMPL_ASSERT_LINE_BASE;
     } while (line != 0);
-    __libc_impl_assert_write(ptr);
+    _Libc_Impl_Assert_Write(ptr);
 }
 
 // Return the program's name as glibc's message gives it, or an empty string.
-const char *__libc_impl_assert_program(void)
+const char *_Libc_Impl_Assert_Program(void)
 {
     const char *slash;
 
-    if (__crt_argv0 == __LIBC_IMPL_STDDEF_NULL) {
+    if (_Crt_Argv0 == _LIBC_IMPL_STDDEF_NULL) {
         return "";
     }
-    slash = __libc_impl_string_strrchr(__crt_argv0, '/');
-    return slash != __LIBC_IMPL_STDDEF_NULL ? slash + 1 : __crt_argv0;
+    slash = _Libc_Impl_String_strrchr(_Crt_Argv0, '/');
+    return slash != _LIBC_IMPL_STDDEF_NULL ? slash + 1 : _Crt_Argv0;
 }

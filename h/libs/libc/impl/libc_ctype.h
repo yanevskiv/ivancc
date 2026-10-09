@@ -23,25 +23,25 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_IMPL_CTYPE_H__
-#define __LIBC_IMPL_CTYPE_H__
+#ifndef _LIBC_IMPL_CTYPE_H
+#define _LIBC_IMPL_CTYPE_H
 
 // Character classification functions
-int __libc_impl_ctype_isalnum(int c);
-int __libc_impl_ctype_isalpha(int c);
-int __libc_impl_ctype_isblank(int c);
-int __libc_impl_ctype_iscntrl(int c);
-int __libc_impl_ctype_isdigit(int c);
-int __libc_impl_ctype_isgraph(int c);
-int __libc_impl_ctype_islower(int c);
-int __libc_impl_ctype_isprint(int c);
-int __libc_impl_ctype_ispunct(int c);
-int __libc_impl_ctype_isspace(int c);
-int __libc_impl_ctype_isupper(int c);
-int __libc_impl_ctype_isxdigit(int c);
+int _Libc_Impl_Ctype_isalnum(int c);
+int _Libc_Impl_Ctype_isalpha(int c);
+int _Libc_Impl_Ctype_isblank(int c);
+int _Libc_Impl_Ctype_iscntrl(int c);
+int _Libc_Impl_Ctype_isdigit(int c);
+int _Libc_Impl_Ctype_isgraph(int c);
+int _Libc_Impl_Ctype_islower(int c);
+int _Libc_Impl_Ctype_isprint(int c);
+int _Libc_Impl_Ctype_ispunct(int c);
+int _Libc_Impl_Ctype_isspace(int c);
+int _Libc_Impl_Ctype_isupper(int c);
+int _Libc_Impl_Ctype_isxdigit(int c);
 
 // Character case mapping functions
-int __libc_impl_ctype_tolower(int c);
-int __libc_impl_ctype_toupper(int c);
+int _Libc_Impl_Ctype_tolower(int c);
+int _Libc_Impl_Ctype_toupper(int c);
 
-#endif // __LIBC_IMPL_CTYPE_H__
+#endif // _LIBC_IMPL_CTYPE_H

@@ -23,14 +23,14 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_IMPL_ERRNO_H__
-#define __LIBC_IMPL_ERRNO_H__
+#ifndef _LIBC_IMPL_ERRNO_H
+#define _LIBC_IMPL_ERRNO_H
 
 // Errors
-#define __LIBC_IMPL_ERRNO_EDOM   33
-#define __LIBC_IMPL_ERRNO_EILSEQ 84
-#define __LIBC_IMPL_ERRNO_ERANGE 34
+#define _LIBC_IMPL_ERRNO_EDOM   33
+#define _LIBC_IMPL_ERRNO_EILSEQ 84
+#define _LIBC_IMPL_ERRNO_ERANGE 34
 
 extern int errno;
 
-#endif // __LIBC_IMPL_ERRNO_H__
+#endif // _LIBC_IMPL_ERRNO_H

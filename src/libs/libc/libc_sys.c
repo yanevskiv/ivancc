@@ -31,25 +31,25 @@
 #endif
 
 // Linux's syscall numbers.
-#define __LIBC_SYS_NR_WRITE         1
-#define __LIBC_SYS_NR_RT_SIGACTION  13
-#define __LIBC_SYS_NR_GETPID        39
-#define __LIBC_SYS_NR_EXIT          60
-#define __LIBC_SYS_NR_KILL          62
-#define __LIBC_SYS_NR_CLOCK_GETTIME 228
+#define _LIBC_SYS_NR_WRITE         1
+#define _LIBC_SYS_NR_RT_SIGACTION  13
+#define _LIBC_SYS_NR_GETPID        39
+#define _LIBC_SYS_NR_EXIT          60
+#define _LIBC_SYS_NR_KILL          62
+#define _LIBC_SYS_NR_CLOCK_GETTIME 228
 
 // Linux's rt_sigreturn number, as the restorer's assembly writes it.
-#define __LIBC_SYS_NR_RT_SIGRETURN "15"
+#define _LIBC_SYS_NR_RT_SIGRETURN "15"
 
 // The bytes of Linux's sigset_t.
-#define __LIBC_SYS_SIGSET_SIZE 8
+#define _LIBC_SYS_SIGSET_SIZE 8
 
 #ifdef __x86_64__
 // Make a syscall with its number and six arguments.
 __asm__(
     "  .text\n"
-    "  .globl __libc_sys_syscall\n"
-    "__libc_sys_syscall:\n"
+    "  .globl _Libc_Sys_syscall\n"
+    "_Libc_Sys_syscall:\n"
     "  mov %rdi, %rax\n"
     "  mov %rsi, %rdi\n"
     "  mov %rdx, %rsi\n"
@@ -65,48 +65,48 @@ __asm__(
 #endif
 
 // Write len bytes of buf to the descriptor fd.
-long __libc_sys_write(int fd, const void *buf, unsigned long len)
+long _Libc_Sys_write(int fd, const void *buf, unsigned long len)
 {
-    return __libc_sys_syscall(__LIBC_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
+    return _Libc_Sys_syscall(_LIBC_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
 }
 
 // Install act as the action of the signal sig, and store the old one in oact.
-long __libc_sys_rt_sigaction(int sig, const struct __libc_sys_sigaction *act, struct __libc_sys_sigaction *oact)
+long _Libc_Sys_rt_sigaction(int sig, const struct _Libc_Sys_sigaction *act, struct _Libc_Sys_sigaction *oact)
 {
-    return __libc_sys_syscall(__LIBC_SYS_NR_RT_SIGACTION, sig, (long) act, (long) oact, __LIBC_SYS_SIGSET_SIZE, 0, 0);
+    return _Libc_Sys_syscall(_LIBC_SYS_NR_RT_SIGACTION, sig, (long) act, (long) oact, _LIBC_SYS_SIGSET_SIZE, 0, 0);
 }
 
 // Return the program's process ID.
-int __libc_sys_getpid(void)
+int _Libc_Sys_getpid(void)
 {
-    return (int) __libc_sys_syscall(__LIBC_SYS_NR_GETPID, 0, 0, 0, 0, 0, 0);
+    return (int) _Libc_Sys_syscall(_LIBC_SYS_NR_GETPID, 0, 0, 0, 0, 0, 0);
 }
 
 // End the program with a status.
-void __libc_sys_exit(int status)
+void _Libc_Sys_exit(int status)
 {
-    __libc_sys_syscall(__LIBC_SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
+    _Libc_Sys_syscall(_LIBC_SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
 }
 
 // Send the signal sig to the process pid.
-long __libc_sys_kill(int pid, int sig)
+long _Libc_Sys_kill(int pid, int sig)
 {
-    return __libc_sys_syscall(__LIBC_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
+    return _Libc_Sys_syscall(_LIBC_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
 }
 
 // Read the clock clock into spec.
-long __libc_sys_clock_gettime(int clock, struct __libc_sys_timespec *spec)
+long _Libc_Sys_clock_gettime(int clock, struct _Libc_Sys_timespec *spec)
 {
-    return __libc_sys_syscall(__LIBC_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
+    return _Libc_Sys_syscall(_LIBC_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
 }
 
 #ifdef __x86_64__
 // Return from a signal handler to what the signal interrupted.
 __asm__(
     "  .text\n"
-    "  .globl __libc_sys_restore_rt\n"
-    "__libc_sys_restore_rt:\n"
-    "  mov $" __LIBC_SYS_NR_RT_SIGRETURN ", %rax\n"
+    "  .globl _Libc_Sys_restore_rt\n"
+    "_Libc_Sys_restore_rt:\n"
+    "  mov $" _LIBC_SYS_NR_RT_SIGRETURN ", %rax\n"
     "  syscall\n"
 );
 #else

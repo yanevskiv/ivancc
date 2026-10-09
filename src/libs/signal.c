@@ -32,11 +32,11 @@
 // Install func as the handler of the signal sig.
 void (*signal(int sig, void (*func)(int)))(int)
 {
-    return __libc_impl_signal_signal(sig, func);
+    return _Libc_Impl_Signal_signal(sig, func);
 }
 
 // Send the signal sig to the program.
 int raise(int sig)
 {
-    return __libc_impl_signal_raise(sig);
+    return _Libc_Impl_Signal_raise(sig);
 }

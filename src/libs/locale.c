@@ -32,11 +32,11 @@
 // Select the locale for category, or name its locale where locale is null.
 char *setlocale(int category, const char *locale)
 {
-    return __libc_impl_locale_setlocale(category, locale);
+    return _Libc_Impl_Locale_setlocale(category, locale);
 }
 
 // Return the numeric and monetary formatting of the current locale.
 struct lconv *localeconv(void)
 {
-    return __libc_impl_locale_localeconv();
+    return _Libc_Impl_Locale_localeconv();
 }

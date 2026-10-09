@@ -33,89 +33,89 @@
 #include <libc/impl/libc_string.h>
 
 // The names setlocale takes, each with the name it returns, as glibc's do.
-static const struct __libc_impl_locale_name __libc_impl_locale_names[__LIBC_IMPL_LOCALE_NAMES] = {
-    { __LIBC_IMPL_LOCALE_NAME_C, __LIBC_IMPL_LOCALE_NAME_C },
-    { __LIBC_IMPL_LOCALE_NAME_POSIX, __LIBC_IMPL_LOCALE_NAME_C },
-    { __LIBC_IMPL_LOCALE_NAME_UTF8, __LIBC_IMPL_LOCALE_NAME_UTF8 },
-    { __LIBC_IMPL_LOCALE_NAME_UTF8_ALT, __LIBC_IMPL_LOCALE_NAME_UTF8_ALT },
+static const struct _Libc_Impl_Locale_Name _Libc_Impl_Locale_Names[_LIBC_IMPL_LOCALE_NAMES] = {
+    { _LIBC_IMPL_LOCALE_NAME_C, _LIBC_IMPL_LOCALE_NAME_C },
+    { _LIBC_IMPL_LOCALE_NAME_POSIX, _LIBC_IMPL_LOCALE_NAME_C },
+    { _LIBC_IMPL_LOCALE_NAME_UTF8, _LIBC_IMPL_LOCALE_NAME_UTF8 },
+    { _LIBC_IMPL_LOCALE_NAME_UTF8_ALT, _LIBC_IMPL_LOCALE_NAME_UTF8_ALT },
 };
 
 // The names of the categories, as a composite name writes them.
-static const char *const __libc_impl_locale_categories[__LIBC_IMPL_LOCALE_CATEGORIES] = { "LC_CTYPE", "LC_NUMERIC", "LC_TIME", "LC_COLLATE", "LC_MONETARY" };
+static const char *const _Libc_Impl_Locale_Categories[_LIBC_IMPL_LOCALE_CATEGORIES] = { "LC_CTYPE", "LC_NUMERIC", "LC_TIME", "LC_COLLATE", "LC_MONETARY" };
 
 // The formatting of both locales, as glibc's "C.UTF-8" shares "C"'s.
-static const struct lconv __libc_impl_locale_c_lconv = {
+static const struct lconv _Libc_Impl_Locale_CLconv = {
     ".", "", "", "", "", "", "", "", "",
-    __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX,
-    __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX,
+    _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX,
+    _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX,
     "",
-    __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX,
-    __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX, __LIBC_IMPL_LIMITS_CHAR_MAX,
+    _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX,
+    _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX, _LIBC_IMPL_LIMITS_CHAR_MAX,
 };
 
 // The name each category's locale was selected by, all "C" at startup.
-static int __libc_impl_locale_current[__LIBC_IMPL_LOCALE_CATEGORIES];
+static int _Libc_Impl_Locale_Current[_LIBC_IMPL_LOCALE_CATEGORIES];
 
 // The formatting localeconv returns, refilled at each call.
-static struct lconv __libc_impl_locale_lconv;
+static struct lconv _Libc_Impl_Locale_Lconv;
 
 // The composite name setlocale returns.
-static char __libc_impl_locale_composite_name[__LIBC_IMPL_LOCALE_COMPOSITE_SIZE];
+static char _Libc_Impl_Locale_CompositeName[_LIBC_IMPL_LOCALE_COMPOSITE_SIZE];
 
 // Select the locale for category, or name its locale where locale is null.
-char *__libc_impl_locale_setlocale(int category, const char *locale)
+char *_Libc_Impl_Locale_setlocale(int category, const char *locale)
 {
-    int selected[__LIBC_IMPL_LOCALE_CATEGORIES];
+    int selected[_LIBC_IMPL_LOCALE_CATEGORIES];
     int name;
 
-    if (category < 0 || category > __LIBC_IMPL_LOCALE_LC_ALL) {
-        return __LIBC_IMPL_STDDEF_NULL;
+    if (category < 0 || category > _LIBC_IMPL_LOCALE_LC_ALL) {
+        return _LIBC_IMPL_STDDEF_NULL;
     }
-    if (locale == __LIBC_IMPL_STDDEF_NULL) {
-        return __libc_impl_locale_query(category);
+    if (locale == _LIBC_IMPL_STDDEF_NULL) {
+        return _Libc_Impl_Locale_Query(category);
     }
-    if (category == __LIBC_IMPL_LOCALE_LC_ALL && __libc_impl_string_strchr(locale, __LIBC_IMPL_LOCALE_ASSIGN) != __LIBC_IMPL_STDDEF_NULL) {
-        if (! __libc_impl_locale_parse(locale, selected)) {
-            return __LIBC_IMPL_STDDEF_NULL;
+    if (category == _LIBC_IMPL_LOCALE_LC_ALL && _Libc_Impl_String_strchr(locale, _LIBC_IMPL_LOCALE_ASSIGN) != _LIBC_IMPL_STDDEF_NULL) {
+        if (! _Libc_Impl_Locale_Parse(locale, selected)) {
+            return _LIBC_IMPL_STDDEF_NULL;
         }
-        for (int i = 0; i < __LIBC_IMPL_LOCALE_CATEGORIES; i++) {
-            __libc_impl_locale_current[i] = selected[i];
+        for (int i = 0; i < _LIBC_IMPL_LOCALE_CATEGORIES; i++) {
+            _Libc_Impl_Locale_Current[i] = selected[i];
         }
-        return __libc_impl_locale_query(category);
+        return _Libc_Impl_Locale_Query(category);
     }
     if (*locale == '\0') {
-        locale = __LIBC_IMPL_LOCALE_NATIVE;
+        locale = _LIBC_IMPL_LOCALE_NATIVE;
     }
-    name = __libc_impl_locale_find_name(locale, __libc_impl_string_strlen(locale));
+    name = _Libc_Impl_Locale_FindName(locale, _Libc_Impl_String_strlen(locale));
     if (name < 0) {
-        return __LIBC_IMPL_STDDEF_NULL;
+        return _LIBC_IMPL_STDDEF_NULL;
     }
-    for (int i = 0; i < __LIBC_IMPL_LOCALE_CATEGORIES; i++) {
-        if (category == __LIBC_IMPL_LOCALE_LC_ALL || category == i) {
-            __libc_impl_locale_current[i] = name;
+    for (int i = 0; i < _LIBC_IMPL_LOCALE_CATEGORIES; i++) {
+        if (category == _LIBC_IMPL_LOCALE_LC_ALL || category == i) {
+            _Libc_Impl_Locale_Current[i] = name;
         }
     }
-    return __libc_impl_locale_query(category);
+    return _Libc_Impl_Locale_Query(category);
 }
 
 // Return the numeric and monetary formatting of the current locale.
-struct lconv *__libc_impl_locale_localeconv(void)
+struct lconv *_Libc_Impl_Locale_localeconv(void)
 {
-    __libc_impl_locale_lconv = __libc_impl_locale_c_lconv;
-    return &__libc_impl_locale_lconv;
+    _Libc_Impl_Locale_Lconv = _Libc_Impl_Locale_CLconv;
+    return &_Libc_Impl_Locale_Lconv;
 }
 
 // Check whether the len characters of str spell the name known.
-_Bool __libc_impl_locale_is_name(const char *known, const char *str, __libc_impl_stddef_size_t len)
+_Bool _Libc_Impl_Locale_IsName(const char *known, const char *str, _Libc_Impl_Stddef_size_t len)
 {
-    return __libc_impl_string_strlen(known) == len && __libc_impl_string_strncmp(known, str, len) == 0;
+    return _Libc_Impl_String_strlen(known) == len && _Libc_Impl_String_strncmp(known, str, len) == 0;
 }
 
 // Return the index of the locale name the len characters of str spell, or -1.
-int __libc_impl_locale_find_name(const char *str, __libc_impl_stddef_size_t len)
+int _Libc_Impl_Locale_FindName(const char *str, _Libc_Impl_Stddef_size_t len)
 {
-    for (int i = 0; i < __LIBC_IMPL_LOCALE_NAMES; i++) {
-        if (__libc_impl_locale_is_name(__libc_impl_locale_names[i].ln_name, str, len)) {
+    for (int i = 0; i < _LIBC_IMPL_LOCALE_NAMES; i++) {
+        if (_Libc_Impl_Locale_IsName(_Libc_Impl_Locale_Names[i].ln_name, str, len)) {
             return i;
         }
     }
@@ -123,10 +123,10 @@ int __libc_impl_locale_find_name(const char *str, __libc_impl_stddef_size_t len)
 }
 
 // Return the category the len characters of str name, or -1.
-int __libc_impl_locale_find_category(const char *str, __libc_impl_stddef_size_t len)
+int _Libc_Impl_Locale_FindCategory(const char *str, _Libc_Impl_Stddef_size_t len)
 {
-    for (int i = 0; i < __LIBC_IMPL_LOCALE_CATEGORIES; i++) {
-        if (__libc_impl_locale_is_name(__libc_impl_locale_categories[i], str, len)) {
+    for (int i = 0; i < _LIBC_IMPL_LOCALE_CATEGORIES; i++) {
+        if (_Libc_Impl_Locale_IsName(_Libc_Impl_Locale_Categories[i], str, len)) {
             return i;
         }
     }
@@ -134,28 +134,28 @@ int __libc_impl_locale_find_category(const char *str, __libc_impl_stddef_size_t 
 }
 
 // Read the composite name locale into selected, which must name every category.
-_Bool __libc_impl_locale_parse(const char *locale, int *selected)
+_Bool _Libc_Impl_Locale_Parse(const char *locale, int *selected)
 {
     const char *ptr = locale;
 
-    for (int i = 0; i < __LIBC_IMPL_LOCALE_CATEGORIES; i++) {
+    for (int i = 0; i < _LIBC_IMPL_LOCALE_CATEGORIES; i++) {
         selected[i] = -1;
     }
     for (;;) {
-        const char *assign = __libc_impl_string_strchr(ptr, __LIBC_IMPL_LOCALE_ASSIGN);
+        const char *assign = _Libc_Impl_String_strchr(ptr, _LIBC_IMPL_LOCALE_ASSIGN);
         const char *end;
         int category;
         int name;
 
-        if (assign == __LIBC_IMPL_STDDEF_NULL) {
+        if (assign == _LIBC_IMPL_STDDEF_NULL) {
             return 0;
         }
-        end = __libc_impl_string_strchr(assign, __LIBC_IMPL_LOCALE_SEPARATOR);
-        if (end == __LIBC_IMPL_STDDEF_NULL) {
-            end = assign + __libc_impl_string_strlen(assign);
+        end = _Libc_Impl_String_strchr(assign, _LIBC_IMPL_LOCALE_SEPARATOR);
+        if (end == _LIBC_IMPL_STDDEF_NULL) {
+            end = assign + _Libc_Impl_String_strlen(assign);
         }
-        category = __libc_impl_locale_find_category(ptr, (__libc_impl_stddef_size_t) (assign - ptr));
-        name = __libc_impl_locale_find_name(assign + 1, (__libc_impl_stddef_size_t) (end - assign - 1));
+        category = _Libc_Impl_Locale_FindCategory(ptr, (_Libc_Impl_Stddef_size_t) (assign - ptr));
+        name = _Libc_Impl_Locale_FindName(assign + 1, (_Libc_Impl_Stddef_size_t) (end - assign - 1));
         if (category < 0 || name < 0) {
             return 0;
         }
@@ -165,7 +165,7 @@ _Bool __libc_impl_locale_parse(const char *locale, int *selected)
         }
         ptr = end + 1;
     }
-    for (int i = 0; i < __LIBC_IMPL_LOCALE_CATEGORIES; i++) {
+    for (int i = 0; i < _LIBC_IMPL_LOCALE_CATEGORIES; i++) {
         if (selected[i] < 0) {
             return 0;
         }
@@ -174,43 +174,43 @@ _Bool __libc_impl_locale_parse(const char *locale, int *selected)
 }
 
 // Write src into str at len, and return the length after it.
-__libc_impl_stddef_size_t __libc_impl_locale_put_string(char *str, __libc_impl_stddef_size_t len, const char *src)
+_Libc_Impl_Stddef_size_t _Libc_Impl_Locale_PutString(char *str, _Libc_Impl_Stddef_size_t len, const char *src)
 {
-    __libc_impl_stddef_size_t size = __libc_impl_string_strlen(src);
+    _Libc_Impl_Stddef_size_t size = _Libc_Impl_String_strlen(src);
 
-    __libc_impl_string_memcpy(str + len, src, size);
+    _Libc_Impl_String_memcpy(str + len, src, size);
     return len + size;
 }
 
 // Return the composite name of the categories' locales, as glibc writes it.
-char *__libc_impl_locale_composite(void)
+char *_Libc_Impl_Locale_Composite(void)
 {
-    char *str = __libc_impl_locale_composite_name;
-    __libc_impl_stddef_size_t len = 0;
+    char *str = _Libc_Impl_Locale_CompositeName;
+    _Libc_Impl_Stddef_size_t len = 0;
 
-    for (int i = 0; i < __LIBC_IMPL_LOCALE_CATEGORIES; i++) {
+    for (int i = 0; i < _LIBC_IMPL_LOCALE_CATEGORIES; i++) {
         if (i > 0) {
-            str[len++] = __LIBC_IMPL_LOCALE_SEPARATOR;
+            str[len++] = _LIBC_IMPL_LOCALE_SEPARATOR;
         }
-        len = __libc_impl_locale_put_string(str, len, __libc_impl_locale_categories[i]);
-        str[len++] = __LIBC_IMPL_LOCALE_ASSIGN;
-        len = __libc_impl_locale_put_string(str, len, __libc_impl_locale_names[__libc_impl_locale_current[i]].ln_reported);
+        len = _Libc_Impl_Locale_PutString(str, len, _Libc_Impl_Locale_Categories[i]);
+        str[len++] = _LIBC_IMPL_LOCALE_ASSIGN;
+        len = _Libc_Impl_Locale_PutString(str, len, _Libc_Impl_Locale_Names[_Libc_Impl_Locale_Current[i]].ln_reported);
     }
     str[len] = '\0';
     return str;
 }
 
 // Return the name of category's locale, or of all categories' for LC_ALL.
-char *__libc_impl_locale_query(int category)
+char *_Libc_Impl_Locale_Query(int category)
 {
-    const char *first = __libc_impl_locale_names[__libc_impl_locale_current[0]].ln_reported;
+    const char *first = _Libc_Impl_Locale_Names[_Libc_Impl_Locale_Current[0]].ln_reported;
 
-    if (category != __LIBC_IMPL_LOCALE_LC_ALL) {
-        return (char *) __libc_impl_locale_names[__libc_impl_locale_current[category]].ln_reported;
+    if (category != _LIBC_IMPL_LOCALE_LC_ALL) {
+        return (char *) _Libc_Impl_Locale_Names[_Libc_Impl_Locale_Current[category]].ln_reported;
     }
-    for (int i = 1; i < __LIBC_IMPL_LOCALE_CATEGORIES; i++) {
-        if (__libc_impl_string_strcmp(__libc_impl_locale_names[__libc_impl_locale_current[i]].ln_reported, first) != 0) {
-            return __libc_impl_locale_composite();
+    for (int i = 1; i < _LIBC_IMPL_LOCALE_CATEGORIES; i++) {
+        if (_Libc_Impl_String_strcmp(_Libc_Impl_Locale_Names[_Libc_Impl_Locale_Current[i]].ln_reported, first) != 0) {
+            return _Libc_Impl_Locale_Composite();
         }
     }
     return (char *) first;

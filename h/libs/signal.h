@@ -30,18 +30,18 @@
 #include <libc/impl/libc_signal.h>
 
 // (S7.14) Signal handling
-#define SIG_DFL __LIBC_IMPL_SIGNAL_SIG_DFL
-#define SIG_ERR __LIBC_IMPL_SIGNAL_SIG_ERR
-#define SIG_IGN __LIBC_IMPL_SIGNAL_SIG_IGN
+#define SIG_DFL _LIBC_IMPL_SIGNAL_SIG_DFL
+#define SIG_ERR _LIBC_IMPL_SIGNAL_SIG_ERR
+#define SIG_IGN _LIBC_IMPL_SIGNAL_SIG_IGN
 
-#define SIGABRT __LIBC_IMPL_SIGNAL_SIGABRT
-#define SIGFPE  __LIBC_IMPL_SIGNAL_SIGFPE
-#define SIGILL  __LIBC_IMPL_SIGNAL_SIGILL
-#define SIGINT  __LIBC_IMPL_SIGNAL_SIGINT
-#define SIGSEGV __LIBC_IMPL_SIGNAL_SIGSEGV
-#define SIGTERM __LIBC_IMPL_SIGNAL_SIGTERM
+#define SIGABRT _LIBC_IMPL_SIGNAL_SIGABRT
+#define SIGFPE  _LIBC_IMPL_SIGNAL_SIGFPE
+#define SIGILL  _LIBC_IMPL_SIGNAL_SIGILL
+#define SIGINT  _LIBC_IMPL_SIGNAL_SIGINT
+#define SIGSEGV _LIBC_IMPL_SIGNAL_SIGSEGV
+#define SIGTERM _LIBC_IMPL_SIGNAL_SIGTERM
 
-typedef __libc_impl_signal_sig_atomic_t sig_atomic_t;
+typedef _Libc_Impl_Signal_sig_atomic_t sig_atomic_t;
 
 // (S7.14.1) Specify signal handling
 void (*signal(int sig, void (*func)(int)))(int);

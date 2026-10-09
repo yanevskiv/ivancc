@@ -30,14 +30,14 @@
 #include <libc/impl/libc_locale.h>
 
 // (S7.11) Localization
-#define NULL __LIBC_IMPL_STDDEF_NULL
+#define NULL _LIBC_IMPL_STDDEF_NULL
 
-#define LC_ALL      __LIBC_IMPL_LOCALE_LC_ALL
-#define LC_COLLATE  __LIBC_IMPL_LOCALE_LC_COLLATE
-#define LC_CTYPE    __LIBC_IMPL_LOCALE_LC_CTYPE
-#define LC_MONETARY __LIBC_IMPL_LOCALE_LC_MONETARY
-#define LC_NUMERIC  __LIBC_IMPL_LOCALE_LC_NUMERIC
-#define LC_TIME     __LIBC_IMPL_LOCALE_LC_TIME
+#define LC_ALL      _LIBC_IMPL_LOCALE_LC_ALL
+#define LC_COLLATE  _LIBC_IMPL_LOCALE_LC_COLLATE
+#define LC_CTYPE    _LIBC_IMPL_LOCALE_LC_CTYPE
+#define LC_MONETARY _LIBC_IMPL_LOCALE_LC_MONETARY
+#define LC_NUMERIC  _LIBC_IMPL_LOCALE_LC_NUMERIC
+#define LC_TIME     _LIBC_IMPL_LOCALE_LC_TIME
 
 // (S7.11.1) Locale control
 char *setlocale(int category, const char *locale);

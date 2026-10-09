@@ -30,13 +30,13 @@
 #include <stddef.h>
 
 // Check the header against the compiler.
-typedef char __libc_stdint_check_exact[sizeof(int8_t) == 1 && sizeof(int16_t) == 2 && sizeof(int32_t) == 4 && sizeof(int64_t) == 8 ? 1 : -1];
-typedef char __libc_stdint_check_unsigned[(uint8_t) -1 > 0 && (uint16_t) -1 > 0 && (uint32_t) -1 > 0 && (uint64_t) -1 > 0 ? 1 : -1];
-typedef char __libc_stdint_check_signed[(int8_t) -1 < 0 && (int16_t) -1 < 0 && (int32_t) -1 < 0 && (int64_t) -1 < 0 ? 1 : -1];
-typedef char __libc_stdint_check_least[sizeof(int_least8_t) >= 1 && sizeof(int_least16_t) >= 2 && sizeof(int_least32_t) >= 4 && sizeof(int_least64_t) >= 8 ? 1 : -1];
-typedef char __libc_stdint_check_fast[sizeof(int_fast8_t) >= 1 && sizeof(int_fast16_t) >= 2 && sizeof(int_fast32_t) >= 4 && sizeof(int_fast64_t) >= 8 ? 1 : -1];
-typedef char __libc_stdint_check_pointer[sizeof(intptr_t) == sizeof(void *) && sizeof(uintptr_t) == sizeof(void *) ? 1 : -1];
-typedef char __libc_stdint_check_max[sizeof(intmax_t) >= sizeof(long long) && sizeof(uintmax_t) >= sizeof(long long) ? 1 : -1];
-typedef char __libc_stdint_check_limits[INT32_MAX == (int32_t) (~0U >> 1) && UINT64_MAX == (uint64_t) -1 && INT64_MIN == -INT64_MAX - 1 ? 1 : -1];
-typedef char __libc_stdint_check_other[PTRDIFF_MAX == (ptrdiff_t) (~0UL >> 1) && SIZE_MAX == (size_t) -1 && INTPTR_MAX == (intptr_t) (~0UL >> 1) ? 1 : -1];
-typedef char __libc_stdint_check_constants[sizeof(INT64_C(1)) >= 8 && sizeof(UINT64_C(1)) >= 8 && sizeof(INTMAX_C(1)) >= 8 && UINT32_C(1) - 2 > 0 ? 1 : -1];
+typedef char _Libc_Stdint_CheckExact[sizeof(int8_t) == 1 && sizeof(int16_t) == 2 && sizeof(int32_t) == 4 && sizeof(int64_t) == 8 ? 1 : -1];
+typedef char _Libc_Stdint_CheckUnsigned[(uint8_t) -1 > 0 && (uint16_t) -1 > 0 && (uint32_t) -1 > 0 && (uint64_t) -1 > 0 ? 1 : -1];
+typedef char _Libc_Stdint_CheckSigned[(int8_t) -1 < 0 && (int16_t) -1 < 0 && (int32_t) -1 < 0 && (int64_t) -1 < 0 ? 1 : -1];
+typedef char _Libc_Stdint_CheckLeast[sizeof(int_least8_t) >= 1 && sizeof(int_least16_t) >= 2 && sizeof(int_least32_t) >= 4 && sizeof(int_least64_t) >= 8 ? 1 : -1];
+typedef char _Libc_Stdint_CheckFast[sizeof(int_fast8_t) >= 1 && sizeof(int_fast16_t) >= 2 && sizeof(int_fast32_t) >= 4 && sizeof(int_fast64_t) >= 8 ? 1 : -1];
+typedef char _Libc_Stdint_CheckPointer[sizeof(intptr_t) == sizeof(void *) && sizeof(uintptr_t) == sizeof(void *) ? 1 : -1];
+typedef char _Libc_Stdint_CheckMax[sizeof(intmax_t) >= sizeof(long long) && sizeof(uintmax_t) >= sizeof(long long) ? 1 : -1];
+typedef char _Libc_Stdint_CheckLimits[INT32_MAX == (int32_t) (~0U >> 1) && UINT64_MAX == (uint64_t) -1 && INT64_MIN == -INT64_MAX - 1 ? 1 : -1];
+typedef char _Libc_Stdint_CheckOther[PTRDIFF_MAX == (ptrdiff_t) (~0UL >> 1) && SIZE_MAX == (size_t) -1 && INTPTR_MAX == (intptr_t) (~0UL >> 1) ? 1 : -1];
+typedef char _Libc_Stdint_CheckConstants[sizeof(INT64_C(1)) >= 8 && sizeof(UINT64_C(1)) >= 8 && sizeof(INTMAX_C(1)) >= 8 && UINT32_C(1) - 2 > 0 ? 1 : -1];

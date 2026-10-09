@@ -32,83 +32,83 @@
 // Tell whether c is a letter or a digit.
 int isalnum(int c)
 {
-    return __libc_impl_ctype_isalnum(c);
+    return _Libc_Impl_Ctype_isalnum(c);
 }
 
 // Tell whether c is a letter.
 int isalpha(int c)
 {
-    return __libc_impl_ctype_isalpha(c);
+    return _Libc_Impl_Ctype_isalpha(c);
 }
 
 // Tell whether c is a blank.
 int isblank(int c)
 {
-    return __libc_impl_ctype_isblank(c);
+    return _Libc_Impl_Ctype_isblank(c);
 }
 
 // Tell whether c is a control character.
 int iscntrl(int c)
 {
-    return __libc_impl_ctype_iscntrl(c);
+    return _Libc_Impl_Ctype_iscntrl(c);
 }
 
 // Tell whether c is a decimal digit.
 int isdigit(int c)
 {
-    return __libc_impl_ctype_isdigit(c);
+    return _Libc_Impl_Ctype_isdigit(c);
 }
 
 // Tell whether c is a printing character other than space.
 int isgraph(int c)
 {
-    return __libc_impl_ctype_isgraph(c);
+    return _Libc_Impl_Ctype_isgraph(c);
 }
 
 // Tell whether c is a lowercase letter.
 int islower(int c)
 {
-    return __libc_impl_ctype_islower(c);
+    return _Libc_Impl_Ctype_islower(c);
 }
 
 // Tell whether c is a printing character.
 int isprint(int c)
 {
-    return __libc_impl_ctype_isprint(c);
+    return _Libc_Impl_Ctype_isprint(c);
 }
 
 // Tell whether c is a punctuation character.
 int ispunct(int c)
 {
-    return __libc_impl_ctype_ispunct(c);
+    return _Libc_Impl_Ctype_ispunct(c);
 }
 
 // Tell whether c is a white-space character.
 int isspace(int c)
 {
-    return __libc_impl_ctype_isspace(c);
+    return _Libc_Impl_Ctype_isspace(c);
 }
 
 // Tell whether c is an uppercase letter.
 int isupper(int c)
 {
-    return __libc_impl_ctype_isupper(c);
+    return _Libc_Impl_Ctype_isupper(c);
 }
 
 // Tell whether c is a hexadecimal digit.
 int isxdigit(int c)
 {
-    return __libc_impl_ctype_isxdigit(c);
+    return _Libc_Impl_Ctype_isxdigit(c);
 }
 
 // Convert an uppercase letter to lowercase.
 int tolower(int c)
 {
-    return __libc_impl_ctype_tolower(c);
+    return _Libc_Impl_Ctype_tolower(c);
 }
 
 // Convert a lowercase letter to uppercase.
 int toupper(int c)
 {
-    return __libc_impl_ctype_toupper(c);
+    return _Libc_Impl_Ctype_toupper(c);
 }

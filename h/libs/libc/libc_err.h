@@ -23,29 +23,29 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_ERR_H__
-#define __LIBC_ERR_H__
+#ifndef _LIBC_ERR_H
+#define _LIBC_ERR_H
 
 // The error number of no error.
-#define __LIBC_ERR_ERRNO_NONE 0
+#define _LIBC_ERR_ERRNO_NONE 0
 
 // strerror's texts for the error numbers.
-#define __LIBC_ERR_ERRNO_SUCCESS "Success"
-#define __LIBC_ERR_ERRNO_EDOM    "Numerical argument out of domain"
-#define __LIBC_ERR_ERRNO_EILSEQ  "Invalid or incomplete multibyte or wide character"
-#define __LIBC_ERR_ERRNO_ERANGE  "Numerical result out of range"
+#define _LIBC_ERR_ERRNO_SUCCESS "Success"
+#define _LIBC_ERR_ERRNO_EDOM    "Numerical argument out of domain"
+#define _LIBC_ERR_ERRNO_EILSEQ  "Invalid or incomplete multibyte or wide character"
+#define _LIBC_ERR_ERRNO_ERANGE  "Numerical result out of range"
 
 // The text strerror puts before an error number it does not know.
-#define __LIBC_ERR_STRING_UNKNOWN "Unknown error "
+#define _LIBC_ERR_STRING_UNKNOWN "Unknown error "
 
 // The text assert's message puts after each of its parts.
-#define __LIBC_ERR_ASSERT_PROGRAM ": "
-#define __LIBC_ERR_ASSERT_FILE    ":"
-#define __LIBC_ERR_ASSERT_LINE    ": "
-#define __LIBC_ERR_ASSERT_FUNC    ": Assertion `"
-#define __LIBC_ERR_ASSERT_EXPR    "' failed.\n"
+#define _LIBC_ERR_ASSERT_PROGRAM ": "
+#define _LIBC_ERR_ASSERT_FILE    ":"
+#define _LIBC_ERR_ASSERT_LINE    ": "
+#define _LIBC_ERR_ASSERT_FUNC    ": Assertion `"
+#define _LIBC_ERR_ASSERT_EXPR    "' failed.\n"
 
 // Error numbers
-const char *__libc_err_errno_text(int errnum);
+const char *_Libc_Err_ErrnoText(int errnum);
 
-#endif // __LIBC_ERR_H__
+#endif // _LIBC_ERR_H

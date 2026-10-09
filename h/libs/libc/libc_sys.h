@@ -23,33 +23,33 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIBC_SYS_H__
-#define __LIBC_SYS_H__
+#ifndef _LIBC_SYS_H
+#define _LIBC_SYS_H
 
 // Linux's clocks.
-#define __LIBC_SYS_CLOCK_REALTIME           0
-#define __LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID 2
+#define _LIBC_SYS_CLOCK_REALTIME           0
+#define _LIBC_SYS_CLOCK_PROCESS_CPUTIME_ID 2
 
 // Linux's error numbers C99 does not name.
-#define __LIBC_SYS_EINVAL    22
-#define __LIBC_SYS_EOVERFLOW 75
+#define _LIBC_SYS_EINVAL    22
+#define _LIBC_SYS_EOVERFLOW 75
 
 // Linux's first and last signals.
-#define __LIBC_SYS_SIGNAL_FIRST 1
-#define __LIBC_SYS_SIGNAL_LAST  64
+#define _LIBC_SYS_SIGNAL_FIRST 1
+#define _LIBC_SYS_SIGNAL_LAST  64
 
 // Linux's sigaction flags.
-#define __LIBC_SYS_SA_RESTORER 0x04000000
-#define __LIBC_SYS_SA_RESTART  0x10000000
+#define _LIBC_SYS_SA_RESTORER 0x04000000
+#define _LIBC_SYS_SA_RESTART  0x10000000
 
 // Linux's struct timespec.
-struct __libc_sys_timespec {
+struct _Libc_Sys_timespec {
     long tv_sec;
     long tv_nsec;
 };
 
 // Linux's struct sigaction.
-struct __libc_sys_sigaction {
+struct _Libc_Sys_sigaction {
     void (*sa_handler)(int);
     unsigned long sa_flags;
     void (*sa_restorer)(void);
@@ -57,15 +57,15 @@ struct __libc_sys_sigaction {
 };
 
 // System calls
-long __libc_sys_syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
-long __libc_sys_write(int fd, const void *buf, unsigned long len);
-long __libc_sys_rt_sigaction(int sig, const struct __libc_sys_sigaction *act, struct __libc_sys_sigaction *oact);
-int __libc_sys_getpid(void);
-void __libc_sys_exit(int status);
-long __libc_sys_kill(int pid, int sig);
-long __libc_sys_clock_gettime(int clock, struct __libc_sys_timespec *spec);
+long _Libc_Sys_syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+long _Libc_Sys_write(int fd, const void *buf, unsigned long len);
+long _Libc_Sys_rt_sigaction(int sig, const struct _Libc_Sys_sigaction *act, struct _Libc_Sys_sigaction *oact);
+int _Libc_Sys_getpid(void);
+void _Libc_Sys_exit(int status);
+long _Libc_Sys_kill(int pid, int sig);
+long _Libc_Sys_clock_gettime(int clock, struct _Libc_Sys_timespec *spec);
 
 // Signal handlers
-void __libc_sys_restore_rt(void);
+void _Libc_Sys_restore_rt(void);
 
-#endif // __LIBC_SYS_H__
+#endif // _LIBC_SYS_H

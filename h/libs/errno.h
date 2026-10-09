@@ -30,8 +30,8 @@
 #include <libc/impl/libc_errno.h>
 
 // (S7.5) Errors
-#define EDOM __LIBC_IMPL_ERRNO_EDOM
-#define EILSEQ __LIBC_IMPL_ERRNO_EILSEQ
-#define ERANGE __LIBC_IMPL_ERRNO_ERANGE
+#define EDOM _LIBC_IMPL_ERRNO_EDOM
+#define EILSEQ _LIBC_IMPL_ERRNO_EILSEQ
+#define ERANGE _LIBC_IMPL_ERRNO_ERANGE
 
 #endif // __ERRNO_H__

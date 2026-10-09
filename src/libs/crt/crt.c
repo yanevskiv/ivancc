@@ -30,10 +30,10 @@
 #include <libc/libc_sys.h>
 
 // The ivanemu machine's halt register.
-#define __CRT_IVANEMU_HALT "0x10000008"
+#define _CRT_IVANEMU_HALT "0x10000008"
 
 // The program's name for diagnostics, or a null pointer where it is unknown.
-char *__crt_argv0;
+char *_Crt_Argv0;
 
 #ifdef __x86_64__
 #if defined(__linux__)
@@ -46,7 +46,7 @@ __asm__(
     "  mov (%rsp), %rdi\n"
     "  lea 8(%rsp), %rsi\n"
     "  mov (%rsi), %rax\n"
-    "  lea __crt_argv0(%rip), %rcx\n"
+    "  lea _Crt_Argv0(%rip), %rcx\n"
     "  mov %rax, (%rcx)\n"
     "  mov %rdi, %rdx\n"
     "  mov $3, %rcx\n"
@@ -55,7 +55,7 @@ __asm__(
     "  add $8, %rdx\n"
     "  call main\n"
     "  mov %rax, %rdi\n"
-    "  call __libc_sys_exit\n"
+    "  call _Libc_Sys_exit\n"
 );
 #elif defined(__ivanemu__)
 // Call main, then halt the machine with its status.
@@ -64,7 +64,7 @@ __asm__(
     "  .globl _start\n"
     "_start:\n"
     "  call main\n"
-    "  mov $" __CRT_IVANEMU_HALT ", %rdi\n"
+    "  mov $" _CRT_IVANEMU_HALT ", %rdi\n"
     "  mov %al, (%rdi)\n"
     ".Lhang:\n"
     "  jmp .Lhang\n"
