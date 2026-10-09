@@ -1,5 +1,5 @@
 /*
- * C source file for diagnostics.
+ * C header file for nonlocal jumps.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -23,8 +23,16 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-// Module header.
-#include <assert.h>
+#ifndef __LIBC_SETJMP_H__
+#define __LIBC_SETJMP_H__
 
-// The implementation.
-#include <ivancc/impl/libc_assert.h>
+// The environment the jumps save and restore.
+#include <setjmp.h>
+
+// (S7.13.1) Save calling environment
+int __libc_setjmp_setjmp(jmp_buf env);
+
+// (S7.13.2) Restore calling environment
+void __libc_setjmp_longjmp(jmp_buf env, int val);
+
+#endif // __LIBC_SETJMP_H__

@@ -1,5 +1,5 @@
 /*
- * C source file for diagnostics.
+ * C header file for diagnostics.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
@@ -23,8 +23,30 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-// Module header.
-#include <assert.h>
+#ifndef __LIBC_ASSERT_H__
+#define __LIBC_ASSERT_H__
 
-// The implementation.
-#include <ivancc/impl/libc_assert.h>
+// The descriptor of standard error.
+#define __LIBC_ASSERT_STDERR 2
+
+// Linux's SIGABRT, which ends a program whose assertion fails.
+#define __LIBC_ASSERT_SIGABRT 6
+
+// The status the program exits with if SIGABRT did not end it.
+#define __LIBC_ASSERT_STATUS 127
+
+// The base a line number is written in.
+#define __LIBC_ASSERT_LINE_BASE 10
+
+// The size of a line number's text, UINT_MAX's included.
+#define __LIBC_ASSERT_LINE_SIZE 16
+
+// (S7.2.1.1) The assert macro
+void __libc_assert_fail(const char *expr, const char *file, unsigned int line, const char *func);
+
+// Report
+void __libc_assert_write(const char *str);
+void __libc_assert_write_line(unsigned int line);
+const char *__libc_assert_program(void);
+
+#endif // __LIBC_ASSERT_H__
