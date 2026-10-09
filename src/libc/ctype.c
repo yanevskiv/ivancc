@@ -26,92 +26,89 @@
 // Module header.
 #include <ctype.h>
 
+// The implementation.
+#include <ivancc/impl/libc_ctype.h>
+
 // Tell whether c is a letter or a digit.
 int isalnum(int c)
 {
-    return isalpha(c) || isdigit(c);
+    return __libc_ctype_isalnum(c);
 }
 
 // Tell whether c is a letter.
 int isalpha(int c)
 {
-    return isupper(c) || islower(c);
+    return __libc_ctype_isalpha(c);
 }
 
 // Tell whether c is a blank.
 int isblank(int c)
 {
-    return c == ' ' || c == '\t';
+    return __libc_ctype_isblank(c);
 }
 
 // Tell whether c is a control character.
 int iscntrl(int c)
 {
-    return (c >= 0 && c < ' ') || c == 0x7F;
+    return __libc_ctype_iscntrl(c);
 }
 
 // Tell whether c is a decimal digit.
 int isdigit(int c)
 {
-    return c >= '0' && c <= '9';
+    return __libc_ctype_isdigit(c);
 }
 
 // Tell whether c is a printing character other than space.
 int isgraph(int c)
 {
-    return c > ' ' && c < 0x7F;
+    return __libc_ctype_isgraph(c);
 }
 
 // Tell whether c is a lowercase letter.
 int islower(int c)
 {
-    return c >= 'a' && c <= 'z';
+    return __libc_ctype_islower(c);
 }
 
 // Tell whether c is a printing character.
 int isprint(int c)
 {
-    return c >= ' ' && c < 0x7F;
+    return __libc_ctype_isprint(c);
 }
 
 // Tell whether c is a punctuation character.
 int ispunct(int c)
 {
-    return isgraph(c) && ! isalnum(c);
+    return __libc_ctype_ispunct(c);
 }
 
 // Tell whether c is a white-space character.
 int isspace(int c)
 {
-    return c == ' ' || (c >= '\t' && c <= '\r');
+    return __libc_ctype_isspace(c);
 }
 
 // Tell whether c is an uppercase letter.
 int isupper(int c)
 {
-    return c >= 'A' && c <= 'Z';
+    return __libc_ctype_isupper(c);
 }
 
 // Tell whether c is a hexadecimal digit.
 int isxdigit(int c)
 {
-    return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    return __libc_ctype_isxdigit(c);
 }
 
 // Convert an uppercase letter to lowercase.
 int tolower(int c)
 {
-    if (isupper(c)) {
-        return c - 'A' + 'a';
-    }
-    return c;
+    return __libc_ctype_tolower(c);
 }
 
 // Convert a lowercase letter to uppercase.
 int toupper(int c)
 {
-    if (islower(c)) {
-        return c - 'a' + 'A';
-    }
-    return c;
+    return __libc_ctype_toupper(c);
 }

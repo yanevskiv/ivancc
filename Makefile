@@ -52,7 +52,7 @@ LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/util/object/lib.o $(OUT)/util/object/l
 LIBC_HEADERS := $(shell find h/libc -name '*.h')
 LIBC_FLAGS   := -I h/libc
 SYS_HEADERS  := $(patsubst h/libc/%,$(BUILD)/include/%,$(LIBC_HEADERS))
-LIBC_SRCS    := $(wildcard src/libc/*.c src/libc/ivancc/*.c)
+LIBC_SRCS    := $(wildcard src/libc/*.c src/libc/ivancc/*.c src/libc/ivancc/impl/*.c)
 LIBC_OBJS    := $(patsubst src/libc/%.c,$(OUT)/libc/linux/%.o,$(LIBC_SRCS))
 
 TEST_TOOL    := tests/run_test
