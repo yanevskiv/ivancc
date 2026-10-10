@@ -92,13 +92,13 @@ stage_run_ok()
     [ -s "${TMP}/expected_status" ] || [ -s "${TMP}/expected_output" ] || [ -s "${TMP}/expected_error" ] || [ -s "${TMP}/expected_emulator_error" ]
 }
 
-# Run the program with the test's arguments in a known environment, and record its status, output and error.
+# Run the program with the test's arguments and input in a known environment, and record its status, output and error.
 # Keep sh's own report of a death by signal out of all three.
 stage_run()
 {
     set -f
     sh -c 'err=$1; shift; exec "$@" 2>"$err"' sh "${RUN}/error" \
-        timeout "$TIMEOUT" env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") >"${RUN}/output" 2>/dev/null
+        timeout "$TIMEOUT" env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") <"${TMP}/input" >"${RUN}/output" 2>/dev/null
     echo $? > "${RUN}/status"
     set +f
 }
@@ -155,6 +155,15 @@ pipeline_ivanemu()
     stage_run "${BIN}/ivanemu" "${RUN}/a.out"
 }
 
+# Remove the files the test's `// (Test) Cleanup:` names, which a run may leave.
+cleanup()
+{
+    [ -f "${TMP}/cleanup" ] || return 0
+    set -f
+    rm -f -- $(cat "${TMP}/cleanup")
+    set +f
+}
+
 # Read the test's expectations, and enter its directory.
 setup()
 {
@@ -165,7 +174,7 @@ setup()
     done
 
     TMP=$(mktemp -d) || error "cannot create a temporary directory"
-    trap 'rm -rf "$TMP"' EXIT INT TERM
+    trap 'cleanup; rm -rf "$TMP"' EXIT INT TERM
 
     get_line "${SOURCE}" '(Test) Compiler flags' > "${TMP}/compiler_flags"
     get_line "${SOURCE}" '(Test) Compiler status' > "${TMP}/expected_compiler_status"
@@ -177,10 +186,22 @@ setup()
     get_text "${SOURCE}" '(Test) Error' > "${TMP}/expected_error"
     get_line "${SOURCE}" '(Test) Emulator error' > "${TMP}/expected_emulator_error"
     get_line "${SOURCE}" '(Test) Arguments' > "${TMP}/arguments"
+    get_text "${SOURCE}" '(Test) Input' > "${TMP}/input"
 
     NAME="$(basename -- "$SOURCE")"
     cd "$(dirname -- "$SOURCE")" || error "cannot enter the directory of $SOURCE"
     ulimit -c 0 || error "cannot turn off core dumps"
+
+    : > "${TMP}/cleanup"
+    set -f
+    for FILE in $(get_line "$NAME" '(Test) Cleanup'); do
+        case "$FILE" in
+            */*) fail "Cleanup expects a file in the test's directory, got '%s'" "$FILE" ;;
+            "${NAME%.c}"*.tmp) echo "$FILE" >> "${TMP}/cleanup" ;;
+            *) fail "Cleanup expects a file named %s*.tmp, got '%s'" "${NAME%.c}" "$FILE" ;;
+        esac
+    done
+    set +f
 }
 
 # Fail a test that declares no expectation.
@@ -324,6 +345,7 @@ run_pipelines()
         : > "${RUN}/status"
         : > "${RUN}/output"
         : > "${RUN}/error"
+        cleanup
         "pipeline_${PIPELINE}"
         test_pipeline
     done

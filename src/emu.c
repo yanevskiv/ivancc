@@ -306,6 +306,63 @@ int32_t Emu_Linux_NextSignal(const Emu_x86_64_Linux_Guest *guest)
     return next;
 }
 
+// Return a host call's result as a syscall returns it, its errno negated.
+uint64_t Emu_Linux_Result(int64_t ret)
+{
+    return ret < 0 ? -(uint64_t) errno : (uint64_t) ret;
+}
+
+// Point path at the program's string at addr as Linux's getname takes it.
+uint64_t Emu_Linux_Path(const Emu_x86_64_Linux_Guest *guest, uint64_t addr, const char **path)
+{
+    uint64_t avail = 0;
+    const uint8_t *mem = Load_Span(guest->eg_img, addr, &avail);
+    size_t span = avail < EMU_LINUX_PATH_MAX ? (size_t) avail : EMU_LINUX_PATH_MAX;
+
+    if (! mem) {
+        return -(uint64_t) EMU_LINUX_ERRNO_FAULT;
+    }
+    if (! memchr(mem, 0, span)) {
+        return -(uint64_t) (span < EMU_LINUX_PATH_MAX ? EMU_LINUX_ERRNO_FAULT : EMU_LINUX_ERRNO_NAMETOOLONG);
+    }
+    *path = (const char *) mem;
+    return 0;
+}
+
+// Read from the host's descriptor into the program's buffer at buf.
+uint64_t Emu_Linux_Read(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint64_t buf, uint64_t len)
+{
+    uint8_t *mem = Load_At(guest->eg_img, buf, len);
+
+    if (! mem && len != 0) {
+        return -(uint64_t) EMU_LINUX_ERRNO_FAULT;
+    }
+    return Emu_Linux_Result(read(fd, mem, (size_t) len));
+}
+
+// Write the program's buffer at buf to the host's descriptor.
+uint64_t Emu_Linux_Write(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint64_t buf, uint64_t len)
+{
+    const uint8_t *mem = Load_At(guest->eg_img, buf, len);
+
+    if (! mem && len != 0) {
+        return -(uint64_t) EMU_LINUX_ERRNO_FAULT;
+    }
+    return Emu_Linux_Result(write(fd, mem, (size_t) len));
+}
+
+// Open the program's path on the host, its flags and mode as they are.
+uint64_t Emu_Linux_Open(Emu_x86_64_Linux_Guest *guest, uint64_t addr, int32_t flags, uint32_t mode)
+{
+    const char *path = NULL;
+    uint64_t err = Emu_Linux_Path(guest, addr, &path);
+
+    if (err != 0) {
+        return err;
+    }
+    return Emu_Linux_Result(open(path, flags, (mode_t) mode));
+}
+
 // Move the break as Linux's brk does, zeroing the pages a shrink gives back.
 uint64_t Emu_Linux_Brk(Emu_x86_64_Linux_Guest *guest, uint64_t addr)
 {
@@ -321,6 +378,66 @@ uint64_t Emu_Linux_Brk(Emu_x86_64_Linux_Guest *guest, uint64_t addr)
     }
     img->li_brk = addr;
     return addr;
+}
+
+// Answer TCGETS from the host's terminal, and fail every other request.
+uint64_t Emu_Linux_Ioctl(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint32_t req, uint64_t arg)
+{
+    uint8_t *mem = Load_At(guest->eg_img, arg, EMU_LINUX_TERMIOS_SIZE);
+    uint8_t termios[EMU_LINUX_TERMIOS_SIZE];
+
+    if (req != EMU_LINUX_IOCTL_TCGETS) {
+        return fcntl(fd, F_GETFD) < 0 ? -(uint64_t) errno : -(uint64_t) EMU_LINUX_ERRNO_NOTTY;
+    }
+    if (ioctl(fd, EMU_LINUX_IOCTL_TCGETS, termios) < 0) {
+        return -(uint64_t) errno;
+    }
+    if (! mem) {
+        return -(uint64_t) EMU_LINUX_ERRNO_FAULT;
+    }
+    memcpy(mem, termios, sizeof(termios));
+    return 0;
+}
+
+// Rename the program's path at from to its path at to, on the host.
+uint64_t Emu_Linux_Rename(Emu_x86_64_Linux_Guest *guest, uint64_t from, uint64_t to)
+{
+    const char *src = NULL;
+    const char *dst = NULL;
+    uint64_t err = Emu_Linux_Path(guest, from, &src);
+
+    if (err != 0) {
+        return err;
+    }
+    err = Emu_Linux_Path(guest, to, &dst);
+    if (err != 0) {
+        return err;
+    }
+    return Emu_Linux_Result(rename(src, dst));
+}
+
+// Remove the program's empty directory at addr from the host.
+uint64_t Emu_Linux_Rmdir(Emu_x86_64_Linux_Guest *guest, uint64_t addr)
+{
+    const char *path = NULL;
+    uint64_t err = Emu_Linux_Path(guest, addr, &path);
+
+    if (err != 0) {
+        return err;
+    }
+    return Emu_Linux_Result(rmdir(path));
+}
+
+// Remove the program's file at addr from the host.
+uint64_t Emu_Linux_Unlink(Emu_x86_64_Linux_Guest *guest, uint64_t addr)
+{
+    const char *path = NULL;
+    uint64_t err = Emu_Linux_Path(guest, addr, &path);
+
+    if (err != 0) {
+        return err;
+    }
+    return Emu_Linux_Result(unlink(path));
 }
 
 // Read the host's clock into the program's struct timespec at addr.
@@ -653,17 +770,33 @@ void Emu_x86_64_Linux_Syscall(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *c
 {
     uint64_t *rax = &cpu->cs_reg[CPU_X86_64_REG_RAX];
     switch (*rax) {
-        case EMU_X86_64_LINUX_SYSCALL_WRITE: {
-            uint64_t fd = cpu->cs_reg[CPU_X86_64_REG_RDI];
+        case EMU_X86_64_LINUX_SYSCALL_READ: {
+            int32_t fd = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
             uint64_t buf = cpu->cs_reg[CPU_X86_64_REG_RSI];
             uint64_t len = cpu->cs_reg[CPU_X86_64_REG_RDX];
-            const uint8_t *p = Load_At(guest->eg_img, buf, len);
-            if (! p && len) {
-                *rax = -(uint64_t) EMU_LINUX_ERRNO_FAULT;
-            } else {
-                ssize_t n = write((int) fd, p, (size_t) len);
-                *rax = n < 0 ? -(uint64_t) errno : (uint64_t) n;
-            }
+            *rax = Emu_Linux_Read(guest, fd, buf, len);
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_WRITE: {
+            int32_t fd = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
+            uint64_t buf = cpu->cs_reg[CPU_X86_64_REG_RSI];
+            uint64_t len = cpu->cs_reg[CPU_X86_64_REG_RDX];
+            *rax = Emu_Linux_Write(guest, fd, buf, len);
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_OPEN: {
+            uint64_t addr = cpu->cs_reg[CPU_X86_64_REG_RDI];
+            int32_t flags = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RSI];
+            uint32_t mode = (uint32_t) cpu->cs_reg[CPU_X86_64_REG_RDX];
+            *rax = Emu_Linux_Open(guest, addr, flags, mode);
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_CLOSE: {
+            int32_t fd = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
+            *rax = Emu_Linux_Result(close(fd));
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_LSEEK: {
+            int32_t fd = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
+            int64_t off = (int64_t) cpu->cs_reg[CPU_X86_64_REG_RSI];
+            int32_t whence = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDX];
+            *rax = Emu_Linux_Result(lseek(fd, (off_t) off, whence));
         } break;
         case EMU_X86_64_LINUX_SYSCALL_BRK: {
             *rax = Emu_Linux_Brk(guest, cpu->cs_reg[CPU_X86_64_REG_RDI]);
@@ -685,6 +818,17 @@ void Emu_x86_64_Linux_Syscall(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *c
         case EMU_X86_64_LINUX_SYSCALL_RT_SIGRETURN: {
             *rax = Emu_x86_64_Linux_SigReturn(guest, cpu);
         } break;
+        case EMU_X86_64_LINUX_SYSCALL_IOCTL: {
+            int32_t fd = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
+            uint32_t req = (uint32_t) cpu->cs_reg[CPU_X86_64_REG_RSI];
+            uint64_t arg = cpu->cs_reg[CPU_X86_64_REG_RDX];
+            *rax = Emu_Linux_Ioctl(guest, fd, req, arg);
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_DUP2: {
+            int32_t old = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
+            int32_t new = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RSI];
+            *rax = Emu_Linux_Result(dup2(old, new));
+        } break;
         case EMU_X86_64_LINUX_SYSCALL_GETPID: {
             *rax = (uint64_t) getpid();
         } break;
@@ -697,6 +841,17 @@ void Emu_x86_64_Linux_Syscall(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *c
             int32_t pid = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
             int32_t sig = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RSI];
             *rax = Emu_Linux_Kill(guest, pid, sig);
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_RENAME: {
+            uint64_t to = cpu->cs_reg[CPU_X86_64_REG_RSI];
+            uint64_t from = cpu->cs_reg[CPU_X86_64_REG_RDI];
+            *rax = Emu_Linux_Rename(guest, from, to);
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_RMDIR: {
+            *rax = Emu_Linux_Rmdir(guest, cpu->cs_reg[CPU_X86_64_REG_RDI]);
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_UNLINK: {
+            *rax = Emu_Linux_Unlink(guest, cpu->cs_reg[CPU_X86_64_REG_RDI]);
         } break;
         case EMU_X86_64_LINUX_SYSCALL_CLOCK_GETTIME: {
             int32_t clock = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];

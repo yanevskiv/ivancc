@@ -22,11 +22,13 @@
 
 // Standard headers.
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <time.h>
 #include <unistd.h>
@@ -68,9 +70,23 @@
 #define EMU_LINUX_TIMESPEC_SIZE     16
 
 // Linux errno values a failed syscall returns negated in %rax.
-#define EMU_LINUX_ERRNO_FAULT 14
-#define EMU_LINUX_ERRNO_INVAL 22
-#define EMU_LINUX_ERRNO_NOSYS 38
+#define EMU_LINUX_ERRNO_FAULT       14
+#define EMU_LINUX_ERRNO_INVAL       22
+#define EMU_LINUX_ERRNO_NOTTY       25
+#define EMU_LINUX_ERRNO_NAMETOOLONG 36
+#define EMU_LINUX_ERRNO_NOSYS       38
+
+// The bytes of the longest path Linux takes, its NUL included.
+#define EMU_LINUX_PATH_MAX 4096
+
+// The places lseek measures an offset from.
+#define EMU_LINUX_SEEK_SET 0
+#define EMU_LINUX_SEEK_CUR 1
+#define EMU_LINUX_SEEK_END 2
+
+// The one ioctl the emulator answers, and the struct termios it fills.
+#define EMU_LINUX_IOCTL_TCGETS 0x5401
+#define EMU_LINUX_TERMIOS_SIZE 36
 
 // The signal numbers kill checks its argument against.
 #define EMU_LINUX_SIGNAL_NONE   0
@@ -132,14 +148,23 @@
 #define EMU_X86_64_FSW_TOP_SHIFT 11
 
 // The x86_64 Linux syscall numbers the emulator answers.
+#define EMU_X86_64_LINUX_SYSCALL_READ           0
 #define EMU_X86_64_LINUX_SYSCALL_WRITE          1
+#define EMU_X86_64_LINUX_SYSCALL_OPEN           2
+#define EMU_X86_64_LINUX_SYSCALL_CLOSE          3
+#define EMU_X86_64_LINUX_SYSCALL_LSEEK          8
 #define EMU_X86_64_LINUX_SYSCALL_BRK            12
 #define EMU_X86_64_LINUX_SYSCALL_RT_SIGACTION   13
 #define EMU_X86_64_LINUX_SYSCALL_RT_SIGPROCMASK 14
 #define EMU_X86_64_LINUX_SYSCALL_RT_SIGRETURN   15
+#define EMU_X86_64_LINUX_SYSCALL_IOCTL          16
+#define EMU_X86_64_LINUX_SYSCALL_DUP2           33
 #define EMU_X86_64_LINUX_SYSCALL_GETPID         39
 #define EMU_X86_64_LINUX_SYSCALL_EXIT           60
 #define EMU_X86_64_LINUX_SYSCALL_KILL           62
+#define EMU_X86_64_LINUX_SYSCALL_RENAME         82
+#define EMU_X86_64_LINUX_SYSCALL_RMDIR          84
+#define EMU_X86_64_LINUX_SYSCALL_UNLINK         87
 #define EMU_X86_64_LINUX_SYSCALL_CLOCK_GETTIME  228
 #define EMU_X86_64_LINUX_SYSCALL_EXIT_GROUP     231
 
@@ -196,6 +221,43 @@
 // The alignments of a frame and of its fpstate.
 #define EMU_X86_64_LINUX_FRAME_ALIGN         16
 #define EMU_X86_64_LINUX_FRAME_FPSTATE_ALIGN 64
+
+// The open flags x86_64 Linux takes, which aarch64 Linux numbers otherwise.
+#define EMU_X86_64_LINUX_O_RDONLY    00
+#define EMU_X86_64_LINUX_O_WRONLY    01
+#define EMU_X86_64_LINUX_O_RDWR      02
+#define EMU_X86_64_LINUX_O_CREAT     0100
+#define EMU_X86_64_LINUX_O_EXCL      0200
+#define EMU_X86_64_LINUX_O_NOCTTY    0400
+#define EMU_X86_64_LINUX_O_TRUNC     01000
+#define EMU_X86_64_LINUX_O_APPEND    02000
+#define EMU_X86_64_LINUX_O_NONBLOCK  04000
+#define EMU_X86_64_LINUX_O_DIRECTORY 0200000
+#define EMU_X86_64_LINUX_O_NOFOLLOW  0400000
+#define EMU_X86_64_LINUX_O_CLOEXEC   02000000
+
+// The values the emulator hands the host as they are, which it must share.
+_Static_assert(EFAULT == EMU_LINUX_ERRNO_FAULT, "the host's EFAULT is not Linux's");
+_Static_assert(EINVAL == EMU_LINUX_ERRNO_INVAL, "the host's EINVAL is not Linux's");
+_Static_assert(ENOTTY == EMU_LINUX_ERRNO_NOTTY, "the host's ENOTTY is not Linux's");
+_Static_assert(ENAMETOOLONG == EMU_LINUX_ERRNO_NAMETOOLONG, "the host's ENAMETOOLONG is not Linux's");
+_Static_assert(ENOSYS == EMU_LINUX_ERRNO_NOSYS, "the host's ENOSYS is not Linux's");
+_Static_assert(SEEK_SET == EMU_LINUX_SEEK_SET, "the host's SEEK_SET is not Linux's");
+_Static_assert(SEEK_CUR == EMU_LINUX_SEEK_CUR, "the host's SEEK_CUR is not Linux's");
+_Static_assert(SEEK_END == EMU_LINUX_SEEK_END, "the host's SEEK_END is not Linux's");
+_Static_assert(TCGETS == EMU_LINUX_IOCTL_TCGETS, "the host's TCGETS is not Linux's");
+_Static_assert(O_RDONLY == EMU_X86_64_LINUX_O_RDONLY, "the host's O_RDONLY is not x86_64 Linux's");
+_Static_assert(O_WRONLY == EMU_X86_64_LINUX_O_WRONLY, "the host's O_WRONLY is not x86_64 Linux's");
+_Static_assert(O_RDWR == EMU_X86_64_LINUX_O_RDWR, "the host's O_RDWR is not x86_64 Linux's");
+_Static_assert(O_CREAT == EMU_X86_64_LINUX_O_CREAT, "the host's O_CREAT is not x86_64 Linux's");
+_Static_assert(O_EXCL == EMU_X86_64_LINUX_O_EXCL, "the host's O_EXCL is not x86_64 Linux's");
+_Static_assert(O_NOCTTY == EMU_X86_64_LINUX_O_NOCTTY, "the host's O_NOCTTY is not x86_64 Linux's");
+_Static_assert(O_TRUNC == EMU_X86_64_LINUX_O_TRUNC, "the host's O_TRUNC is not x86_64 Linux's");
+_Static_assert(O_APPEND == EMU_X86_64_LINUX_O_APPEND, "the host's O_APPEND is not x86_64 Linux's");
+_Static_assert(O_NONBLOCK == EMU_X86_64_LINUX_O_NONBLOCK, "the host's O_NONBLOCK is not x86_64 Linux's");
+_Static_assert(O_DIRECTORY == EMU_X86_64_LINUX_O_DIRECTORY, "the host's O_DIRECTORY is not x86_64 Linux's");
+_Static_assert(O_NOFOLLOW == EMU_X86_64_LINUX_O_NOFOLLOW, "the host's O_NOFOLLOW is not x86_64 Linux's");
+_Static_assert(O_CLOEXEC == EMU_X86_64_LINUX_O_CLOEXEC, "the host's O_CLOEXEC is not x86_64 Linux's");
 
 // Whether the emulator writes each instruction to stderr before it runs.
 typedef enum Emu_Trace Emu_Trace;
@@ -283,7 +345,16 @@ uint64_t Emu_Linux_SigProcMask(Emu_x86_64_Linux_Guest *guest, int32_t how, uint6
 int32_t  Emu_Linux_NextSignal(const Emu_x86_64_Linux_Guest *guest);
 
 // Linux syscalls
+uint64_t Emu_Linux_Result(int64_t ret);
+uint64_t Emu_Linux_Path(const Emu_x86_64_Linux_Guest *guest, uint64_t addr, const char **path);
+uint64_t Emu_Linux_Read(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint64_t buf, uint64_t len);
+uint64_t Emu_Linux_Write(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint64_t buf, uint64_t len);
+uint64_t Emu_Linux_Open(Emu_x86_64_Linux_Guest *guest, uint64_t addr, int32_t flags, uint32_t mode);
 uint64_t Emu_Linux_Brk(Emu_x86_64_Linux_Guest *guest, uint64_t addr);
+uint64_t Emu_Linux_Ioctl(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint32_t req, uint64_t arg);
+uint64_t Emu_Linux_Rename(Emu_x86_64_Linux_Guest *guest, uint64_t from, uint64_t to);
+uint64_t Emu_Linux_Rmdir(Emu_x86_64_Linux_Guest *guest, uint64_t addr);
+uint64_t Emu_Linux_Unlink(Emu_x86_64_Linux_Guest *guest, uint64_t addr);
 uint64_t Emu_Linux_ClockGettime(Emu_x86_64_Linux_Guest *guest, int32_t clock, uint64_t addr);
 
 // x86_64 inspection
