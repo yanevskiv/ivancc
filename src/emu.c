@@ -416,6 +416,18 @@ uint64_t Emu_Linux_Rename(Emu_x86_64_Linux_Guest *guest, uint64_t from, uint64_t
     return Emu_Linux_Result(rename(src, dst));
 }
 
+// Make the program's directory at addr on the host, its mode as it is.
+uint64_t Emu_Linux_Mkdir(Emu_x86_64_Linux_Guest *guest, uint64_t addr, uint32_t mode)
+{
+    const char *path = NULL;
+    uint64_t err = Emu_Linux_Path(guest, addr, &path);
+
+    if (err != 0) {
+        return err;
+    }
+    return Emu_Linux_Result(mkdir(path, (mode_t) mode));
+}
+
 // Remove the program's empty directory at addr from the host.
 uint64_t Emu_Linux_Rmdir(Emu_x86_64_Linux_Guest *guest, uint64_t addr)
 {
@@ -846,6 +858,11 @@ void Emu_x86_64_Linux_Syscall(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *c
             uint64_t to = cpu->cs_reg[CPU_X86_64_REG_RSI];
             uint64_t from = cpu->cs_reg[CPU_X86_64_REG_RDI];
             *rax = Emu_Linux_Rename(guest, from, to);
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_MKDIR: {
+            uint64_t addr = cpu->cs_reg[CPU_X86_64_REG_RDI];
+            uint32_t mode = (uint32_t) cpu->cs_reg[CPU_X86_64_REG_RSI];
+            *rax = Emu_Linux_Mkdir(guest, addr, mode);
         } break;
         case EMU_X86_64_LINUX_SYSCALL_RMDIR: {
             *rax = Emu_Linux_Rmdir(guest, cpu->cs_reg[CPU_X86_64_REG_RDI]);
