@@ -1,5 +1,4 @@
 // (Test) Status: 0
-// (Test) Cleanup: edge143_lstat.tmp
 // lstat fills the 144 bytes of Linux's struct stat and no more, with a file's type, links and size, a directory's type and a link's own, on the machine and in the emulator.
 
 #define SYS_WRITE  1
@@ -26,7 +25,7 @@
 #define MODE_MASK  0xFFFFFFFFUL
 #define CANARY     0xAAAAAAAAAAAAAAAAUL
 
-#define PATH "edge143_lstat.tmp"
+#define PATH "file"
 #define TEXT "hello"
 #define SIZE 5
 

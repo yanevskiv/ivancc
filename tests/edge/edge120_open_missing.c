@@ -1,5 +1,4 @@
 // (Test) Status: 254
-// (Test) Cleanup: edge120_open_missing.tmp
 // An open of a missing file returns -ENOENT, which the program exits with, on the machine and in the emulator.
 
 #define SYS_OPEN 2
@@ -7,7 +6,7 @@
 
 #define O_RDONLY 00
 
-#define PATH "edge120_open_missing.tmp"
+#define PATH "missing"
 
 long sys(long nr, long a, long b, long c);
 

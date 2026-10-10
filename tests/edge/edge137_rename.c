@@ -1,5 +1,4 @@
 // (Test) Status: 0
-// (Test) Cleanup: edge137_rename.tmp edge137_rename.2.tmp
 // rename moves a file to a second name, and fails a file that is gone, on the machine and in the emulator.
 
 #define SYS_OPEN   2
@@ -15,8 +14,8 @@
 
 #define ENOENT 2
 
-#define FROM "edge137_rename.tmp"
-#define TO   "edge137_rename.2.tmp"
+#define FROM "from"
+#define TO   "to"
 
 long sys(long nr, long a, long b, long c);
 

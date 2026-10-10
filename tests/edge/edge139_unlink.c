@@ -1,5 +1,4 @@
 // (Test) Status: 0
-// (Test) Cleanup: edge139_unlink.tmp
 // unlink removes a file once, and fails it gone, a directory and an unmapped path, on the machine and in the emulator.
 
 #define SYS_OPEN   2
@@ -17,7 +16,7 @@
 
 #define UNMAPPED 8
 
-#define PATH "edge139_unlink.tmp"
+#define PATH "file"
 
 long sys(long nr, long a, long b, long c);
 

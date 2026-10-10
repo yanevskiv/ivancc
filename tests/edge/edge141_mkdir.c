@@ -1,5 +1,4 @@
 // (Test) Status: 0
-// (Test) Cleanup: edge141_mkdir.tmp
 // mkdir makes a directory a file can be made in, and fails it made, a file, a missing parent, a file as parent and an unmapped path, on the machine and in the emulator.
 
 #define SYS_OPEN   2
@@ -21,11 +20,11 @@
 
 #define UNMAPPED 8
 
-#define PATH    "edge141_mkdir.tmp"
-#define INNER   "edge141_mkdir.tmp/inner"
-#define MISSING "edge141_mkdir.2.tmp/inner"
-#define FILE    "edge141_mkdir.c"
-#define UNDER   "edge141_mkdir.c/inner"
+#define PATH    "dir"
+#define INNER   "dir/inner"
+#define MISSING "missing/inner"
+#define NOT_DIR "not_a_dir"
+#define UNDER   "not_a_dir/inner"
 
 long sys(long nr, long a, long b, long c);
 
@@ -39,29 +38,32 @@ __asm__ (".text\n"
 
 int main(void)
 {
-    long fd = 0;
+    long fd = sys(SYS_OPEN, (long) NOT_DIR, O_WRONLY | O_CREAT, MODE);
 
-    if (sys(SYS_MKDIR, (long) PATH, DIR_MODE, 0) != 0) {
+    if (fd < 0 || sys(SYS_CLOSE, fd, 0, 0) != 0) {
         return 1;
+    }
+    if (sys(SYS_MKDIR, (long) PATH, DIR_MODE, 0) != 0) {
+        return 2;
     }
     fd = sys(SYS_OPEN, (long) INNER, O_WRONLY | O_CREAT, MODE);
     if (fd < 0 || sys(SYS_CLOSE, fd, 0, 0) != 0 || sys(SYS_UNLINK, (long) INNER, 0, 0) != 0) {
-        return 2;
-    }
-    if (sys(SYS_MKDIR, (long) PATH, DIR_MODE, 0) != -EEXIST) {
         return 3;
     }
-    if (sys(SYS_MKDIR, (long) FILE, DIR_MODE, 0) != -EEXIST) {
+    if (sys(SYS_MKDIR, (long) PATH, DIR_MODE, 0) != -EEXIST) {
         return 4;
     }
-    if (sys(SYS_MKDIR, (long) MISSING, DIR_MODE, 0) != -ENOENT) {
+    if (sys(SYS_MKDIR, (long) NOT_DIR, DIR_MODE, 0) != -EEXIST) {
         return 5;
     }
-    if (sys(SYS_MKDIR, (long) UNDER, DIR_MODE, 0) != -ENOTDIR) {
+    if (sys(SYS_MKDIR, (long) MISSING, DIR_MODE, 0) != -ENOENT) {
         return 6;
     }
-    if (sys(SYS_MKDIR, UNMAPPED, DIR_MODE, 0) != -EFAULT) {
+    if (sys(SYS_MKDIR, (long) UNDER, DIR_MODE, 0) != -ENOTDIR) {
         return 7;
     }
-    return sys(SYS_RMDIR, (long) PATH, 0, 0) == 0 ? 0 : 8;
+    if (sys(SYS_MKDIR, UNMAPPED, DIR_MODE, 0) != -EFAULT) {
+        return 8;
+    }
+    return sys(SYS_RMDIR, (long) PATH, 0, 0) == 0 ? 0 : 9;
 }

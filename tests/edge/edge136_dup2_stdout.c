@@ -1,7 +1,6 @@
 // (Test) Status: 0
 // (Test) Output:
 // | seen: hidden
-// (Test) Cleanup: edge136_dup2_stdout.tmp
 // dup2 sends standard output to a file and back, on the machine and in the emulator.
 
 #define SYS_READ  0
@@ -20,7 +19,7 @@
 
 #define SAVED 20
 
-#define PATH "edge136_dup2_stdout.tmp"
+#define PATH "file"
 
 long sys(long nr, long a, long b, long c);
 

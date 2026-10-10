@@ -1,5 +1,4 @@
 // (Test) Status: 0
-// (Test) Cleanup: edge138_rename_fault.tmp
 // A rename from or to an unmapped path returns -EFAULT before it looks for the file, on the machine and in the emulator.
 
 #define SYS_RENAME 82
@@ -8,7 +7,7 @@
 
 #define UNMAPPED 8
 
-#define PATH "edge138_rename_fault.tmp"
+#define PATH "missing"
 
 long sys(long nr, long a, long b, long c);
 
