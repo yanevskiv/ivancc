@@ -30,6 +30,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -163,6 +164,7 @@
 #define EMU_X86_64_LINUX_SYSCALL_EXIT           60
 #define EMU_X86_64_LINUX_SYSCALL_KILL           62
 #define EMU_X86_64_LINUX_SYSCALL_RENAME         82
+#define EMU_X86_64_LINUX_SYSCALL_MKDIR          83
 #define EMU_X86_64_LINUX_SYSCALL_RMDIR          84
 #define EMU_X86_64_LINUX_SYSCALL_UNLINK         87
 #define EMU_X86_64_LINUX_SYSCALL_CLOCK_GETTIME  228
@@ -353,6 +355,7 @@ uint64_t Emu_Linux_Open(Emu_x86_64_Linux_Guest *guest, uint64_t addr, int32_t fl
 uint64_t Emu_Linux_Brk(Emu_x86_64_Linux_Guest *guest, uint64_t addr);
 uint64_t Emu_Linux_Ioctl(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint32_t req, uint64_t arg);
 uint64_t Emu_Linux_Rename(Emu_x86_64_Linux_Guest *guest, uint64_t from, uint64_t to);
+uint64_t Emu_Linux_Mkdir(Emu_x86_64_Linux_Guest *guest, uint64_t addr, uint32_t mode);
 uint64_t Emu_Linux_Rmdir(Emu_x86_64_Linux_Guest *guest, uint64_t addr);
 uint64_t Emu_Linux_Unlink(Emu_x86_64_Linux_Guest *guest, uint64_t addr);
 uint64_t Emu_Linux_ClockGettime(Emu_x86_64_Linux_Guest *guest, int32_t clock, uint64_t addr);

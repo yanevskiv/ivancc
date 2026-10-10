@@ -1,8 +1,11 @@
 // (Test) Status: 0
 // (Test) Cleanup: edge140_rmdir.tmp
-// rmdir fails a missing path, a file, the current directory, its parent and an unmapped path, on the machine and in the emulator.
+// rmdir removes an empty directory once, and fails it gone, a file, the current directory, its parent and an unmapped path, on the machine and in the emulator.
 
+#define SYS_MKDIR 83
 #define SYS_RMDIR 84
+
+#define DIR_MODE 0755
 
 #define ENOENT    2
 #define EFAULT    14
@@ -27,20 +30,23 @@ __asm__ (".text\n"
 
 int main(void)
 {
-    if (sys(SYS_RMDIR, (long) PATH, 0, 0) != -ENOENT) {
+    if (sys(SYS_MKDIR, (long) PATH, DIR_MODE, 0) != 0 || sys(SYS_RMDIR, (long) PATH, 0, 0) != 0) {
         return 1;
     }
-    if (sys(SYS_RMDIR, (long) FILE, 0, 0) != -ENOTDIR) {
+    if (sys(SYS_RMDIR, (long) PATH, 0, 0) != -ENOENT) {
         return 2;
     }
-    if (sys(SYS_RMDIR, (long) ".", 0, 0) != -EINVAL) {
+    if (sys(SYS_RMDIR, (long) FILE, 0, 0) != -ENOTDIR) {
         return 3;
     }
-    if (sys(SYS_RMDIR, (long) "..", 0, 0) != -ENOTEMPTY) {
+    if (sys(SYS_RMDIR, (long) ".", 0, 0) != -EINVAL) {
         return 4;
     }
-    if (sys(SYS_RMDIR, UNMAPPED, 0, 0) != -EFAULT) {
+    if (sys(SYS_RMDIR, (long) "..", 0, 0) != -ENOTEMPTY) {
         return 5;
+    }
+    if (sys(SYS_RMDIR, UNMAPPED, 0, 0) != -EFAULT) {
+        return 6;
     }
     return 0;
 }

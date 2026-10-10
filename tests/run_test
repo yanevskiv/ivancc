@@ -155,12 +155,12 @@ pipeline_ivanemu()
     stage_run "${BIN}/ivanemu" "${RUN}/a.out"
 }
 
-# Remove the files the test's `// (Test) Cleanup:` names, which a run may leave.
+# Remove the files and directories the test's `// (Test) Cleanup:` names, which a run may leave.
 cleanup()
 {
     [ -f "${TMP}/cleanup" ] || return 0
     set -f
-    rm -f -- $(cat "${TMP}/cleanup")
+    rm -rf -- $(cat "${TMP}/cleanup")
     set +f
 }
 
