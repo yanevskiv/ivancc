@@ -30,6 +30,9 @@
 #define _TEST_PASSED 0
 #define _TEST_FAILED 1
 
+// The string that is none.
+#define _TEST_NULL ((char *) 0)
+
 // The base a number is written in, and the digits a byte of it may need.
 #define _TEST_NUMBER_BASE   10
 #define _TEST_NUMBER_DIGITS 3

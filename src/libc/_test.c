@@ -29,9 +29,6 @@
 // The report's texts.
 #include <_err.h>
 
-// The null pointer.
-#include <stddef.h>
-
 // The system call that writes the report.
 #include <_sys.h>
 
@@ -122,7 +119,7 @@ void _Test_WriteBytes(const void *obj, unsigned long size)
 // Write the string str as a string literal, or say that it is none.
 void _Test_WriteStr(const char *str)
 {
-    if (str == NULL) {
+    if (str == _TEST_NULL) {
         _Test_Write(_ERR_TEST_NULL);
     } else {
         _Test_WriteBytes(str, _Test_Length(str));
@@ -160,7 +157,7 @@ int _Test_Equal(const char *str1, const char *str2)
 {
     unsigned long k = 0;
 
-    if (str1 == NULL || str2 == NULL) {
+    if (str1 == _TEST_NULL || str2 == _TEST_NULL) {
         return str1 == str2;
     }
     while (str1[k] == str2[k] && str1[k] != '\0') {

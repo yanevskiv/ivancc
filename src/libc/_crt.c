@@ -26,9 +26,6 @@
 // Module header.
 #include <_crt.h>
 
-// The exit main's status goes to.
-#include <stdlib.h>
-
 // The ivanemu machine's halt register.
 #define _CRT_IVANEMU_HALT "0x10000008"
 
