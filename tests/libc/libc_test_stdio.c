@@ -15,13 +15,16 @@
 // | 0123456789abcdefghijklmnopqrstuvwxyz
 // | a block over a refill
 // | end
-// <stdio.h> declares size_t and FILE, NULL, _IOFBF, _IOLBF, _IONBF, BUFSIZ, EOF, FOPEN_MAX, FILENAME_MAX, stderr, stdin and stdout (S7.19.1),
+// <stdio.h> declares size_t, FILE and fpos_t, NULL, _IOFBF, _IOLBF, _IONBF, BUFSIZ, EOF, FOPEN_MAX, FILENAME_MAX, SEEK_CUR, SEEK_END, SEEK_SET, stderr, stdin and stdout (S7.19.1),
 // fclose, fflush, fopen, freopen, setbuf and setvbuf (S7.19.5), fgetc, fgets, fputc, fputs, getc, getchar, gets, putc, putchar, puts and ungetc (S7.19.7),
-// fread and fwrite (S7.19.8), and clearerr, feof and ferror (S7.19.10),
+// fread and fwrite (S7.19.8), fgetpos, fseek, fsetpos, ftell and rewind (S7.19.9), and clearerr, feof and ferror (S7.19.10),
 // a stream's output reaching its file by the time exit has called what atexit registered (S7.20.4.3p4),
 // its end-of-file indicator staying set until clearerr or ungetc clears it (S7.19.7.1p3, S7.19.7.11p3),
 // each of fopen's fifteen modes (S7.19.5.3p3), an update stream writing after a flush or a read to the end of its file (S7.19.5.3p6),
-// FOPEN_MAX streams open at once (S7.19.1p3), and freopen giving a stream another file and clearing its indicators (S7.19.5.4p3).
+// FOPEN_MAX streams open at once (S7.19.1p3), freopen giving a stream another file and clearing its indicators (S7.19.5.4p3),
+// a binary stream's position counted in characters from its file's start (S7.19.9.4p2) and one less after ungetc (S7.19.7.11p5),
+// fseek dropping a pushed-back character and the end-of-file indicator (S7.19.9.2p5), a text stream returning to what ftell gave (S7.19.9.2p4),
+// an update stream reading and writing either side of a positioning call (S7.19.5.3p6), and an append stream writing at its file's end wherever it is positioned (S7.19.5.3p5).
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -76,6 +79,10 @@
 #error "FILENAME_MAX is not defined as positive"
 #endif
 
+#if ! defined(SEEK_CUR) || ! defined(SEEK_END) || ! defined(SEEK_SET) || SEEK_CUR == SEEK_END || SEEK_CUR == SEEK_SET || SEEK_END == SEEK_SET
+#error "SEEK_CUR, SEEK_END and SEEK_SET are not distinct"
+#endif
+
 #if ! defined(stderr) || ! defined(stdin) || ! defined(stdout)
 #error "stderr, stdin and stdout are not macros"
 #endif
@@ -124,6 +131,8 @@ int main(void)
     char line[32];
     size_t size = sizeof(FILE);
     size_t k;
+    fpos_t pos;
+    long at;
     int bad = 0;
 
     streams[0] = stdin;
@@ -286,6 +295,52 @@ int main(void)
     if (freopen("missing", "r", file) != NULL) return 98;
     if (not feof(stdin) or freopen("other", "r", stdin) != stdin or feof(stdin) or ferror(stdin)) return 99;
     if (getchar() != 's' or gets(line) != line or strcmp(line, "econd!") != 0) return 100;
-    if (fclose(stdin) != 0) return 101;
+
+    file = fopen("pos", "w+b");
+    if (file == NULL or ftell(file) != 0 or fwrite(digits, 1, 36, file) != 36 or ftell(file) != 36) return 101;
+    rewind(file);
+    if (ftell(file) != 0 or fgetc(file) != '0' or ftell(file) != 1) return 102;
+    if (fseek(file, 10, SEEK_SET) != 0 or fgetc(file) != 'a' or ftell(file) != 11) return 103;
+    if (fseek(file, 5, SEEK_CUR) != 0 or ftell(file) != 16 or fgetc(file) != 'g') return 104;
+    if (fseek(file, -7, SEEK_CUR) != 0 or ftell(file) != 10 or fgetc(file) != 'a') return 105;
+    if (ungetc('?', file) != '?' or ftell(file) != 10 or fseek(file, 0, SEEK_CUR) != 0 or fgetc(file) != 'a') return 106;
+    if (fread(block, 1, sizeof(block), file) != 25 or not feof(file)) return 107;
+    if (fseek(file, 0, SEEK_CUR) != 0 or feof(file) or ftell(file) != 36) return 108;
+    if (fgetc(file) != EOF or not feof(file)) return 109;
+    rewind(file);
+    if (feof(file) or ferror(file) or fgetc(file) != '0') return 110;
+    if (fseek(file, -1, SEEK_SET) == 0) return 111;
+    if (fseek(file, 10, SEEK_SET) != 0 or fread(block, 1, 2, file) != 2 or memcmp(block, "ab", 2) != 0) return 112;
+    if (fseek(file, 0, SEEK_CUR) != 0 or fwrite("XY", 1, 2, file) != 2 or ftell(file) != 14) return 113;
+    if (fseek(file, -4, SEEK_CUR) != 0 or fread(block, 1, 6, file) != 6 or memcmp(block, "abXYef", 6) != 0) return 114;
+    if (fgetpos(file, &pos) != 0 or fgetc(file) != 'g' or fgetc(file) != 'h') return 115;
+    if (fsetpos(file, &pos) != 0 or fgetc(file) != 'g' or ftell(file) != 17) return 116;
+    if (fclose(file) != 0 or not holds("pos", "0123456789abXYefghijklmnopqrstuvwxyz")) return 117;
+
+    if (not put("pos", "w", "one\ntwo\nthree\n")) return 118;
+    file = fopen("pos", "r+");
+    if (file == NULL or fgets(line, sizeof(line), file) != line or strcmp(line, "one\n") != 0) return 119;
+    at = ftell(file);
+    if (at < 0 or fgets(line, sizeof(line), file) != line or strcmp(line, "two\n") != 0) return 120;
+    if (fgets(line, sizeof(line), file) != line or strcmp(line, "three\n") != 0) return 121;
+    if (fseek(file, at, SEEK_SET) != 0 or fgets(line, sizeof(line), file) != line or strcmp(line, "two\n") != 0) return 122;
+    if (fseek(file, 0, SEEK_END) != 0 or fgetc(file) != EOF or not feof(file)) return 123;
+    if (fseek(file, 0, SEEK_END) != 0 or feof(file) or fputs("four\n", file) < 0) return 124;
+    if (fseek(file, at, SEEK_SET) != 0 or fgets(line, sizeof(line), file) != line or strcmp(line, "two\n") != 0) return 125;
+    if (fclose(file) != 0 or not holds("pos", "one\ntwo\nthree\nfour\n")) return 126;
+
+    if (not put("pos", "w", "abc")) return 127;
+    file = fopen("pos", "a");
+    if (file == NULL or fseek(file, 0, SEEK_SET) != 0 or fputs("def", file) < 0 or fclose(file) != 0) return 128;
+    file = fopen("pos", "a+b");
+    if (file == NULL or fseek(file, 1, SEEK_SET) != 0 or fgetc(file) != 'b') return 129;
+    if (fseek(file, 0, SEEK_SET) != 0 or fputc('g', file) != 'g' or fclose(file) != 0) return 130;
+    if (not holds("pos", "abcdefg")) return 131;
+
+    file = fopen("big", "rb");
+    if (file == NULL or fseek(file, BUFSIZ + 50, SEEK_SET) != 0 or fgetc(file) != (BUFSIZ + 49) % PRIME) return 132;
+    if (ftell(file) != BUFSIZ + 51 or fseek(file, -(long) BUFSIZ, SEEK_CUR) != 0 or fgetc(file) != 50) return 133;
+    if (fseek(file, 3, SEEK_CUR) != 0 or fgetc(file) != 54 or ftell(file) != 56 or fclose(file) != 0) return 134;
+    if (fclose(stdin) != 0) return 135;
     return 0;
 }

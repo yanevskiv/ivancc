@@ -45,6 +45,9 @@
 // The files' calls, the terminal's settings and the standard descriptors.
 #include <_sys.h>
 
+// Check the header's origins against lseek's.
+typedef char _Stdio_CheckSeek[SEEK_SET == _SYS_SEEK_SET && SEEK_CUR == _SYS_SEEK_CUR && SEEK_END == _SYS_SEEK_END ? 1 : -1];
+
 // Standard input, read-only, its buffering picked at its first use.
 FILE _Stdio_Stdin = {
     .sf_fd    = _SYS_STDIN_FILENO,
@@ -310,22 +313,6 @@ char *_Stdio_GetLine(FILE *stream, char *str, size_t max)
     return str;
 }
 
-// Move the stream's file back over what it read ahead, and empty its buffer.
-void _Stdio_Unread(FILE *stream)
-{
-    long ahead = (long) (stream->sf_tail - stream->sf_head);
-
-    if (stream->sf_flags & _STDIO_BACK) {
-        ahead++;
-    }
-    if (ahead > 0) {
-        _Sys_Lseek(stream->sf_fd, -ahead, _SYS_SEEK_CUR);
-    }
-    stream->sf_flags &= ~_STDIO_BACK;
-    stream->sf_head = 0;
-    stream->sf_tail = 0;
-}
-
 // Ready the stream for output, or set its error indicator if it is read-only.
 int _Stdio_ToWrite(FILE *stream)
 {
@@ -336,6 +323,9 @@ int _Stdio_ToWrite(FILE *stream)
     }
     if (stream->sf_state == _STDIO_READING) {
         _Stdio_Unread(stream);
+        stream->sf_flags &= ~_STDIO_BACK;
+        stream->sf_head = 0;
+        stream->sf_tail = 0;
     }
     _Stdio_Setup(stream);
     stream->sf_state = _STDIO_WRITING;
@@ -429,6 +419,50 @@ void _Stdio_FlushLines(void)
     }
 }
 
+// Return how many bytes the stream took from its file and has yet to give out.
+long _Stdio_Ahead(FILE *stream)
+{
+    long ahead = 0;
+
+    if (stream->sf_state == _STDIO_READING) {
+        ahead = (long) (stream->sf_tail - stream->sf_head);
+    }
+    if (stream->sf_flags & _STDIO_BACK) {
+        ahead++;
+    }
+    return ahead;
+}
+
+// Move the stream to offset from the origin whence, and empty its buffer.
+int _Stdio_Seek(FILE *stream, long offset, int whence)
+{
+    long pos;
+
+    if (_Stdio_Flush(stream) != 0) {
+        return EOF;
+    }
+    if (whence == _SYS_SEEK_CUR) {
+        offset -= _Stdio_Ahead(stream);
+    }
+    pos = _Sys_Lseek(stream->sf_fd, offset, whence);
+    if (pos < 0) {
+        errno = (int) -pos;
+        return EOF;
+    }
+    stream->sf_flags &= ~_STDIO_BACK;
+    stream->sf_head = 0;
+    stream->sf_tail = 0;
+    return 0;
+}
+
+// Move the stream's file back over what the stream read ahead.
+void _Stdio_Unread(FILE *stream)
+{
+    if (_Stdio_Ahead(stream) > 0) {
+        _Stdio_Seek(stream, 0, _SYS_SEEK_CUR);
+    }
+}
+
 // Flush the stream, close its file and end the stream.
 int fclose(FILE *stream)
 {
@@ -443,10 +477,14 @@ int fclose(FILE *stream)
     return result;
 }
 
-// Write what waits in the stream's buffer, or in every stream's for NULL.
+// Write what the stream has to write, every stream's for NULL, or unread it.
 int fflush(FILE *stream)
 {
-    return stream == NULL ? _Stdio_FlushAll() : _Stdio_Flush(stream);
+    if (stream == NULL) {
+        return _Stdio_FlushAll();
+    }
+    _Stdio_Unread(stream);
+    return _Stdio_Flush(stream);
 }
 
 // Open the file filename as the mode says, and return a stream for it.
@@ -627,6 +665,61 @@ size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restric
         nmemb = SIZE_MAX / size;
     }
     return _Stdio_Put(stream, ptr, size * nmemb) / size;
+}
+
+// Store the stream's position in pos.
+int fgetpos(FILE *restrict stream, fpos_t *restrict pos)
+{
+    long offset = ftell(stream);
+
+    if (offset < 0) {
+        return EOF;
+    }
+    *pos = offset;
+    return 0;
+}
+
+// Move the stream to offset from the origin whence, and clear its end-of-file.
+int fseek(FILE *stream, long offset, int whence)
+{
+    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END) {
+        errno = _SYS_EINVAL;
+        return EOF;
+    }
+    if (_Stdio_Seek(stream, offset, whence) != 0) {
+        return EOF;
+    }
+    stream->sf_flags &= ~_STDIO_EOF;
+    return 0;
+}
+
+// Move the stream to the position fgetpos stored in pos.
+int fsetpos(FILE *stream, const fpos_t *pos)
+{
+    return fseek(stream, *pos, SEEK_SET);
+}
+
+// Return the stream's position, the bytes from the start of its file.
+long ftell(FILE *stream)
+{
+    long pos;
+
+    if (_Stdio_Flush(stream) != 0) {
+        return EOF;
+    }
+    pos = _Sys_Lseek(stream->sf_fd, 0, _SYS_SEEK_CUR);
+    if (pos < 0) {
+        errno = (int) -pos;
+        return EOF;
+    }
+    return pos - _Stdio_Ahead(stream);
+}
+
+// Move the stream to the start of its file, and clear its indicators.
+void rewind(FILE *stream)
+{
+    fseek(stream, 0, SEEK_SET);
+    stream->sf_flags &= ~_STDIO_ERROR;
 }
 
 // Clear the stream's end-of-file and error indicators.

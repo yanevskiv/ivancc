@@ -62,6 +62,10 @@
 
 #define FILENAME_MAX 4096
 
+#define SEEK_CUR 1
+#define SEEK_END 2
+#define SEEK_SET 0
+
 #define stderr (&_Stdio_Stderr)
 #define stdin  (&_Stdio_Stdin)
 #define stdout (&_Stdio_Stdout)
@@ -70,6 +74,8 @@
 #define __SIZE_T__
 typedef unsigned long size_t;
 #endif
+
+typedef long fpos_t;
 
 // A stream: its descriptor, its buffer, what it may do and the stream after it.
 struct _Stdio_File {
@@ -115,7 +121,6 @@ size_t _Stdio_Get(FILE *stream, void *data, size_t len);
 size_t _Stdio_Take(FILE *stream, unsigned char *data, size_t len);
 size_t _Stdio_Read(FILE *stream, unsigned char *data, size_t len);
 char  *_Stdio_GetLine(FILE *stream, char *str, size_t max);
-void   _Stdio_Unread(FILE *stream);
 
 // Output
 int    _Stdio_ToWrite(FILE *stream);
@@ -124,6 +129,11 @@ int    _Stdio_WriteAll(FILE *stream, const unsigned char *data, size_t len);
 int    _Stdio_Flush(FILE *stream);
 int    _Stdio_FlushAll(void);
 void   _Stdio_FlushLines(void);
+
+// Positioning
+long _Stdio_Ahead(FILE *stream);
+int  _Stdio_Seek(FILE *stream, long offset, int whence);
+void _Stdio_Unread(FILE *stream);
 
 // (S7.19.5) File access functions
 int   fclose(FILE *stream);
@@ -149,6 +159,13 @@ int   ungetc(int ch, FILE *stream);
 // (S7.19.8) Direct input/output functions
 size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
 size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
+
+// (S7.19.9) File positioning functions
+int  fgetpos(FILE *restrict stream, fpos_t *restrict pos);
+int  fseek(FILE *stream, long offset, int whence);
+int  fsetpos(FILE *stream, const fpos_t *pos);
+long ftell(FILE *stream);
+void rewind(FILE *stream);
 
 // (S7.19.10) Error-handling functions
 void clearerr(FILE *stream);

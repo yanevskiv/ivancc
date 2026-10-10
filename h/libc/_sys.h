@@ -44,7 +44,9 @@
 #define _SYS_DEFFILEMODE 0666
 
 // Linux's lseek origins.
+#define _SYS_SEEK_SET 0
 #define _SYS_SEEK_CUR 1
+#define _SYS_SEEK_END 2
 
 // Linux's ioctl that reads a terminal's settings, and its control characters.
 #define _SYS_TCGETS 0x5401
