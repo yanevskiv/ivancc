@@ -363,6 +363,27 @@ uint64_t Emu_Linux_Open(Emu_x86_64_Linux_Guest *guest, uint64_t addr, int32_t fl
     return Emu_Linux_Result(open(path, flags, (mode_t) mode));
 }
 
+// Fill the program's struct stat at buf with the host's lstat of its path.
+uint64_t Emu_Linux_Lstat(Emu_x86_64_Linux_Guest *guest, uint64_t addr, uint64_t buf)
+{
+    struct stat info;
+    const char *path = NULL;
+    uint64_t err = Emu_Linux_Path(guest, addr, &path);
+    uint8_t *mem = Load_At(guest->eg_img, buf, EMU_X86_64_LINUX_STAT_SIZE);
+
+    if (err != 0) {
+        return err;
+    }
+    if (lstat(path, &info) < 0) {
+        return -(uint64_t) errno;
+    }
+    if (! mem) {
+        return -(uint64_t) EMU_LINUX_ERRNO_FAULT;
+    }
+    memcpy(mem, &info, sizeof(info));
+    return 0;
+}
+
 // Move the break as Linux's brk does, zeroing the pages a shrink gives back.
 uint64_t Emu_Linux_Brk(Emu_x86_64_Linux_Guest *guest, uint64_t addr)
 {
@@ -803,6 +824,11 @@ void Emu_x86_64_Linux_Syscall(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *c
         case EMU_X86_64_LINUX_SYSCALL_CLOSE: {
             int32_t fd = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
             *rax = Emu_Linux_Result(close(fd));
+        } break;
+        case EMU_X86_64_LINUX_SYSCALL_LSTAT: {
+            uint64_t addr = cpu->cs_reg[CPU_X86_64_REG_RDI];
+            uint64_t buf = cpu->cs_reg[CPU_X86_64_REG_RSI];
+            *rax = Emu_Linux_Lstat(guest, addr, buf);
         } break;
         case EMU_X86_64_LINUX_SYSCALL_LSEEK: {
             int32_t fd = (int32_t) cpu->cs_reg[CPU_X86_64_REG_RDI];
