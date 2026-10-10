@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __FLOAT_H__
-#define __FLOAT_H__
+#ifndef _FLOAT_H
+#define _FLOAT_H
 
 // (S7.7) Characteristics of floating types
 #define FLT_ROUNDS      1
@@ -69,4 +69,4 @@
 #define DBL_MIN  ((double) 2.22507385850720138309023271733240406e-308L)
 #define LDBL_MIN 3.36210314311209350626267781732175260e-4932L
 
-#endif // __FLOAT_H__
+#endif // _FLOAT_H

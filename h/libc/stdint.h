@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __STDINT_H__
-#define __STDINT_H__
+#ifndef _STDINT_H
+#define _STDINT_H
 
 // (S7.18.2.1) Limits of exact-width integer types
 #define INT8_MIN   (-128)
@@ -141,4 +141,4 @@ typedef unsigned long uintptr_t;
 typedef long intmax_t;
 typedef unsigned long uintmax_t;
 
-#endif // __STDINT_H__
+#endif // _STDINT_H

@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __CTYPE_H__
-#define __CTYPE_H__
+#ifndef _CTYPE_H
+#define _CTYPE_H
 
 // (S7.4.1) Character classification functions
 int isalnum(int ch);
@@ -44,4 +44,4 @@ int isxdigit(int ch);
 int tolower(int ch);
 int toupper(int ch);
 
-#endif // __CTYPE_H__
+#endif // _CTYPE_H

@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __INTTYPES_H__
-#define __INTTYPES_H__
+#ifndef _INTTYPES_H
+#define _INTTYPES_H
 
 // Standard headers.
 #include <stdint.h>
@@ -226,4 +226,4 @@ uintmax_t strtoumax(const char *restrict nptr, char **restrict endptr, int base)
 intmax_t wcstoimax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharType **restrict endptr, int base);
 uintmax_t wcstoumax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharType **restrict endptr, int base);
 
-#endif // __INTTYPES_H__
+#endif // _INTTYPES_H

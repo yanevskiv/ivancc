@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __BIGINT_H__
-#define __BIGINT_H__
+#ifndef _BIGINT_H
+#define _BIGINT_H
 
 // The words of a number, 40960 bits, past the 38247 of strtold's 5^16472.
 #define _BIGINT_WORDS 1280
@@ -53,4 +53,4 @@ void _Bigint_Sub(struct _Bigint_Number *num1, const struct _Bigint_Number *num2)
 int _Bigint_Bits(const struct _Bigint_Number *num);
 unsigned long long _Bigint_Divide(struct _Bigint_Number *num, const struct _Bigint_Number *den);
 
-#endif // __BIGINT_H__
+#endif // _BIGINT_H

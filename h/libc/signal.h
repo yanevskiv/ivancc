@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __SIGNAL_H__
-#define __SIGNAL_H__
+#ifndef _SIGNAL_H
+#define _SIGNAL_H
 
 // (S7.14) Signal handling
 #define SIG_DFL ((void (*)(int)) 0)
@@ -46,4 +46,4 @@ void (*signal(int sig, void (*func)(int)))(int);
 // (S7.14.2) Send signal
 int raise(int sig);
 
-#endif // __SIGNAL_H__
+#endif // _SIGNAL_H

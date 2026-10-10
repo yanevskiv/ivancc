@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __STDBOOL_H__
-#define __STDBOOL_H__
+#ifndef _STDBOOL_H
+#define _STDBOOL_H
 
 // (S7.16) Boolean type and values
 #define bool _Bool
@@ -32,4 +32,4 @@
 #define false 0
 #define __bool_true_false_are_defined 1
 
-#endif // __STDBOOL_H__
+#endif // _STDBOOL_H

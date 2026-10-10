@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __ERRNO_H__
-#define __ERRNO_H__
+#ifndef _ERRNO_H
+#define _ERRNO_H
 
 // (S7.5) Errors
 #define EDOM   33
@@ -33,4 +33,4 @@
 
 extern int errno;
 
-#endif // __ERRNO_H__
+#endif // _ERRNO_H

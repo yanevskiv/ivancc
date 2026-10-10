@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __ERR_H__
-#define __ERR_H__
+#ifndef _ERR_H
+#define _ERR_H
 
 // The error number of no error.
 #define _ERR_ERRNO_NONE 0
@@ -48,4 +48,4 @@
 // Error numbers
 const char *_Err_ErrnoText(int errnum);
 
-#endif // __ERR_H__
+#endif // _ERR_H

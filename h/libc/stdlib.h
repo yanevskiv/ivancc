@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __STDLIB_H__
-#define __STDLIB_H__
+#ifndef _STDLIB_H
+#define _STDLIB_H
 
 // The significant digits strtod keeps, past a long double halfway point's 11515.
 #define _STDLIB_DIGITS 11520
@@ -286,4 +286,4 @@ int wctomb(char *str, wchar_t wc);
 size_t mbstowcs(wchar_t *restrict pwcs, const char *restrict str, size_t n);
 size_t wcstombs(char *restrict str, const wchar_t *restrict pwcs, size_t n);
 
-#endif // __STDLIB_H__
+#endif // _STDLIB_H

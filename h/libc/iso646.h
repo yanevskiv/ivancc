@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __ISO646_H__
-#define __ISO646_H__
+#ifndef _ISO646_H
+#define _ISO646_H
 
 // (S7.9) Alternative spellings
 #define and &&
@@ -39,4 +39,4 @@
 #define xor ^
 #define xor_eq ^=
 
-#endif // __ISO646_H__
+#endif // _ISO646_H
