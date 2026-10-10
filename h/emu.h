@@ -153,6 +153,7 @@
 #define EMU_X86_64_LINUX_SYSCALL_WRITE          1
 #define EMU_X86_64_LINUX_SYSCALL_OPEN           2
 #define EMU_X86_64_LINUX_SYSCALL_CLOSE          3
+#define EMU_X86_64_LINUX_SYSCALL_LSTAT          6
 #define EMU_X86_64_LINUX_SYSCALL_LSEEK          8
 #define EMU_X86_64_LINUX_SYSCALL_BRK            12
 #define EMU_X86_64_LINUX_SYSCALL_RT_SIGACTION   13
@@ -238,6 +239,9 @@
 #define EMU_X86_64_LINUX_O_NOFOLLOW  0400000
 #define EMU_X86_64_LINUX_O_CLOEXEC   02000000
 
+// The size of the struct stat lstat fills, which aarch64 Linux lays out apart.
+#define EMU_X86_64_LINUX_STAT_SIZE 144
+
 // The values the emulator hands the host as they are, which it must share.
 _Static_assert(EFAULT == EMU_LINUX_ERRNO_FAULT, "the host's EFAULT is not Linux's");
 _Static_assert(EINVAL == EMU_LINUX_ERRNO_INVAL, "the host's EINVAL is not Linux's");
@@ -260,6 +264,7 @@ _Static_assert(O_NONBLOCK == EMU_X86_64_LINUX_O_NONBLOCK, "the host's O_NONBLOCK
 _Static_assert(O_DIRECTORY == EMU_X86_64_LINUX_O_DIRECTORY, "the host's O_DIRECTORY is not x86_64 Linux's");
 _Static_assert(O_NOFOLLOW == EMU_X86_64_LINUX_O_NOFOLLOW, "the host's O_NOFOLLOW is not x86_64 Linux's");
 _Static_assert(O_CLOEXEC == EMU_X86_64_LINUX_O_CLOEXEC, "the host's O_CLOEXEC is not x86_64 Linux's");
+_Static_assert(sizeof(struct stat) == EMU_X86_64_LINUX_STAT_SIZE, "the host's struct stat is not x86_64 Linux's");
 
 // Whether the emulator writes each instruction to stderr before it runs.
 typedef enum Emu_Trace Emu_Trace;
@@ -352,6 +357,7 @@ uint64_t Emu_Linux_Path(const Emu_x86_64_Linux_Guest *guest, uint64_t addr, cons
 uint64_t Emu_Linux_Read(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint64_t buf, uint64_t len);
 uint64_t Emu_Linux_Write(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint64_t buf, uint64_t len);
 uint64_t Emu_Linux_Open(Emu_x86_64_Linux_Guest *guest, uint64_t addr, int32_t flags, uint32_t mode);
+uint64_t Emu_Linux_Lstat(Emu_x86_64_Linux_Guest *guest, uint64_t addr, uint64_t buf);
 uint64_t Emu_Linux_Brk(Emu_x86_64_Linux_Guest *guest, uint64_t addr);
 uint64_t Emu_Linux_Ioctl(Emu_x86_64_Linux_Guest *guest, int32_t fd, uint32_t req, uint64_t arg);
 uint64_t Emu_Linux_Rename(Emu_x86_64_Linux_Guest *guest, uint64_t from, uint64_t to);
