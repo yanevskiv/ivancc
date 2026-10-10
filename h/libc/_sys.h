@@ -26,6 +26,15 @@
 #ifndef _SYS_H
 #define _SYS_H
 
+// The descriptors of a program's standard input, output and error.
+#define _SYS_STDIN_FILENO  0
+#define _SYS_STDOUT_FILENO 1
+#define _SYS_STDERR_FILENO 2
+
+// Linux's ioctl that reads a terminal's settings, and its control characters.
+#define _SYS_TCGETS 0x5401
+#define _SYS_NCCS   19
+
 // Linux's clocks.
 #define _SYS_CLOCK_REALTIME           0
 #define _SYS_CLOCK_PROCESS_CPUTIME_ID 2
@@ -171,6 +180,16 @@
 // Linux's rt_sigprocmask requests.
 #define _SYS_SIG_UNBLOCK 1
 
+// Linux's struct termios, the kernel's and not glibc's.
+struct _Sys_Termios {
+    unsigned int c_iflag;
+    unsigned int c_oflag;
+    unsigned int c_cflag;
+    unsigned int c_lflag;
+    unsigned char c_line;
+    unsigned char c_cc[_SYS_NCCS];
+};
+
 // Linux's struct timespec.
 struct _Sys_Timespec {
     long tv_sec;
@@ -191,6 +210,7 @@ long  _Sys_Write(int fd, const void *buf, unsigned long len);
 void *_Sys_Brk(void *addr);
 long  _Sys_RtSigaction(int sig, const struct _Sys_Sigaction *act, struct _Sys_Sigaction *oact);
 long  _Sys_RtSigprocmask(int how, const unsigned long *set, unsigned long *oset);
+long  _Sys_Ioctl(int fd, unsigned long request, void *arg);
 int   _Sys_Getpid(void);
 long  _Sys_Kill(int pid, int sig);
 long  _Sys_ClockGettime(int clock, struct _Sys_Timespec *spec);
