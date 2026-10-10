@@ -1695,6 +1695,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "unsupported target '%s' (only linux and ivanemu are supported)"
     },
 
+    // Args: [input, first input]
+    [ERR_CC_TOO_MANY_INPUTS] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CC_TOO_MANY_INPUTS",
+        .ee_format = "extra input file '%s' after '%s' (only one is supported)"
+    },
+
     // Args: [path, reason]
     [ERR_AS_INPUT_NOT_READABLE] = {
         .ee_level  = ERR_LEVEL_FATAL,

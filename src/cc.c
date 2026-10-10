@@ -530,6 +530,7 @@ int main(int argc, char **argv)
         Cc_ShowUsage(argv[0]);
     }
     const char *input = argv[optind];
+    Err_Assert(optind + 1 >= argc, ERR_CC_TOO_MANY_INPUTS, argv[optind + 1], input);
 
     char *outbuf = NULL;
     if (! output) {

@@ -299,6 +299,7 @@ enum Err_Code {
     ERR_CC_RUNTIME_NOT_FOUND,              // can't link without finding the runtime directory
     ERR_CC_STD_NOT_SUPPORTED,              // can't compile to a standard other than C99
     ERR_CC_TARGET_NOT_SUPPORTED,           // can't target a runtime other than linux or ivanemu
+    ERR_CC_TOO_MANY_INPUTS,                // can't compile more than one input file
 
     ERR_AS_INPUT_NOT_READABLE,             // can't read the assembler's input file
     ERR_AS_OUTPUT_NOT_WRITEABLE,           // can't create the assembler's object file
