@@ -453,6 +453,14 @@ void Gen_x86_64_SysV_EmitCallResult(Ast_Node *node)
         Asm_x86_64_EmitMovFromXmm(ASM_X86_64_XMM0, ASM_X86_64_REG_RAX);
         return;
     }
+    if (node->an_type->at_kind == AST_TYPE_KIND_BOOL) {
+        Asm_x86_64_EmitMovzx(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_8);
+        return;
+    }
+    if (Ast_IsInteger(node->an_type)) {
+        Gen_x86_64_EmitCast(node->an_type);
+        return;
+    }
     if (! Gen_x86_64_ByAddress(node->an_type) || Gen_x86_64_SysV_ReturnsInMemory(node->an_type)) {
         return;
     }
