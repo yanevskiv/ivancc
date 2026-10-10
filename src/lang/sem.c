@@ -317,6 +317,21 @@ int64_t Sem_Truncate(const Ast_Type *type, int64_t value)
     return value;
 }
 
+// Return the array type of a string literal, its terminator counted.
+Ast_Type *Sem_StringType(const Ast_Node *node)
+{
+    Ast_Str *str = Ast_StringAt(node->an_stridx);
+    Ast_Type *elem = str->as_width > AST_TYPE_SIZE_CHAR ? &Ast_TypeInt : &Ast_TypeChar;
+
+    return Ast_NewArray(elem, (int32_t) (str->as_len / str->as_width + 1));
+}
+
+// Return the type a constant expression has as an operand, an array decayed.
+Ast_Type *Sem_FoldValueType(const Ast_Node *node)
+{
+    return Sem_ValueType(Sem_FoldType(node));
+}
+
 // Return the type a constant expression folds to.
 Ast_Type *Sem_FoldType(const Ast_Node *node)
 {
@@ -325,11 +340,17 @@ Ast_Type *Sem_FoldType(const Ast_Node *node)
     }
 
     switch (node->an_kind) {
+        case AST_NODE_KIND_STR: {
+            return Sem_StringType(node);
+        } break;
+        case AST_NODE_KIND_VAR: {
+            return node->an_var->av_type;
+        } break;
         case AST_NODE_KIND_NEG:
         case AST_NODE_KIND_BITNOT:
         case AST_NODE_KIND_SHL:
         case AST_NODE_KIND_SHR: {
-            return Sem_Promote(Sem_FoldType(node->an_lhs));
+            return Sem_Promote(Sem_FoldValueType(node->an_lhs));
         } break;
         case AST_NODE_KIND_ADD:
         case AST_NODE_KIND_SUB:
@@ -339,10 +360,10 @@ Ast_Type *Sem_FoldType(const Ast_Node *node)
         case AST_NODE_KIND_BITAND:
         case AST_NODE_KIND_BITOR:
         case AST_NODE_KIND_BITXOR: {
-            return Sem_CommonType(Sem_FoldType(node->an_lhs), Sem_FoldType(node->an_rhs));
+            return Sem_CommonType(Sem_FoldValueType(node->an_lhs), Sem_FoldValueType(node->an_rhs));
         } break;
         case AST_NODE_KIND_COND: {
-            return Sem_CommonType(Sem_FoldType(node->an_then), Sem_FoldType(node->an_els));
+            return Sem_CommonType(Sem_FoldValueType(node->an_then), Sem_FoldValueType(node->an_els));
         } break;
         case AST_NODE_KIND_SIZEOF: {
             return &Ast_TypeULong;
@@ -359,8 +380,17 @@ bool Sem_IsFoldTyped(const Ast_Node *node)
     switch (node->an_kind) {
         case AST_NODE_KIND_NUM:
         case AST_NODE_KIND_FNUM:
+        case AST_NODE_KIND_STR:
+        case AST_NODE_KIND_VAR:
         case AST_NODE_KIND_CAST:
-        case AST_NODE_KIND_SIZEOF: {
+        case AST_NODE_KIND_SIZEOF:
+        case AST_NODE_KIND_NOT:
+        case AST_NODE_KIND_EQ:
+        case AST_NODE_KIND_NE:
+        case AST_NODE_KIND_LT:
+        case AST_NODE_KIND_LE:
+        case AST_NODE_KIND_AND:
+        case AST_NODE_KIND_OR: {
             return true;
         } break;
         case AST_NODE_KIND_NEG:
@@ -533,7 +563,7 @@ bool Sem_Fold(const Ast_Node *node, int64_t *value)
             if (! type && (Sem_Fold(node->an_lhs, &lhs) || Sem_IsFoldTyped(node->an_lhs))) {
                 type = Sem_FoldType(node->an_lhs);
             }
-            if (! type || Ast_IsVla(type)) {
+            if (! type || ! type->at_complete || Ast_IsVla(type)) {
                 return false;
             }
             *value = type->at_size;
@@ -1246,9 +1276,7 @@ void Sem_Annotate(Ast_Node *node)
         } break;
 
         case AST_NODE_KIND_STR: {
-            Ast_Str *str = Ast_StringAt(node->an_stridx);
-            Ast_Type *elem = str->as_width > AST_TYPE_SIZE_CHAR ? &Ast_TypeInt : &Ast_TypeChar;
-            node->an_type = Ast_NewArray(elem, (int32_t) (str->as_len / str->as_width + 1));
+            node->an_type = Sem_StringType(node);
         } break;
 
         case AST_NODE_KIND_ADDR: {
