@@ -59,6 +59,17 @@
 #define _STDLIB_DOUBLE_SIGN  0x8000000000000000ULL
 #define _STDLIB_LDOUBLE_SIGN 0x8000U
 
+// The words of rand's state, the gap of its taps and the outputs srand skips.
+#define _STDLIB_RAND_WORDS   31
+#define _STDLIB_RAND_SEP     3
+#define _STDLIB_RAND_DISCARD 310
+
+// The multiplier, modulus, quotient and remainder srand's generator takes.
+#define _STDLIB_RAND_MUL 16807
+#define _STDLIB_RAND_MOD 2147483647
+#define _STDLIB_RAND_QUO 127773
+#define _STDLIB_RAND_REM 2836
+
 // The alignment of the memory malloc gives, any object's, as glibc's,
 // and the smallest block, a header and that much memory.
 #define _STDLIB_ALIGN     16
@@ -73,11 +84,16 @@
 // The status abort exits with if SIGABRT did not end the program, as glibc's.
 #define _STDLIB_ABORT_STATUS 127
 
+// The bytes of the merge buffer qsort keeps on the stack, as glibc's.
+#define _STDLIB_SORT_STACK 1024
+
 // (S7.20) General utilities
 #define NULL ((void *) 0)
 
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
+
+#define RAND_MAX 2147483647
 
 #ifndef __SIZE_T__
 #define __SIZE_T__
@@ -132,10 +148,32 @@ struct _Stdlib_Exits {
     void (*se_func[_STDLIB_EXITS])(void);
 };
 
+// (S7.20) General utilities
+typedef struct {
+    int quot;
+    int rem;
+} div_t;
+
+typedef struct {
+    long quot;
+    long rem;
+} ldiv_t;
+
+typedef struct {
+    long long quot;
+    long long rem;
+} lldiv_t;
+
 // The formats of float, double and long double.
 extern const struct _Stdlib_Format _Stdlib_FloatFormat;
 extern const struct _Stdlib_Format _Stdlib_DoubleFormat;
 extern const struct _Stdlib_Format _Stdlib_LongDoubleFormat;
+
+// The state of rand, its taps and whether srand has seeded it.
+extern unsigned int _Stdlib_RandState[_STDLIB_RAND_WORDS];
+extern int _Stdlib_RandFront;
+extern int _Stdlib_RandRear;
+extern _Bool _Stdlib_RandSeeded;
 
 // The free blocks, in address order.
 extern struct _Stdlib_Block *_Stdlib_FreeList;
@@ -171,11 +209,32 @@ int _Stdlib_Grow(size_t size);
 // Exit
 void (*_Stdlib_PopExit(void))(void);
 
+// Sorting
+void _Stdlib_Swap(char *left, char *right, size_t size);
+void _Stdlib_Reverse(char *base, size_t nmemb, size_t size);
+void _Stdlib_Rotate(char *base, size_t nmemb, size_t first, size_t size);
+size_t _Stdlib_LowerBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *));
+size_t _Stdlib_UpperBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *));
+void _Stdlib_MergeInPlace(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *));
+void _Stdlib_Merge(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp);
+void _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp);
+
 // (S7.20.1) Numeric conversion functions
 double atof(const char *nptr);
+int atoi(const char *nptr);
+long atol(const char *nptr);
+long long atoll(const char *nptr);
 double strtod(const char *restrict nptr, char **restrict endptr);
 float strtof(const char *restrict nptr, char **restrict endptr);
 long double strtold(const char *restrict nptr, char **restrict endptr);
+long strtol(const char *restrict nptr, char **restrict endptr, int base);
+long long strtoll(const char *restrict nptr, char **restrict endptr, int base);
+unsigned long strtoul(const char *restrict nptr, char **restrict endptr, int base);
+unsigned long long strtoull(const char *restrict nptr, char **restrict endptr, int base);
+
+// (S7.20.2) Pseudo-random sequence generation functions
+int rand(void);
+void srand(unsigned int seed);
 
 // (S7.20.3) Memory management functions
 void *calloc(size_t nmemb, size_t size);
@@ -190,5 +249,17 @@ void exit(int status);
 void _Exit(int status);
 char *getenv(const char *name);
 int system(const char *string);
+
+// (S7.20.5) Searching and sorting utilities
+void *bsearch(const void *key, const void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+
+// (S7.20.6) Integer arithmetic functions
+int abs(int j);
+long labs(long j);
+long long llabs(long long j);
+div_t div(int numer, int denom);
+ldiv_t ldiv(long numer, long denom);
+lldiv_t lldiv(long long numer, long long denom);
 
 #endif // __STDLIB_H__

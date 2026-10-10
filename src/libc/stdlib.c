@@ -56,13 +56,25 @@
 // The range of a character and an unsigned long long.
 #include <limits.h>
 
+// The integer conversions strtol and its family share.
+#include <inttypes.h>
+
 // Check that a block's header keeps the memory after it aligned.
 typedef char _Stdlib_CheckBlock[sizeof(struct _Stdlib_Block) == _STDLIB_ALIGN && _STDLIB_BLOCK_MIN == 2 * _STDLIB_ALIGN ? 1 : -1];
+
+// Check that long and long long are intmax_t, as strtol and its family take.
+typedef char _Stdlib_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
 
 // The formats of float, double and long double, exponents one below C's.
 const struct _Stdlib_Format _Stdlib_FloatFormat = {FLT_MANT_DIG, FLT_MIN_EXP - 1, FLT_MAX_EXP - 1, 0};
 const struct _Stdlib_Format _Stdlib_DoubleFormat = {DBL_MANT_DIG, DBL_MIN_EXP - 1, DBL_MAX_EXP - 1, 0};
 const struct _Stdlib_Format _Stdlib_LongDoubleFormat = {LDBL_MANT_DIG, LDBL_MIN_EXP - 1, LDBL_MAX_EXP - 1, 1};
+
+// The state of rand, its taps and whether srand has seeded it.
+unsigned int _Stdlib_RandState[_STDLIB_RAND_WORDS];
+int _Stdlib_RandFront;
+int _Stdlib_RandRear;
+_Bool _Stdlib_RandSeeded;
 
 // The free blocks, in address order.
 struct _Stdlib_Block *_Stdlib_FreeList;
@@ -613,10 +625,166 @@ void (*_Stdlib_PopExit(void))(void)
     return block->se_func[block->se_count];
 }
 
+// Exchange the size bytes at left with those at right.
+void _Stdlib_Swap(char *left, char *right, size_t size)
+{
+    char ch;
+    size_t i;
+
+    for (i = 0; i < size; i++) {
+        ch = left[i];
+        left[i] = right[i];
+        right[i] = ch;
+    }
+}
+
+// Reverse the order of nmemb elements of size bytes at base.
+void _Stdlib_Reverse(char *base, size_t nmemb, size_t size)
+{
+    size_t i;
+
+    for (i = 0; i < nmemb / 2; i++) {
+        _Stdlib_Swap(base + i * size, base + (nmemb - 1 - i) * size, size);
+    }
+}
+
+// Rotate nmemb elements of size bytes at base so that element first leads.
+void _Stdlib_Rotate(char *base, size_t nmemb, size_t first, size_t size)
+{
+    _Stdlib_Reverse(base, first, size);
+    _Stdlib_Reverse(base + first * size, nmemb - first, size);
+    _Stdlib_Reverse(base, nmemb, size);
+}
+
+// Give the index of the first of nmemb sorted elements not below key.
+size_t _Stdlib_LowerBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *))
+{
+    size_t low = 0;
+    size_t mid;
+    size_t high = nmemb;
+
+    while (low < high) {
+        mid = low + (high - low) / 2;
+        if (compar(base + mid * size, key) < 0) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
+
+// Give the index of the first of nmemb sorted elements above key.
+size_t _Stdlib_UpperBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *))
+{
+    size_t low = 0;
+    size_t mid;
+    size_t high = nmemb;
+
+    while (low < high) {
+        mid = low + (high - low) / 2;
+        if (compar(key, base + mid * size) < 0) {
+            high = mid;
+        } else {
+            low = mid + 1;
+        }
+    }
+    return low;
+}
+
+// Merge the sorted runs of left and right elements at base without a buffer.
+void _Stdlib_MergeInPlace(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *))
+{
+    size_t cut1;
+    size_t cut2;
+
+    if (left == 0 || right == 0) {
+        return;
+    }
+    if (left + right == 2) {
+        if (compar(base + size, base) < 0) {
+            _Stdlib_Swap(base, base + size, size);
+        }
+        return;
+    }
+    if (left >= right) {
+        cut1 = left / 2;
+        cut2 = _Stdlib_LowerBound(base + left * size, right, size, base + cut1 * size, compar);
+    } else {
+        cut2 = right / 2;
+        cut1 = _Stdlib_UpperBound(base, left, size, base + (left + cut2) * size, compar);
+    }
+    _Stdlib_Rotate(base + cut1 * size, left - cut1 + cut2, left - cut1, size);
+    _Stdlib_MergeInPlace(base, cut1, cut2, size, compar);
+    _Stdlib_MergeInPlace(base + (cut1 + cut2) * size, left - cut1, right - cut2, size, compar);
+}
+
+// Merge the sorted runs of left and right elements at base through tmp.
+void _Stdlib_Merge(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp)
+{
+    char *out = base;
+    char *end = tmp + left * size;
+    char *iter = tmp;
+    char *next = base + left * size;
+    char *stop = next + right * size;
+
+    memcpy(tmp, base, left * size);
+    while (iter < end && next < stop) {
+        if (compar(next, iter) < 0) {
+            memcpy(out, next, size);
+            next += size;
+        } else {
+            memcpy(out, iter, size);
+            iter += size;
+        }
+        out += size;
+    }
+    memcpy(out, iter, (size_t) (end - iter));
+}
+
+// Sort nmemb elements of size bytes at base stably, merging through tmp if any.
+void _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp)
+{
+    size_t half = nmemb / 2;
+    char *mid = base + half * size;
+
+    if (nmemb < 2) {
+        return;
+    }
+    _Stdlib_Sort(base, half, size, compar, tmp);
+    _Stdlib_Sort(mid, nmemb - half, size, compar, tmp);
+    if (compar(mid, mid - size) >= 0) {
+        return;
+    }
+    if (tmp) {
+        _Stdlib_Merge(base, half, nmemb - half, size, compar, tmp);
+    } else {
+        _Stdlib_MergeInPlace(base, half, nmemb - half, size, compar);
+    }
+}
+
 // Convert the start of the string nptr to a double, as strtod does.
 double atof(const char *nptr)
 {
     return strtod(nptr, NULL);
+}
+
+// Convert the start of the string nptr to an int, as strtol in base 10 does.
+int atoi(const char *nptr)
+{
+    return (int) strtol(nptr, NULL, 10);
+}
+
+// Convert the start of the string nptr to a long, as strtol in base 10 does.
+long atol(const char *nptr)
+{
+    return strtol(nptr, NULL, 10);
+}
+
+// Convert the start of the string nptr to a long long, as strtoll does.
+long long atoll(const char *nptr)
+{
+    return strtoll(nptr, NULL, 10);
 }
 
 // Convert the start of the string nptr to a double, correctly rounded.
@@ -672,6 +840,68 @@ long double strtold(const char *restrict nptr, char **restrict endptr)
     memcpy(&value, &real.sr_mant, sizeof(real.sr_mant));
     memcpy((char *) &value + sizeof(real.sr_mant), &top, sizeof(top));
     return value;
+}
+
+// Convert the start of the string nptr to a long in base.
+long strtol(const char *restrict nptr, char **restrict endptr, int base)
+{
+    return strtoimax(nptr, endptr, base);
+}
+
+// Convert the start of the string nptr to a long long in base.
+long long strtoll(const char *restrict nptr, char **restrict endptr, int base)
+{
+    return strtoimax(nptr, endptr, base);
+}
+
+// Convert the start of the string nptr to an unsigned long in base.
+unsigned long strtoul(const char *restrict nptr, char **restrict endptr, int base)
+{
+    return strtoumax(nptr, endptr, base);
+}
+
+// Convert the start of the string nptr to an unsigned long long in base.
+unsigned long long strtoull(const char *restrict nptr, char **restrict endptr, int base)
+{
+    return strtoumax(nptr, endptr, base);
+}
+
+// Give the next number of the sequence srand seeded, as glibc's.
+int rand(void)
+{
+    unsigned int value;
+    unsigned int *state = _Stdlib_RandState;
+
+    if (! _Stdlib_RandSeeded) {
+        srand(1);
+    }
+    state[_Stdlib_RandFront] += state[_Stdlib_RandRear];
+    value = state[_Stdlib_RandFront];
+    _Stdlib_RandFront = (_Stdlib_RandFront + 1) % _STDLIB_RAND_WORDS;
+    _Stdlib_RandRear = (_Stdlib_RandRear + 1) % _STDLIB_RAND_WORDS;
+    return (int) (value >> 1);
+}
+
+// Seed the sequence rand gives, 0 as 1, as glibc's.
+void srand(unsigned int seed)
+{
+    int word = seed == 0 ? 1 : (int) seed;
+    int i;
+
+    _Stdlib_RandState[0] = (unsigned int) word;
+    for (i = 1; i < _STDLIB_RAND_WORDS; i++) {
+        word = _STDLIB_RAND_MUL * (word % _STDLIB_RAND_QUO) - _STDLIB_RAND_REM * (word / _STDLIB_RAND_QUO);
+        if (word < 0) {
+            word += _STDLIB_RAND_MOD;
+        }
+        _Stdlib_RandState[i] = (unsigned int) word;
+    }
+    _Stdlib_RandFront = _STDLIB_RAND_SEP;
+    _Stdlib_RandRear = 0;
+    _Stdlib_RandSeeded = 1;
+    for (i = 0; i < _STDLIB_RAND_DISCARD; i++) {
+        rand();
+    }
 }
 
 // Allocate nmemb objects of size bytes, all bits zero.
@@ -824,4 +1054,95 @@ int system(const char *string)
     }
     errno = _SYS_ENOSYS;
     return -1;
+}
+
+// Find an object of nmemb sorted at base that matches key, as glibc's does.
+void *bsearch(const void *key, const void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    int cmp;
+    size_t low = 0;
+    size_t mid;
+    size_t high = nmemb;
+    const char *ptr;
+
+    while (low < high) {
+        mid = low + (high - low) / 2;
+        ptr = (const char *) base + mid * size;
+        cmp = compar(key, ptr);
+        if (cmp == 0) {
+            return (void *) ptr;
+        }
+        if (cmp < 0) {
+            high = mid;
+        } else {
+            low = mid + 1;
+        }
+    }
+    return NULL;
+}
+
+// Sort nmemb objects of size bytes at base, keeping equal ones in order.
+void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    int saved = errno;
+    size_t need = nmemb / 2 * size;
+    char stack[_STDLIB_SORT_STACK];
+    char *tmp = stack;
+
+    if (need > sizeof(stack)) {
+        tmp = malloc(need);
+        errno = saved;
+    }
+    _Stdlib_Sort(base, nmemb, size, compar, tmp);
+    if (tmp != stack) {
+        free(tmp);
+    }
+}
+
+// Give the absolute value of j.
+int abs(int j)
+{
+    return j < 0 ? -j : j;
+}
+
+// Give the absolute value of j.
+long labs(long j)
+{
+    return j < 0 ? -j : j;
+}
+
+// Give the absolute value of j.
+long long llabs(long long j)
+{
+    return j < 0 ? -j : j;
+}
+
+// Divide numer by denom, giving the quotient and the remainder.
+div_t div(int numer, int denom)
+{
+    div_t result;
+
+    result.quot = numer / denom;
+    result.rem = numer % denom;
+    return result;
+}
+
+// Divide numer by denom, giving the quotient and the remainder.
+ldiv_t ldiv(long numer, long denom)
+{
+    ldiv_t result;
+
+    result.quot = numer / denom;
+    result.rem = numer % denom;
+    return result;
+}
+
+// Divide numer by denom, giving the quotient and the remainder.
+lldiv_t lldiv(long long numer, long long denom)
+{
+    lldiv_t result;
+
+    result.quot = numer / denom;
+    result.rem = numer % denom;
+    return result;
 }
