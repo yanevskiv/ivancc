@@ -45,8 +45,22 @@
 // The files' calls, the terminal's settings and the standard descriptors.
 #include <_sys.h>
 
+// A temporary name: where it is, and the characters and length of its end.
+#define _STDIO_TEMP_PREFIX  "/tmp/tmp."
+#define _STDIO_TEMP_LETTERS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+#define _STDIO_TEMP_RADIX   62
+#define _STDIO_TEMP_DIGITS  8
+
+// How many temporary names there are, and a step that shares no factor with it.
+#define _STDIO_TEMP_NAMES 218340105584896UL
+#define _STDIO_TEMP_STEP  134941606358707UL
+
 // Check the header's origins against lseek's.
 typedef char _Stdio_CheckSeek[SEEK_SET == _SYS_SEEK_SET && SEEK_CUR == _SYS_SEEK_CUR && SEEK_END == _SYS_SEEK_END ? 1 : -1];
+
+// Check that a temporary name's characters are its radix and it fits L_tmpnam.
+typedef char _Stdio_CheckTempRadix[sizeof(_STDIO_TEMP_LETTERS) - 1 == _STDIO_TEMP_RADIX ? 1 : -1];
+typedef char _Stdio_CheckTempName[sizeof(_STDIO_TEMP_PREFIX) + _STDIO_TEMP_DIGITS <= L_tmpnam ? 1 : -1];
 
 // Standard input, read-only, its buffering picked at its first use.
 FILE _Stdio_Stdin = {
@@ -73,6 +87,13 @@ FILE _Stdio_Stderr = {
 
 // The open streams, the standard ones at first.
 FILE *_Stdio_Streams = &_Stdio_Stdin;
+
+// The number of the temporary name made last, once a seed has begun them.
+unsigned long _Stdio_TempNumber;
+_Bool _Stdio_TempSeeded;
+
+// The name tmpnam returns when it is given no array.
+char _Stdio_TempBuffer[L_tmpnam];
 
 // Make a stream with no file, first among the open ones.
 FILE *_Stdio_New(void)
@@ -117,6 +138,18 @@ int _Stdio_OpenFlags(const char *mode)
     return flags;
 }
 
+// Give the stream the descriptor fd, to read or write as its open flags say.
+void _Stdio_Attach(FILE *stream, int fd, int flags)
+{
+    stream->sf_fd = fd;
+    if ((flags & _SYS_O_ACCMODE) != _SYS_O_WRONLY) {
+        stream->sf_flags |= _STDIO_READ;
+    }
+    if ((flags & _SYS_O_ACCMODE) != _SYS_O_RDONLY) {
+        stream->sf_flags |= _STDIO_WRITE;
+    }
+}
+
 // Open the file filename for the stream, to read or write as the mode says.
 int _Stdio_Open(FILE *stream, const char *filename, const char *mode)
 {
@@ -133,13 +166,7 @@ int _Stdio_Open(FILE *stream, const char *filename, const char *mode)
         errno = (int) -fd;
         return EOF;
     }
-    stream->sf_fd = (int) fd;
-    if ((flags & _SYS_O_ACCMODE) != _SYS_O_WRONLY) {
-        stream->sf_flags |= _STDIO_READ;
-    }
-    if ((flags & _SYS_O_ACCMODE) != _SYS_O_RDONLY) {
-        stream->sf_flags |= _STDIO_WRITE;
-    }
+    _Stdio_Attach(stream, (int) fd, flags);
     return 0;
 }
 
@@ -463,6 +490,107 @@ void _Stdio_Unread(FILE *stream)
     }
 }
 
+// Return a number that differs from run to run, by the clock and the stack.
+unsigned long _Stdio_TempSeed(void)
+{
+    struct _Sys_Timespec now = {0, 0};
+
+    _Sys_ClockGettime(_SYS_CLOCK_REALTIME, &now);
+    return (unsigned long) now.tv_sec ^ (unsigned long) now.tv_nsec ^ (unsigned long) &now;
+}
+
+// Write the next temporary name, one no call before wrote, into str.
+void _Stdio_TempName(char *str)
+{
+    int k;
+    unsigned long number;
+    size_t len = sizeof(_STDIO_TEMP_PREFIX) - 1;
+
+    if (! _Stdio_TempSeeded) {
+        _Stdio_TempNumber = _Stdio_TempSeed() % _STDIO_TEMP_NAMES;
+        _Stdio_TempSeeded = 1;
+    }
+    _Stdio_TempNumber = (_Stdio_TempNumber + _STDIO_TEMP_STEP) % _STDIO_TEMP_NAMES;
+    number = _Stdio_TempNumber;
+    memcpy(str, _STDIO_TEMP_PREFIX, len);
+    for (k = 0; k < _STDIO_TEMP_DIGITS; k++) {
+        str[len++] = _STDIO_TEMP_LETTERS[number % _STDIO_TEMP_RADIX];
+        number /= _STDIO_TEMP_RADIX;
+    }
+    str[len] = '\0';
+}
+
+// Remove the file filename, or the empty directory of that name.
+int remove(const char *filename)
+{
+    long status = _Sys_Unlink(filename);
+
+    if (status == -_SYS_EISDIR) {
+        status = _Sys_Rmdir(filename);
+    }
+    if (status < 0) {
+        errno = (int) -status;
+        return EOF;
+    }
+    return 0;
+}
+
+// Give the file old the name new, replacing a file that has it as Linux does.
+int rename(const char *old, const char *new)
+{
+    long status = _Sys_Rename(old, new);
+
+    if (status < 0) {
+        errno = (int) -status;
+        return EOF;
+    }
+    return 0;
+}
+
+// Open a file of no name for update, which goes when its stream is closed.
+FILE *tmpfile(void)
+{
+    int tries;
+    char name[L_tmpnam];
+    long fd = -_SYS_EEXIST;
+    FILE *stream = _Stdio_New();
+    int flags = _SYS_O_RDWR | _SYS_O_CREAT | _SYS_O_EXCL;
+
+    if (stream == NULL) {
+        return NULL;
+    }
+    for (tries = 0; tries < TMP_MAX && fd == -_SYS_EEXIST; tries++) {
+        _Stdio_TempName(name);
+        fd = _Sys_Open(name, flags, _SYS_S_IRUSR | _SYS_S_IWUSR);
+    }
+    if (fd < 0) {
+        errno = (int) -fd;
+        _Stdio_Free(stream);
+        return NULL;
+    }
+    _Sys_Unlink(name);
+    _Stdio_Attach(stream, (int) fd, flags);
+    return stream;
+}
+
+// Write a name no file has into str, or into an array of its own for NULL.
+char *tmpnam(char *str)
+{
+    int tries;
+    struct _Sys_Stat info;
+
+    if (str == NULL) {
+        str = _Stdio_TempBuffer;
+    }
+    for (tries = 0; tries < TMP_MAX; tries++) {
+        _Stdio_TempName(str);
+        if (_Sys_Lstat(str, &info) == -_SYS_ENOENT) {
+            return str;
+        }
+    }
+    return NULL;
+}
+
 // Flush the stream, close its file and end the stream.
 int fclose(FILE *stream)
 {
@@ -738,4 +866,17 @@ int feof(FILE *stream)
 int ferror(FILE *stream)
 {
     return (stream->sf_flags & _STDIO_ERROR) != 0;
+}
+
+// Write errno's text and a new-line to standard error, after str if it has any.
+void perror(const char *str)
+{
+    const char *text = strerror(errno);
+
+    if (str != NULL && str[0] != '\0') {
+        fputs(str, stderr);
+        fputs(": ", stderr);
+    }
+    fputs(text, stderr);
+    fputs("\n", stderr);
 }

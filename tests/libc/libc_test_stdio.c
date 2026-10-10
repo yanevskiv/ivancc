@@ -15,16 +15,19 @@
 // | 0123456789abcdefghijklmnopqrstuvwxyz
 // | a block over a refill
 // | end
-// <stdio.h> declares size_t, FILE and fpos_t, NULL, _IOFBF, _IOLBF, _IONBF, BUFSIZ, EOF, FOPEN_MAX, FILENAME_MAX, SEEK_CUR, SEEK_END, SEEK_SET, stderr, stdin and stdout (S7.19.1),
-// fclose, fflush, fopen, freopen, setbuf and setvbuf (S7.19.5), fgetc, fgets, fputc, fputs, getc, getchar, gets, putc, putchar, puts and ungetc (S7.19.7),
-// fread and fwrite (S7.19.8), fgetpos, fseek, fsetpos, ftell and rewind (S7.19.9), and clearerr, feof and ferror (S7.19.10),
+// <stdio.h> declares size_t, FILE and fpos_t, NULL, _IOFBF, _IOLBF, _IONBF, BUFSIZ, EOF, FOPEN_MAX, FILENAME_MAX, L_tmpnam, SEEK_CUR, SEEK_END, SEEK_SET, TMP_MAX, stderr, stdin and stdout (S7.19.1),
+// remove, rename, tmpfile and tmpnam (S7.19.4), fclose, fflush, fopen, freopen, setbuf and setvbuf (S7.19.5), fgetc, fgets, fputc, fputs, getc, getchar, gets, putc, putchar, puts and ungetc (S7.19.7),
+// fread and fwrite (S7.19.8), fgetpos, fseek, fsetpos, ftell and rewind (S7.19.9), and clearerr, feof, ferror and perror (S7.19.10),
 // a stream's output reaching its file by the time exit has called what atexit registered (S7.20.4.3p4),
 // its end-of-file indicator staying set until clearerr or ungetc clears it (S7.19.7.1p3, S7.19.7.11p3),
 // each of fopen's fifteen modes (S7.19.5.3p3), an update stream writing after a flush or a read to the end of its file (S7.19.5.3p6),
 // FOPEN_MAX streams open at once (S7.19.1p3), freopen giving a stream another file and clearing its indicators (S7.19.5.4p3),
 // a binary stream's position counted in characters from its file's start (S7.19.9.4p2) and one less after ungetc (S7.19.7.11p5),
 // fseek dropping a pushed-back character and the end-of-file indicator (S7.19.9.2p5), a text stream returning to what ftell gave (S7.19.9.2p4),
-// an update stream reading and writing either side of a positioning call (S7.19.5.3p6), and an append stream writing at its file's end wherever it is positioned (S7.19.5.3p5).
+// an update stream reading and writing either side of a positioning call (S7.19.5.3p6), an append stream writing at its file's end wherever it is positioned (S7.19.5.3p5),
+// a removed file opening no more (S7.19.4.1p2) and a renamed one by its new name alone (S7.19.4.2p2), tmpfile's streams each reading back what it was written (S7.19.4.3p2),
+// tmpnam giving a different name each call, one no file has (S7.19.4.4p2), in its array or its own (S7.19.4.4p3),
+// and perror writing its string, a colon and a space, where it has one, then strerror's text and a new-line to stderr (S7.19.10.4p2).
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -52,6 +55,7 @@
 #define WIDE  (BUFSIZ + 100)
 #define MANY  (FOPEN_MAX - 3)
 #define KINDS 3
+#define NAMES 25
 
 #define LONGER "a line longer than the buffer it passes through\n"
 
@@ -79,6 +83,14 @@
 #error "FILENAME_MAX is not defined as positive"
 #endif
 
+#if ! defined(L_tmpnam) || L_tmpnam < 1
+#error "L_tmpnam is not defined as positive"
+#endif
+
+#if ! defined(TMP_MAX) || TMP_MAX < 25
+#error "TMP_MAX is not defined as at least 25"
+#endif
+
 #if ! defined(SEEK_CUR) || ! defined(SEEK_END) || ! defined(SEEK_SET) || SEEK_CUR == SEEK_END || SEEK_CUR == SEEK_SET || SEEK_END == SEEK_SET
 #error "SEEK_CUR, SEEK_END and SEEK_SET are not distinct"
 #endif
@@ -91,6 +103,7 @@ static char outbuf[SMALL];
 static char inbuf[SMALL];
 static char filebuf[SMALL];
 static unsigned char wide[WIDE];
+static char names[NAMES][L_tmpnam];
 
 static void last(void)
 {
@@ -116,6 +129,15 @@ static int holds(const char *name, const char *str)
     return feof(file) and not ferror(file) and fclose(file) == 0 and strcmp(got, str) == 0;
 }
 
+static int reads(FILE *file, const char *prefix, int number)
+{
+    char want[HOLD];
+    char got[HOLD];
+
+    strcat(strcat(strcpy(want, prefix), strerror(number)), "\n");
+    return fgets(got, sizeof(got), file) == got and strcmp(got, want) == 0;
+}
+
 int main(void)
 {
     static const char *const modes[] = {"r", "rb", "r+", "rb+", "r+b", "a", "ab", "a+", "ab+", "a+b", "w", "wb", "w+", "wb+", "w+b"};
@@ -126,11 +148,13 @@ int main(void)
     FILE *streams[3];
     FILE *many[MANY];
     FILE *file;
+    FILE *other;
     char name[] = "many?";
     char block[HOLD];
     char line[32];
     size_t size = sizeof(FILE);
     size_t k;
+    size_t n;
     fpos_t pos;
     long at;
     int bad = 0;
@@ -341,6 +365,47 @@ int main(void)
     if (file == NULL or fseek(file, BUFSIZ + 50, SEEK_SET) != 0 or fgetc(file) != (BUFSIZ + 49) % PRIME) return 132;
     if (ftell(file) != BUFSIZ + 51 or fseek(file, -(long) BUFSIZ, SEEK_CUR) != 0 or fgetc(file) != 50) return 133;
     if (fseek(file, 3, SEEK_CUR) != 0 or fgetc(file) != 54 or ftell(file) != 56 or fclose(file) != 0) return 134;
-    if (fclose(stdin) != 0) return 135;
+
+    if (remove("missing") == 0 or rename("missing", "other name") == 0) return 135;
+    if (not put("old", "w", "moved") or rename("old", "new") != 0) return 136;
+    if (fopen("old", "r") != NULL or not holds("new", "moved")) return 137;
+    if (remove("new") != 0 or fopen("new", "r") != NULL or remove("new") == 0) return 138;
+
+    file = tmpfile();
+    other = tmpfile();
+    if (file == NULL or other == NULL or file == other) return 139;
+    if (fwrite(bytes, 1, sizeof(bytes), file) != sizeof(bytes) or fputs("the other's", other) < 0) return 140;
+    rewind(file);
+    rewind(other);
+    if (fread(block, 1, sizeof(block), file) != sizeof(bytes) or memcmp(block, bytes, sizeof(bytes)) != 0) return 141;
+    if (fgets(line, sizeof(line), other) != line or strcmp(line, "the other's") != 0) return 142;
+    if (fseek(file, 2, SEEK_SET) != 0 or fputc('!', file) != '!' or fseek(file, 2, SEEK_SET) != 0 or fgetc(file) != '!') return 143;
+    if (fclose(file) != 0 or fclose(other) != 0) return 144;
+
+    for (k = 0; k < NAMES; k++) {
+        char *got = tmpnam(k % 2 == 0 ? names[k] : NULL);
+
+        if (got == NULL or strlen(got) >= L_tmpnam or (k % 2 == 0 and got != names[k])) return 145;
+        if (k % 2 != 0) strcpy(names[k], got);
+        if (fopen(names[k], "r") != NULL) return 146;
+        for (n = 0; n < k; n++) {
+            if (strcmp(names[n], names[k]) == 0) return 147;
+        }
+    }
+    if (not put(names[0], "w", "named") or not holds(names[0], "named") or remove(names[0]) != 0) return 148;
+
+    if (freopen("errors", "w", stderr) != stderr) return 149;
+    errno = EDOM;
+    perror("first");
+    errno = ERANGE;
+    perror(NULL);
+    errno = EILSEQ;
+    perror("");
+    if (ferror(stderr) or fflush(stderr) != 0) return 150;
+    file = fopen("errors", "r");
+    if (file == NULL or not reads(file, "first: ", EDOM)) return 151;
+    if (not reads(file, "", ERANGE) or not reads(file, "", EILSEQ)) return 152;
+    if (fgetc(file) != EOF or fclose(file) != 0) return 153;
+    if (fclose(stdin) != 0) return 154;
     return 0;
 }

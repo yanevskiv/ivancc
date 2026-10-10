@@ -62,9 +62,13 @@
 
 #define FILENAME_MAX 4096
 
+#define L_tmpnam 20
+
 #define SEEK_CUR 1
 #define SEEK_END 2
 #define SEEK_SET 0
+
+#define TMP_MAX 10000
 
 #define stderr (&_Stdio_Stderr)
 #define stdin  (&_Stdio_Stdin)
@@ -103,10 +107,18 @@ extern FILE _Stdio_Stderr;
 // The open streams, newest first.
 extern FILE *_Stdio_Streams;
 
+// The number of the temporary name made last, once a seed has begun them.
+extern unsigned long _Stdio_TempNumber;
+extern _Bool _Stdio_TempSeeded;
+
+// The name tmpnam returns when it is given no array.
+extern char _Stdio_TempBuffer[L_tmpnam];
+
 // Opening
 FILE *_Stdio_New(void);
 _Bool _Stdio_IsMode(const char *mode);
 int   _Stdio_OpenFlags(const char *mode);
+void  _Stdio_Attach(FILE *stream, int fd, int flags);
 int   _Stdio_Open(FILE *stream, const char *filename, const char *mode);
 int   _Stdio_Reset(FILE *stream);
 void  _Stdio_Free(FILE *stream);
@@ -134,6 +146,16 @@ void   _Stdio_FlushLines(void);
 long _Stdio_Ahead(FILE *stream);
 int  _Stdio_Seek(FILE *stream, long offset, int whence);
 void _Stdio_Unread(FILE *stream);
+
+// Temporary names
+unsigned long _Stdio_TempSeed(void);
+void          _Stdio_TempName(char *str);
+
+// (S7.19.4) Operations on files
+int   remove(const char *filename);
+int   rename(const char *old, const char *new);
+FILE *tmpfile(void);
+char *tmpnam(char *str);
 
 // (S7.19.5) File access functions
 int   fclose(FILE *stream);
@@ -171,5 +193,6 @@ void rewind(FILE *stream);
 void clearerr(FILE *stream);
 int  feof(FILE *stream);
 int  ferror(FILE *stream);
+void perror(const char *str);
 
 #endif // _STDIO_H

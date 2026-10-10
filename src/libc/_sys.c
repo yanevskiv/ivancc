@@ -35,6 +35,7 @@
 #define _SYS_NR_WRITE          1
 #define _SYS_NR_OPEN           2
 #define _SYS_NR_CLOSE          3
+#define _SYS_NR_LSTAT          6
 #define _SYS_NR_LSEEK          8
 #define _SYS_NR_BRK            12
 #define _SYS_NR_RT_SIGACTION   13
@@ -43,8 +44,14 @@
 #define _SYS_NR_DUP2           33
 #define _SYS_NR_GETPID         39
 #define _SYS_NR_KILL           62
+#define _SYS_NR_RENAME         82
+#define _SYS_NR_RMDIR          84
+#define _SYS_NR_UNLINK         87
 #define _SYS_NR_CLOCK_GETTIME  228
 #define _SYS_NR_EXIT_GROUP     231
+
+// The bytes of Linux's struct stat.
+#define _SYS_STAT_SIZE 144
 
 // The bytes of Linux's struct termios.
 #define _SYS_TERMIOS_SIZE 36
@@ -54,6 +61,9 @@
 
 // The bytes of Linux's sigset_t.
 #define _SYS_SIGSET_SIZE 8
+
+// Check that struct stat is as large as the kernel's.
+typedef char _Sys_CheckStat[sizeof(struct _Sys_Stat) == _SYS_STAT_SIZE ? 1 : -1];
 
 // Check that struct termios is laid out as the kernel's.
 typedef char _Sys_CheckTermios[sizeof(struct _Sys_Termios) == _SYS_TERMIOS_SIZE ? 1 : -1];
@@ -102,6 +112,12 @@ long _Sys_Close(int fd)
     return _Sys_Syscall(_SYS_NR_CLOSE, fd, 0, 0, 0, 0, 0);
 }
 
+// Fill info with what the file at path is, a link's own and not its target's.
+long _Sys_Lstat(const char *path, struct _Sys_Stat *info)
+{
+    return _Sys_Syscall(_SYS_NR_LSTAT, (long) path, (long) info, 0, 0, 0, 0);
+}
+
 // Move the offset of the descriptor fd by offset from the origin whence.
 long _Sys_Lseek(int fd, long offset, int whence)
 {
@@ -148,6 +164,24 @@ int _Sys_Getpid(void)
 long _Sys_Kill(int pid, int sig)
 {
     return _Sys_Syscall(_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
+}
+
+// Give the file at from the name to, replacing a file that has it.
+long _Sys_Rename(const char *from, const char *to)
+{
+    return _Sys_Syscall(_SYS_NR_RENAME, (long) from, (long) to, 0, 0, 0, 0);
+}
+
+// Remove the empty directory at path.
+long _Sys_Rmdir(const char *path)
+{
+    return _Sys_Syscall(_SYS_NR_RMDIR, (long) path, 0, 0, 0, 0, 0);
+}
+
+// Remove the name path from its file, which goes with its last name and user.
+long _Sys_Unlink(const char *path)
+{
+    return _Sys_Syscall(_SYS_NR_UNLINK, (long) path, 0, 0, 0, 0, 0);
 }
 
 // Read the clock clock into spec.

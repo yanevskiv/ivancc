@@ -37,8 +37,13 @@
 #define _SYS_O_RDWR    02
 #define _SYS_O_ACCMODE 03
 #define _SYS_O_CREAT   0100
+#define _SYS_O_EXCL    0200
 #define _SYS_O_TRUNC   01000
 #define _SYS_O_APPEND  02000
+
+// Linux's permission bits for a file's owner, to read and to write.
+#define _SYS_S_IRUSR 0400
+#define _SYS_S_IWUSR 0200
 
 // The permissions open asks for a file it creates.
 #define _SYS_DEFFILEMODE 0666
@@ -47,6 +52,9 @@
 #define _SYS_SEEK_SET 0
 #define _SYS_SEEK_CUR 1
 #define _SYS_SEEK_END 2
+
+// The words Linux's struct stat ends with and does not use.
+#define _SYS_STAT_UNUSED 3
 
 // Linux's ioctl that reads a terminal's settings, and its control characters.
 #define _SYS_TCGETS 0x5401
@@ -197,6 +205,28 @@
 // Linux's rt_sigprocmask requests.
 #define _SYS_SIG_UNBLOCK 1
 
+// Linux's struct stat, the kernel's and not glibc's.
+struct _Sys_Stat {
+    unsigned long st_dev;
+    unsigned long st_ino;
+    unsigned long st_nlink;
+    unsigned int st_mode;
+    unsigned int st_uid;
+    unsigned int st_gid;
+    unsigned int st_pad;
+    unsigned long st_rdev;
+    long st_size;
+    long st_blksize;
+    long st_blocks;
+    unsigned long st_atime;
+    unsigned long st_atime_nsec;
+    unsigned long st_mtime;
+    unsigned long st_mtime_nsec;
+    unsigned long st_ctime;
+    unsigned long st_ctime_nsec;
+    long st_unused[_SYS_STAT_UNUSED];
+};
+
 // Linux's struct termios, the kernel's and not glibc's.
 struct _Sys_Termios {
     unsigned int c_iflag;
@@ -227,6 +257,7 @@ long  _Sys_Read(int fd, void *buf, unsigned long len);
 long  _Sys_Write(int fd, const void *buf, unsigned long len);
 long  _Sys_Open(const char *path, int flags, int mode);
 long  _Sys_Close(int fd);
+long  _Sys_Lstat(const char *path, struct _Sys_Stat *info);
 long  _Sys_Lseek(int fd, long offset, int whence);
 void *_Sys_Brk(void *addr);
 long  _Sys_RtSigaction(int sig, const struct _Sys_Sigaction *act, struct _Sys_Sigaction *oact);
@@ -235,6 +266,9 @@ long  _Sys_Ioctl(int fd, unsigned long request, void *arg);
 long  _Sys_Dup2(int fd, int as);
 int   _Sys_Getpid(void);
 long  _Sys_Kill(int pid, int sig);
+long  _Sys_Rename(const char *from, const char *to);
+long  _Sys_Rmdir(const char *path);
+long  _Sys_Unlink(const char *path);
 long  _Sys_ClockGettime(int clock, struct _Sys_Timespec *spec);
 void  _Sys_ExitGroup(int status);
 
