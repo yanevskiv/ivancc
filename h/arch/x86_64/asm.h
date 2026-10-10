@@ -232,7 +232,7 @@ Asm_x86_64_Operand Asm_x86_64_St(int32_t st);
 
 // Instruction list
 Asm_x86_64_Item *Asm_x86_64_New(Asm_x86_64_ItemKind kind);
-void Asm_x86_64_Clear(void);
+void             Asm_x86_64_Clear(void);
 Asm_x86_64_Item *Asm_x86_64_Items(void);
 
 // Non-instruction items

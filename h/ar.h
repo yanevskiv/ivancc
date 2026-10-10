@@ -65,14 +65,14 @@ struct Ar_Options {
 };
 
 // Usage
-void          Ar_Usage(const char *prog);
+void Ar_Usage(const char *prog);
 
 // Options
-void          Ar_SetOp(const char *prog, Ar_Options *opts, Ar_Op op);
-Ar_Options    Ar_Parse(const char *prog, const char *letters);
+void       Ar_SetOp(const char *prog, Ar_Options *opts, Ar_Op op);
+Ar_Options Ar_Parse(const char *prog, const char *letters);
 
 // Paths
-const char   *Ar_Basename(const char *path);
+const char *Ar_Basename(const char *path);
 
 // Archives
 Lib_Ar       *Ar_Open(const char *path, const Ar_Options *opts);

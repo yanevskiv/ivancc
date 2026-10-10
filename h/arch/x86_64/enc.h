@@ -236,10 +236,10 @@ void Enc_x86_64_RecordFixup(const char *name, uint32_t type, int64_t addend);
 
 // REX and ModRM encoding
 Enc_x86_64_RegExt Enc_x86_64_RegHigh(Asm_x86_64_Reg reg);
-void Enc_x86_64_EmitRexW(Enc_x86_64_RegExt regHigh, Enc_x86_64_RegExt rmHigh);
-void Enc_x86_64_EmitRex(Asm_x86_64_Width width, Asm_x86_64_Reg reg, Asm_x86_64_Reg rm);
-void Enc_x86_64_EmitModRR(uint8_t reg, Asm_x86_64_Reg rm);
-void Enc_x86_64_EmitMem(uint8_t reg, Asm_x86_64_Reg base, int32_t disp);
+void              Enc_x86_64_EmitRexW(Enc_x86_64_RegExt regHigh, Enc_x86_64_RegExt rmHigh);
+void              Enc_x86_64_EmitRex(Asm_x86_64_Width width, Asm_x86_64_Reg reg, Asm_x86_64_Reg rm);
+void              Enc_x86_64_EmitModRR(uint8_t reg, Asm_x86_64_Reg rm);
+void              Enc_x86_64_EmitMem(uint8_t reg, Asm_x86_64_Reg base, int32_t disp);
 
 // Instruction encoding
 void Enc_x86_64_EmitRR(Enc_x86_64_Opcode opcode, Asm_x86_64_Reg src, Asm_x86_64_Reg dst);

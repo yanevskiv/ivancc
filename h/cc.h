@@ -126,32 +126,32 @@ struct Cc_Target {
 };
 
 // Usage
-void             Cc_ShowUsage(const char *prog);
+void Cc_ShowUsage(const char *prog);
 
 // Directories
-char            *Cc_GetExeDir(void);
-char            *Cc_GetRuntimeDir(const char *prefix, const char *arch, const Cc_Target *target);
-char            *Cc_GetIncludeDir(void);
+char *Cc_GetExeDir(void);
+char *Cc_GetRuntimeDir(const char *prefix, const char *arch, const Cc_Target *target);
+char *Cc_GetIncludeDir(void);
 
 // Targets
 const Cc_Target *Cc_FindTarget(const char *name);
 void             Cc_PutTargetMacros(Buf *out, const Cc_Target *target);
 
 // Output
-FILE            *Cc_OpenOutput(const char *output, const char *mode);
-void             Cc_CloseOutput(FILE *out);
-void             Cc_RemoveOutput(void);
+FILE *Cc_OpenOutput(const char *output, const char *mode);
+void  Cc_CloseOutput(FILE *out);
+void  Cc_RemoveOutput(void);
 
 // Dependencies
-void             Cc_AddTarget(Cc_Depend *dep, char *target);
-char            *Cc_DefaultTarget(const char *input, const char *output, Cc_DependMode mode);
-char            *Cc_DefaultDependFile(const char *input, const char *output, Cc_DependMode mode);
-void             Cc_WriteDepend(Cc_Depend *dep, const char *input, const char *output);
-void             Cc_FreeDepend(Cc_Depend *dep);
+void  Cc_AddTarget(Cc_Depend *dep, char *target);
+char *Cc_DefaultTarget(const char *input, const char *output, Cc_DependMode mode);
+char *Cc_DefaultDependFile(const char *input, const char *output, Cc_DependMode mode);
+void  Cc_WriteDepend(Cc_Depend *dep, const char *input, const char *output);
+void  Cc_FreeDepend(Cc_Depend *dep);
 
 // Writing
-void             Cc_x86_64_WriteText(FILE *out, Ast_Func *prog);
-void             Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog);
-void             Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target);
+void Cc_x86_64_WriteText(FILE *out, Ast_Func *prog);
+void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog);
+void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target);
 
 #endif // CC_H

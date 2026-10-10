@@ -201,42 +201,42 @@ struct Cpu_x86_64_State {
 };
 
 // Running
-void Cpu_x86_64_Init(Cpu_x86_64_State *cpu, const Cpu_x86_64_Bus *bus, uint64_t rip, uint64_t rsp);
-void Cpu_x86_64_Fault(Cpu_x86_64_State *cpu, Cpu_x86_64_Vector vector, Err_Code code, ...);
-void Cpu_x86_64_PageFault(Cpu_x86_64_State *cpu, uint64_t addr, uint64_t error);
-uint64_t Cpu_x86_64_ReadReg(const Cpu_x86_64_State *cpu, Cpu_x86_64_Reg reg, Cpu_x86_64_OperandWidth width);
-void Cpu_x86_64_WriteReg(Cpu_x86_64_State *cpu, Cpu_x86_64_Reg reg, uint64_t value, Cpu_x86_64_OperandWidth width);
-bool Cpu_x86_64_IsDevice(const Cpu_x86_64_State *cpu, uint64_t addr);
+void           Cpu_x86_64_Init(Cpu_x86_64_State *cpu, const Cpu_x86_64_Bus *bus, uint64_t rip, uint64_t rsp);
+void           Cpu_x86_64_Fault(Cpu_x86_64_State *cpu, Cpu_x86_64_Vector vector, Err_Code code, ...);
+void           Cpu_x86_64_PageFault(Cpu_x86_64_State *cpu, uint64_t addr, uint64_t error);
+uint64_t       Cpu_x86_64_ReadReg(const Cpu_x86_64_State *cpu, Cpu_x86_64_Reg reg, Cpu_x86_64_OperandWidth width);
+void           Cpu_x86_64_WriteReg(Cpu_x86_64_State *cpu, Cpu_x86_64_Reg reg, uint64_t value, Cpu_x86_64_OperandWidth width);
+bool           Cpu_x86_64_IsDevice(const Cpu_x86_64_State *cpu, uint64_t addr);
 const uint8_t *Cpu_x86_64_ReadAt(Cpu_x86_64_State *cpu, uint64_t addr, size_t size);
-uint8_t *Cpu_x86_64_WriteAt(Cpu_x86_64_State *cpu, uint64_t addr, size_t size);
-uint64_t Cpu_x86_64_ReadMem(Cpu_x86_64_State *cpu, uint64_t addr, Cpu_x86_64_OperandWidth width);
-void Cpu_x86_64_WriteMem(Cpu_x86_64_State *cpu, uint64_t addr, uint64_t value, Cpu_x86_64_OperandWidth width);
-uint64_t Cpu_x86_64_RmAddr(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next);
-uint64_t Cpu_x86_64_ReadRm(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, Cpu_x86_64_OperandWidth width);
-void Cpu_x86_64_WriteRm(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t value, Cpu_x86_64_OperandWidth width);
-void Cpu_x86_64_FlagsSub(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
-void Cpu_x86_64_FlagsAdd(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
-bool Cpu_x86_64_Parity(uint64_t res);
-void Cpu_x86_64_FlagsCompare(Cpu_x86_64_State *cpu, long double a, long double b);
-uint64_t Cpu_x86_64_Truncate(long double value, Cpu_x86_64_OperandWidth width);
-uint64_t Cpu_x86_64_ReadSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, Cpu_x86_64_OperandWidth width);
-void Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
-long double *Cpu_x86_64_St(Cpu_x86_64_State *cpu, int32_t i);
-void Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, long double value);
-long double Cpu_x86_64_StPop(Cpu_x86_64_State *cpu);
-void Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
-void Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
-void Cpu_x86_64_Divide(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Cpu_x86_64_OperandWidth width);
-void Cpu_x86_64_Step(Cpu_x86_64_State *cpu);
-void Cpu_x86_64_Free(Cpu_x86_64_State *cpu);
+uint8_t       *Cpu_x86_64_WriteAt(Cpu_x86_64_State *cpu, uint64_t addr, size_t size);
+uint64_t       Cpu_x86_64_ReadMem(Cpu_x86_64_State *cpu, uint64_t addr, Cpu_x86_64_OperandWidth width);
+void           Cpu_x86_64_WriteMem(Cpu_x86_64_State *cpu, uint64_t addr, uint64_t value, Cpu_x86_64_OperandWidth width);
+uint64_t       Cpu_x86_64_RmAddr(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next);
+uint64_t       Cpu_x86_64_ReadRm(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, Cpu_x86_64_OperandWidth width);
+void           Cpu_x86_64_WriteRm(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t value, Cpu_x86_64_OperandWidth width);
+void           Cpu_x86_64_FlagsSub(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
+void           Cpu_x86_64_FlagsAdd(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
+bool           Cpu_x86_64_Parity(uint64_t res);
+void           Cpu_x86_64_FlagsCompare(Cpu_x86_64_State *cpu, long double a, long double b);
+uint64_t       Cpu_x86_64_Truncate(long double value, Cpu_x86_64_OperandWidth width);
+uint64_t       Cpu_x86_64_ReadSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, Cpu_x86_64_OperandWidth width);
+void           Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
+long double   *Cpu_x86_64_St(Cpu_x86_64_State *cpu, int32_t i);
+void           Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, long double value);
+long double    Cpu_x86_64_StPop(Cpu_x86_64_State *cpu);
+void           Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
+void           Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
+void           Cpu_x86_64_Divide(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Cpu_x86_64_OperandWidth width);
+void           Cpu_x86_64_Step(Cpu_x86_64_State *cpu);
+void           Cpu_x86_64_Free(Cpu_x86_64_State *cpu);
 
 // Decoding
-int64_t Cpu_x86_64_ReadImm(const uint8_t *p, size_t n);
-bool Cpu_x86_64_HasModRM(int32_t op);
-bool Cpu_x86_64_HasModRM2(int32_t op2);
-size_t Cpu_x86_64_DecodeModRM(const uint8_t *p, size_t avail, uint8_t rex, Cpu_x86_64_Insn *insn);
+int64_t                 Cpu_x86_64_ReadImm(const uint8_t *p, size_t n);
+bool                    Cpu_x86_64_HasModRM(int32_t op);
+bool                    Cpu_x86_64_HasModRM2(int32_t op2);
+size_t                  Cpu_x86_64_DecodeModRM(const uint8_t *p, size_t avail, uint8_t rex, Cpu_x86_64_Insn *insn);
 Cpu_x86_64_OperandWidth Cpu_x86_64_Width(const Cpu_x86_64_Insn *insn);
-size_t Cpu_x86_64_Decode(const uint8_t *code, size_t avail, Cpu_x86_64_Insn *insn);
+size_t                  Cpu_x86_64_Decode(const uint8_t *code, size_t avail, Cpu_x86_64_Insn *insn);
 
 // Naming what was decoded
 const char *Cpu_x86_64_RegName(Cpu_x86_64_Reg reg, Cpu_x86_64_OperandWidth width);

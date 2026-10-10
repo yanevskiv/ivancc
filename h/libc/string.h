@@ -60,25 +60,25 @@ char *strcat(char *restrict str1, const char *restrict str2);
 char *strncat(char *restrict str1, const char *restrict str2, size_t n);
 
 // (S7.21.4) Comparison functions
-int memcmp(const void *str1, const void *str2, size_t n);
-int strcmp(const char *str1, const char *str2);
-int strcoll(const char *str1, const char *str2);
-int strncmp(const char *str1, const char *str2, size_t n);
+int    memcmp(const void *str1, const void *str2, size_t n);
+int    strcmp(const char *str1, const char *str2);
+int    strcoll(const char *str1, const char *str2);
+int    strncmp(const char *str1, const char *str2, size_t n);
 size_t strxfrm(char *restrict str1, const char *restrict str2, size_t n);
 
 // (S7.21.5) Search functions
-void *memchr(const void *str, int ch, size_t n);
-char *strchr(const char *str, int ch);
+void  *memchr(const void *str, int ch, size_t n);
+char  *strchr(const char *str, int ch);
 size_t strcspn(const char *str1, const char *str2);
-char *strpbrk(const char *str1, const char *str2);
-char *strrchr(const char *str, int ch);
+char  *strpbrk(const char *str1, const char *str2);
+char  *strrchr(const char *str, int ch);
 size_t strspn(const char *str1, const char *str2);
-char *strstr(const char *str1, const char *str2);
-char *strtok(char *restrict str1, const char *restrict str2);
+char  *strstr(const char *str1, const char *str2);
+char  *strtok(char *restrict str1, const char *restrict str2);
 
 // (S7.21.6) Miscellaneous functions
-void *memset(void *str, int ch, size_t n);
-char *strerror(int errnum);
+void  *memset(void *str, int ch, size_t n);
+char  *strerror(int errnum);
 size_t strlen(const char *str);
 
 #endif // _STRING_H

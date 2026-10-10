@@ -74,10 +74,10 @@ Elf_Sym *Link_ElfFindGlobal(Elf *elf, const char *name);
 void     Link_ElfMerge(Elf *out, Elf *in, const char *name);
 
 // Archives
-Lib_Ar  *Link_ArRead(const char *path, const uint8_t *bytes, size_t len);
-bool     Link_ArMemberNeeded(Elf *out, const Lib_ArMember *member);
-void     Link_ArMergeMember(Elf *out, const char *path, const Lib_ArMember *member, const Link_Options *opts);
-void     Link_ArMerge(Elf *out, const char *path, const Lib_Ar *ar, const Link_Options *opts);
+Lib_Ar *Link_ArRead(const char *path, const uint8_t *bytes, size_t len);
+bool    Link_ArMemberNeeded(Elf *out, const Lib_ArMember *member);
+void    Link_ArMergeMember(Elf *out, const char *path, const Lib_ArMember *member, const Link_Options *opts);
+void    Link_ArMerge(Elf *out, const char *path, const Lib_Ar *ar, const Link_Options *opts);
 
 // Placement
 void     Link_PlaceAdd(Link_Options *opts, const char *name, uint64_t addr);
@@ -85,11 +85,11 @@ uint64_t Link_PlaceAddr(const Link_Options *opts, const char *name, bool *placed
 void     Link_PlaceSections(Elf *elf, const Link_Options *opts);
 
 // Executables
-void     Link_ExecCheckDefined(Elf *elf);
-void     Link_ExecFinalize(Elf *elf, const Link_Options *opts);
+void Link_ExecCheckDefined(Elf *elf);
+void Link_ExecFinalize(Elf *elf, const Link_Options *opts);
 
 // Linking
-void     Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths, const Link_Options *opts);
-Elf     *Link_Build(const char *const *paths, size_t npaths, const Link_Options *opts);
+void Link_MergeFiles(Elf *out, const char *const *paths, size_t npaths, const Link_Options *opts);
+Elf *Link_Build(const char *const *paths, size_t npaths, const Link_Options *opts);
 
 #endif // LINK_H
