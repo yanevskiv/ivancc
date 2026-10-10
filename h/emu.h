@@ -62,140 +62,140 @@
 // The descriptor the UART writes its bytes to.
 #define EMU_UART_FD 1
 
-// Linux syscall numbers the emulator answers.
-#define EMU_SYS_WRITE          1
-#define EMU_SYS_BRK            12
-#define EMU_SYS_RT_SIGACTION   13
-#define EMU_SYS_RT_SIGPROCMASK 14
-#define EMU_SYS_RT_SIGRETURN   15
-#define EMU_SYS_GETPID         39
-#define EMU_SYS_EXIT           60
-#define EMU_SYS_KILL           62
-#define EMU_SYS_CLOCK_GETTIME  228
-#define EMU_SYS_EXIT_GROUP     231
-
 // The layout of Linux's struct timespec.
-#define EMU_TIMESPEC_SEC_OFF  0
-#define EMU_TIMESPEC_NSEC_OFF 8
-#define EMU_TIMESPEC_SIZE     16
+#define EMU_LINUX_TIMESPEC_SEC_OFF  0
+#define EMU_LINUX_TIMESPEC_NSEC_OFF 8
+#define EMU_LINUX_TIMESPEC_SIZE     16
 
 // Linux errno values a failed syscall returns negated in %rax.
-#define EMU_ERRNO_FAULT 14
-#define EMU_ERRNO_INVAL 22
-#define EMU_ERRNO_NOSYS 38
+#define EMU_LINUX_ERRNO_FAULT 14
+#define EMU_LINUX_ERRNO_INVAL 22
+#define EMU_LINUX_ERRNO_NOSYS 38
 
 // The signal numbers kill checks its argument against.
-#define EMU_SIGNAL_NONE   0
-#define EMU_SIGNAL_FIRST  1
-#define EMU_SIGNAL_RT_MIN 32
-#define EMU_SIGNAL_MAX    64
+#define EMU_LINUX_SIGNAL_NONE   0
+#define EMU_LINUX_SIGNAL_FIRST  1
+#define EMU_LINUX_SIGNAL_RT_MIN 32
+#define EMU_LINUX_SIGNAL_MAX    64
 
 // The bytes of Linux's sigset_t.
-#define EMU_SIGSET_SIZE 8
+#define EMU_LINUX_SIGSET_SIZE 8
 
 // rt_sigprocmask's ways of changing the mask.
-#define EMU_SIG_BLOCK   0
-#define EMU_SIG_UNBLOCK 1
-#define EMU_SIG_SETMASK 2
-
-// The layout of Linux's struct sigaction for rt_sigaction.
-#define EMU_SIGACTION_HANDLER_OFF  0
-#define EMU_SIGACTION_FLAGS_OFF    8
-#define EMU_SIGACTION_RESTORER_OFF 16
-#define EMU_SIGACTION_MASK_OFF     24
-#define EMU_SIGACTION_SIZE         32
+#define EMU_LINUX_SIG_BLOCK   0
+#define EMU_LINUX_SIG_UNBLOCK 1
+#define EMU_LINUX_SIG_SETMASK 2
 
 // The handlers rt_sigaction takes beside a function's address.
-#define EMU_SIG_DFL 0
-#define EMU_SIG_IGN 1
-
-// The sa_flags Linux keeps.
-#define EMU_SA_NOCLDSTOP      0x1
-#define EMU_SA_NOCLDWAIT      0x2
-#define EMU_SA_SIGINFO        0x4
-#define EMU_SA_EXPOSE_TAGBITS 0x800
-#define EMU_SA_RESTORER       0x04000000
-#define EMU_SA_ONSTACK        0x08000000
-#define EMU_SA_RESTART        0x10000000
-#define EMU_SA_NODEFER        0x40000000
-#define EMU_SA_RESETHAND      0x80000000
-#define EMU_SA_KNOWN          (EMU_SA_NOCLDSTOP | EMU_SA_NOCLDWAIT | EMU_SA_SIGINFO | EMU_SA_EXPOSE_TAGBITS | EMU_SA_RESTORER | EMU_SA_ONSTACK | EMU_SA_RESTART | EMU_SA_NODEFER | EMU_SA_RESETHAND)
+#define EMU_LINUX_SIG_DFL 0
+#define EMU_LINUX_SIG_IGN 1
 
 // The si_code values of the signals the emulator sends.
-#define EMU_SI_USER     0
-#define EMU_SI_KERNEL   0x80
-#define EMU_ILL_ILLOPN  2
-#define EMU_FPE_INTDIV  1
-#define EMU_SEGV_MAPERR 1
-
-// The layout of Linux's rt_sigframe.
-#define EMU_FRAME_PRETCODE_OFF 0
-#define EMU_FRAME_UC_OFF       8
-#define EMU_FRAME_UC_FLAGS_OFF 8
-#define EMU_FRAME_SC_OFF       48
-#define EMU_FRAME_SIGMASK_OFF  304
-#define EMU_FRAME_INFO_OFF     312
-#define EMU_FRAME_SIZE         440
-
-// The layout of Linux's struct sigcontext after its general registers.
-#define EMU_SC_RIP_OFF     128
-#define EMU_SC_EFLAGS_OFF  136
-#define EMU_SC_CS_OFF      144
-#define EMU_SC_SS_OFF      150
-#define EMU_SC_ERR_OFF     152
-#define EMU_SC_TRAPNO_OFF  160
-#define EMU_SC_OLDMASK_OFF 168
-#define EMU_SC_CR2_OFF     176
-#define EMU_SC_FPSTATE_OFF 184
+#define EMU_LINUX_SI_USER     0
+#define EMU_LINUX_SI_KERNEL   0x80
+#define EMU_LINUX_ILL_ILLOPN  2
+#define EMU_LINUX_FPE_INTDIV  1
+#define EMU_LINUX_SEGV_MAPERR 1
 
 // The layout of Linux's siginfo.
-#define EMU_INFO_SIGNO_OFF 0
-#define EMU_INFO_CODE_OFF  8
-#define EMU_INFO_PID_OFF   16
-#define EMU_INFO_UID_OFF   20
-#define EMU_INFO_ADDR_OFF  16
-
-// The uc_flags Linux gives a frame with no XSAVE state.
-#define EMU_UC_SIGCONTEXT_SS     0x2
-#define EMU_UC_STRICT_RESTORE_SS 0x4
-
-// The selectors of a 64-bit user program's code and stack.
-#define EMU_USER_CS 0x33
-#define EMU_USER_SS 0x2b
+#define EMU_LINUX_INFO_SIGNO_OFF 0
+#define EMU_LINUX_INFO_CODE_OFF  8
+#define EMU_LINUX_INFO_PID_OFF   16
+#define EMU_LINUX_INFO_UID_OFF   20
+#define EMU_LINUX_INFO_ADDR_OFF  16
 
 // The bits of %rflags a frame holds.
-#define EMU_RFLAGS_CF    0x1
-#define EMU_RFLAGS_FIXED 0x2
-#define EMU_RFLAGS_PF    0x4
-#define EMU_RFLAGS_ZF    0x40
-#define EMU_RFLAGS_SF    0x80
-#define EMU_RFLAGS_IF    0x200
-#define EMU_RFLAGS_OF    0x800
-
-// The red zone a frame leaves under the interrupted %rsp.
-#define EMU_FRAME_REDZONE 128
-
-// The alignments of a frame and of its fpstate.
-#define EMU_FRAME_ALIGN         16
-#define EMU_FRAME_FPSTATE_ALIGN 64
+#define EMU_X86_64_RFLAGS_CF    0x1
+#define EMU_X86_64_RFLAGS_FIXED 0x2
+#define EMU_X86_64_RFLAGS_PF    0x4
+#define EMU_X86_64_RFLAGS_ZF    0x40
+#define EMU_X86_64_RFLAGS_SF    0x80
+#define EMU_X86_64_RFLAGS_IF    0x200
+#define EMU_X86_64_RFLAGS_OF    0x800
 
 // The layout of the FXSAVE area a frame's fpstate points to.
-#define EMU_FXSAVE_FCW_OFF        0
-#define EMU_FXSAVE_FSW_OFF        2
-#define EMU_FXSAVE_MXCSR_OFF      24
-#define EMU_FXSAVE_MXCSR_MASK_OFF 28
-#define EMU_FXSAVE_ST_OFF         32
-#define EMU_FXSAVE_XMM_OFF        160
-#define EMU_FXSAVE_REG_SIZE       16
-#define EMU_FXSAVE_SIZE           512
+#define EMU_X86_64_FXSAVE_FCW_OFF        0
+#define EMU_X86_64_FXSAVE_FSW_OFF        2
+#define EMU_X86_64_FXSAVE_MXCSR_OFF      24
+#define EMU_X86_64_FXSAVE_MXCSR_MASK_OFF 28
+#define EMU_X86_64_FXSAVE_ST_OFF         32
+#define EMU_X86_64_FXSAVE_XMM_OFF        160
+#define EMU_X86_64_FXSAVE_REG_SIZE       16
+#define EMU_X86_64_FXSAVE_SIZE           512
 
 // The x87 and SSE control words a handler starts with.
-#define EMU_FCW_DEFAULT   0x037F
-#define EMU_MXCSR_DEFAULT 0x1F80
-#define EMU_MXCSR_MASK    0xFFFF
+#define EMU_X86_64_FCW_DEFAULT   0x037F
+#define EMU_X86_64_MXCSR_DEFAULT 0x1F80
+#define EMU_X86_64_MXCSR_MASK    0xFFFF
 
 // The place of the x87 stack's top in its status word.
-#define EMU_FSW_TOP_SHIFT 11
+#define EMU_X86_64_FSW_TOP_SHIFT 11
+
+// The x86_64 Linux syscall numbers the emulator answers.
+#define EMU_X86_64_LINUX_SYSCALL_WRITE          1
+#define EMU_X86_64_LINUX_SYSCALL_BRK            12
+#define EMU_X86_64_LINUX_SYSCALL_RT_SIGACTION   13
+#define EMU_X86_64_LINUX_SYSCALL_RT_SIGPROCMASK 14
+#define EMU_X86_64_LINUX_SYSCALL_RT_SIGRETURN   15
+#define EMU_X86_64_LINUX_SYSCALL_GETPID         39
+#define EMU_X86_64_LINUX_SYSCALL_EXIT           60
+#define EMU_X86_64_LINUX_SYSCALL_KILL           62
+#define EMU_X86_64_LINUX_SYSCALL_CLOCK_GETTIME  228
+#define EMU_X86_64_LINUX_SYSCALL_EXIT_GROUP     231
+
+// The layout of Linux's struct sigaction for rt_sigaction.
+#define EMU_X86_64_LINUX_SIGACTION_HANDLER_OFF  0
+#define EMU_X86_64_LINUX_SIGACTION_FLAGS_OFF    8
+#define EMU_X86_64_LINUX_SIGACTION_RESTORER_OFF 16
+#define EMU_X86_64_LINUX_SIGACTION_MASK_OFF     24
+#define EMU_X86_64_LINUX_SIGACTION_SIZE         32
+
+// The sa_flags Linux keeps.
+#define EMU_X86_64_LINUX_SA_NOCLDSTOP      0x1
+#define EMU_X86_64_LINUX_SA_NOCLDWAIT      0x2
+#define EMU_X86_64_LINUX_SA_SIGINFO        0x4
+#define EMU_X86_64_LINUX_SA_EXPOSE_TAGBITS 0x800
+#define EMU_X86_64_LINUX_SA_RESTORER       0x04000000
+#define EMU_X86_64_LINUX_SA_ONSTACK        0x08000000
+#define EMU_X86_64_LINUX_SA_RESTART        0x10000000
+#define EMU_X86_64_LINUX_SA_NODEFER        0x40000000
+#define EMU_X86_64_LINUX_SA_RESETHAND      0x80000000
+#define EMU_X86_64_LINUX_SA_KNOWN          (EMU_X86_64_LINUX_SA_NOCLDSTOP | EMU_X86_64_LINUX_SA_NOCLDWAIT | EMU_X86_64_LINUX_SA_SIGINFO | EMU_X86_64_LINUX_SA_EXPOSE_TAGBITS | EMU_X86_64_LINUX_SA_RESTORER | EMU_X86_64_LINUX_SA_ONSTACK | EMU_X86_64_LINUX_SA_RESTART | EMU_X86_64_LINUX_SA_NODEFER | EMU_X86_64_LINUX_SA_RESETHAND)
+
+// The layout of Linux's rt_sigframe.
+#define EMU_X86_64_LINUX_FRAME_PRETCODE_OFF 0
+#define EMU_X86_64_LINUX_FRAME_UC_OFF       8
+#define EMU_X86_64_LINUX_FRAME_UC_FLAGS_OFF 8
+#define EMU_X86_64_LINUX_FRAME_SC_OFF       48
+#define EMU_X86_64_LINUX_FRAME_SIGMASK_OFF  304
+#define EMU_X86_64_LINUX_FRAME_INFO_OFF     312
+#define EMU_X86_64_LINUX_FRAME_SIZE         440
+
+// The layout of Linux's struct sigcontext after its general registers.
+#define EMU_X86_64_LINUX_SC_RIP_OFF     128
+#define EMU_X86_64_LINUX_SC_EFLAGS_OFF  136
+#define EMU_X86_64_LINUX_SC_CS_OFF      144
+#define EMU_X86_64_LINUX_SC_SS_OFF      150
+#define EMU_X86_64_LINUX_SC_ERR_OFF     152
+#define EMU_X86_64_LINUX_SC_TRAPNO_OFF  160
+#define EMU_X86_64_LINUX_SC_OLDMASK_OFF 168
+#define EMU_X86_64_LINUX_SC_CR2_OFF     176
+#define EMU_X86_64_LINUX_SC_FPSTATE_OFF 184
+
+// The uc_flags Linux gives a frame with no XSAVE state.
+#define EMU_X86_64_LINUX_UC_SIGCONTEXT_SS     0x2
+#define EMU_X86_64_LINUX_UC_STRICT_RESTORE_SS 0x4
+
+// The selectors of a 64-bit user program's code and stack.
+#define EMU_X86_64_LINUX_USER_CS 0x33
+#define EMU_X86_64_LINUX_USER_SS 0x2b
+
+// The red zone a frame leaves under the interrupted %rsp.
+#define EMU_X86_64_LINUX_FRAME_REDZONE 128
+
+// The alignments of a frame and of its fpstate.
+#define EMU_X86_64_LINUX_FRAME_ALIGN         16
+#define EMU_X86_64_LINUX_FRAME_FPSTATE_ALIGN 64
 
 // Whether the emulator writes each instruction to stderr before it runs.
 typedef enum Emu_Trace Emu_Trace;
@@ -214,36 +214,36 @@ enum Emu_Source {
 };
 
 // A signal's disposition as rt_sigaction sets it.
-typedef struct Emu_Action Emu_Action;
-struct Emu_Action {
-    uint64_t ea_handler; // the handler's address, EMU_SIG_DFL or EMU_SIG_IGN
+typedef struct Emu_Linux_Action Emu_Linux_Action;
+struct Emu_Linux_Action {
+    uint64_t ea_handler; // the handler's address, EMU_LINUX_SIG_DFL or EMU_LINUX_SIG_IGN
     uint64_t ea_flags;
     uint64_t ea_restorer;
     uint64_t ea_mask;    // the signals blocked while the handler runs
 };
 
 // What a pending signal's siginfo says.
-typedef struct Emu_Info Emu_Info;
-struct Emu_Info {
+typedef struct Emu_Linux_Info Emu_Linux_Info;
+struct Emu_Linux_Info {
     Emu_Source ei_source;
     int32_t    ei_code;  // si_code
     uint64_t   ei_addr;  // the address a fault names
 };
 
 // A running program: its image, its signals and how it stopped.
-typedef struct Emu_Guest Emu_Guest;
-struct Emu_Guest {
-    Load_Image       *eg_img;
-    bool              eg_halted;                     // the program exited or a signal ended it
-    int32_t           eg_status;                     // the status it exited with
-    int32_t           eg_signal;                     // the signal that ended it, or 0
-    Emu_Action        eg_action[EMU_SIGNAL_MAX + 1];
-    Emu_Info          eg_info[EMU_SIGNAL_MAX + 1];   // what sent each pending signal
-    uint32_t          eg_queued[EMU_SIGNAL_MAX + 1]; // the instances of each signal pending
-    uint64_t          eg_pending;                    // the signals with an instance pending
-    uint64_t          eg_blocked;                    // the signals the program blocks
-    uint64_t          eg_trapno;                     // the vector of the last exception
-    uint64_t          eg_err;                        // the error code of the last exception
+typedef struct Emu_x86_64_Linux_Guest Emu_x86_64_Linux_Guest;
+struct Emu_x86_64_Linux_Guest {
+    Load_Image      *eg_img;
+    bool             eg_halted;                           // the program exited or a signal ended it
+    int32_t          eg_status;                           // the status it exited with
+    int32_t          eg_signal;                           // the signal that ended it, or 0
+    Emu_Linux_Action eg_action[EMU_LINUX_SIGNAL_MAX + 1];
+    Emu_Linux_Info   eg_info[EMU_LINUX_SIGNAL_MAX + 1];   // what sent each pending signal
+    uint32_t         eg_queued[EMU_LINUX_SIGNAL_MAX + 1]; // the instances of each signal pending
+    uint64_t         eg_pending;                          // the signals with an instance pending
+    uint64_t         eg_blocked;                          // the signals the program blocks
+    uint64_t         eg_trapno;                           // the vector of the last exception
+    uint64_t         eg_err;                              // the error code of the last exception
 };
 
 // The host's environment.
@@ -254,7 +254,6 @@ void Emu_Usage(const char *prog);
 
 // Inspection
 void Emu_ShowImage(const Load_Image *img);
-void Emu_Disassemble(const Load_Image *img);
 
 // Bus
 uint8_t *Emu_MapMemory(void *ctx, uint64_t addr, size_t *avail);
@@ -265,43 +264,48 @@ void     Emu_StoreDevice(void *ctx, uint64_t addr, size_t size, uint64_t value);
 void     Emu_Put(uint8_t *ptr, uint64_t value, size_t size);
 uint64_t Emu_Get(const uint8_t *ptr, size_t size);
 
-// Signals
-uint64_t Emu_SignalBit(int32_t sig);
-bool     Emu_IsDefaultIgnored(int32_t sig);
-bool     Emu_IsDefaultStop(int32_t sig);
-bool     Emu_IsSynchronous(int32_t sig);
-uint64_t Emu_Unblockable(void);
-bool     Emu_IsIgnored(const Emu_Guest *guest, int32_t sig);
-void     Emu_Send(Emu_Guest *guest, int32_t sig, Emu_Info info);
-void     Emu_Force(Emu_Guest *guest, int32_t sig, Emu_Info info);
-void     Emu_Discard(Emu_Guest *guest, int32_t sig);
-void     Emu_Inherit(Emu_Guest *guest);
-uint64_t Emu_Kill(Emu_Guest *guest, int32_t pid, int32_t sig);
-uint64_t Emu_SigAction(Emu_Guest *guest, int32_t sig, uint64_t act, uint64_t oact, uint64_t size);
-uint64_t Emu_SigProcMask(Emu_Guest *guest, int32_t how, uint64_t set, uint64_t oset, uint64_t size);
+// Ending
+void Emu_Raise(int32_t sig);
 
-// Registers
-uint64_t Emu_ReadFlags(const Cpu_x86_64_State *cpu);
-void     Emu_WriteFlags(Cpu_x86_64_State *cpu, uint64_t flags);
-void     Emu_SaveFpu(Cpu_x86_64_State *cpu, uint8_t *area);
-void     Emu_RestoreFpu(Cpu_x86_64_State *cpu, const uint8_t *area);
-void     Emu_ResetFpu(Cpu_x86_64_State *cpu);
+// Linux signals
+uint64_t Emu_Linux_SignalBit(int32_t sig);
+bool     Emu_Linux_IsDefaultIgnored(int32_t sig);
+bool     Emu_Linux_IsDefaultStop(int32_t sig);
+bool     Emu_Linux_IsSynchronous(int32_t sig);
+uint64_t Emu_Linux_Unblockable(void);
+bool     Emu_Linux_IsIgnored(const Emu_x86_64_Linux_Guest *guest, int32_t sig);
+void     Emu_Linux_Send(Emu_x86_64_Linux_Guest *guest, int32_t sig, Emu_Linux_Info info);
+void     Emu_Linux_Force(Emu_x86_64_Linux_Guest *guest, int32_t sig, Emu_Linux_Info info);
+void     Emu_Linux_Discard(Emu_x86_64_Linux_Guest *guest, int32_t sig);
+void     Emu_Linux_Inherit(Emu_x86_64_Linux_Guest *guest);
+uint64_t Emu_Linux_Kill(Emu_x86_64_Linux_Guest *guest, int32_t pid, int32_t sig);
+uint64_t Emu_Linux_SigProcMask(Emu_x86_64_Linux_Guest *guest, int32_t how, uint64_t set, uint64_t oset, uint64_t size);
+int32_t  Emu_Linux_NextSignal(const Emu_x86_64_Linux_Guest *guest);
 
-// Delivery
-bool     Emu_PushFrame(Emu_Guest *guest, Cpu_x86_64_State *cpu, int32_t sig, const Emu_Action *action, const Emu_Info *info);
-uint64_t Emu_SigReturn(Emu_Guest *guest, Cpu_x86_64_State *cpu);
-int32_t  Emu_NextSignal(const Emu_Guest *guest);
-void     Emu_Deliver(Emu_Guest *guest, Cpu_x86_64_State *cpu);
-void     Emu_Fault(Emu_Guest *guest, Cpu_x86_64_State *cpu, uint64_t rip);
+// Linux syscalls
+uint64_t Emu_Linux_Brk(Emu_x86_64_Linux_Guest *guest, uint64_t addr);
+uint64_t Emu_Linux_ClockGettime(Emu_x86_64_Linux_Guest *guest, int32_t clock, uint64_t addr);
 
-// Syscalls
-uint64_t Emu_Brk(Emu_Guest *guest, uint64_t addr);
-uint64_t Emu_ClockGettime(Emu_Guest *guest, int32_t clock, uint64_t addr);
-void     Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu);
+// x86_64 inspection
+void Emu_x86_64_Disassemble(const Load_Image *img);
+void Emu_x86_64_ShowStep(Emu_x86_64_Linux_Guest *guest, uint64_t rip);
 
-// Running
-void    Emu_ShowStep(Emu_Guest *guest, uint64_t rip);
-int32_t Emu_Run(Load_Image *img, Emu_Trace trace, int32_t *sig);
-void    Emu_Raise(int32_t sig);
+// x86_64 registers
+uint64_t Emu_x86_64_ReadFlags(const Cpu_x86_64_State *cpu);
+void     Emu_x86_64_WriteFlags(Cpu_x86_64_State *cpu, uint64_t flags);
+void     Emu_x86_64_SaveFpu(Cpu_x86_64_State *cpu, uint8_t *area);
+void     Emu_x86_64_RestoreFpu(Cpu_x86_64_State *cpu, const uint8_t *area);
+void     Emu_x86_64_ResetFpu(Cpu_x86_64_State *cpu);
+
+// x86_64 Linux signals
+uint64_t Emu_x86_64_Linux_SigAction(Emu_x86_64_Linux_Guest *guest, int32_t sig, uint64_t act, uint64_t oact, uint64_t size);
+bool     Emu_x86_64_Linux_PushFrame(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu, int32_t sig, const Emu_Linux_Action *action, const Emu_Linux_Info *info);
+uint64_t Emu_x86_64_Linux_SigReturn(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu);
+void     Emu_x86_64_Linux_Deliver(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu);
+void     Emu_x86_64_Linux_Fault(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu, uint64_t rip);
+
+// x86_64 Linux running
+void    Emu_x86_64_Linux_Syscall(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu);
+int32_t Emu_x86_64_Linux_Run(Load_Image *img, Emu_Trace trace, int32_t *sig);
 
 #endif // EMU_H
