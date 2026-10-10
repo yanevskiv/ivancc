@@ -13,7 +13,7 @@
 
 #define ENOENT 2
 
-#define SOURCE "edge145_run_dir.c"
+#define SOURCE "sys068_run_dir.c"
 #define PATH   "file"
 
 long sys(long nr, long a, long b, long c);
