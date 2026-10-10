@@ -60,8 +60,9 @@ SYNTAX_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/syntax/syntax*.c)
 BUG_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/bug*.c)))
 EDGE_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/edge*.c)))
 LIBC_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/libc_test_*.c)))
+SYS_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/sys/sys*.c)))
 ERROR_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errors/err*.c tests/errors/fake_err*.c)))
-TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(ERROR_NAMES)
+TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(ERROR_NAMES)
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
@@ -85,7 +86,7 @@ test_bugs: $(BUG_NAMES)
 
 test_edge: $(EDGE_NAMES)
 
-test_libc: $(LIBC_NAMES)
+test_libc: $(LIBC_NAMES) $(SYS_NAMES)
 
 test_errors: $(ERROR_NAMES)
 
