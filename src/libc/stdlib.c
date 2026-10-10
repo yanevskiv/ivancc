@@ -68,10 +68,29 @@ typedef char _Stdlib_CheckBlock[sizeof(struct _Stdlib_Block) == _STDLIB_ALIGN &&
 // Check that long and long long are intmax_t, as strtol and its family take.
 typedef char _Stdlib_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
 
-// The formats of float, double and long double, exponents one below C's.
-const struct _Stdlib_Format _Stdlib_FloatFormat = {FLT_MANT_DIG, FLT_MIN_EXP - 1, FLT_MAX_EXP - 1, 0};
-const struct _Stdlib_Format _Stdlib_DoubleFormat = {DBL_MANT_DIG, DBL_MIN_EXP - 1, DBL_MAX_EXP - 1, 0};
-const struct _Stdlib_Format _Stdlib_LongDoubleFormat = {LDBL_MANT_DIG, LDBL_MIN_EXP - 1, LDBL_MAX_EXP - 1, 1};
+// The format of float, its exponents one below C's.
+const struct _Stdlib_Format _Stdlib_FloatFormat = {
+    .sf_mant     = FLT_MANT_DIG,
+    .sf_min      = FLT_MIN_EXP - 1,
+    .sf_max      = FLT_MAX_EXP - 1,
+    .sf_explicit = 0
+};
+
+// The format of double, its exponents one below C's.
+const struct _Stdlib_Format _Stdlib_DoubleFormat = {
+    .sf_mant     = DBL_MANT_DIG,
+    .sf_min      = DBL_MIN_EXP - 1,
+    .sf_max      = DBL_MAX_EXP - 1,
+    .sf_explicit = 0
+};
+
+// The format of long double, its exponents one below C's, its leading bit kept.
+const struct _Stdlib_Format _Stdlib_LongDoubleFormat = {
+    .sf_mant     = LDBL_MANT_DIG,
+    .sf_min      = LDBL_MIN_EXP - 1,
+    .sf_max      = LDBL_MAX_EXP - 1,
+    .sf_explicit = 1
+};
 
 // The state of rand, its taps and whether srand has seeded it.
 unsigned int _Stdlib_RandState[_STDLIB_RAND_WORDS];
