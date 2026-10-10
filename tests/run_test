@@ -247,6 +247,13 @@ test_compiler_error()
     grep -qF "$EXP" "${RUN}/compiler_error" || fail 'Failed with:\n%s\nbut expected %s' "$GOT" "$EXP"
 }
 
+# Echo what the program printed to standard error, for a report to end with.
+said_error()
+{
+    [ -s "${RUN}/error" ] || return 0
+    printf ', and printed to standard error:\n%s' "$(cat "${RUN}/error")"
+}
+
 # Check the exit status against `// (Test) Status:`.
 test_status()
 {
@@ -260,9 +267,9 @@ test_status()
 
     [ "$GOT" -ne "$EXP" ] || return 0
     [ "$GOT" -ne 124 ] || fail 'Timed out after %ss' "$TIMEOUT"
-    [ "$GOT" -le 128 ] || fail 'Died from signal %s, expected to return %s' "$((GOT - 128))" "$EXP"
+    [ "$GOT" -le 128 ] || fail 'Died from signal %s, expected to return %s%s' "$((GOT - 128))" "$EXP" "$(said_error)"
 
-    fail 'Returned %s but expected %s' "$GOT" "$EXP"
+    fail 'Returned %s but expected %s%s' "$GOT" "$EXP" "$(said_error)"
 }
 
 # Check the program output against `// (Test) Output:`.

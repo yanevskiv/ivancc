@@ -176,6 +176,18 @@
 #define _ERR_ASSERT_FUNC    ": Assertion `"
 #define _ERR_ASSERT_EXPR    "' failed.\n"
 
+// The text a failed check's report puts after each of its parts.
+#define _ERR_TEST_FILE     ":"
+#define _ERR_TEST_LINE     ": "
+#define _ERR_TEST_FUNC     ": "
+#define _ERR_TEST_FALSE    " is false\n"
+#define _ERR_TEST_EXPR     " is "
+#define _ERR_TEST_GOT      ", expected "
+#define _ERR_TEST_EXPECTED "\n"
+
+// The text a failed check's report gives for a string that is none.
+#define _ERR_TEST_NULL "a null pointer"
+
 // strerror's texts by error number, null for the numbers Linux leaves out.
 extern const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT];
 
