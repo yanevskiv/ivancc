@@ -91,9 +91,6 @@
 // The type a `%llx` conversion takes.
 typedef unsigned long long Cpu_x86_64_TypeULLong;
 
-// The double-width dividend a div or an idiv consumes.
-typedef unsigned __int128 Cpu_x86_64_TypeUInt128;
-
 // Registers, numbered as ModRM and REX number them.
 typedef enum Cpu_x86_64_Reg Cpu_x86_64_Reg;
 enum Cpu_x86_64_Reg {
@@ -226,6 +223,7 @@ void           Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, long double value);
 long double    Cpu_x86_64_StPop(Cpu_x86_64_State *cpu);
 void           Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void           Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
+uint64_t       Cpu_x86_64_DivideLong(uint64_t hi, uint64_t lo, uint64_t d, Cpu_x86_64_OperandWidth width, uint64_t *rem);
 void           Cpu_x86_64_Divide(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Cpu_x86_64_OperandWidth width);
 void           Cpu_x86_64_Step(Cpu_x86_64_State *cpu);
 void           Cpu_x86_64_Free(Cpu_x86_64_State *cpu);

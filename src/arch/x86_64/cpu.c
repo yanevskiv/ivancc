@@ -576,6 +576,26 @@ void Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint
     }
 }
 
+// Divide hi:lo by d at width, hi below d so the quotient fits, bit by bit.
+uint64_t Cpu_x86_64_DivideLong(uint64_t hi, uint64_t lo, uint64_t d, Cpu_x86_64_OperandWidth width, uint64_t *rem)
+{
+    uint64_t quot = 0;
+    uint64_t part = hi;
+    uint64_t sign = (uint64_t) 1 << (width - 1);
+    uint64_t mask = sign | (sign - 1);
+
+    for (uint64_t bit = sign; bit != 0; bit >>= 1) {
+        bool carry = (part & sign) != 0;
+        part = ((part << 1) | ((lo & bit) != 0)) & mask;
+        if (carry || part >= d) {
+            part = (part - d) & mask;
+            quot |= bit;
+        }
+    }
+    *rem = part;
+    return quot;
+}
+
 // Divide %rdx:%rax by an r/m operand at its width as the hardware does.
 void Cpu_x86_64_Divide(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Cpu_x86_64_OperandWidth width)
 {
@@ -591,21 +611,18 @@ void Cpu_x86_64_Divide(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint6
     // Phase: divide the magnitudes
     uint64_t hi = Cpu_x86_64_ReadReg(cpu, CPU_X86_64_REG_RDX, width);
     uint64_t lo = Cpu_x86_64_ReadReg(cpu, CPU_X86_64_REG_RAX, width);
-    Cpu_x86_64_TypeUInt128 num = ((Cpu_x86_64_TypeUInt128) hi << width) | lo;
     bool num_neg = is_signed && (hi & sign);
     bool d_neg = is_signed && (d & sign);
-    if (num_neg && width < CPU_X86_64_WIDTH_64) {
-        num |= ~(((Cpu_x86_64_TypeUInt128) 1 << (2 * width)) - 1);
-    }
-    Cpu_x86_64_TypeUInt128 num_mag = num_neg ? -num : num;
+    uint64_t hi_mag = num_neg ? (~hi + (lo == 0)) & mask : hi;
+    uint64_t lo_mag = num_neg ? -lo & mask : lo;
     uint64_t d_mag = d_neg ? -d & mask : d;
-    Cpu_x86_64_TypeUInt128 q = num_mag / d_mag;
-    uint64_t r = (uint64_t) (num_mag % d_mag);
+    uint64_t r = 0;
+    uint64_t q = hi_mag < d_mag ? Cpu_x86_64_DivideLong(hi_mag, lo_mag, d_mag, width, &r) : 0;
 
     // Phase: fault on a quotient the width cannot hold
     bool q_neg = num_neg != d_neg;
     uint64_t limit = ! is_signed ? mask : (q_neg ? sign : sign - 1);
-    if (q > limit) {
+    if (hi_mag >= d_mag || q > limit) {
         Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_DE, ERR_CPU_QUOTIENT_TOO_LARGE, (Cpu_x86_64_TypeULLong) rip);
         return;
     }
