@@ -46,6 +46,6 @@
 void _Assert_Fail(const char *expr, const char *file, unsigned int line, const char *func);
 
 // Report
-void _Assert_Write(const char *str);
-void _Assert_WriteLine(unsigned int line);
+void        _Assert_Write(const char *str);
+void        _Assert_WriteLine(unsigned int line);
 const char *_Assert_Program(void);

@@ -29,17 +29,17 @@
 #define SEM_TWO_TO_63 9223372036854775808.0L
 
 // Node lists
-int32_t   Sem_CountNodes(Ast_Node *list);
+int32_t Sem_CountNodes(Ast_Node *list);
 
 // Type and expression queries
-bool      Sem_IsPointer(const Ast_Type *type);
-bool      Sem_IsLvalue(const Ast_Node *node);
-bool      Sem_HoldsConst(const Ast_Type *type);
-bool      Sem_IsModifiable(const Ast_Type *type);
-bool      Sem_IsAggregate(const Ast_Type *type);
+bool        Sem_IsPointer(const Ast_Type *type);
+bool        Sem_IsLvalue(const Ast_Node *node);
+bool        Sem_HoldsConst(const Ast_Type *type);
+bool        Sem_IsModifiable(const Ast_Type *type);
+bool        Sem_IsAggregate(const Ast_Type *type);
 const char *Sem_TypeName(const Ast_Type *type);
-Ast_Type *Sem_Decay(Ast_Type *type);
-bool      Sem_SameType(const Ast_Type *a, const Ast_Type *b);
+Ast_Type   *Sem_Decay(Ast_Type *type);
+bool        Sem_SameType(const Ast_Type *a, const Ast_Type *b);
 
 // Conversions
 Ast_Type *Sem_Promote(Ast_Type *type);
@@ -55,19 +55,19 @@ void      Sem_UsualArith(Ast_Node *node);
 void      Sem_PromoteShift(Ast_Node *node);
 
 // Constant expressions
-int64_t   Sem_Truncate(const Ast_Type *type, int64_t value);
-Ast_Type *Sem_FoldType(const Ast_Node *node);
-bool      Sem_IsFoldTyped(const Ast_Node *node);
-Ast_Type *Sem_FoldOperandType(const Ast_Node *node);
-bool      Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, Ast_Line line, int64_t *value);
-bool      Sem_FoldFromFloat(const Ast_Node *node, int64_t *value);
-bool      Sem_Fold(const Ast_Node *node, int64_t *value);
+int64_t     Sem_Truncate(const Ast_Type *type, int64_t value);
+Ast_Type   *Sem_FoldType(const Ast_Node *node);
+bool        Sem_IsFoldTyped(const Ast_Node *node);
+Ast_Type   *Sem_FoldOperandType(const Ast_Node *node);
+bool        Sem_FoldOp(Ast_NodeKind kind, int64_t lhs, int64_t rhs, Ast_TypeSign sign, Ast_Line line, int64_t *value);
+bool        Sem_FoldFromFloat(const Ast_Node *node, int64_t *value);
+bool        Sem_Fold(const Ast_Node *node, int64_t *value);
 long double Sem_RoundFloat(const Ast_Type *type, long double value);
-double    Sem_FoldDoubleOp(Ast_NodeKind kind, double lhs, double rhs);
+double      Sem_FoldDoubleOp(Ast_NodeKind kind, double lhs, double rhs);
 long double Sem_FoldFloatOp(Ast_NodeKind kind, const Ast_Type *type, long double lhs, long double rhs);
-bool      Sem_FoldFloat(const Ast_Node *node, long double *value);
-bool      Sem_FoldObject(const Ast_Node *node, const char **symbol, int64_t *addend);
-bool      Sem_FoldAddr(const Ast_Node *node, const char **symbol, int64_t *addend);
+bool        Sem_FoldFloat(const Ast_Node *node, long double *value);
+bool        Sem_FoldObject(const Ast_Node *node, const char **symbol, int64_t *addend);
+bool        Sem_FoldAddr(const Ast_Node *node, const char **symbol, int64_t *addend);
 
 // Checks the parser cannot make
 Ast_Type *Sem_CallType(Ast_Node *node);

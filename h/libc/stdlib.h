@@ -193,89 +193,89 @@ extern struct _Stdlib_Exits _Stdlib_ExitBase;
 extern struct _Stdlib_Exits *_Stdlib_ExitTop;
 
 // Conversion
-int _Stdlib_CharAt(const void *str, _Bool wide, size_t index);
-_Bool _Stdlib_IsSpace(int ch);
-int _Stdlib_HexDigit(int ch);
-size_t _Stdlib_Match(const void *str, _Bool wide, size_t index, const char *word);
-size_t _Stdlib_Exponent(const void *str, _Bool wide, size_t index, int letter, long *exp);
+int                _Stdlib_CharAt(const void *str, _Bool wide, size_t index);
+_Bool              _Stdlib_IsSpace(int ch);
+int                _Stdlib_HexDigit(int ch);
+size_t             _Stdlib_Match(const void *str, _Bool wide, size_t index, const char *word);
+size_t             _Stdlib_Exponent(const void *str, _Bool wide, size_t index, int letter, long *exp);
 unsigned long long _Stdlib_Payload(const void *str, _Bool wide, size_t index, size_t stop);
-size_t _Stdlib_NotANumber(const void *str, _Bool wide, size_t index, unsigned long long *payload);
-size_t _Stdlib_ScanDecimal(const void *str, _Bool wide, size_t index, int point, struct _Stdlib_Decimal *dec);
-void _Stdlib_Decimal(const void *str, _Bool wide, int point, const struct _Stdlib_Decimal *dec, struct _Stdlib_Unrounded *value);
-size_t _Stdlib_Hex(const void *str, _Bool wide, size_t index, int point, struct _Stdlib_Unrounded *value);
-void _Stdlib_Shift(struct _Stdlib_Unrounded *value, long bits);
-void _Stdlib_Round(const struct _Stdlib_Unrounded *value, const struct _Stdlib_Format *fmt, struct _Stdlib_Real *real);
-size_t _Stdlib_ToReal(const void *str, _Bool wide, const struct _Stdlib_Format *fmt, struct _Stdlib_Real *real);
+size_t             _Stdlib_NotANumber(const void *str, _Bool wide, size_t index, unsigned long long *payload);
+size_t             _Stdlib_ScanDecimal(const void *str, _Bool wide, size_t index, int point, struct _Stdlib_Decimal *dec);
+void               _Stdlib_Decimal(const void *str, _Bool wide, int point, const struct _Stdlib_Decimal *dec, struct _Stdlib_Unrounded *value);
+size_t             _Stdlib_Hex(const void *str, _Bool wide, size_t index, int point, struct _Stdlib_Unrounded *value);
+void               _Stdlib_Shift(struct _Stdlib_Unrounded *value, long bits);
+void               _Stdlib_Round(const struct _Stdlib_Unrounded *value, const struct _Stdlib_Format *fmt, struct _Stdlib_Real *real);
+size_t             _Stdlib_ToReal(const void *str, _Bool wide, const struct _Stdlib_Format *fmt, struct _Stdlib_Real *real);
 
 // Heap
-size_t _Stdlib_BlockSize(size_t size);
+size_t                 _Stdlib_BlockSize(size_t size);
 struct _Stdlib_Block **_Stdlib_Fit(size_t size);
 struct _Stdlib_Block **_Stdlib_Link(const struct _Stdlib_Block *block);
-void *_Stdlib_Take(struct _Stdlib_Block **link, size_t size);
-void _Stdlib_Trim(struct _Stdlib_Block *block, size_t size);
-void _Stdlib_Release(struct _Stdlib_Block *block);
-int _Stdlib_Grow(size_t size);
+void                  *_Stdlib_Take(struct _Stdlib_Block **link, size_t size);
+void                   _Stdlib_Trim(struct _Stdlib_Block *block, size_t size);
+void                   _Stdlib_Release(struct _Stdlib_Block *block);
+int                    _Stdlib_Grow(size_t size);
 
 // Exit
 void (*_Stdlib_PopExit(void))(void);
 
 // Sorting
-void _Stdlib_Swap(char *left, char *right, size_t size);
-void _Stdlib_Reverse(char *base, size_t nmemb, size_t size);
-void _Stdlib_Rotate(char *base, size_t nmemb, size_t first, size_t size);
+void   _Stdlib_Swap(char *left, char *right, size_t size);
+void   _Stdlib_Reverse(char *base, size_t nmemb, size_t size);
+void   _Stdlib_Rotate(char *base, size_t nmemb, size_t first, size_t size);
 size_t _Stdlib_LowerBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *));
 size_t _Stdlib_UpperBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *));
-void _Stdlib_MergeInPlace(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *));
-void _Stdlib_Merge(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp);
-void _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp);
+void   _Stdlib_MergeInPlace(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *));
+void   _Stdlib_Merge(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp);
+void   _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp);
 
 // Multibyte
 size_t _Stdlib_MbCurMax(void);
-int _Stdlib_Decode(const char *str, size_t n, wchar_t *wc);
-int _Stdlib_Encode(wchar_t wc, char *str);
+int    _Stdlib_Decode(const char *str, size_t n, wchar_t *wc);
+int    _Stdlib_Encode(wchar_t wc, char *str);
 
 // (S7.20.1) Numeric conversion functions
-double atof(const char *nptr);
-int atoi(const char *nptr);
-long atol(const char *nptr);
-long long atoll(const char *nptr);
-double strtod(const char *restrict nptr, char **restrict endptr);
-float strtof(const char *restrict nptr, char **restrict endptr);
-long double strtold(const char *restrict nptr, char **restrict endptr);
-long strtol(const char *restrict nptr, char **restrict endptr, int base);
-long long strtoll(const char *restrict nptr, char **restrict endptr, int base);
-unsigned long strtoul(const char *restrict nptr, char **restrict endptr, int base);
+double             atof(const char *nptr);
+int                atoi(const char *nptr);
+long               atol(const char *nptr);
+long long          atoll(const char *nptr);
+double             strtod(const char *restrict nptr, char **restrict endptr);
+float              strtof(const char *restrict nptr, char **restrict endptr);
+long double        strtold(const char *restrict nptr, char **restrict endptr);
+long               strtol(const char *restrict nptr, char **restrict endptr, int base);
+long long          strtoll(const char *restrict nptr, char **restrict endptr, int base);
+unsigned long      strtoul(const char *restrict nptr, char **restrict endptr, int base);
 unsigned long long strtoull(const char *restrict nptr, char **restrict endptr, int base);
 
 // (S7.20.2) Pseudo-random sequence generation functions
-int rand(void);
+int  rand(void);
 void srand(unsigned int seed);
 
 // (S7.20.3) Memory management functions
 void *calloc(size_t nmemb, size_t size);
-void free(void *ptr);
+void  free(void *ptr);
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
 
 // (S7.20.4) Communication with the environment
-void abort(void);
-int atexit(void (*func)(void));
-void exit(int status);
-void _Exit(int status);
+void  abort(void);
+int   atexit(void (*func)(void));
+void  exit(int status);
+void  _Exit(int status);
 char *getenv(const char *name);
-int system(const char *string);
+int   system(const char *string);
 
 // (S7.20.5) Searching and sorting utilities
 void *bsearch(const void *key, const void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
-void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+void  qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
 
 // (S7.20.6) Integer arithmetic functions
-int abs(int j);
-long labs(long j);
+int       abs(int j);
+long      labs(long j);
 long long llabs(long long j);
-div_t div(int numer, int denom);
-ldiv_t ldiv(long numer, long denom);
-lldiv_t lldiv(long long numer, long long denom);
+div_t     div(int numer, int denom);
+ldiv_t    ldiv(long numer, long denom);
+lldiv_t   lldiv(long long numer, long long denom);
 
 // (S7.20.7) Multibyte/wide character conversion functions
 int mblen(const char *str, size_t n);

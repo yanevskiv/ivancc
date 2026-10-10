@@ -34,7 +34,7 @@
 #include "arch/x86_64/txt.h"
 
 // Usage
-void  As_Usage(const char *prog);
+void As_Usage(const char *prog);
 
 // Assembling
 char *As_ReadSource(const char *path);

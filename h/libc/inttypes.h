@@ -211,19 +211,19 @@ typedef struct {
 } imaxdiv_t;
 
 // Conversion
-int _Inttypes_CharAt(const void *str, _Bool wide, _Inttypes_SizeType index);
-_Bool _Inttypes_IsSpace(int ch);
-int _Inttypes_Digit(int ch);
+int       _Inttypes_CharAt(const void *str, _Bool wide, _Inttypes_SizeType index);
+_Bool     _Inttypes_IsSpace(int ch);
+int       _Inttypes_Digit(int ch);
 uintmax_t _Inttypes_Convert(const void *str, _Bool wide, _Inttypes_SizeType *end, int base, _Bool *negative, _Bool *overflow);
-intmax_t _Inttypes_ToSigned(uintmax_t value, _Bool negative, _Bool overflow);
+intmax_t  _Inttypes_ToSigned(uintmax_t value, _Bool negative, _Bool overflow);
 uintmax_t _Inttypes_ToUnsigned(uintmax_t value, _Bool negative, _Bool overflow);
 
 // (S7.8.2) Functions for greatest-width integer types
-intmax_t imaxabs(intmax_t j);
+intmax_t  imaxabs(intmax_t j);
 imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom);
-intmax_t strtoimax(const char *restrict nptr, char **restrict endptr, int base);
+intmax_t  strtoimax(const char *restrict nptr, char **restrict endptr, int base);
 uintmax_t strtoumax(const char *restrict nptr, char **restrict endptr, int base);
-intmax_t wcstoimax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharType **restrict endptr, int base);
+intmax_t  wcstoimax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharType **restrict endptr, int base);
 uintmax_t wcstoumax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharType **restrict endptr, int base);
 
 #endif // _INTTYPES_H

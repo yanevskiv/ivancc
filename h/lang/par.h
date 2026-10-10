@@ -197,8 +197,8 @@ void Par_SetDeclSpec(const Par_Specs *specs, Par_StorageUse use, Ast_Line line);
 void Par_ResetEnum(void);
 
 // Parameter lists
-void  Par_ClearParams(Par_ParamList *list);
-void  Par_PushParam(Par_ParamList *list, Ast_Var *var);
+void Par_ClearParams(Par_ParamList *list);
+void Par_PushParam(Par_ParamList *list, Ast_Var *var);
 
 // Declarators
 Par_Decl  *Par_NewDecl(char *name);

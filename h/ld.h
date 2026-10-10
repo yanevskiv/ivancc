@@ -42,7 +42,7 @@
 #define LD_DEFAULT_OUTPUT "a.out"
 
 // Usage
-void  Ld_Usage(const char *prog);
+void Ld_Usage(const char *prog);
 
 // Placement
 char *Ld_PlaceName(const char *spec, size_t len);

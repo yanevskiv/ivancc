@@ -250,11 +250,11 @@ struct Emu_Guest {
 extern char **environ;
 
 // Usage
-void     Emu_Usage(const char *prog);
+void Emu_Usage(const char *prog);
 
 // Inspection
-void     Emu_ShowImage(const Load_Image *img);
-void     Emu_Disassemble(const Load_Image *img);
+void Emu_ShowImage(const Load_Image *img);
+void Emu_Disassemble(const Load_Image *img);
 
 // Bus
 uint8_t *Emu_MapMemory(void *ctx, uint64_t addr, size_t *avail);
@@ -300,8 +300,8 @@ uint64_t Emu_ClockGettime(Emu_Guest *guest, int32_t clock, uint64_t addr);
 void     Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu);
 
 // Running
-void     Emu_ShowStep(Emu_Guest *guest, uint64_t rip);
-int32_t  Emu_Run(Load_Image *img, Emu_Trace trace, int32_t *sig);
-void     Emu_Raise(int32_t sig);
+void    Emu_ShowStep(Emu_Guest *guest, uint64_t rip);
+int32_t Emu_Run(Load_Image *img, Emu_Trace trace, int32_t *sig);
+void    Emu_Raise(int32_t sig);
 
 #endif // EMU_H

@@ -142,12 +142,12 @@ void          Lib_ArMemberFree(Lib_ArMember *member);
 void          Lib_ArMemberDelete(Lib_Ar *ar, Lib_ArMember *member);
 
 // Reading
-bool          Lib_ArReadMagic(const uint8_t *data, size_t n);
-bool          Lib_ArReadDecimal(const char *field, size_t width, size_t *value);
-bool          Lib_ArIsName(const Lib_ArHdr *hdr, const char *name);
-Lib_ArStatus  Lib_ArReadName(const Lib_ArReader *rd, const Lib_ArHdr *hdr, char **name);
-Lib_ArStatus  Lib_ArReadMember(Lib_Ar *ar, Lib_ArReader *rd);
-Lib_Ar       *Lib_ArReadMem(const uint8_t *data, size_t n, Lib_ArStatus *status);
+bool         Lib_ArReadMagic(const uint8_t *data, size_t n);
+bool         Lib_ArReadDecimal(const char *field, size_t width, size_t *value);
+bool         Lib_ArIsName(const Lib_ArHdr *hdr, const char *name);
+Lib_ArStatus Lib_ArReadName(const Lib_ArReader *rd, const Lib_ArHdr *hdr, char **name);
+Lib_ArStatus Lib_ArReadMember(Lib_Ar *ar, Lib_ArReader *rd);
+Lib_Ar      *Lib_ArReadMem(const uint8_t *data, size_t n, Lib_ArStatus *status);
 
 // Writing
 size_t Lib_ArWriteIndexSize(const Lib_Ar *ar);

@@ -346,10 +346,10 @@ struct Err_Entry {
 };
 
 // Raising
-void Err_Raise(Err_Code code, ...);
-void Err_RaiseAt(uint32_t line, Err_Code code, ...);
-void Err_WarnAt(uint32_t line, Err_Code code, ...);
-void Err_ShowVa(Log_Severity severity, uint32_t line, Err_Code code, va_list ap);
+void  Err_Raise(Err_Code code, ...);
+void  Err_RaiseAt(uint32_t line, Err_Code code, ...);
+void  Err_WarnAt(uint32_t line, Err_Code code, ...);
+void  Err_ShowVa(Log_Severity severity, uint32_t line, Err_Code code, va_list ap);
 char *Err_FormatVa(Err_Code code, va_list ap);
 
 // Inspection
