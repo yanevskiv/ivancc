@@ -17,111 +17,8 @@
  * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Standard headers.
-#include <errno.h>
-#include <getopt.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-// Project headers.
-#include "util/console/err.h"
-#include "util/console/log.h"
-#include "util/object/elf.h"
-#include "util/object/link.h"
-#include "util/buf.h"
-#include "util/str.h"
-#include "lang/ast.h"
-#include "lang/par.h"
-#include "lang/pp.h"
-#include "lang/sem.h"
-#include "arch/x86_64/enc.h"
-#include "arch/x86_64/gen.h"
-#include "arch/x86_64/txt.h"
-
-// Permission bits for the executables cc writes (rwxr-xr-x).
-#define CC_ELF_MODE 0755
-
-// Default output name for a freestanding executable.
-#define CC_DEFAULT_OUTPUT "a.out"
-
-// Output name that means standard output rather than a file.
-#define CC_STDOUT_NAME "-"
-
-// The one language standard --std accepts.
-#define CC_DEFAULT_STD "c99"
-
-// Target architecture selected when no -march= is given.
-#define CC_DEFAULT_ARCH "x86_64"
-
-// Runtime target selected when no -mtarget= is given.
-#define CC_DEFAULT_TARGET "linux"
-
-// Machine-option prefixes recognised inside -m (e.g. -march=x86_64).
-#define CC_MARCH_PREFIX "arch="
-#define CC_MTARGET_PREFIX "target="
-
-// Where the runtime objects sit relative to the directory holding this binary.
-#define CC_RUNTIME_DIR "/../lib/"
-
-// Where the system headers sit relative to the directory holding this binary.
-#define CC_INCLUDE_DIR "/../include"
-
-
-// Values getopt_long returns for the options with no short form.
-typedef enum Cc_Option Cc_Option;
-enum Cc_Option {
-    CC_OPTION_STD = UCHAR_MAX + 1,
-    CC_OPTION_INCLUDE,
-    CC_OPTION_M,
-    CC_OPTION_MM,
-    CC_OPTION_MD,
-    CC_OPTION_MMD,
-    CC_OPTION_MP,
-    CC_OPTION_MF,
-    CC_OPTION_MT,
-    CC_OPTION_MQ
-};
-
-// Where a run stops.
-typedef enum Cc_Mode Cc_Mode;
-enum Cc_Mode {
-    CC_MODE_PP,     // -E
-    CC_MODE_TEXT,   // -S
-    CC_MODE_OBJECT, // -c
-    CC_MODE_EXEC
-};
-
-// What a run does with its dependency rule.
-typedef enum Cc_DependMode Cc_DependMode;
-enum Cc_DependMode {
-    CC_DEPEND_NONE,
-    CC_DEPEND_INSTEAD, // write the rule instead of compiling
-    CC_DEPEND_BESIDE   // write the rule and compile
-};
-
-// How a run writes its dependency rule.
-typedef struct Cc_Depend Cc_Depend;
-struct Cc_Depend {
-    Cc_DependMode cd_mode;
-    const char   *cd_file;     // --MF or --MD file
-    char        **cd_targets;  // escaped for make
-    size_t        cd_ntargets;
-    Pp_Headers    cd_headers;
-    Pp_Phony      cd_phony;
-};
-
-// A runtime target: the macros it predefines and the files it links.
-typedef struct Cc_Target Cc_Target;
-struct Cc_Target {
-    const char        *ct_name;
-    const char *const *ct_macros;   // NULL-terminated
-    const char *const *ct_runtime;  // NULL-terminated, in link order
-};
+// Module header.
+#include "cc.h"
 
 // The macros -mtarget=linux predefines, as gcc's under -std=c99.
 static const char *const Cc_LinuxMacros[] = { "__linux__", "__linux", "__gnu_linux__", "__unix__", "__unix", NULL };
@@ -145,7 +42,7 @@ static const Cc_Target Cc_Targets[] = {
 static const char *Cc_OutputPath;
 
 // Show usage information and exit.
-static void Cc_ShowUsage(const char *prog)
+void Cc_ShowUsage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [options] INPUT.c\n"
@@ -174,18 +71,8 @@ static void Cc_ShowUsage(const char *prog)
     exit(1);
 }
 
-// Remove the output file after an error, if it is a regular file.
-static void Cc_RemoveOutput(void)
-{
-    struct stat st;
-
-    if (Err_Status() != ERR_SUCCESS && Cc_OutputPath && stat(Cc_OutputPath, &st) == 0 && S_ISREG(st.st_mode)) {
-        remove(Cc_OutputPath);
-    }
-}
-
 // Return the directory holding this executable.
-static char *Cc_GetExeDir(void)
+char *Cc_GetExeDir(void)
 {
     char buf[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
@@ -203,7 +90,7 @@ static char *Cc_GetExeDir(void)
 }
 
 // Return the directory to read the target's runtime objects from, honouring -B.
-static char *Cc_GetRuntimeDir(const char *prefix, const char *arch, const Cc_Target *target)
+char *Cc_GetRuntimeDir(const char *prefix, const char *arch, const Cc_Target *target)
 {
     if (prefix) {
         return Str_Clone(prefix);
@@ -217,7 +104,7 @@ static char *Cc_GetRuntimeDir(const char *prefix, const char *arch, const Cc_Tar
 }
 
 // Return the system include directory.
-static char *Cc_GetIncludeDir(void)
+char *Cc_GetIncludeDir(void)
 {
     char *exedir = Cc_GetExeDir();
 
@@ -232,7 +119,7 @@ static char *Cc_GetIncludeDir(void)
 }
 
 // Return the runtime target -mtarget names.
-static const Cc_Target *Cc_FindTarget(const char *name)
+const Cc_Target *Cc_FindTarget(const char *name)
 {
     for (size_t i = 0; i < sizeof(Cc_Targets) / sizeof(Cc_Targets[0]); i++) {
         if (Str_Equals(Cc_Targets[i].ct_name, name)) {
@@ -244,7 +131,7 @@ static const Cc_Target *Cc_FindTarget(const char *name)
 }
 
 // Append the directives that predefine the target's macros.
-static void Cc_PutTargetMacros(Buf *out, const Cc_Target *target)
+void Cc_PutTargetMacros(Buf *out, const Cc_Target *target)
 {
     for (const char *const *iter = target->ct_macros; *iter; iter++) {
         Pp_PutDefine(out, *iter);
@@ -252,7 +139,7 @@ static void Cc_PutTargetMacros(Buf *out, const Cc_Target *target)
 }
 
 // Open the output stream.
-static FILE *Cc_OpenOutput(const char *output, const char *mode)
+FILE *Cc_OpenOutput(const char *output, const char *mode)
 {
     if (Str_Equals(output, CC_STDOUT_NAME)) {
         return stdout;
@@ -266,7 +153,7 @@ static FILE *Cc_OpenOutput(const char *output, const char *mode)
 }
 
 // Close the output stream.
-static void Cc_CloseOutput(FILE *out)
+void Cc_CloseOutput(FILE *out)
 {
     if (out == stdout) {
         fflush(out);
@@ -276,15 +163,25 @@ static void Cc_CloseOutput(FILE *out)
     Cc_OutputPath = NULL;
 }
 
+// Remove the output file after an error, if it is a regular file.
+void Cc_RemoveOutput(void)
+{
+    struct stat st;
+
+    if (Err_Status() != ERR_SUCCESS && Cc_OutputPath && stat(Cc_OutputPath, &st) == 0 && S_ISREG(st.st_mode)) {
+        remove(Cc_OutputPath);
+    }
+}
+
 // Add a target to the dependency rule.
-static void Cc_AddTarget(Cc_Depend *dep, char *target)
+void Cc_AddTarget(Cc_Depend *dep, char *target)
 {
     dep->cd_targets = realloc(dep->cd_targets, (dep->cd_ntargets + 1) * sizeof(*dep->cd_targets));
     dep->cd_targets[dep->cd_ntargets++] = target;
 }
 
 // Return the target a rule gets when no --MT or --MQ names one.
-static char *Cc_DefaultTarget(const char *input, const char *output, Cc_DependMode mode)
+char *Cc_DefaultTarget(const char *input, const char *output, Cc_DependMode mode)
 {
     if (mode == CC_DEPEND_BESIDE && ! Str_Equals(output, CC_STDOUT_NAME)) {
         return Pp_EscapeMake(output);
@@ -299,7 +196,7 @@ static char *Cc_DefaultTarget(const char *input, const char *output, Cc_DependMo
 }
 
 // Return where the rule goes when no --MF names a file.
-static char *Cc_DefaultDependFile(const char *input, const char *output, Cc_DependMode mode)
+char *Cc_DefaultDependFile(const char *input, const char *output, Cc_DependMode mode)
 {
     if (mode == CC_DEPEND_INSTEAD) {
         return Str_Clone(output);
@@ -308,7 +205,7 @@ static char *Cc_DefaultDependFile(const char *input, const char *output, Cc_Depe
 }
 
 // Write the dependency rule.
-static void Cc_WriteDepend(Cc_Depend *dep, const char *input, const char *output)
+void Cc_WriteDepend(Cc_Depend *dep, const char *input, const char *output)
 {
     if (dep->cd_ntargets == 0) {
         Cc_AddTarget(dep, Cc_DefaultTarget(input, output, dep->cd_mode));
@@ -323,7 +220,7 @@ static void Cc_WriteDepend(Cc_Depend *dep, const char *input, const char *output
 }
 
 // Free the dependency rule's targets.
-static void Cc_FreeDepend(Cc_Depend *dep)
+void Cc_FreeDepend(Cc_Depend *dep)
 {
     for (size_t i = 0; i < dep->cd_ntargets; i++) {
         Str_Free(dep->cd_targets[i]);
@@ -332,14 +229,14 @@ static void Cc_FreeDepend(Cc_Depend *dep)
 }
 
 // Write the program as AT&T assembly text.
-static void Cc_x86_64_WriteText(FILE *out, Ast_Func *prog)
+void Cc_x86_64_WriteText(FILE *out, Ast_Func *prog)
 {
     Gen_x86_64_BuildProgram(prog);
     Txt_x86_64_Att_Write(out);
 }
 
 // Write the program as a relocatable object, references left undefined.
-static void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
+void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();
@@ -347,7 +244,7 @@ static void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
 }
 
 // Write the program linked against the runtime as a static executable.
-static void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target)
+void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();

@@ -17,234 +17,8 @@
  * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Standard headers.
-#include <errno.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/resource.h>
-#include <time.h>
-#include <unistd.h>
-
-// Project headers.
-#include "util/console/err.h"
-#include "util/console/log.h"
-#include "util/object/elf.h"
-#include "util/object/load.h"
-#include "util/str.h"
-#include "arch/x86_64/cpu.h"
-
-// Target architecture selected when no -march= is given.
-#define EMU_DEFAULT_ARCH "x86_64"
-
-// Machine-option prefix recognised inside -m (e.g. -march=x86_64).
-#define EMU_MARCH_PREFIX "arch="
-
-// The status a shell reports for a death by signal, less the signal.
-#define EMU_SIGNAL_STATUS_BASE 128
-
-// Memory-mapped device registers, far above anything the linker places.
-#define EMU_DEV_BASE       0x10000000
-#define EMU_DEV_DATA_OFF   0  // store: a byte to the terminal
-#define EMU_DEV_STATUS_OFF 4  // load: nonzero, always ready
-#define EMU_DEV_HALT_OFF   8  // store: stop with that status
-#define EMU_DEV_SIZE       16
-
-#define EMU_DEV_DATA   (EMU_DEV_BASE + EMU_DEV_DATA_OFF)
-#define EMU_DEV_STATUS (EMU_DEV_BASE + EMU_DEV_STATUS_OFF)
-#define EMU_DEV_HALT   (EMU_DEV_BASE + EMU_DEV_HALT_OFF)
-
-// The descriptor the UART writes its bytes to.
-#define EMU_UART_FD 1
-
-// Linux syscall numbers the emulator answers.
-#define EMU_SYS_WRITE          1
-#define EMU_SYS_BRK            12
-#define EMU_SYS_RT_SIGACTION   13
-#define EMU_SYS_RT_SIGPROCMASK 14
-#define EMU_SYS_RT_SIGRETURN   15
-#define EMU_SYS_GETPID         39
-#define EMU_SYS_EXIT           60
-#define EMU_SYS_KILL           62
-#define EMU_SYS_CLOCK_GETTIME  228
-#define EMU_SYS_EXIT_GROUP     231
-
-// The layout of Linux's struct timespec.
-#define EMU_TIMESPEC_SEC_OFF  0
-#define EMU_TIMESPEC_NSEC_OFF 8
-#define EMU_TIMESPEC_SIZE     16
-
-// Linux errno values a failed syscall returns negated in %rax.
-#define EMU_ERRNO_FAULT 14
-#define EMU_ERRNO_INVAL 22
-#define EMU_ERRNO_NOSYS 38
-
-// The signal numbers kill checks its argument against.
-#define EMU_SIGNAL_NONE   0
-#define EMU_SIGNAL_FIRST  1
-#define EMU_SIGNAL_RT_MIN 32
-#define EMU_SIGNAL_MAX    64
-
-// The bytes of Linux's sigset_t.
-#define EMU_SIGSET_SIZE 8
-
-// rt_sigprocmask's ways of changing the mask.
-#define EMU_SIG_BLOCK   0
-#define EMU_SIG_UNBLOCK 1
-#define EMU_SIG_SETMASK 2
-
-// The layout of Linux's struct sigaction for rt_sigaction.
-#define EMU_SIGACTION_HANDLER_OFF  0
-#define EMU_SIGACTION_FLAGS_OFF    8
-#define EMU_SIGACTION_RESTORER_OFF 16
-#define EMU_SIGACTION_MASK_OFF     24
-#define EMU_SIGACTION_SIZE         32
-
-// The handlers rt_sigaction takes beside a function's address.
-#define EMU_SIG_DFL 0
-#define EMU_SIG_IGN 1
-
-// The sa_flags Linux keeps.
-#define EMU_SA_NOCLDSTOP      0x1
-#define EMU_SA_NOCLDWAIT      0x2
-#define EMU_SA_SIGINFO        0x4
-#define EMU_SA_EXPOSE_TAGBITS 0x800
-#define EMU_SA_RESTORER       0x04000000
-#define EMU_SA_ONSTACK        0x08000000
-#define EMU_SA_RESTART        0x10000000
-#define EMU_SA_NODEFER        0x40000000
-#define EMU_SA_RESETHAND      0x80000000
-#define EMU_SA_KNOWN          (EMU_SA_NOCLDSTOP | EMU_SA_NOCLDWAIT | EMU_SA_SIGINFO | EMU_SA_EXPOSE_TAGBITS | EMU_SA_RESTORER | EMU_SA_ONSTACK | EMU_SA_RESTART | EMU_SA_NODEFER | EMU_SA_RESETHAND)
-
-// The si_code values of the signals the emulator sends.
-#define EMU_SI_USER     0
-#define EMU_SI_KERNEL   0x80
-#define EMU_ILL_ILLOPN  2
-#define EMU_FPE_INTDIV  1
-#define EMU_SEGV_MAPERR 1
-
-// The layout of Linux's rt_sigframe.
-#define EMU_FRAME_PRETCODE_OFF 0
-#define EMU_FRAME_UC_OFF       8
-#define EMU_FRAME_UC_FLAGS_OFF 8
-#define EMU_FRAME_SC_OFF       48
-#define EMU_FRAME_SIGMASK_OFF  304
-#define EMU_FRAME_INFO_OFF     312
-#define EMU_FRAME_SIZE         440
-
-// The layout of Linux's struct sigcontext after its general registers.
-#define EMU_SC_RIP_OFF     128
-#define EMU_SC_EFLAGS_OFF  136
-#define EMU_SC_CS_OFF      144
-#define EMU_SC_SS_OFF      150
-#define EMU_SC_ERR_OFF     152
-#define EMU_SC_TRAPNO_OFF  160
-#define EMU_SC_OLDMASK_OFF 168
-#define EMU_SC_CR2_OFF     176
-#define EMU_SC_FPSTATE_OFF 184
-
-// The layout of Linux's siginfo.
-#define EMU_INFO_SIGNO_OFF 0
-#define EMU_INFO_CODE_OFF  8
-#define EMU_INFO_PID_OFF   16
-#define EMU_INFO_UID_OFF   20
-#define EMU_INFO_ADDR_OFF  16
-
-// The uc_flags Linux gives a frame with no XSAVE state.
-#define EMU_UC_SIGCONTEXT_SS     0x2
-#define EMU_UC_STRICT_RESTORE_SS 0x4
-
-// The selectors of a 64-bit user program's code and stack.
-#define EMU_USER_CS 0x33
-#define EMU_USER_SS 0x2b
-
-// The bits of %rflags a frame holds.
-#define EMU_RFLAGS_CF    0x1
-#define EMU_RFLAGS_FIXED 0x2
-#define EMU_RFLAGS_PF    0x4
-#define EMU_RFLAGS_ZF    0x40
-#define EMU_RFLAGS_SF    0x80
-#define EMU_RFLAGS_IF    0x200
-#define EMU_RFLAGS_OF    0x800
-
-// The red zone a frame leaves under the interrupted %rsp.
-#define EMU_FRAME_REDZONE 128
-
-// The alignments of a frame and of its fpstate.
-#define EMU_FRAME_ALIGN         16
-#define EMU_FRAME_FPSTATE_ALIGN 64
-
-// The layout of the FXSAVE area a frame's fpstate points to.
-#define EMU_FXSAVE_FCW_OFF        0
-#define EMU_FXSAVE_FSW_OFF        2
-#define EMU_FXSAVE_MXCSR_OFF      24
-#define EMU_FXSAVE_MXCSR_MASK_OFF 28
-#define EMU_FXSAVE_ST_OFF         32
-#define EMU_FXSAVE_XMM_OFF        160
-#define EMU_FXSAVE_REG_SIZE       16
-#define EMU_FXSAVE_SIZE           512
-
-// The x87 and SSE control words a handler starts with.
-#define EMU_FCW_DEFAULT   0x037F
-#define EMU_MXCSR_DEFAULT 0x1F80
-#define EMU_MXCSR_MASK    0xFFFF
-
-// The place of the x87 stack's top in its status word.
-#define EMU_FSW_TOP_SHIFT 11
-
-// Whether the emulator writes each instruction to stderr before it runs.
-typedef enum Emu_Trace Emu_Trace;
-enum Emu_Trace {
-    EMU_QUIET,
-    EMU_TRACE
-};
-
-// What sent a pending signal.
-typedef enum Emu_Source Emu_Source;
-enum Emu_Source {
-    EMU_SOURCE_KILL,   // the program's kill of itself
-    EMU_SOURCE_FAULT,  // an exception of the CPU's
-    EMU_SOURCE_KERNEL, // a frame the emulator could not build or restore
-    EMU_SOURCE_COUNT   // number of sources
-};
-
-// A signal's disposition as rt_sigaction sets it.
-typedef struct Emu_Action Emu_Action;
-struct Emu_Action {
-    uint64_t ea_handler; // the handler's address, EMU_SIG_DFL or EMU_SIG_IGN
-    uint64_t ea_flags;
-    uint64_t ea_restorer;
-    uint64_t ea_mask;    // the signals blocked while the handler runs
-};
-
-// What a pending signal's siginfo says.
-typedef struct Emu_Info Emu_Info;
-struct Emu_Info {
-    Emu_Source ei_source;
-    int32_t    ei_code;  // si_code
-    uint64_t   ei_addr;  // the address a fault names
-};
-
-// A running program: its image, its signals and how it stopped.
-typedef struct Emu_Guest Emu_Guest;
-struct Emu_Guest {
-    Load_Image       *eg_img;
-    bool              eg_halted;                     // the program exited or a signal ended it
-    int32_t           eg_status;                     // the status it exited with
-    int32_t           eg_signal;                     // the signal that ended it, or 0
-    Emu_Action        eg_action[EMU_SIGNAL_MAX + 1];
-    Emu_Info          eg_info[EMU_SIGNAL_MAX + 1];   // what sent each pending signal
-    uint32_t          eg_queued[EMU_SIGNAL_MAX + 1]; // the instances of each signal pending
-    uint64_t          eg_pending;                    // the signals with an instance pending
-    uint64_t          eg_blocked;                    // the signals the program blocks
-    uint64_t          eg_trapno;                     // the vector of the last exception
-    uint64_t          eg_err;                        // the error code of the last exception
-};
-
-// The host's environment.
-extern char **environ;
+// Module header.
+#include "emu.h"
 
 // The registers in the order Linux's struct sigcontext saves them.
 static const Cpu_x86_64_Reg Emu_SigcontextRegs[] = {
@@ -267,7 +41,7 @@ static const Cpu_x86_64_Reg Emu_SigcontextRegs[] = {
 };
 
 // Show usage information and exit.
-static void Emu_Usage(const char *prog)
+void Emu_Usage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [options] PROGRAM [ARGUMENT...]\n"
@@ -280,7 +54,7 @@ static void Emu_Usage(const char *prog)
 }
 
 // Print what the loader made of an executable.
-static void Emu_ShowImage(const Load_Image *img)
+void Emu_ShowImage(const Load_Image *img)
 {
     fprintf(stdout, "entry  0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_entry);
     fprintf(stdout, "base   0x%llx\n", (Cpu_x86_64_TypeULLong) img->li_base);
@@ -290,7 +64,7 @@ static void Emu_ShowImage(const Load_Image *img)
 }
 
 // Disassemble forward from the image's base until the bytes stop decoding.
-static void Emu_Disassemble(const Load_Image *img)
+void Emu_Disassemble(const Load_Image *img)
 {
     uint64_t rip = img->li_base;
     for (;;) {
@@ -310,7 +84,7 @@ static void Emu_Disassemble(const Load_Image *img)
 }
 
 // Return the image's memory at addr and the bytes left from there, or NULL.
-static uint8_t *Emu_MapMemory(void *ctx, uint64_t addr, size_t *avail)
+uint8_t *Emu_MapMemory(void *ctx, uint64_t addr, size_t *avail)
 {
     const Emu_Guest *guest = ctx;
     uint64_t span = 0;
@@ -320,7 +94,7 @@ static uint8_t *Emu_MapMemory(void *ctx, uint64_t addr, size_t *avail)
 }
 
 // Read a device register, the UART being write-only and always ready.
-static uint64_t Emu_LoadDevice(void *ctx, uint64_t addr, size_t size)
+uint64_t Emu_LoadDevice(void *ctx, uint64_t addr, size_t size)
 {
     (void) ctx;
     (void) size;
@@ -328,7 +102,7 @@ static uint64_t Emu_LoadDevice(void *ctx, uint64_t addr, size_t size)
 }
 
 // Write a device register.
-static void Emu_StoreDevice(void *ctx, uint64_t addr, size_t size, uint64_t value)
+void Emu_StoreDevice(void *ctx, uint64_t addr, size_t size, uint64_t value)
 {
     Emu_Guest *guest = ctx;
 
@@ -348,14 +122,8 @@ static void Emu_StoreDevice(void *ctx, uint64_t addr, size_t size, uint64_t valu
     }
 }
 
-// Return the bit a signal takes in a mask.
-static uint64_t Emu_SignalBit(int32_t sig)
-{
-    return (uint64_t) 1 << (sig - EMU_SIGNAL_FIRST);
-}
-
 // Store the low size bytes of value at ptr in little-endian order.
-static void Emu_Put(uint8_t *ptr, uint64_t value, size_t size)
+void Emu_Put(uint8_t *ptr, uint64_t value, size_t size)
 {
     for (size_t i = 0; i < size; i++) {
         ptr[i] = (uint8_t) (value >> (i * CPU_X86_64_BITS_PER_BYTE));
@@ -363,7 +131,7 @@ static void Emu_Put(uint8_t *ptr, uint64_t value, size_t size)
 }
 
 // Load size little-endian bytes from ptr.
-static uint64_t Emu_Get(const uint8_t *ptr, size_t size)
+uint64_t Emu_Get(const uint8_t *ptr, size_t size)
 {
     uint64_t value = 0;
 
@@ -373,39 +141,45 @@ static uint64_t Emu_Get(const uint8_t *ptr, size_t size)
     return value;
 }
 
+// Return the bit a signal takes in a mask.
+uint64_t Emu_SignalBit(int32_t sig)
+{
+    return (uint64_t) 1 << (sig - EMU_SIGNAL_FIRST);
+}
+
 // True if a signal's default action is to do nothing.
-static bool Emu_IsDefaultIgnored(int32_t sig)
+bool Emu_IsDefaultIgnored(int32_t sig)
 {
     return sig == SIGCHLD || sig == SIGCONT || sig == SIGURG || sig == SIGWINCH;
 }
 
 // True if a signal's default action is to stop the program.
-static bool Emu_IsDefaultStop(int32_t sig)
+bool Emu_IsDefaultStop(int32_t sig)
 {
     return sig == SIGSTOP || sig == SIGTSTP || sig == SIGTTIN || sig == SIGTTOU;
 }
 
 // True if a signal reports a fault of the instruction that raised it.
-static bool Emu_IsSynchronous(int32_t sig)
+bool Emu_IsSynchronous(int32_t sig)
 {
     return sig == SIGSEGV || sig == SIGBUS || sig == SIGILL || sig == SIGTRAP || sig == SIGFPE || sig == SIGSYS;
 }
 
 // Return the signals no program can block or catch.
-static uint64_t Emu_Unblockable(void)
+uint64_t Emu_Unblockable(void)
 {
     return Emu_SignalBit(SIGKILL) | Emu_SignalBit(SIGSTOP);
 }
 
 // True if the program's disposition of a signal discards it.
-static bool Emu_IsIgnored(const Emu_Guest *guest, int32_t sig)
+bool Emu_IsIgnored(const Emu_Guest *guest, int32_t sig)
 {
     uint64_t handler = guest->eg_action[sig].ea_handler;
     return handler == EMU_SIG_IGN || (handler == EMU_SIG_DFL && Emu_IsDefaultIgnored(sig));
 }
 
 // Send the program a signal.
-static void Emu_Send(Emu_Guest *guest, int32_t sig, Emu_Info info)
+void Emu_Send(Emu_Guest *guest, int32_t sig, Emu_Info info)
 {
     uint64_t bit = Emu_SignalBit(sig);
 
@@ -421,7 +195,7 @@ static void Emu_Send(Emu_Guest *guest, int32_t sig, Emu_Info info)
 }
 
 // Send a signal the program can neither block nor ignore at that moment.
-static void Emu_Force(Emu_Guest *guest, int32_t sig, Emu_Info info)
+void Emu_Force(Emu_Guest *guest, int32_t sig, Emu_Info info)
 {
     uint64_t bit = Emu_SignalBit(sig);
 
@@ -433,14 +207,14 @@ static void Emu_Force(Emu_Guest *guest, int32_t sig, Emu_Info info)
 }
 
 // Discard a signal's pending instances.
-static void Emu_Discard(Emu_Guest *guest, int32_t sig)
+void Emu_Discard(Emu_Guest *guest, int32_t sig)
 {
     guest->eg_pending &= ~Emu_SignalBit(sig);
     guest->eg_queued[sig] = 0;
 }
 
 // Start the program with the dispositions and mask the emulator was given.
-static void Emu_Inherit(Emu_Guest *guest)
+void Emu_Inherit(Emu_Guest *guest)
 {
     sigset_t set;
 
@@ -459,7 +233,7 @@ static void Emu_Inherit(Emu_Guest *guest)
 }
 
 // Let the program signal itself, and keep kill from reaching other processes.
-static uint64_t Emu_Kill(Emu_Guest *guest, int32_t pid, int32_t sig)
+uint64_t Emu_Kill(Emu_Guest *guest, int32_t pid, int32_t sig)
 {
     Emu_Info info = {
         .ei_source = EMU_SOURCE_KILL,
@@ -483,7 +257,7 @@ static uint64_t Emu_Kill(Emu_Guest *guest, int32_t pid, int32_t sig)
 }
 
 // Set and return a signal's disposition as Linux's rt_sigaction does.
-static uint64_t Emu_SigAction(Emu_Guest *guest, int32_t sig, uint64_t act, uint64_t oact, uint64_t size)
+uint64_t Emu_SigAction(Emu_Guest *guest, int32_t sig, uint64_t act, uint64_t oact, uint64_t size)
 {
     const uint8_t *from = Load_At(guest->eg_img, act, EMU_SIGACTION_SIZE);
     uint8_t *to = Load_At(guest->eg_img, oact, EMU_SIGACTION_SIZE);
@@ -522,7 +296,7 @@ static uint64_t Emu_SigAction(Emu_Guest *guest, int32_t sig, uint64_t act, uint6
 }
 
 // Change and return the program's signal mask as Linux's rt_sigprocmask does.
-static uint64_t Emu_SigProcMask(Emu_Guest *guest, int32_t how, uint64_t set, uint64_t oset, uint64_t size)
+uint64_t Emu_SigProcMask(Emu_Guest *guest, int32_t how, uint64_t set, uint64_t oset, uint64_t size)
 {
     const uint8_t *from = Load_At(guest->eg_img, set, EMU_SIGSET_SIZE);
     uint8_t *to = Load_At(guest->eg_img, oset, EMU_SIGSET_SIZE);
@@ -561,7 +335,7 @@ static uint64_t Emu_SigProcMask(Emu_Guest *guest, int32_t how, uint64_t set, uin
 }
 
 // Return the CPU's flags as %rflags.
-static uint64_t Emu_ReadFlags(const Cpu_x86_64_State *cpu)
+uint64_t Emu_ReadFlags(const Cpu_x86_64_State *cpu)
 {
     uint64_t flags = EMU_RFLAGS_FIXED | EMU_RFLAGS_IF;
 
@@ -574,7 +348,7 @@ static uint64_t Emu_ReadFlags(const Cpu_x86_64_State *cpu)
 }
 
 // Set the CPU's flags from %rflags.
-static void Emu_WriteFlags(Cpu_x86_64_State *cpu, uint64_t flags)
+void Emu_WriteFlags(Cpu_x86_64_State *cpu, uint64_t flags)
 {
     cpu->cs_cf = (flags & EMU_RFLAGS_CF) != 0;
     cpu->cs_pf = (flags & EMU_RFLAGS_PF) != 0;
@@ -584,7 +358,7 @@ static void Emu_WriteFlags(Cpu_x86_64_State *cpu, uint64_t flags)
 }
 
 // Store the x87 and SSE registers as FXSAVE lays them out.
-static void Emu_SaveFpu(Cpu_x86_64_State *cpu, uint8_t *area)
+void Emu_SaveFpu(Cpu_x86_64_State *cpu, uint8_t *area)
 {
     Emu_Put(area + EMU_FXSAVE_FCW_OFF, EMU_FCW_DEFAULT, sizeof(uint16_t));
     Emu_Put(area + EMU_FXSAVE_FSW_OFF, (uint64_t) cpu->cs_top << EMU_FSW_TOP_SHIFT, sizeof(uint16_t));
@@ -601,7 +375,7 @@ static void Emu_SaveFpu(Cpu_x86_64_State *cpu, uint8_t *area)
 }
 
 // Load the x87 and SSE registers from an FXSAVE area.
-static void Emu_RestoreFpu(Cpu_x86_64_State *cpu, const uint8_t *area)
+void Emu_RestoreFpu(Cpu_x86_64_State *cpu, const uint8_t *area)
 {
     cpu->cs_top = (int32_t) (Emu_Get(area + EMU_FXSAVE_FSW_OFF, sizeof(uint16_t)) >> EMU_FSW_TOP_SHIFT) & CPU_X86_64_ST_MASK;
     for (int32_t i = 0; i < CPU_X86_64_ST_COUNT; i++) {
@@ -615,7 +389,7 @@ static void Emu_RestoreFpu(Cpu_x86_64_State *cpu, const uint8_t *area)
 }
 
 // Put the x87 and SSE registers in the state a handler starts with.
-static void Emu_ResetFpu(Cpu_x86_64_State *cpu)
+void Emu_ResetFpu(Cpu_x86_64_State *cpu)
 {
     memset(cpu->cs_xmm, 0, sizeof(cpu->cs_xmm));
     for (int32_t i = 0; i < CPU_X86_64_ST_COUNT; i++) {
@@ -625,7 +399,7 @@ static void Emu_ResetFpu(Cpu_x86_64_State *cpu)
 }
 
 // Enter a signal's handler on Linux's rt_sigframe.
-static bool Emu_PushFrame(Emu_Guest *guest, Cpu_x86_64_State *cpu, int32_t sig, const Emu_Action *action, const Emu_Info *info)
+bool Emu_PushFrame(Emu_Guest *guest, Cpu_x86_64_State *cpu, int32_t sig, const Emu_Action *action, const Emu_Info *info)
 {
     uint64_t rsp = cpu->cs_reg[CPU_X86_64_REG_RSP];
     uint64_t fpstate = Load_AlignDown(rsp - EMU_FRAME_REDZONE - EMU_FXSAVE_SIZE, EMU_FRAME_FPSTATE_ALIGN);
@@ -684,7 +458,7 @@ static bool Emu_PushFrame(Emu_Guest *guest, Cpu_x86_64_State *cpu, int32_t sig, 
 }
 
 // Return from a handler through its frame as Linux's rt_sigreturn does.
-static uint64_t Emu_SigReturn(Emu_Guest *guest, Cpu_x86_64_State *cpu)
+uint64_t Emu_SigReturn(Emu_Guest *guest, Cpu_x86_64_State *cpu)
 {
     uint64_t frame = cpu->cs_reg[CPU_X86_64_REG_RSP] - CPU_X86_64_STACK_SLOT;
     const uint8_t *mem = Load_At(guest->eg_img, frame, EMU_FRAME_SIZE);
@@ -719,7 +493,7 @@ static uint64_t Emu_SigReturn(Emu_Guest *guest, Cpu_x86_64_State *cpu)
 }
 
 // Return the next signal to deliver.
-static int32_t Emu_NextSignal(const Emu_Guest *guest)
+int32_t Emu_NextSignal(const Emu_Guest *guest)
 {
     uint64_t ready = guest->eg_pending & ~guest->eg_blocked;
     int32_t next = EMU_SIGNAL_NONE;
@@ -733,7 +507,7 @@ static int32_t Emu_NextSignal(const Emu_Guest *guest)
 }
 
 // Deliver every pending signal the program does not block.
-static void Emu_Deliver(Emu_Guest *guest, Cpu_x86_64_State *cpu)
+void Emu_Deliver(Emu_Guest *guest, Cpu_x86_64_State *cpu)
 {
     Emu_Info kernel = {
         .ei_source = EMU_SOURCE_KERNEL,
@@ -779,7 +553,7 @@ static void Emu_Deliver(Emu_Guest *guest, Cpu_x86_64_State *cpu)
 }
 
 // Turn the CPU's exception into the signal Linux sends for it.
-static void Emu_Fault(Emu_Guest *guest, Cpu_x86_64_State *cpu, uint64_t rip)
+void Emu_Fault(Emu_Guest *guest, Cpu_x86_64_State *cpu, uint64_t rip)
 {
     Emu_Info info = {
         .ei_source = EMU_SOURCE_FAULT,
@@ -809,7 +583,7 @@ static void Emu_Fault(Emu_Guest *guest, Cpu_x86_64_State *cpu, uint64_t rip)
 }
 
 // Move the break as Linux's brk does, zeroing the pages a shrink gives back.
-static uint64_t Emu_Brk(Emu_Guest *guest, uint64_t addr)
+uint64_t Emu_Brk(Emu_Guest *guest, uint64_t addr)
 {
     Load_Image *img = guest->eg_img;
     if (addr < img->li_brk_base || addr > img->li_heap_end) {
@@ -826,7 +600,7 @@ static uint64_t Emu_Brk(Emu_Guest *guest, uint64_t addr)
 }
 
 // Read the host's clock into the program's struct timespec at addr.
-static uint64_t Emu_ClockGettime(Emu_Guest *guest, int32_t clock, uint64_t addr)
+uint64_t Emu_ClockGettime(Emu_Guest *guest, int32_t clock, uint64_t addr)
 {
     uint8_t *spec = Load_At(guest->eg_img, addr, EMU_TIMESPEC_SIZE);
     struct timespec now;
@@ -843,7 +617,7 @@ static uint64_t Emu_ClockGettime(Emu_Guest *guest, int32_t clock, uint64_t addr)
 }
 
 // Answer a syscall as Linux does and fail the ones it lacks with ENOSYS.
-static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
+void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
 {
     uint64_t *rax = &cpu->cs_reg[CPU_X86_64_REG_RAX];
     switch (*rax) {
@@ -904,7 +678,7 @@ static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
 }
 
 // Write the instruction at rip to stderr before it runs, if it decodes.
-static void Emu_ShowStep(Emu_Guest *guest, uint64_t rip)
+void Emu_ShowStep(Emu_Guest *guest, uint64_t rip)
 {
     size_t avail = 0;
     const uint8_t *code = Emu_MapMemory(guest, rip, &avail);
@@ -919,7 +693,7 @@ static void Emu_ShowStep(Emu_Guest *guest, uint64_t rip)
 }
 
 // Run a loaded program to completion; return its status and ending signal.
-static int32_t Emu_Run(Load_Image *img, Emu_Trace trace, int32_t *sig)
+int32_t Emu_Run(Load_Image *img, Emu_Trace trace, int32_t *sig)
 {
     Emu_Guest guest = {
         .eg_img = img
@@ -963,7 +737,7 @@ static int32_t Emu_Run(Load_Image *img, Emu_Trace trace, int32_t *sig)
 }
 
 // Die by the signal that ended a program as the program would have died.
-static void Emu_Raise(int32_t sig)
+void Emu_Raise(int32_t sig)
 {
     struct sigaction act = {0};
     struct rlimit core = {0};
