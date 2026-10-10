@@ -17,21 +17,11 @@
  * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Standard headers.
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-// Project headers.
-#include "util/console/err.h"
-#include "util/console/log.h"
-#include "util/str.h"
-#include "arch/x86_64/enc.h"
-#include "arch/x86_64/txt.h"
+// Module header.
+#include "as.h"
 
 // Show usage information and exit.
-static void As_Usage(const char *prog)
+void As_Usage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [options] INPUT.s\n"
@@ -41,7 +31,7 @@ static void As_Usage(const char *prog)
 }
 
 // Read the whole source file at path as text.
-static char *As_ReadSource(const char *path)
+char *As_ReadSource(const char *path)
 {
     FILE *file = fopen(path, "rb");
     if (! file) {
@@ -70,7 +60,7 @@ static char *As_ReadSource(const char *path)
 }
 
 // Read AT&T assembly from input and write a relocatable object to output.
-static void As_Assemble(const char *input, const char *output)
+void As_Assemble(const char *input, const char *output)
 {
     char *text = As_ReadSource(input);
 

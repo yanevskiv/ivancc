@@ -17,52 +17,11 @@
  * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Standard headers.
-#include <errno.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-// Project headers.
-#include "util/console/err.h"
-#include "util/console/log.h"
-#include "util/object/lib.h"
-#include "util/object/elf.h"
-
-// Positions of the letters, the archive and the first file on the command line.
-#define AR_ARG_LETTERS 1
-#define AR_ARG_ARCHIVE 2
-#define AR_ARG_FILES   3
-
-// Character that may open the letters.
-#define AR_DASH '-'
-
-// Character that separates the directories of a path.
-#define AR_PATH_SEP '/'
-
-// Operations the letters name.
-typedef enum Ar_Op Ar_Op;
-enum Ar_Op {
-    AR_OP_NONE,
-    AR_OP_INDEX,   // s alone, as ranlib
-    AR_OP_DELETE,
-    AR_OP_REPLACE,
-    AR_OP_LIST,
-    AR_OP_EXTRACT,
-    AR_OP_COUNT
-};
-
-// What the letters ask for.
-typedef struct Ar_Options Ar_Options;
-struct Ar_Options {
-    Ar_Op ao_op;
-    bool  ao_quiet; // c: create the archive without saying so
-    bool  ao_index; // s: write the symbol index
-};
+// Module header.
+#include "ar.h"
 
 // Show usage information and exit.
-static void Ar_Usage(const char *prog)
+void Ar_Usage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [-]{d|r|t|x}[cDs] ARCHIVE [FILE...]\n"
@@ -79,7 +38,7 @@ static void Ar_Usage(const char *prog)
 }
 
 // Set the operation the letters name, refusing a second one.
-static void Ar_SetOp(const char *prog, Ar_Options *opts, Ar_Op op)
+void Ar_SetOp(const char *prog, Ar_Options *opts, Ar_Op op)
 {
     if (opts->ao_op != AR_OP_NONE) {
         Ar_Usage(prog);
@@ -88,7 +47,7 @@ static void Ar_SetOp(const char *prog, Ar_Options *opts, Ar_Op op)
 }
 
 // Parse the letters bundled in the first argument.
-static Ar_Options Ar_Parse(const char *prog, const char *letters)
+Ar_Options Ar_Parse(const char *prog, const char *letters)
 {
     Ar_Options opts = {
         .ao_op    = AR_OP_NONE,
@@ -136,14 +95,14 @@ static Ar_Options Ar_Parse(const char *prog, const char *letters)
 }
 
 // Return the file name a path ends in.
-static const char *Ar_Basename(const char *path)
+const char *Ar_Basename(const char *path)
 {
     const char *sep = strrchr(path, AR_PATH_SEP);
     return sep != NULL ? sep + 1 : path;
 }
 
 // Read the archive at path, or start an empty one where r may create it.
-static Lib_Ar *Ar_Open(const char *path, const Ar_Options *opts)
+Lib_Ar *Ar_Open(const char *path, const Ar_Options *opts)
 {
     size_t len = 0;
     Lib_ArStatus status = LIB_AR_STATUS_OK;
@@ -167,7 +126,7 @@ static Lib_Ar *Ar_Open(const char *path, const Ar_Options *opts)
 }
 
 // Find the member a file names, refusing one the archive lacks.
-static Lib_ArMember *Ar_Find(const Lib_Ar *ar, const char *path, const char *file)
+Lib_ArMember *Ar_Find(const Lib_Ar *ar, const char *path, const char *file)
 {
     Lib_ArMember *member = Lib_ArMemberFind(ar, Ar_Basename(file));
     Err_Assert(member, ERR_AR_MEMBER_NOT_FOUND, file, path);
@@ -175,7 +134,7 @@ static Lib_ArMember *Ar_Find(const Lib_Ar *ar, const char *path, const char *fil
 }
 
 // Add each file, replacing a member of its name the archive held before.
-static void Ar_Replace(Lib_Ar *ar, const char *const *files, size_t nfiles)
+void Ar_Replace(Lib_Ar *ar, const char *const *files, size_t nfiles)
 {
     size_t nheld = Lib_ArMemberCount(ar);
     bool *replaced = calloc(nheld + 1, sizeof(*replaced));
@@ -201,7 +160,7 @@ static void Ar_Replace(Lib_Ar *ar, const char *const *files, size_t nfiles)
 }
 
 // Delete the member each file names.
-static void Ar_Delete(Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
+void Ar_Delete(Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
 {
     for (size_t i = 0; i < nfiles; i++) {
         Lib_ArMemberDelete(ar, Ar_Find(ar, path, files[i]));
@@ -209,7 +168,7 @@ static void Ar_Delete(Lib_Ar *ar, const char *path, const char *const *files, si
 }
 
 // Print the name of every member, or of each one a file names.
-static void Ar_List(const Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
+void Ar_List(const Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
 {
     if (nfiles == 0) {
         for (size_t i = 0; i < Lib_ArMemberCount(ar); i++) {
@@ -223,7 +182,7 @@ static void Ar_List(const Lib_Ar *ar, const char *path, const char *const *files
 }
 
 // Write a member to the file of its name in the current directory.
-static void Ar_ExtractOne(const Lib_ArMember *member)
+void Ar_ExtractOne(const Lib_ArMember *member)
 {
     Err_Assert(! strchr(member->lam_name, AR_PATH_SEP), ERR_AR_EXTRACT_NAME_NOT_PLAIN, member->lam_name);
 
@@ -234,7 +193,7 @@ static void Ar_ExtractOne(const Lib_ArMember *member)
 }
 
 // Extract every member, or each one a file names.
-static void Ar_Extract(const Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
+void Ar_Extract(const Lib_Ar *ar, const char *path, const char *const *files, size_t nfiles)
 {
     if (nfiles == 0) {
         for (size_t i = 0; i < Lib_ArMemberCount(ar); i++) {
@@ -248,7 +207,7 @@ static void Ar_Extract(const Lib_Ar *ar, const char *path, const char *const *fi
 }
 
 // Write the archive back to path.
-static void Ar_Save(const Lib_Ar *ar, const char *path)
+void Ar_Save(const Lib_Ar *ar, const char *path)
 {
     Err_Assert(Lib_ArWritePath(ar, path), ERR_AR_OUTPUT_NOT_WRITEABLE, path, strerror(errno));
 }

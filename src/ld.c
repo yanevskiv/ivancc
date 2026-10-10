@@ -17,29 +17,11 @@
  * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Standard headers.
-#include <errno.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-
-// Project headers.
-#include "util/console/err.h"
-#include "util/console/log.h"
-#include "util/object/elf.h"
-#include "util/object/link.h"
-#include "util/str.h"
-
-// Permission bits for the executable ld writes (rwxr-xr-x).
-#define LD_MODE 0755
-
-// Default output name when no -o is given.
-#define LD_DEFAULT_OUTPUT "a.out"
+// Module header.
+#include "ld.h"
 
 // Show usage information and exit.
-static void Ld_Usage(const char *prog)
+void Ld_Usage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [options] INPUT...\n"
@@ -57,7 +39,7 @@ static void Ld_Usage(const char *prog)
 }
 
 // Map a -place name to its ELF section: text -> .text, data/rodata -> .rodata.
-static char *Ld_PlaceName(const char *spec, size_t len)
+char *Ld_PlaceName(const char *spec, size_t len)
 {
     char *name = Str_Slice(spec, 0, len);
     if (Str_Equals(name, "text")) {
@@ -72,7 +54,7 @@ static char *Ld_PlaceName(const char *spec, size_t len)
 }
 
 // Parse a -place=SEC@ADDR argument into opts.
-static void Ld_ParsePlace(const char *spec, Link_Options *opts)
+void Ld_ParsePlace(const char *spec, Link_Options *opts)
 {
     const char *at = strchr(spec, '@');
     Err_Assert(at, ERR_LD_PLACE_MALFORMED, spec);
