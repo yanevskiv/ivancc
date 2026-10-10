@@ -38,6 +38,9 @@
 // Types the checks compare against.
 #include <stddef.h>
 
+// The error number of a base out of range.
+#include <_sys.h>
+
 // Check the header's own types against stddef.h's.
 typedef char _Inttypes_CheckSize[sizeof(_Inttypes_SizeType) == sizeof(size_t) && (_Inttypes_SizeType) -1 == (size_t) -1 ? 1 : -1];
 typedef char _Inttypes_CheckWchar[sizeof(_Inttypes_WcharType) == sizeof(wchar_t) && ((_Inttypes_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
@@ -85,6 +88,7 @@ uintmax_t _Inttypes_Convert(const void *str, _Bool wide, _Inttypes_SizeType *end
     *negative = 0;
     *overflow = 0;
     if (base < 0 || base == 1 || base > _INTTYPES_BASE_MAX) {
+        errno = _SYS_EINVAL;
         return 0;
     }
     while (_Inttypes_IsSpace(_Inttypes_CharAt(str, wide, i))) {
