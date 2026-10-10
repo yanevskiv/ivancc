@@ -35,15 +35,18 @@
 // Types the checks compare against.
 #include <stddef.h>
 
+// The encoding the multibyte functions follow.
+#include <_utf8.h>
+
 // Check the header's own type against stddef.h's.
 typedef char _Locale_CheckSize[sizeof(_Locale_SizeType) == sizeof(size_t) && (_Locale_SizeType) -1 == (size_t) -1 ? 1 : -1];
 
 // The names setlocale takes, each with the name it returns, as glibc's do.
 const struct _Locale_Name _Locale_Names[_LOCALE_NAMES] = {
-    { _LOCALE_NAME_C, _LOCALE_NAME_C },
-    { _LOCALE_NAME_POSIX, _LOCALE_NAME_C },
-    { _LOCALE_NAME_UTF8, _LOCALE_NAME_UTF8 },
-    { _LOCALE_NAME_UTF8_ALT, _LOCALE_NAME_UTF8_ALT },
+    { _LOCALE_NAME_C, _LOCALE_NAME_C, 0 },
+    { _LOCALE_NAME_POSIX, _LOCALE_NAME_C, 0 },
+    { _LOCALE_NAME_UTF8, _LOCALE_NAME_UTF8, 1 },
+    { _LOCALE_NAME_UTF8_ALT, _LOCALE_NAME_UTF8_ALT, 1 },
 };
 
 // The names of the categories, as a composite name writes them.
@@ -179,6 +182,12 @@ char *_Locale_Query(int category)
     return (char *) first;
 }
 
+// Make the multibyte functions follow the encoding of LC_CTYPE's locale.
+void _Locale_ApplyCtype(void)
+{
+    _Utf8_Enabled = _Locale_Names[_Locale_Current[LC_CTYPE]].ln_utf8;
+}
+
 // Select the locale for category, or name its locale where locale is null.
 char *setlocale(int category, const char *locale)
 {
@@ -198,6 +207,7 @@ char *setlocale(int category, const char *locale)
         for (int i = 0; i < _LOCALE_CATEGORIES; i++) {
             _Locale_Current[i] = selected[i];
         }
+        _Locale_ApplyCtype();
         return _Locale_Query(category);
     }
     if (*locale == '\0') {
@@ -212,6 +222,7 @@ char *setlocale(int category, const char *locale)
             _Locale_Current[i] = name;
         }
     }
+    _Locale_ApplyCtype();
     return _Locale_Query(category);
 }
 
