@@ -31,6 +31,7 @@
 #endif
 
 // Linux's syscall numbers.
+#define _SYS_NR_READ           0
 #define _SYS_NR_WRITE          1
 #define _SYS_NR_BRK            12
 #define _SYS_NR_RT_SIGACTION   13
@@ -72,6 +73,12 @@ __asm__(
 #else
 #error "_sys.c: no system calls for this architecture"
 #endif
+
+// Read up to len bytes from the descriptor fd into buf.
+long _Sys_Read(int fd, void *buf, unsigned long len)
+{
+    return _Sys_Syscall(_SYS_NR_READ, fd, (long) buf, (long) len, 0, 0, 0);
+}
 
 // Write len bytes of buf to the descriptor fd.
 long _Sys_Write(int fd, const void *buf, unsigned long len)

@@ -206,6 +206,7 @@ struct _Sys_Sigaction {
 
 // System calls
 long  _Sys_Syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+long  _Sys_Read(int fd, void *buf, unsigned long len);
 long  _Sys_Write(int fd, const void *buf, unsigned long len);
 void *_Sys_Brk(void *addr);
 long  _Sys_RtSigaction(int sig, const struct _Sys_Sigaction *act, struct _Sys_Sigaction *oact);

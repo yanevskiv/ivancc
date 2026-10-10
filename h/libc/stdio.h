@@ -32,10 +32,13 @@
 #define _STDIO_ERROR  0x4
 #define _STDIO_OWNBUF 0x8
 #define _STDIO_SETUP  0x10
+#define _STDIO_EOF    0x20
+#define _STDIO_BACK   0x40
 
 // What a stream did last.
 #define _STDIO_IDLE    0
-#define _STDIO_WRITING 1
+#define _STDIO_READING 1
+#define _STDIO_WRITING 2
 
 // The buffering a stream's first use picks: by line on a terminal, else full.
 #define _STDIO_AUTO (-1)
@@ -64,12 +67,14 @@ typedef unsigned long size_t;
 struct _Stdio_File {
     int sf_fd;
     int sf_flags;                // _STDIO_READ, _STDIO_WRITE and what happened
-    int sf_state;                // _STDIO_IDLE or _STDIO_WRITING
+    int sf_state;                // _STDIO_IDLE, _STDIO_READING, _STDIO_WRITING
     int sf_mode;                 // _IOFBF, _IOLBF, _IONBF or _STDIO_AUTO
     unsigned char *sf_buf;
     size_t sf_size;
-    size_t sf_tail;              // the bytes that wait to be written
+    size_t sf_head;              // the bytes of the buffer already read
+    size_t sf_tail;              // the bytes the buffer holds, read or to write
     unsigned char sf_byte;       // an unbuffered stream's buffer
+    unsigned char sf_back;       // the character ungetc pushed back
     struct _Stdio_File *sf_next;
 };
 
@@ -88,12 +93,20 @@ extern FILE *_Stdio_Streams;
 void  _Stdio_Setup(FILE *stream);
 _Bool _Stdio_IsTerminal(int fd);
 
+// Input
+int    _Stdio_ToRead(FILE *stream);
+size_t _Stdio_Get(FILE *stream, void *data, size_t len);
+size_t _Stdio_Take(FILE *stream, unsigned char *data, size_t len);
+size_t _Stdio_Read(FILE *stream, unsigned char *data, size_t len);
+char  *_Stdio_GetLine(FILE *stream, char *str, size_t max);
+
 // Output
 int    _Stdio_ToWrite(FILE *stream);
 size_t _Stdio_Put(FILE *stream, const void *data, size_t len);
 int    _Stdio_WriteAll(FILE *stream, const unsigned char *data, size_t len);
 int    _Stdio_Flush(FILE *stream);
 int    _Stdio_FlushAll(void);
+void   _Stdio_FlushLines(void);
 
 // (S7.19.5) File access functions
 int  fflush(FILE *stream);
@@ -101,13 +114,25 @@ void setbuf(FILE *restrict stream, char *restrict buf);
 int  setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size);
 
 // (S7.19.7) Character input/output functions
-int fputc(int ch, FILE *stream);
-int fputs(const char *restrict str, FILE *restrict stream);
-int putc(int ch, FILE *stream);
-int putchar(int ch);
-int puts(const char *str);
+int   fgetc(FILE *stream);
+char *fgets(char *restrict str, int n, FILE *restrict stream);
+int   fputc(int ch, FILE *stream);
+int   fputs(const char *restrict str, FILE *restrict stream);
+int   getc(FILE *stream);
+int   getchar(void);
+char *gets(char *str);
+int   putc(int ch, FILE *stream);
+int   putchar(int ch);
+int   puts(const char *str);
+int   ungetc(int ch, FILE *stream);
 
 // (S7.19.8) Direct input/output functions
+size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
 size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
+
+// (S7.19.10) Error-handling functions
+void clearerr(FILE *stream);
+int  feof(FILE *stream);
+int  ferror(FILE *stream);
 
 #endif // _STDIO_H

@@ -26,10 +26,10 @@
 // Module header.
 #include <stdio.h>
 
-// The error a failed write reports.
+// The error a failed read or write reports.
 #include <errno.h>
 
-// Copying into a buffer, finding its new-lines and measuring a string.
+// Copying to and from a buffer, finding its new-lines and measuring a string.
 #include <string.h>
 
 // The buffers a stream allocates.
@@ -38,11 +38,11 @@
 // The hook exit flushes the streams by.
 #include <_crt.h>
 
-// The largest int puts returns and the largest size fwrite writes.
+// The largest int puts returns and the largest size fread and fwrite move.
 #include <limits.h>
 #include <stdint.h>
 
-// The writes, the terminal's settings and the standard descriptors.
+// The reads and writes, the terminal's settings and the standard descriptors.
 #include <_sys.h>
 
 // Standard input, read-only, its buffering picked at its first use.
@@ -106,6 +106,102 @@ _Bool _Stdio_IsTerminal(int fd)
     return _Sys_Ioctl(fd, _SYS_TCGETS, &term) == 0;
 }
 
+// Ready the stream for input, or set its error indicator if it is write-only.
+int _Stdio_ToRead(FILE *stream)
+{
+    if (! (stream->sf_flags & _STDIO_READ)) {
+        stream->sf_flags |= _STDIO_ERROR;
+        errno = _SYS_EBADF;
+        return EOF;
+    }
+    _Stdio_Setup(stream);
+    stream->sf_state = _STDIO_READING;
+    return 0;
+}
+
+// Take up to len bytes from the stream into data, and return how many came.
+size_t _Stdio_Get(FILE *stream, void *data, size_t len)
+{
+    size_t done = 0;
+    unsigned char *bytes = data;
+
+    if (_Stdio_ToRead(stream) != 0) {
+        return 0;
+    }
+    if (len > 0 && (stream->sf_flags & _STDIO_BACK)) {
+        stream->sf_flags &= ~_STDIO_BACK;
+        bytes[done++] = stream->sf_back;
+    }
+    while (done < len) {
+        size_t part = len - done;
+
+        if (stream->sf_head == stream->sf_tail && part >= stream->sf_size) {
+            part = _Stdio_Read(stream, bytes + done, part);
+        } else {
+            part = _Stdio_Take(stream, bytes + done, part);
+        }
+        if (part == 0) {
+            return done;
+        }
+        done += part;
+    }
+    return done;
+}
+
+// Copy up to len bytes of the stream's buffer into data, refilling it if empty.
+size_t _Stdio_Take(FILE *stream, unsigned char *data, size_t len)
+{
+    if (stream->sf_head == stream->sf_tail) {
+        stream->sf_head = 0;
+        stream->sf_tail = _Stdio_Read(stream, stream->sf_buf, stream->sf_size);
+    }
+    if (len > stream->sf_tail - stream->sf_head) {
+        len = stream->sf_tail - stream->sf_head;
+    }
+    memcpy(data, stream->sf_buf + stream->sf_head, len);
+    stream->sf_head += len;
+    return len;
+}
+
+// Read up to len bytes from the stream's descriptor, none once at its end.
+size_t _Stdio_Read(FILE *stream, unsigned char *data, size_t len)
+{
+    long done;
+
+    if (stream->sf_flags & _STDIO_EOF) {
+        return 0;
+    }
+    if (stream->sf_mode != _IOFBF) {
+        _Stdio_FlushLines();
+    }
+    done = _Sys_Read(stream->sf_fd, data, len);
+    if (done < 0) {
+        errno = (int) -done;
+        stream->sf_flags |= _STDIO_ERROR;
+        return 0;
+    }
+    if (done == 0) {
+        stream->sf_flags |= _STDIO_EOF;
+    }
+    return (size_t) done;
+}
+
+// Read a line of at most max characters, its new-line among them, into str.
+char *_Stdio_GetLine(FILE *stream, char *str, size_t max)
+{
+    int ch = 0;
+    size_t len = 0;
+
+    while (len < max && ch != '\n' && (ch = fgetc(stream)) != EOF) {
+        str[len++] = (char) ch;
+    }
+    if (ch == EOF && (len == 0 || ! (stream->sf_flags & _STDIO_EOF))) {
+        return NULL;
+    }
+    str[len] = '\0';
+    return str;
+}
+
 // Ready the stream for output, or set its error indicator if it is read-only.
 int _Stdio_ToWrite(FILE *stream)
 {
@@ -122,8 +218,8 @@ int _Stdio_ToWrite(FILE *stream)
 // Buffer len bytes of data for the stream, and return how many it took.
 size_t _Stdio_Put(FILE *stream, const void *data, size_t len)
 {
-    const unsigned char *bytes = data;
     size_t done = 0;
+    const unsigned char *bytes = data;
 
     if (_Stdio_ToWrite(stream) != 0) {
         return 0;
@@ -194,6 +290,18 @@ int _Stdio_FlushAll(void)
     return result;
 }
 
+// Flush every line-buffered stream, as a read from the host calls for.
+void _Stdio_FlushLines(void)
+{
+    FILE *stream;
+
+    for (stream = _Stdio_Streams; stream != NULL; stream = stream->sf_next) {
+        if (stream->sf_mode == _IOLBF) {
+            _Stdio_Flush(stream);
+        }
+    }
+}
+
 // Write what waits in the stream's buffer, or in every stream's for NULL.
 int fflush(FILE *stream)
 {
@@ -222,9 +330,24 @@ int setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size)
     stream->sf_mode = mode;
     stream->sf_buf = mode != _IONBF ? (unsigned char *) buf : NULL;
     stream->sf_size = size;
+    stream->sf_head = 0;
     stream->sf_tail = 0;
     stream->sf_state = _STDIO_IDLE;
     return 0;
+}
+
+// Read the stream's next character, as an unsigned char, or EOF at its end.
+int fgetc(FILE *stream)
+{
+    unsigned char byte;
+
+    return _Stdio_Get(stream, &byte, 1) == 1 ? byte : EOF;
+}
+
+// Read a line of at most n - 1 characters, its new-line kept, into str.
+char *fgets(char *restrict str, int n, FILE *restrict stream)
+{
+    return n > 0 ? _Stdio_GetLine(stream, str, (size_t) n - 1) : NULL;
 }
 
 // Write the character ch, as an unsigned char, to the stream.
@@ -241,6 +364,33 @@ int fputs(const char *restrict str, FILE *restrict stream)
     size_t len = strlen(str);
 
     return _Stdio_Put(stream, str, len) == len ? 1 : EOF;
+}
+
+// Read the stream's next character, as fgetc does.
+int getc(FILE *stream)
+{
+    return fgetc(stream);
+}
+
+// Read standard input's next character.
+int getchar(void)
+{
+    return fgetc(stdin);
+}
+
+// Read a line of standard input, however long, into str, its new-line dropped.
+char *gets(char *str)
+{
+    size_t len;
+
+    if (_Stdio_GetLine(stdin, str, SIZE_MAX) == NULL) {
+        return NULL;
+    }
+    len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n') {
+        str[len - 1] = '\0';
+    }
+    return str;
 }
 
 // Write the character ch to the stream, as fputc does.
@@ -266,6 +416,30 @@ int puts(const char *str)
     return len < INT_MAX ? (int) len + 1 : INT_MAX;
 }
 
+// Push the character ch back for the stream's next read, one at a time.
+int ungetc(int ch, FILE *stream)
+{
+    if (ch == EOF || (stream->sf_flags & _STDIO_BACK) || _Stdio_ToRead(stream) != 0) {
+        return EOF;
+    }
+    stream->sf_back = (unsigned char) ch;
+    stream->sf_flags |= _STDIO_BACK;
+    stream->sf_flags &= ~_STDIO_EOF;
+    return stream->sf_back;
+}
+
+// Read nmemb elements of size bytes into ptr, and return how many came whole.
+size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream)
+{
+    if (size == 0 || nmemb == 0) {
+        return 0;
+    }
+    if (nmemb > SIZE_MAX / size) {
+        nmemb = SIZE_MAX / size;
+    }
+    return _Stdio_Get(stream, ptr, size * nmemb) / size;
+}
+
 // Write nmemb elements of size bytes from ptr, and return how many went.
 size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream)
 {
@@ -276,4 +450,22 @@ size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restric
         nmemb = SIZE_MAX / size;
     }
     return _Stdio_Put(stream, ptr, size * nmemb) / size;
+}
+
+// Clear the stream's end-of-file and error indicators.
+void clearerr(FILE *stream)
+{
+    stream->sf_flags &= ~(_STDIO_EOF | _STDIO_ERROR);
+}
+
+// Return nonzero if the stream's end-of-file indicator is set.
+int feof(FILE *stream)
+{
+    return (stream->sf_flags & _STDIO_EOF) != 0;
+}
+
+// Return nonzero if the stream's error indicator is set.
+int ferror(FILE *stream)
+{
+    return (stream->sf_flags & _STDIO_ERROR) != 0;
 }
