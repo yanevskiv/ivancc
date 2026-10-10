@@ -33,10 +33,14 @@
 // Linux's syscall numbers.
 #define _SYS_NR_READ           0
 #define _SYS_NR_WRITE          1
+#define _SYS_NR_OPEN           2
+#define _SYS_NR_CLOSE          3
+#define _SYS_NR_LSEEK          8
 #define _SYS_NR_BRK            12
 #define _SYS_NR_RT_SIGACTION   13
 #define _SYS_NR_RT_SIGPROCMASK 14
 #define _SYS_NR_IOCTL          16
+#define _SYS_NR_DUP2           33
 #define _SYS_NR_GETPID         39
 #define _SYS_NR_KILL           62
 #define _SYS_NR_CLOCK_GETTIME  228
@@ -86,6 +90,24 @@ long _Sys_Write(int fd, const void *buf, unsigned long len)
     return _Sys_Syscall(_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
 }
 
+// Open the file at path as flags say, with the permissions mode if it is made.
+long _Sys_Open(const char *path, int flags, int mode)
+{
+    return _Sys_Syscall(_SYS_NR_OPEN, (long) path, flags, mode, 0, 0, 0);
+}
+
+// Close the descriptor fd.
+long _Sys_Close(int fd)
+{
+    return _Sys_Syscall(_SYS_NR_CLOSE, fd, 0, 0, 0, 0, 0);
+}
+
+// Move the offset of the descriptor fd by offset from the origin whence.
+long _Sys_Lseek(int fd, long offset, int whence)
+{
+    return _Sys_Syscall(_SYS_NR_LSEEK, fd, offset, whence, 0, 0, 0);
+}
+
 // Move the program break to addr, and return where it stands.
 void *_Sys_Brk(void *addr)
 {
@@ -108,6 +130,12 @@ long _Sys_RtSigprocmask(int how, const unsigned long *set, unsigned long *oset)
 long _Sys_Ioctl(int fd, unsigned long request, void *arg)
 {
     return _Sys_Syscall(_SYS_NR_IOCTL, fd, (long) request, (long) arg, 0, 0, 0);
+}
+
+// Make the descriptor as a copy of the descriptor fd, closing what it was.
+long _Sys_Dup2(int fd, int as)
+{
+    return _Sys_Syscall(_SYS_NR_DUP2, fd, as, 0, 0, 0, 0);
 }
 
 // Return the program's process ID.

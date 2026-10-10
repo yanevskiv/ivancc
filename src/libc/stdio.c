@@ -26,13 +26,13 @@
 // Module header.
 #include <stdio.h>
 
-// The error a failed read or write reports.
+// The error a failed open, read, write or close reports.
 #include <errno.h>
 
-// Copying to and from a buffer, finding its new-lines and measuring a string.
+// Copying to and from a buffer, finding its new-lines and matching a mode.
 #include <string.h>
 
-// The buffers a stream allocates.
+// The streams fopen allocates and the buffers they do.
 #include <stdlib.h>
 
 // The hook exit flushes the streams by.
@@ -42,7 +42,7 @@
 #include <limits.h>
 #include <stdint.h>
 
-// The reads and writes, the terminal's settings and the standard descriptors.
+// The files' calls, the terminal's settings and the standard descriptors.
 #include <_sys.h>
 
 // Standard input, read-only, its buffering picked at its first use.
@@ -70,6 +70,111 @@ FILE _Stdio_Stderr = {
 
 // The open streams, the standard ones at first.
 FILE *_Stdio_Streams = &_Stdio_Stdin;
+
+// Make a stream with no file, first among the open ones.
+FILE *_Stdio_New(void)
+{
+    FILE *stream = calloc(1, sizeof(FILE));
+
+    if (stream != NULL) {
+        stream->sf_fd = _STDIO_NOFILE;
+        stream->sf_flags = _STDIO_OWNFILE;
+        stream->sf_mode = _STDIO_AUTO;
+        stream->sf_next = _Stdio_Streams;
+        _Stdio_Streams = stream;
+    }
+    return stream;
+}
+
+// Return whether mode is one of the fifteen fopen takes.
+_Bool _Stdio_IsMode(const char *mode)
+{
+    const char *rest = mode + 1;
+
+    if (mode[0] != 'r' && mode[0] != 'w' && mode[0] != 'a') {
+        return 0;
+    }
+    return rest[0] == '\0' || strcmp(rest, "b") == 0 || strcmp(rest, "+") == 0 || strcmp(rest, "b+") == 0 || strcmp(rest, "+b") == 0;
+}
+
+// Turn fopen's mode into the flags open takes.
+int _Stdio_OpenFlags(const char *mode)
+{
+    int flags = mode[0] == 'r' ? _SYS_O_RDONLY : _SYS_O_WRONLY | _SYS_O_CREAT;
+
+    if (strchr(mode, '+') != NULL) {
+        flags = (flags & ~_SYS_O_ACCMODE) | _SYS_O_RDWR;
+    }
+    if (mode[0] == 'w') {
+        flags |= _SYS_O_TRUNC;
+    }
+    if (mode[0] == 'a') {
+        flags |= _SYS_O_APPEND;
+    }
+    return flags;
+}
+
+// Open the file filename for the stream, to read or write as the mode says.
+int _Stdio_Open(FILE *stream, const char *filename, const char *mode)
+{
+    long fd;
+    int flags;
+
+    if (! _Stdio_IsMode(mode)) {
+        errno = _SYS_EINVAL;
+        return EOF;
+    }
+    flags = _Stdio_OpenFlags(mode);
+    fd = _Sys_Open(filename, flags, _SYS_DEFFILEMODE);
+    if (fd < 0) {
+        errno = (int) -fd;
+        return EOF;
+    }
+    stream->sf_fd = (int) fd;
+    if ((flags & _SYS_O_ACCMODE) != _SYS_O_WRONLY) {
+        stream->sf_flags |= _STDIO_READ;
+    }
+    if ((flags & _SYS_O_ACCMODE) != _SYS_O_RDONLY) {
+        stream->sf_flags |= _STDIO_WRITE;
+    }
+    return 0;
+}
+
+// Flush the stream and take its buffer, indicators and access from it.
+int _Stdio_Reset(FILE *stream)
+{
+    int result = _Stdio_Flush(stream);
+
+    if (stream->sf_flags & _STDIO_OWNBUF) {
+        free(stream->sf_buf);
+    }
+    stream->sf_flags &= _STDIO_OWNFILE;
+    stream->sf_state = _STDIO_IDLE;
+    stream->sf_mode = _STDIO_AUTO;
+    stream->sf_buf = NULL;
+    stream->sf_size = 0;
+    stream->sf_head = 0;
+    stream->sf_tail = 0;
+    return result;
+}
+
+// Take the stream off the open ones and free one fopen made.
+void _Stdio_Free(FILE *stream)
+{
+    FILE **iter = &_Stdio_Streams;
+
+    while (*iter != NULL && *iter != stream) {
+        iter = &(*iter)->sf_next;
+    }
+    if (*iter == stream) {
+        *iter = stream->sf_next;
+    }
+    stream->sf_fd = _STDIO_NOFILE;
+    stream->sf_next = NULL;
+    if (stream->sf_flags & _STDIO_OWNFILE) {
+        free(stream);
+    }
+}
 
 // Pick the stream's buffering and buffer at its first use, none without memory.
 void _Stdio_Setup(FILE *stream)
@@ -112,6 +217,9 @@ int _Stdio_ToRead(FILE *stream)
     if (! (stream->sf_flags & _STDIO_READ)) {
         stream->sf_flags |= _STDIO_ERROR;
         errno = _SYS_EBADF;
+        return EOF;
+    }
+    if (_Stdio_Flush(stream) != 0) {
         return EOF;
     }
     _Stdio_Setup(stream);
@@ -202,6 +310,22 @@ char *_Stdio_GetLine(FILE *stream, char *str, size_t max)
     return str;
 }
 
+// Move the stream's file back over what it read ahead, and empty its buffer.
+void _Stdio_Unread(FILE *stream)
+{
+    long ahead = (long) (stream->sf_tail - stream->sf_head);
+
+    if (stream->sf_flags & _STDIO_BACK) {
+        ahead++;
+    }
+    if (ahead > 0) {
+        _Sys_Lseek(stream->sf_fd, -ahead, _SYS_SEEK_CUR);
+    }
+    stream->sf_flags &= ~_STDIO_BACK;
+    stream->sf_head = 0;
+    stream->sf_tail = 0;
+}
+
 // Ready the stream for output, or set its error indicator if it is read-only.
 int _Stdio_ToWrite(FILE *stream)
 {
@@ -209,6 +333,9 @@ int _Stdio_ToWrite(FILE *stream)
         stream->sf_flags |= _STDIO_ERROR;
         errno = _SYS_EBADF;
         return EOF;
+    }
+    if (stream->sf_state == _STDIO_READING) {
+        _Stdio_Unread(stream);
     }
     _Stdio_Setup(stream);
     stream->sf_state = _STDIO_WRITING;
@@ -302,10 +429,60 @@ void _Stdio_FlushLines(void)
     }
 }
 
+// Flush the stream, close its file and end the stream.
+int fclose(FILE *stream)
+{
+    int result = _Stdio_Reset(stream);
+    long status = _Sys_Close(stream->sf_fd);
+
+    if (status < 0) {
+        errno = (int) -status;
+        result = EOF;
+    }
+    _Stdio_Free(stream);
+    return result;
+}
+
 // Write what waits in the stream's buffer, or in every stream's for NULL.
 int fflush(FILE *stream)
 {
     return stream == NULL ? _Stdio_FlushAll() : _Stdio_Flush(stream);
+}
+
+// Open the file filename as the mode says, and return a stream for it.
+FILE *fopen(const char *restrict filename, const char *restrict mode)
+{
+    FILE *stream = _Stdio_New();
+
+    if (stream != NULL && _Stdio_Open(stream, filename, mode) != 0) {
+        _Stdio_Free(stream);
+        return NULL;
+    }
+    return stream;
+}
+
+// Open the file filename as the mode says for the stream, on its descriptor.
+FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *restrict stream)
+{
+    int fd = stream->sf_fd;
+
+    if (filename == NULL) {
+        errno = _SYS_EINVAL;
+        return NULL;
+    }
+    _Stdio_Reset(stream);
+    if (_Stdio_Open(stream, filename, mode) != 0) {
+        _Sys_Close(fd);
+        _Stdio_Free(stream);
+        return NULL;
+    }
+    if (_Sys_Dup2(stream->sf_fd, fd) == fd) {
+        _Sys_Close(stream->sf_fd);
+        stream->sf_fd = fd;
+    } else {
+        _Sys_Close(fd);
+    }
+    return stream;
 }
 
 // Give the stream the buffer buf of BUFSIZ bytes, or none for NULL.

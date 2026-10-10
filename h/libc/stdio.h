@@ -27,13 +27,14 @@
 #define _STDIO_H
 
 // What a stream may do, and what has happened to it.
-#define _STDIO_READ   0x1
-#define _STDIO_WRITE  0x2
-#define _STDIO_ERROR  0x4
-#define _STDIO_OWNBUF 0x8
-#define _STDIO_SETUP  0x10
-#define _STDIO_EOF    0x20
-#define _STDIO_BACK   0x40
+#define _STDIO_READ    0x1
+#define _STDIO_WRITE   0x2
+#define _STDIO_ERROR   0x4
+#define _STDIO_OWNBUF  0x8
+#define _STDIO_SETUP   0x10
+#define _STDIO_EOF     0x20
+#define _STDIO_BACK    0x40
+#define _STDIO_OWNFILE 0x80
 
 // What a stream did last.
 #define _STDIO_IDLE    0
@@ -42,6 +43,9 @@
 
 // The buffering a stream's first use picks: by line on a terminal, else full.
 #define _STDIO_AUTO (-1)
+
+// The descriptor of a stream with no file.
+#define _STDIO_NOFILE (-1)
 
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
@@ -53,6 +57,10 @@
 #define BUFSIZ 8192
 
 #define EOF (-1)
+
+#define FOPEN_MAX 16
+
+#define FILENAME_MAX 4096
 
 #define stderr (&_Stdio_Stderr)
 #define stdin  (&_Stdio_Stdin)
@@ -89,6 +97,14 @@ extern FILE _Stdio_Stderr;
 // The open streams, newest first.
 extern FILE *_Stdio_Streams;
 
+// Opening
+FILE *_Stdio_New(void);
+_Bool _Stdio_IsMode(const char *mode);
+int   _Stdio_OpenFlags(const char *mode);
+int   _Stdio_Open(FILE *stream, const char *filename, const char *mode);
+int   _Stdio_Reset(FILE *stream);
+void  _Stdio_Free(FILE *stream);
+
 // Buffering
 void  _Stdio_Setup(FILE *stream);
 _Bool _Stdio_IsTerminal(int fd);
@@ -99,6 +115,7 @@ size_t _Stdio_Get(FILE *stream, void *data, size_t len);
 size_t _Stdio_Take(FILE *stream, unsigned char *data, size_t len);
 size_t _Stdio_Read(FILE *stream, unsigned char *data, size_t len);
 char  *_Stdio_GetLine(FILE *stream, char *str, size_t max);
+void   _Stdio_Unread(FILE *stream);
 
 // Output
 int    _Stdio_ToWrite(FILE *stream);
@@ -109,9 +126,12 @@ int    _Stdio_FlushAll(void);
 void   _Stdio_FlushLines(void);
 
 // (S7.19.5) File access functions
-int  fflush(FILE *stream);
-void setbuf(FILE *restrict stream, char *restrict buf);
-int  setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size);
+int   fclose(FILE *stream);
+int   fflush(FILE *stream);
+FILE *fopen(const char *restrict filename, const char *restrict mode);
+FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *restrict stream);
+void  setbuf(FILE *restrict stream, char *restrict buf);
+int   setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size);
 
 // (S7.19.7) Character input/output functions
 int   fgetc(FILE *stream);
