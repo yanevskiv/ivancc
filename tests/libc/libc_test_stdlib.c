@@ -1,7 +1,9 @@
 // (Test) Status: 0
-// <stdlib.h> declares the numeric conversion functions atof, strtod, strtof and strtold (S7.20.1),
+// <stdlib.h> declares the numeric conversion functions, atof, atoi, atol, atoll, strtod, strtof, strtold,
+// strtol, strtoll, strtoul and strtoull (S7.20.1), rand and srand (S7.20.2),
 // the memory management functions, calloc, free, malloc and realloc (S7.20.3),
-// and those of communication with the environment, abort, atexit, exit, _Exit, getenv and system (S7.20.4).
+// those of communication with the environment, abort, atexit, exit, _Exit, getenv and system (S7.20.4),
+// bsearch and qsort (S7.20.5), and abs, labs, llabs, div, ldiv and lldiv (S7.20.6).
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -28,7 +30,9 @@
 #define ROUNDS 200
 #define BIG (1 << 17)
 #define EXITS 32
-#define EXITED 40
+#define EXITED 60
+#define SORTED 2000
+#define DRAWS 50
 
 #ifndef EXIT_FAILURE
 #error "EXIT_FAILURE is not defined"
@@ -36,6 +40,10 @@
 
 #ifndef EXIT_SUCCESS
 #error "EXIT_SUCCESS is not defined"
+#endif
+
+#if ! defined(RAND_MAX) || RAND_MAX < 32767
+#error "RAND_MAX is not defined as at least 32767"
 #endif
 
 static unsigned char *slot[SLOTS];
@@ -46,6 +54,10 @@ static jmp_buf env;
 static volatile sig_atomic_t aborted;
 static int stage;
 static int middles;
+static int sorted[SORTED];
+static unsigned char records[SORTED][3];
+static bool seen[SORTED];
+static int draws[DRAWS];
 
 static unsigned long next(void)
 {
@@ -214,6 +226,82 @@ static bool reads_tiny(const char *str, int sign)
     return sign > 0 ? got >= 0 and got <= DBL_MIN : got <= 0 and got >= -DBL_MIN;
 }
 
+// Check that strtol reads str in base as value, ending end characters in.
+static bool converts(const char *str, int base, long value, size_t end)
+{
+    char *stop;
+
+    return strtol(str, &stop, base) == value and stop == str + end;
+}
+
+// Check that rand gives the draws again, as after the seed that made them.
+static bool repeats(void)
+{
+    int i;
+
+    for (i = 0; i < DRAWS; i++) {
+        if (rand() != draws[i]) return false;
+    }
+    return true;
+}
+
+// Order two ints.
+static int compare_int(const void *left, const void *right)
+{
+    int x = *(const int *) left;
+    int y = *(const int *) right;
+
+    return (x > y) - (x < y);
+}
+
+// Order three-byte records by their first byte alone.
+static int compare_first(const void *left, const void *right)
+{
+    return *(const unsigned char *) left - *(const unsigned char *) right;
+}
+
+// Sort SORTED ints and check they come out in order, the same ints as went in.
+static bool sorts_ints(void)
+{
+    long sum = 0;
+    long squares = 0;
+    int i;
+
+    for (i = 0; i < SORTED; i++) {
+        sorted[i] = (int) (next() % 1000) - 500;
+        sum += sorted[i];
+        squares += (long) sorted[i] * sorted[i];
+    }
+    qsort(sorted, SORTED, sizeof(sorted[0]), compare_int);
+    for (i = 0; i < SORTED; i++) {
+        if (i > 0 and sorted[i - 1] > sorted[i]) return false;
+        sum -= sorted[i];
+        squares -= (long) sorted[i] * sorted[i];
+    }
+    return sum == 0 and squares == 0;
+}
+
+// Sort records of three bytes by a key of few values, each record kept whole.
+static bool sorts_records(void)
+{
+    int i;
+
+    for (i = 0; i < SORTED; i++) {
+        records[i][0] = (unsigned char) (next() % 7);
+        records[i][1] = (unsigned char) (i & 0xff);
+        records[i][2] = (unsigned char) (i >> 8);
+    }
+    (qsort)(records, SORTED, sizeof(records[0]), compare_first);
+    for (i = 0; i < SORTED; i++) {
+        int index = records[i][1] | records[i][2] << 8;
+
+        if (i > 0 and records[i - 1][0] > records[i][0]) return false;
+        if (index >= SORTED or seen[index]) return false;
+        seen[index] = true;
+    }
+    return true;
+}
+
 // Leave abort, as (S7.20.4.1p2) lets a handler of SIGABRT do.
 static void on_abort(int sig)
 {
@@ -258,6 +346,7 @@ int main(void)
     double zero = 0.0;
     size_t i;
     int status;
+    int missing = 1000;
 
     for (i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++) {
         slot[i] = malloc(sizes[i]);
@@ -371,26 +460,75 @@ int main(void)
     if (strtold("1e5000", NULL) <= LDBL_MAX or errno != ERANGE) return 29;
     if (atof("2.5x") != 2.5 or (atof)("-1") != -1.0 or (strtod)("4", NULL) != 4.0 or (strtof)("4", NULL) != 4.0f or (strtold)("4", NULL) != 4.0L) return 29;
 
+    if (not converts("  -123abc", 10, -123, 6) or not converts("0x1F", 0, 31, 4) or not converts("017", 0, 15, 3)) return 30;
+    if (not converts("z", 36, 35, 1) or not converts("101", 2, 5, 3) or not converts("-0x10", 16, -16, 5)) return 30;
+    if (not converts("0x", 16, 0, 1) or not converts("09", 0, 0, 1) or not converts("  +", 10, 0, 0) or not converts("", 0, 0, 0)) return 30;
+
+    value = "99999999999999999999";
+    errno = 0;
+    if (strtol(value, &stop, 10) != LONG_MAX or errno != ERANGE or stop != value + 20) return 31;
+    errno = 0;
+    if (strtoll("-99999999999999999999", NULL, 10) != LLONG_MIN or errno != ERANGE) return 31;
+    errno = 0;
+    if (strtol("-99999999999999999999", NULL, 0) != LONG_MIN or errno != ERANGE or strtoll("12", NULL, 0) != 12) return 31;
+
+    if (strtoul("-1", NULL, 10) != ULONG_MAX or strtoull("-1", NULL, 10) != ULLONG_MAX or strtoul("0xffff", NULL, 16) != 0xffff) return 32;
+    errno = 0;
+    if (strtoull("999999999999999999999999", NULL, 10) != ULLONG_MAX or errno != ERANGE) return 32;
+    if ((strtol)("7", NULL, 10) != 7 or (strtoll)("7", NULL, 10) != 7 or (strtoul)("7", NULL, 10) != 7 or (strtoull)("7", NULL, 10) != 7) return 32;
+
+    if (atoi("  42x") != 42 or atol("-7") != -7 or atoll("123456789012") != 123456789012LL) return 33;
+    if ((atoi)("3") != 3 or (atol)("3") != 3 or (atoll)("3") != 3) return 33;
+
+    for (i = 0; i < DRAWS; i++) {
+        draws[i] = rand();
+        if (draws[i] < 0 or draws[i] > RAND_MAX) return 34;
+    }
+    srand(1);
+    if (not repeats()) return 34;
+    (srand)(5);
+    for (i = 0; i < DRAWS; i++) {
+        draws[i] = (rand)();
+    }
+    srand(5);
+    if (not repeats()) return 34;
+
+    if (not sorts_ints()) return 35;
+    if (not sorts_records()) return 36;
+    qsort(sorted, 0, sizeof(sorted[0]), compare_int);
+    qsort(sorted, 1, sizeof(sorted[0]), compare_int);
+
+    for (i = 0; i < SORTED; i += 7) {
+        int *found = bsearch(&sorted[i], sorted, SORTED, sizeof(sorted[0]), compare_int);
+        if (found == NULL or *found != sorted[i]) return 37;
+    }
+    if (bsearch(&missing, sorted, SORTED, sizeof(sorted[0]), compare_int) != NULL) return 37;
+    if ((bsearch)(&sorted[0], sorted, 0, sizeof(sorted[0]), compare_int) != NULL) return 37;
+
+    if (abs(-5) != 5 or abs(INT_MIN + 1) != INT_MAX or labs(-5L) != 5 or llabs(-5LL) != 5 or (abs)(5) != 5) return 38;
+    if (div(-7, 2).quot != -3 or div(-7, 2).rem != -1 or ldiv(7L, -2L).quot != -3 or ldiv(7L, -2L).rem != 1) return 38;
+    if (lldiv(-7LL, -2LL).quot != 3 or lldiv(-7LL, -2LL).rem != -1 or (div)(7, 2).quot != 3 or (ldiv)(7L, 2L).rem != 1) return 38;
+
     value = getenv("IVANCC_TEST");
-    if (value == NULL or strcmp(value, "1") != 0) return 30;
-    if ((getenv)("IVANCC_TEST") != value) return 30;
-    if (getenv("IVANCC") != NULL or getenv("IVANCC_TEST_UNSET") != NULL) return 30;
+    if (value == NULL or strcmp(value, "1") != 0) return 50;
+    if ((getenv)("IVANCC_TEST") != value) return 50;
+    if (getenv("IVANCC") != NULL or getenv("IVANCC_TEST_UNSET") != NULL) return 50;
     (void) system(NULL);
     (void) (system)(NULL);
 
-    if (signal(SIGABRT, on_abort) == SIG_ERR) return 31;
+    if (signal(SIGABRT, on_abort) == SIG_ERR) return 51;
     if (setjmp(env) == 0) {
         abort();
-        return 31;
+        return 51;
     }
-    if (not aborted) return 31;
+    if (not aborted) return 51;
     signal(SIGABRT, SIG_DFL);
 
-    if (atexit(skipped) != 0 or atexit(finish) != 0) return 32;
+    if (atexit(skipped) != 0 or atexit(finish) != 0) return 52;
     for (i = 0; i < EXITS - 3; i++) {
-        if (atexit(middle) != 0) return 32;
+        if (atexit(middle) != 0) return 52;
     }
-    if ((atexit)(last) != 0) return 32;
+    if ((atexit)(last) != 0) return 52;
     (exit)(EXITED);
-    return 33;
+    return 53;
 }
