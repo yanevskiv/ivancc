@@ -1,5 +1,6 @@
 // (Test) Status: 0
-// <stdlib.h> declares the memory management functions, calloc, free, malloc and realloc (S7.20.3),
+// <stdlib.h> declares the numeric conversion functions atof, strtod, strtof and strtold (S7.20.1),
+// the memory management functions, calloc, free, malloc and realloc (S7.20.3),
 // and those of communication with the environment, abort, atexit, exit, _Exit, getenv and system (S7.20.4).
 
 #include <stddef.h>
@@ -147,6 +148,72 @@ static bool merges(void)
     return true;
 }
 
+// Check that strtod reads str as value, bit for bit, ending end characters in.
+static bool reads(const char *str, double value, size_t end)
+{
+    char *stop;
+    double got = strtod(str, &stop);
+
+    return memcmp(&got, &value, sizeof(got)) == 0 and stop == str + end;
+}
+
+// Check that strtof reads str as value, bit for bit, ending end characters in.
+static bool reads_float(const char *str, float value, size_t end)
+{
+    char *stop;
+    float got = strtof(str, &stop);
+
+    return memcmp(&got, &value, sizeof(got)) == 0 and stop == str + end;
+}
+
+// Check that strtold reads str as value, ending end characters in.
+static bool reads_long(const char *str, long double value, size_t end)
+{
+    char *stop;
+    long double got = strtold(str, &stop);
+
+    return got == value and stop == str + end;
+}
+
+// Check that strtod reads no number from str, giving 0 and str itself.
+static bool refuses(const char *str)
+{
+    char *stop;
+
+    return strtod(str, &stop) == 0 and stop == str;
+}
+
+// Check that strtod reads str as a NaN, ending end characters in.
+static bool reads_nan(const char *str, size_t end)
+{
+    char *stop;
+    double got = strtod(str, &stop);
+
+    return got != got and stop == str + end;
+}
+
+// Check that strtod reads all of str as an infinity or HUGE_VAL of sign.
+static bool reads_huge(const char *str, int sign, bool range)
+{
+    char *stop;
+    double got;
+
+    errno = 0;
+    got = strtod(str, &stop);
+    if (stop != str + strlen(str) or (range and errno != ERANGE)) return false;
+    return sign > 0 ? got >= DBL_MAX : got <= -DBL_MAX;
+}
+
+// Check that strtod reads all of str as an underflow, of magnitude at most DBL_MIN (S7.20.1.3p10).
+static bool reads_tiny(const char *str, int sign)
+{
+    char *stop;
+    double got = strtod(str, &stop);
+
+    if (stop != str + strlen(str)) return false;
+    return sign > 0 ? got >= 0 and got <= DBL_MIN : got <= 0 and got >= -DBL_MIN;
+}
+
 // Leave abort, as (S7.20.4.1p2) lets a handler of SIGABRT do.
 static void on_abort(int sig)
 {
@@ -187,6 +254,8 @@ int main(void)
     void *empty;
     void *empty2;
     char *value;
+    char *stop;
+    double zero = 0.0;
     size_t i;
     int status;
 
@@ -261,6 +330,46 @@ int main(void)
     ptr = (calloc)(1, 1);
     if (ptr == NULL or *ptr != 0) return 21;
     free(ptr);
+
+    if (not reads("1.5", 1.5, 3) or not reads("  -2.25e1", -22.5, 9) or not reads("+.5", 0.5, 3)) return 22;
+    if (not reads("5.", 5.0, 2) or not reads("12abc", 12.0, 2) or not reads("\t\n\v\f\r 7", 7.0, 7)) return 22;
+    if (not reads("1.5.5", 1.5, 3) or not reads("0x1.8.8", 1.5, 5)) return 22;
+    if (not reads("1e", 1.0, 1) or not reads("1e+", 1.0, 1) or not reads("1e+x", 1.0, 1) or not reads("1.5E+00002", 150.0, 10)) return 22;
+    if (not reads("0x", 0.0, 1) or not reads("0x1.8p1", 3.0, 7) or not reads("0X1P-2", 0.25, 6)) return 22;
+    if (not reads("0x1p", 1.0, 3) or not reads("0x.8", 0.5, 4) or not reads("-0xAbp0", -171.0, 7)) return 22;
+    if (not refuses("") or not refuses(".") or not refuses("-") or not refuses("e5") or not refuses(".e1") or not refuses("x")) return 22;
+
+    if (not reads_huge("inf", 1, false) or not reads_huge("INFINITY", 1, false) or not reads_huge("-Inf", -1, false)) return 23;
+    value = "infinit";
+    if (strtod(value, &stop) <= DBL_MAX or stop != value + 3) return 23;
+    if (not reads_nan("nan", 3) or not reads_nan("-NaN", 4) or not reads_nan("nan()", 5)) return 23;
+    if (not reads_nan("nan(123)", 8) or not reads_nan("NAN(abc_9)", 10) or not reads_nan("nan(", 3) or not reads_nan("nan(-1)", 3)) return 23;
+
+    if (not reads("0", 0.0, 1) or not reads("-0", -zero, 2) or not reads("-0x0p3", -zero, 6)) return 24;
+    if (not reads("0x1p-1022", DBL_MIN, 9) or not reads("0x1.fffffffffffffp1023", DBL_MAX, 22)) return 24;
+    if (not reads("0x1p-1074", DBL_MIN / 4503599627370496.0, 9) or not reads("0x0.0000000000001p-1022", DBL_MIN / 4503599627370496.0, 23)) return 24;
+    if (not reads("1e0000000000000000000000000000000001", 10.0, 36) or not reads("0e999999999999999999999", 0.0, 23)) return 24;
+
+    if (not reads("0.1", 0.1, 3) or not reads("2.2250738585072014e-308", DBL_MIN, 23) or not reads("1.7976931348623157e308", DBL_MAX, 22)) return 25;
+    if (not reads("9007199254740993", 9007199254740992.0, 16) or not reads("9007199254740995", 9007199254740996.0, 16)) return 25;
+    if (not reads("123456789012345678901", 123456789012345678901.0, 21) or not reads("2.4703282292062328e-324", DBL_MIN / 4503599627370496.0, 23)) return 25;
+
+    if (not reads("0x1.00000000000008p0", 1.0, 20) or not reads("0x1.00000000000018p0", 0x1.0000000000002p0, 20)) return 26;
+    if (not reads("0x1.000000000000081p0", 0x1.0000000000001p0, 21) or not reads("0x1.fffffffffffff8p0", 2.0, 20)) return 26;
+
+    if (not reads_huge("1e400", 1, true) or not reads_huge("-1e400", -1, true) or not reads_huge("0x1p1024", 1, true)) return 27;
+    if (not reads_tiny("1e-400", 1) or not reads_tiny("-1e-400", -1) or not reads_tiny("0x1p-1080", 1)) return 27;
+
+    if (not reads_float("1.5", 1.5f, 3) or not reads_float("3.4028235e38", FLT_MAX, 12) or not reads_float("0x1p-126", FLT_MIN, 8)) return 28;
+    if (not reads_float("0x1.000001p0", 1.0f, 12) or not reads_float("0x1.000003p0", 0x1.000004p0f, 12) or not reads_float("0.1", 0.1f, 3)) return 28;
+    errno = 0;
+    if (strtof("3.5e38", NULL) <= FLT_MAX or errno != ERANGE or strtof("1e-50", NULL) > FLT_MIN) return 28;
+
+    if (not reads_long("1.5", 1.5L, 3) or not reads_long("0.1", 0.1L, 3) or not reads_long("-0x1p-16382", -LDBL_MIN, 11)) return 29;
+    if (not reads_long("0x1.fffffffffffffffep16383", LDBL_MAX, 26) or not reads_long("3.36210314311209350626e-4932", LDBL_MIN, 28)) return 29;
+    errno = 0;
+    if (strtold("1e5000", NULL) <= LDBL_MAX or errno != ERANGE) return 29;
+    if (atof("2.5x") != 2.5 or (atof)("-1") != -1.0 or (strtod)("4", NULL) != 4.0 or (strtof)("4", NULL) != 4.0f or (strtold)("4", NULL) != 4.0L) return 29;
 
     value = getenv("IVANCC_TEST");
     if (value == NULL or strcmp(value, "1") != 0) return 30;
