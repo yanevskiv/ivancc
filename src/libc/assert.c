@@ -32,16 +32,16 @@
 // The message's texts.
 #include <_err.h>
 
-// The signal that ends the program.
-#include <signal.h>
+// The abort that ends the program.
+#include <stdlib.h>
 
-// The system calls that report and end the program.
+// The system call that writes the report.
 #include <_sys.h>
 
 // The string functions the message is built with.
 #include <string.h>
 
-// Report a failed assertion and end the program as abort would.
+// Report a failed assertion and end the program by abort.
 void _Assert_Fail(const char *expr, const char *file, unsigned int line, const char *func)
 {
     const char *program = _Assert_Program();
@@ -58,8 +58,7 @@ void _Assert_Fail(const char *expr, const char *file, unsigned int line, const c
     _Assert_Write(_ERR_ASSERT_FUNC);
     _Assert_Write(expr);
     _Assert_Write(_ERR_ASSERT_EXPR);
-    _Sys_Kill(_Sys_Getpid(), SIGABRT);
-    _Sys_Exit(_ASSERT_STATUS);
+    abort();
 }
 
 // Write the string str to standard error.

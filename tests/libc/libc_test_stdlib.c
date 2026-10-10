@@ -1,5 +1,6 @@
 // (Test) Status: 0
-// <stdlib.h> declares the memory management functions, calloc, free, malloc and realloc (S7.20.3).
+// <stdlib.h> declares the memory management functions, calloc, free, malloc and realloc (S7.20.3),
+// and those of communication with the environment, abort, atexit, exit, _Exit, getenv and system (S7.20.4).
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -25,11 +26,25 @@
 #define PIECE 65536
 #define ROUNDS 200
 #define BIG (1 << 17)
+#define EXITS 32
+#define EXITED 40
+
+#ifndef EXIT_FAILURE
+#error "EXIT_FAILURE is not defined"
+#endif
+
+#ifndef EXIT_SUCCESS
+#error "EXIT_SUCCESS is not defined"
+#endif
 
 static unsigned char *slot[SLOTS];
 static size_t length[SLOTS];
 static unsigned long seed = 1;
 static volatile size_t huge = SIZE_MAX;
+static jmp_buf env;
+static volatile sig_atomic_t aborted;
+static int stage;
+static int middles;
 
 static unsigned long next(void)
 {
@@ -132,6 +147,37 @@ static bool merges(void)
     return true;
 }
 
+// Leave abort, as (S7.20.4.1p2) lets a handler of SIGABRT do.
+static void on_abort(int sig)
+{
+    aborted = sig == SIGABRT;
+    longjmp(env, 1);
+}
+
+// Registered first, so run last: _Exit ends the program before it.
+static void skipped(void)
+{
+    _Exit(EXITED + 2);
+}
+
+// Registered second: every later one has run, newest first.
+static void finish(void)
+{
+    _Exit(stage == 1 and middles == EXITS - 3 ? 0 : EXITED + 1);
+}
+
+// Registered between them, 29 times.
+static void middle(void)
+{
+    if (stage == 1) middles++;
+}
+
+// Registered last, so run first.
+static void last(void)
+{
+    if (stage == 0 and middles == 0) stage = 1;
+}
+
 int main(void)
 {
     static const size_t sizes[] = {1, 15, 16, 17, 31, 32, 33, 100, 1000, 4096};
@@ -140,6 +186,7 @@ int main(void)
     unsigned char *big;
     void *empty;
     void *empty2;
+    char *value;
     size_t i;
     int status;
 
@@ -214,5 +261,27 @@ int main(void)
     ptr = (calloc)(1, 1);
     if (ptr == NULL or *ptr != 0) return 21;
     free(ptr);
-    return 0;
+
+    value = getenv("IVANCC_TEST");
+    if (value == NULL or strcmp(value, "1") != 0) return 30;
+    if ((getenv)("IVANCC_TEST") != value) return 30;
+    if (getenv("IVANCC") != NULL or getenv("IVANCC_TEST_UNSET") != NULL) return 30;
+    (void) system(NULL);
+    (void) (system)(NULL);
+
+    if (signal(SIGABRT, on_abort) == SIG_ERR) return 31;
+    if (setjmp(env) == 0) {
+        abort();
+        return 31;
+    }
+    if (not aborted) return 31;
+    signal(SIGABRT, SIG_DFL);
+
+    if (atexit(skipped) != 0 or atexit(finish) != 0) return 32;
+    for (i = 0; i < EXITS - 3; i++) {
+        if (atexit(middle) != 0) return 32;
+    }
+    if ((atexit)(last) != 0) return 32;
+    (exit)(EXITED);
+    return 33;
 }

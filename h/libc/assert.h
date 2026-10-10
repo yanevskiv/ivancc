@@ -29,9 +29,6 @@
 // The descriptor of standard error.
 #define _ASSERT_STDERR 2
 
-// The status the program exits with if SIGABRT did not end it.
-#define _ASSERT_STATUS 127
-
 // The base a line number is written in.
 #define _ASSERT_LINE_BASE 10
 

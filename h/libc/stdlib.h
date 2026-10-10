@@ -34,8 +34,17 @@
 // The least the heap grows by, so that few allocations move the break.
 #define _STDLIB_GROW 0x10000
 
+// The functions a block of atexit's holds, C99's least (S7.20.4.2p2).
+#define _STDLIB_EXITS 32
+
+// The status abort exits with if SIGABRT did not end the program, as glibc's.
+#define _STDLIB_ABORT_STATUS 127
+
 // (S7.20) General utilities
 #define NULL ((void *) 0)
+
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
 
 #ifndef __SIZE_T__
 #define __SIZE_T__
@@ -48,8 +57,19 @@ struct _Stdlib_Block {
     struct _Stdlib_Block *sb_next;
 };
 
+// A block of the functions atexit registered, and the block before it.
+struct _Stdlib_Exits {
+    struct _Stdlib_Exits *se_next;
+    int se_count;
+    void (*se_func[_STDLIB_EXITS])(void);
+};
+
 // The free blocks, in address order.
 extern struct _Stdlib_Block *_Stdlib_FreeList;
+
+// The first block of atexit's, and the newest.
+extern struct _Stdlib_Exits _Stdlib_ExitBase;
+extern struct _Stdlib_Exits *_Stdlib_ExitTop;
 
 // Heap
 size_t _Stdlib_BlockSize(size_t size);
@@ -60,10 +80,21 @@ void _Stdlib_Trim(struct _Stdlib_Block *block, size_t size);
 void _Stdlib_Release(struct _Stdlib_Block *block);
 int _Stdlib_Grow(size_t size);
 
+// Exit
+void (*_Stdlib_PopExit(void))(void);
+
 // (S7.20.3) Memory management functions
 void *calloc(size_t nmemb, size_t size);
 void free(void *ptr);
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
+
+// (S7.20.4) Communication with the environment
+void abort(void);
+int atexit(void (*func)(void));
+void exit(int status);
+void _Exit(int status);
+char *getenv(const char *name);
+int system(const char *string);
 
 #endif // __STDLIB_H__
