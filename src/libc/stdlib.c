@@ -32,14 +32,24 @@
 // Clearing and copying memory.
 #include <string.h>
 
-// The break the heap grows by.
+// The break the heap grows by, the signal mask abort clears and the exit.
 #include <_sys.h>
+
+// The environment getenv searches.
+#include <_crt.h>
+
+// The signal abort ends the program by.
+#include <signal.h>
 
 // Check that a block's header keeps the memory after it aligned.
 typedef char _Stdlib_CheckBlock[sizeof(struct _Stdlib_Block) == _STDLIB_ALIGN && _STDLIB_BLOCK_MIN == 2 * _STDLIB_ALIGN ? 1 : -1];
 
 // The free blocks, in address order.
 struct _Stdlib_Block *_Stdlib_FreeList;
+
+// The first block of atexit's, C99's 32 without malloc, and the newest.
+struct _Stdlib_Exits _Stdlib_ExitBase;
+struct _Stdlib_Exits *_Stdlib_ExitTop = &_Stdlib_ExitBase;
 
 // Return the block size for size bytes, or 0 past PTRDIFF_MAX, as glibc's.
 size_t _Stdlib_BlockSize(size_t size)
@@ -152,6 +162,23 @@ int _Stdlib_Grow(size_t size)
     return 1;
 }
 
+// Take the function atexit registered last, or return NULL when none is left.
+void (*_Stdlib_PopExit(void))(void)
+{
+    struct _Stdlib_Exits *block = _Stdlib_ExitTop;
+
+    while (block->se_count == 0 && block->se_next) {
+        _Stdlib_ExitTop = block->se_next;
+        free(block);
+        block = _Stdlib_ExitTop;
+    }
+    if (block->se_count == 0) {
+        return NULL;
+    }
+    block->se_count--;
+    return block->se_func[block->se_count];
+}
+
 // Allocate nmemb objects of size bytes, all bits zero.
 void *calloc(size_t nmemb, size_t size)
 {
@@ -227,4 +254,79 @@ void *realloc(void *ptr, size_t size)
         free(ptr);
     }
     return moved;
+}
+
+// End the program by SIGABRT past a returning handler or a block, as glibc's.
+void abort(void)
+{
+    unsigned long set = 1UL << (SIGABRT - _SYS_SIGNAL_FIRST);
+
+    raise(SIGABRT);
+    signal(SIGABRT, SIG_DFL);
+    _Sys_RtSigprocmask(_SYS_SIG_UNBLOCK, &set, NULL);
+    raise(SIGABRT);
+    _Sys_ExitGroup(_STDLIB_ABORT_STATUS);
+}
+
+// Register func for exit to call, or return -1 out of memory, as glibc's.
+int atexit(void (*func)(void))
+{
+    struct _Stdlib_Exits *block = _Stdlib_ExitTop;
+
+    if (block->se_count == _STDLIB_EXITS) {
+        block = malloc(sizeof(*block));
+        if (! block) {
+            return -1;
+        }
+        block->se_next = _Stdlib_ExitTop;
+        block->se_count = 0;
+        _Stdlib_ExitTop = block;
+    }
+    block->se_func[block->se_count] = func;
+    block->se_count++;
+    return 0;
+}
+
+// Call the functions atexit registered, newest first, then end with status.
+void exit(int status)
+{
+    void (*func)(void);
+
+    while ((func = _Stdlib_PopExit()) != NULL) {
+        func();
+    }
+    _Exit(status);
+}
+
+// End the program with status, calling nothing atexit registered.
+void _Exit(int status)
+{
+    _Sys_ExitGroup(status);
+}
+
+// Return the value of the environment variable name, or NULL, as glibc's.
+char *getenv(const char *name)
+{
+    size_t len = strlen(name);
+    char **env;
+
+    if (_Crt_Envp == NULL || len == 0) {
+        return NULL;
+    }
+    for (env = _Crt_Envp; *env; env++) {
+        if (strncmp(*env, name, len) == 0 && (*env)[len] == '=') {
+            return *env + len + 1;
+        }
+    }
+    return NULL;
+}
+
+// Report no command processor, so the emulator needs no fork or exec.
+int system(const char *string)
+{
+    if (string == NULL) {
+        return 0;
+    }
+    errno = _SYS_ENOSYS;
+    return -1;
 }

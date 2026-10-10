@@ -28,5 +28,6 @@
 
 // Startup
 extern char *_Crt_Argv0;
+extern char **_Crt_Envp;
 
 #endif // __CRT_H__

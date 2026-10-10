@@ -26,8 +26,8 @@
 // Module header.
 #include <_crt.h>
 
-// The system call the startup exits with.
-#include <_sys.h>
+// The exit main's status goes to.
+#include <stdlib.h>
 
 // The ivanemu machine's halt register.
 #define _CRT_IVANEMU_HALT "0x10000008"
@@ -35,9 +35,12 @@
 // The program's name for diagnostics, or a null pointer where it is unknown.
 char *_Crt_Argv0;
 
+// The program's environment, for getenv, or a null pointer where it is unknown.
+char **_Crt_Envp;
+
 #ifdef __x86_64__
 #if defined(__linux__)
-// Keep the program's name, run main, and exit with its status.
+// Keep the program's name and environment, run main, and exit with its status.
 __asm__(
     "  .text\n"
     "  .globl _start\n"
@@ -53,9 +56,11 @@ __asm__(
     "  shl %cl, %rdx\n"
     "  add %rsi, %rdx\n"
     "  add $8, %rdx\n"
+    "  lea _Crt_Envp(%rip), %rcx\n"
+    "  mov %rdx, (%rcx)\n"
     "  call main\n"
     "  mov %rax, %rdi\n"
-    "  call _Sys_Exit\n"
+    "  call exit\n"
 );
 #elif defined(__ivanemu__)
 // Call main, then halt the machine with its status.

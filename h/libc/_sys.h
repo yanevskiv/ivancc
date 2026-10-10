@@ -33,6 +33,7 @@
 // Linux's error numbers C99 does not name.
 #define _SYS_ENOMEM    12
 #define _SYS_EINVAL    22
+#define _SYS_ENOSYS    38
 #define _SYS_EOVERFLOW 75
 
 // Linux's first and last signals.
@@ -42,6 +43,9 @@
 // Linux's sigaction flags.
 #define _SYS_SA_RESTORER 0x04000000
 #define _SYS_SA_RESTART  0x10000000
+
+// Linux's rt_sigprocmask requests.
+#define _SYS_SIG_UNBLOCK 1
 
 // Linux's struct timespec.
 struct _Sys_Timespec {
@@ -62,10 +66,11 @@ long _Sys_Syscall(long number, long arg1, long arg2, long arg3, long arg4, long 
 long _Sys_Write(int fd, const void *buf, unsigned long len);
 void *_Sys_Brk(void *addr);
 long _Sys_RtSigaction(int sig, const struct _Sys_Sigaction *act, struct _Sys_Sigaction *oact);
+long _Sys_RtSigprocmask(int how, const unsigned long *set, unsigned long *oset);
 int _Sys_Getpid(void);
-void _Sys_Exit(int status);
 long _Sys_Kill(int pid, int sig);
 long _Sys_ClockGettime(int clock, struct _Sys_Timespec *spec);
+void _Sys_ExitGroup(int status);
 
 // Signal handlers
 void _Sys_RestoreRt(void);

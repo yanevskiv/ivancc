@@ -31,13 +31,14 @@
 #endif
 
 // Linux's syscall numbers.
-#define _SYS_NR_WRITE         1
-#define _SYS_NR_BRK           12
-#define _SYS_NR_RT_SIGACTION  13
-#define _SYS_NR_GETPID        39
-#define _SYS_NR_EXIT          60
-#define _SYS_NR_KILL          62
-#define _SYS_NR_CLOCK_GETTIME 228
+#define _SYS_NR_WRITE          1
+#define _SYS_NR_BRK            12
+#define _SYS_NR_RT_SIGACTION   13
+#define _SYS_NR_RT_SIGPROCMASK 14
+#define _SYS_NR_GETPID         39
+#define _SYS_NR_KILL           62
+#define _SYS_NR_CLOCK_GETTIME  228
+#define _SYS_NR_EXIT_GROUP     231
 
 // Linux's rt_sigreturn number, as the restorer's assembly writes it.
 #define _SYS_NR_RT_SIGRETURN "15"
@@ -83,16 +84,16 @@ long _Sys_RtSigaction(int sig, const struct _Sys_Sigaction *act, struct _Sys_Sig
     return _Sys_Syscall(_SYS_NR_RT_SIGACTION, sig, (long) act, (long) oact, _SYS_SIGSET_SIZE, 0, 0);
 }
 
+// Change the signal mask by how and set, and store the old one in oset.
+long _Sys_RtSigprocmask(int how, const unsigned long *set, unsigned long *oset)
+{
+    return _Sys_Syscall(_SYS_NR_RT_SIGPROCMASK, how, (long) set, (long) oset, _SYS_SIGSET_SIZE, 0, 0);
+}
+
 // Return the program's process ID.
 int _Sys_Getpid(void)
 {
     return (int) _Sys_Syscall(_SYS_NR_GETPID, 0, 0, 0, 0, 0, 0);
-}
-
-// End the program with a status.
-void _Sys_Exit(int status)
-{
-    _Sys_Syscall(_SYS_NR_EXIT, status, 0, 0, 0, 0, 0);
 }
 
 // Send the signal sig to the process pid.
@@ -105,6 +106,12 @@ long _Sys_Kill(int pid, int sig)
 long _Sys_ClockGettime(int clock, struct _Sys_Timespec *spec)
 {
     return _Sys_Syscall(_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
+}
+
+// End the program, every thread of it, with a status.
+void _Sys_ExitGroup(int status)
+{
+    _Sys_Syscall(_SYS_NR_EXIT_GROUP, status, 0, 0, 0, 0, 0);
 }
 
 #ifdef __x86_64__
