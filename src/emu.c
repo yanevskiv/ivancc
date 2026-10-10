@@ -69,6 +69,7 @@
 #define EMU_SYS_EXIT           60
 #define EMU_SYS_KILL           62
 #define EMU_SYS_CLOCK_GETTIME  228
+#define EMU_SYS_EXIT_GROUP     231
 
 // The layout of Linux's struct timespec.
 #define EMU_TIMESPEC_SEC_OFF  0
@@ -881,7 +882,8 @@ static void Emu_Syscall(Emu_Guest *guest, Cpu_x86_64_State *cpu)
         case EMU_SYS_GETPID: {
             *rax = (uint64_t) getpid();
         } break;
-        case EMU_SYS_EXIT: {
+        case EMU_SYS_EXIT:
+        case EMU_SYS_EXIT_GROUP: {
             guest->eg_halted = true;
             guest->eg_status = cpu->cs_reg[CPU_X86_64_REG_RDI] & CPU_X86_64_MASK_8;
         } break;
