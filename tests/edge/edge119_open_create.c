@@ -1,5 +1,4 @@
 // (Test) Status: 0
-// (Test) Cleanup: edge119_open_create.tmp
 // open creates a file that a second open reads back to its end, and unlink removes it, on the machine and in the emulator.
 
 #define SYS_READ   0
@@ -17,7 +16,7 @@
 
 #define ENOENT 2
 
-#define PATH "edge119_open_create.tmp"
+#define PATH "file"
 
 long sys(long nr, long a, long b, long c);
 

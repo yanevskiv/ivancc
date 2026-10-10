@@ -1,5 +1,4 @@
 // (Test) Status: 239
-// (Test) Cleanup: edge121_open_excl.tmp
 // An open with O_CREAT and O_EXCL of a file that exists returns -EEXIST, which the program exits with, on the machine and in the emulator.
 
 #define SYS_OPEN  2
@@ -12,7 +11,7 @@
 
 #define MODE 0644
 
-#define PATH "edge121_open_excl.tmp"
+#define PATH "file"
 
 long sys(long nr, long a, long b, long c);
 

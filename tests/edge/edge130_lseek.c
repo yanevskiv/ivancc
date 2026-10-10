@@ -1,5 +1,4 @@
 // (Test) Status: 0
-// (Test) Cleanup: edge130_lseek.tmp
 // lseek moves a file's offset from its start, the offset and its end, and fails a negative offset, an unknown whence and a closed descriptor, on the machine and in the emulator.
 
 #define SYS_READ  0
@@ -24,7 +23,7 @@
 
 #define CLOSED 99
 
-#define PATH "edge130_lseek.tmp"
+#define PATH "file"
 
 long sys(long nr, long a, long b, long c);
 

@@ -1,5 +1,4 @@
 // (Test) Status: 0
-// (Test) Cleanup: edge135_dup2.tmp
 // dup2 gives a descriptor a second number that shares its offset, keeps a number given twice, and fails a descriptor that is not open, on the machine and in the emulator.
 
 #define SYS_WRITE 1
@@ -21,7 +20,7 @@
 #define COPY   10
 #define CLOSED 99
 
-#define PATH "edge135_dup2.tmp"
+#define PATH "file"
 
 long sys(long nr, long a, long b, long c);
 

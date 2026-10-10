@@ -1,5 +1,4 @@
 // (Test) Status: 247
-// (Test) Cleanup: edge129_close_twice.tmp
 // A second close of a descriptor returns -EBADF, which the program exits with, on the machine and in the emulator.
 
 #define SYS_OPEN  2
@@ -11,7 +10,7 @@
 
 #define MODE 0644
 
-#define PATH "edge129_close_twice.tmp"
+#define PATH "file"
 
 long sys(long nr, long a, long b, long c);
 
