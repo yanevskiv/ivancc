@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __SYS_H__
-#define __SYS_H__
+#ifndef _SYS_H
+#define _SYS_H
 
 // Linux's clocks.
 #define _SYS_CLOCK_REALTIME           0
@@ -75,4 +75,4 @@ void _Sys_ExitGroup(int status);
 // Signal handlers
 void _Sys_RestoreRt(void);
 
-#endif // __SYS_H__
+#endif // _SYS_H

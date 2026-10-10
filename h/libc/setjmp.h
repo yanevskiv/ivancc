@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __SETJMP_H__
-#define __SETJMP_H__
+#ifndef _SETJMP_H
+#define _SETJMP_H
 
 // (S7.13) Nonlocal jumps
 typedef long jmp_buf[8];
@@ -35,4 +35,4 @@ int setjmp(jmp_buf env);
 // (S7.13.2) Restore calling environment
 void longjmp(jmp_buf env, int val);
 
-#endif // __SETJMP_H__
+#endif // _SETJMP_H

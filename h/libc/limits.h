@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LIMITS_H__
-#define __LIMITS_H__
+#ifndef _LIMITS_H
+#define _LIMITS_H
 
 // (S7.10) Sizes of integer types
 #define CHAR_BIT   8
@@ -47,4 +47,4 @@
 #define LLONG_MAX  9223372036854775807LL
 #define ULLONG_MAX 18446744073709551615ULL
 
-#endif // __LIMITS_H__
+#endif // _LIMITS_H

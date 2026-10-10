@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __UTF8_H__
-#define __UTF8_H__
+#ifndef _UTF8_H
+#define _UTF8_H
 
 // The longest sequence and the largest code it encodes, glibc's 31 bits.
 #define _UTF8_MAX      6
@@ -62,4 +62,4 @@ int _Utf8_CodeLength(unsigned int code);
 int _Utf8_Decode(const unsigned char *str, unsigned long n, unsigned int *code);
 int _Utf8_Encode(unsigned int code, unsigned char *str);
 
-#endif // __UTF8_H__
+#endif // _UTF8_H

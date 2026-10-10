@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __TIME_H__
-#define __TIME_H__
+#ifndef _TIME_H
+#define _TIME_H
 
 // The units of time.
 #define _TIME_NSECS_PER_CLOCK 1000L
@@ -191,4 +191,4 @@ struct tm *gmtime(const time_t *timer);
 struct tm *localtime(const time_t *timer);
 size_t strftime(char *restrict str, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
 
-#endif // __TIME_H__
+#endif // _TIME_H

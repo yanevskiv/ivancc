@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __LOCALE_H__
-#define __LOCALE_H__
+#ifndef _LOCALE_H
+#define _LOCALE_H
 
 // The categories LC_ALL selects together, numbered from 0.
 #define _LOCALE_CATEGORIES 5
@@ -134,4 +134,4 @@ char *setlocale(int category, const char *locale);
 // (S7.11.2) Numeric formatting convention inquiry
 struct lconv *localeconv(void);
 
-#endif // __LOCALE_H__
+#endif // _LOCALE_H

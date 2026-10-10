@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __STRING_H__
-#define __STRING_H__
+#ifndef _STRING_H
+#define _STRING_H
 
 // The base strerror writes an unknown error number in.
 #define _STRING_ERROR_BASE 10
@@ -81,4 +81,4 @@ void *memset(void *str, int ch, size_t n);
 char *strerror(int errnum);
 size_t strlen(const char *str);
 
-#endif // __STRING_H__
+#endif // _STRING_H

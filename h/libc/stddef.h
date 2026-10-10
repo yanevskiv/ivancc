@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __STDDEF_H__
-#define __STDDEF_H__
+#ifndef _STDDEF_H
+#define _STDDEF_H
 
 // (S7.17) Common definitions
 #define NULL ((void *) 0)
@@ -46,4 +46,4 @@ typedef unsigned long size_t;
 typedef int wchar_t;
 #endif
 
-#endif // __STDDEF_H__
+#endif // _STDDEF_H

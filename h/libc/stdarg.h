@@ -23,8 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __STDARG_H__
-#define __STDARG_H__
+#ifndef _STDARG_H
+#define _STDARG_H
 
 // (S7.15) Variable arguments
 #define va_start(ap, parmN) __builtin_va_start(ap, parmN)
@@ -34,4 +34,4 @@
 
 typedef __builtin_va_list va_list;
 
-#endif // __STDARG_H__
+#endif // _STDARG_H
