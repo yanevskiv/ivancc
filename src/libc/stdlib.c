@@ -59,6 +59,9 @@
 // The integer conversions strtol and its family share.
 #include <inttypes.h>
 
+// The encoding the multibyte functions follow, and its coding.
+#include <_utf8.h>
+
 // Check that a block's header keeps the memory after it aligned.
 typedef char _Stdlib_CheckBlock[sizeof(struct _Stdlib_Block) == _STDLIB_ALIGN && _STDLIB_BLOCK_MIN == 2 * _STDLIB_ALIGN ? 1 : -1];
 
@@ -763,6 +766,55 @@ void _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const voi
     }
 }
 
+// Give the bytes of the longest character in LC_CTYPE's encoding.
+size_t _Stdlib_MbCurMax(void)
+{
+    return _Utf8_Enabled ? _UTF8_MAX : _STDLIB_ASCII_LEN;
+}
+
+// Decode the character in the n bytes at str into *wc, and give its length.
+int _Stdlib_Decode(const char *str, size_t n, wchar_t *wc)
+{
+    int len;
+    unsigned int code;
+    const unsigned char *ptr = (const unsigned char *) str;
+
+    if (_Utf8_Enabled) {
+        len = _Utf8_Decode(ptr, n, &code);
+        if (len > 0) {
+            *wc = (wchar_t) code;
+        }
+        return len;
+    }
+    if (n == 0) {
+        return _UTF8_INCOMPLETE;
+    }
+    if (*ptr > _STDLIB_ASCII_MAX) {
+        return _UTF8_INVALID;
+    }
+    *wc = *ptr;
+    return _STDLIB_ASCII_LEN;
+}
+
+// Encode wc at str in LC_CTYPE's encoding, and give its length.
+int _Stdlib_Encode(wchar_t wc, char *str)
+{
+    if (wc < 0) {
+        return _UTF8_INVALID;
+    }
+    if (_Utf8_Enabled) {
+        return _Utf8_Encode((unsigned int) wc, (unsigned char *) str);
+    }
+    if (wc >= _STDLIB_TAG_FIRST && wc <= _STDLIB_TAG_LAST) {
+        return 0;
+    }
+    if (wc > _STDLIB_ASCII_MAX) {
+        return _UTF8_INVALID;
+    }
+    *str = (char) wc;
+    return _STDLIB_ASCII_LEN;
+}
+
 // Convert the start of the string nptr to a double, as strtod does.
 double atof(const char *nptr)
 {
@@ -1145,4 +1197,103 @@ lldiv_t lldiv(long long numer, long long denom)
     result.quot = numer / denom;
     result.rem = numer % denom;
     return result;
+}
+
+// Give the length of the character in the n bytes at str, as mbtowc does.
+int mblen(const char *str, size_t n)
+{
+    return mbtowc(NULL, str, n);
+}
+
+// Convert the character in the n bytes at str into *pwc, and give its length.
+int mbtowc(wchar_t *restrict pwc, const char *restrict str, size_t n)
+{
+    int len;
+    wchar_t wc;
+
+    if (str == NULL) {
+        return 0;
+    }
+    len = _Stdlib_Decode(str, n, &wc);
+    if (len < 0) {
+        if (len == _UTF8_INVALID) {
+            errno = EILSEQ;
+        }
+        return -1;
+    }
+    if (pwc != NULL) {
+        *pwc = wc;
+    }
+    return wc == 0 ? 0 : len;
+}
+
+// Convert wc to its bytes at str, and give their count, or -1 for none.
+int wctomb(char *str, wchar_t wc)
+{
+    int len;
+
+    if (str == NULL) {
+        return 0;
+    }
+    len = _Stdlib_Encode(wc, str);
+    if (len < 0) {
+        errno = EILSEQ;
+        return -1;
+    }
+    return len;
+}
+
+// Convert the multibyte string str to at most n wide characters at pwcs.
+size_t mbstowcs(wchar_t *restrict pwcs, const char *restrict str, size_t n)
+{
+    int len;
+    wchar_t wc;
+    size_t count = 0;
+
+    while (pwcs == NULL || count < n) {
+        len = _Stdlib_Decode(str, _UTF8_MAX, &wc);
+        if (len < 0) {
+            errno = EILSEQ;
+            return (size_t) -1;
+        }
+        if (pwcs != NULL) {
+            pwcs[count] = wc;
+        }
+        if (wc == 0) {
+            break;
+        }
+        str += len;
+        count++;
+    }
+    return count;
+}
+
+// Convert the wide string pwcs to at most n bytes of a multibyte string at str.
+size_t wcstombs(char *restrict str, const wchar_t *restrict pwcs, size_t n)
+{
+    int len;
+    size_t count = 0;
+    char buf[_UTF8_MAX];
+
+    for (;; pwcs++) {
+        if (str != NULL && count == n) {
+            break;
+        }
+        len = _Stdlib_Encode(*pwcs, buf);
+        if (len < 0) {
+            errno = EILSEQ;
+            return (size_t) -1;
+        }
+        if (str != NULL && (size_t) len > n - count) {
+            break;
+        }
+        if (str != NULL) {
+            memcpy(str + count, buf, (size_t) len);
+        }
+        if (*pwcs == 0) {
+            break;
+        }
+        count += (size_t) len;
+    }
+    return count;
 }

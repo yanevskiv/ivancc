@@ -61,10 +61,11 @@
 // The size, which locale.h may not name.
 typedef unsigned long _Locale_SizeType;
 
-// A name setlocale takes, and the name it returns for it.
+// A name setlocale takes, the name it returns for it and its encoding.
 struct _Locale_Name {
     const char *ln_name;
     const char *ln_reported;
+    _Bool ln_utf8;           // UTF-8, not "C"'s ASCII
 };
 
 // (S7.11) Localization
@@ -123,6 +124,9 @@ _Bool _Locale_Parse(const char *locale, int *selected);
 _Locale_SizeType _Locale_PutString(char *str, _Locale_SizeType len, const char *src);
 char *_Locale_Composite(void);
 char *_Locale_Query(int category);
+
+// Encoding
+void _Locale_ApplyCtype(void);
 
 // (S7.11.1) Locale control
 char *setlocale(int category, const char *locale);

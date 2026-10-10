@@ -3,7 +3,8 @@
 // strtol, strtoll, strtoul and strtoull (S7.20.1), rand and srand (S7.20.2),
 // the memory management functions, calloc, free, malloc and realloc (S7.20.3),
 // those of communication with the environment, abort, atexit, exit, _Exit, getenv and system (S7.20.4),
-// bsearch and qsort (S7.20.5), and abs, labs, llabs, div, ldiv and lldiv (S7.20.6).
+// bsearch and qsort (S7.20.5), abs, labs, llabs, div, ldiv and lldiv (S7.20.6),
+// mblen, mbtowc and wctomb (S7.20.7), and mbstowcs and wcstombs (S7.20.8).
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -347,6 +348,9 @@ int main(void)
     size_t i;
     int status;
     int missing = 1000;
+    wchar_t wc;
+    wchar_t wide[16];
+    char bytes[16];
 
     for (i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++) {
         slot[i] = malloc(sizes[i]);
@@ -508,6 +512,28 @@ int main(void)
     if (abs(-5) != 5 or abs(INT_MIN + 1) != INT_MAX or labs(-5L) != 5 or llabs(-5LL) != 5 or (abs)(5) != 5) return 38;
     if (div(-7, 2).quot != -3 or div(-7, 2).rem != -1 or ldiv(7L, -2L).quot != -3 or ldiv(7L, -2L).rem != 1) return 38;
     if (lldiv(-7LL, -2LL).quot != 3 or lldiv(-7LL, -2LL).rem != -1 or (div)(7, 2).quot != 3 or (ldiv)(7L, 2L).rem != 1) return 38;
+
+    if (MB_CUR_MAX < 1 or MB_CUR_MAX > MB_LEN_MAX) return 39;
+    if (mbtowc(&wc, "A", 1) != 1 or wc != L'A' or mbtowc(&wc, "", 1) != 0 or wc != L'\0' or mbtowc(NULL, "A", 1) != 1) return 39;
+    if (mblen("A", 1) != 1 or mblen("", 1) != 0 or mblen("A", 0) != -1 or (mblen)("AB", 2) != 1 or (mbtowc)(&wc, "B", 1) != 1) return 39;
+    if ((mbtowc(NULL, NULL, 0) != 0) != (wctomb(NULL, L'\0') != 0) or (mblen(NULL, 0) != 0) != (wctomb(NULL, L'\0') != 0)) return 39;
+    if (wctomb(bytes, L'A') != 1 or bytes[0] != 'A' or (wctomb)(bytes, L'\0') != 1 or bytes[0] != '\0') return 39;
+
+    if (mbstowcs(wide, "hello", 8) != 5 or wide[0] != L'h' or wide[4] != L'o' or wide[5] != L'\0') return 40;
+    wide[3] = L'x';
+    if ((mbstowcs)(wide, "abcde", 3) != 3 or wide[2] != L'c' or wide[3] != L'x') return 40;
+    if (wcstombs(bytes, L"hi", sizeof(bytes)) != 2 or strcmp(bytes, "hi") != 0) return 40;
+    bytes[3] = 'x';
+    if ((wcstombs)(bytes, L"hello", 3) != 3 or memcmp(bytes, "helx", 4) != 0) return 40;
+
+    if (setlocale(LC_CTYPE, "C.UTF-8") == NULL or MB_CUR_MAX < 1 or MB_CUR_MAX > MB_LEN_MAX) return 41;
+    if (mbtowc(&wc, "\xc3\xa9", 2) != 2 or wc != 0xe9 or mblen("\xe2\x82\xac", 3) != 3) return 41;
+    if (mblen("\xc3\xa9", 1) != -1 or mbtowc(&wc, "\xff", 1) != -1 or mbtowc(&wc, "\xc3" "A", 2) != -1) return 41;
+    if (wctomb(bytes, 0x20ac) != 3 or memcmp(bytes, "\xe2\x82\xac", 3) != 0) return 41;
+    if (mbstowcs(wide, "a\xc3\xa9\xe2\x82\xac", 8) != 3 or wide[1] != 0xe9 or wide[2] != 0x20ac or wide[3] != L'\0') return 41;
+    if (wcstombs(bytes, wide, sizeof(bytes)) != 6 or strcmp(bytes, "a\xc3\xa9\xe2\x82\xac") != 0 or wcstombs(bytes, wide, 2) != 1) return 41;
+    if (mbstowcs(wide, "a\xff", 8) != (size_t) -1 or wcstombs(bytes, L"", 1) != 0 or bytes[0] != '\0') return 41;
+    if (setlocale(LC_CTYPE, "C") == NULL) return 41;
 
     value = getenv("IVANCC_TEST");
     if (value == NULL or strcmp(value, "1") != 0) return 50;

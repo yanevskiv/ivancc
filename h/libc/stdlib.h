@@ -87,6 +87,14 @@
 // The bytes of the merge buffer qsort keeps on the stack, as glibc's.
 #define _STDLIB_SORT_STACK 1024
 
+// The largest character of "C"'s encoding, ASCII as glibc's, and its bytes.
+#define _STDLIB_ASCII_MAX 0x7F
+#define _STDLIB_ASCII_LEN 1
+
+// The tag characters "C"'s encoding drops, as glibc's.
+#define _STDLIB_TAG_FIRST 0xE0000
+#define _STDLIB_TAG_LAST  0xE007F
+
 // (S7.20) General utilities
 #define NULL ((void *) 0)
 
@@ -94,6 +102,8 @@
 #define EXIT_SUCCESS 0
 
 #define RAND_MAX 2147483647
+
+#define MB_CUR_MAX (_Stdlib_MbCurMax())
 
 #ifndef __SIZE_T__
 #define __SIZE_T__
@@ -219,6 +229,11 @@ void _Stdlib_MergeInPlace(char *base, size_t left, size_t right, size_t size, in
 void _Stdlib_Merge(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp);
 void _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp);
 
+// Multibyte
+size_t _Stdlib_MbCurMax(void);
+int _Stdlib_Decode(const char *str, size_t n, wchar_t *wc);
+int _Stdlib_Encode(wchar_t wc, char *str);
+
 // (S7.20.1) Numeric conversion functions
 double atof(const char *nptr);
 int atoi(const char *nptr);
@@ -261,5 +276,14 @@ long long llabs(long long j);
 div_t div(int numer, int denom);
 ldiv_t ldiv(long numer, long denom);
 lldiv_t lldiv(long long numer, long long denom);
+
+// (S7.20.7) Multibyte/wide character conversion functions
+int mblen(const char *str, size_t n);
+int mbtowc(wchar_t *restrict pwc, const char *restrict str, size_t n);
+int wctomb(char *str, wchar_t wc);
+
+// (S7.20.8) Multibyte/wide string conversion functions
+size_t mbstowcs(wchar_t *restrict pwcs, const char *restrict str, size_t n);
+size_t wcstombs(char *restrict str, const wchar_t *restrict pwcs, size_t n);
 
 #endif // __STDLIB_H__
