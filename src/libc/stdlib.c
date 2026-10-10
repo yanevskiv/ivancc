@@ -35,7 +35,7 @@
 // The break the heap grows by, the signal mask abort clears and the exit.
 #include <_sys.h>
 
-// The environment getenv searches.
+// The environment getenv searches, and the hook exit flushes the streams by.
 #include <_crt.h>
 
 // The signal abort ends the program by.
@@ -1083,13 +1083,16 @@ int atexit(void (*func)(void))
     return 0;
 }
 
-// Call the functions atexit registered, newest first, then end with status.
+// Call atexit's functions, newest first, then flush the streams and end.
 void exit(int status)
 {
     void (*func)(void);
 
     while ((func = _Stdlib_PopExit()) != NULL) {
         func();
+    }
+    if (_Crt_Flush != NULL) {
+        _Crt_Flush();
     }
     _Exit(status);
 }

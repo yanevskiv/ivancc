@@ -38,6 +38,9 @@ char *_Crt_Argv0;
 // The program's environment, for getenv, or a null pointer where it is unknown.
 char **_Crt_Envp;
 
+// What exit flushes the streams by, set by stdio so exit names none of it.
+int (*_Crt_Flush)(void);
+
 #ifdef __x86_64__
 #if defined(__linux__)
 // Keep the program's name and environment, run main, and exit with its status.

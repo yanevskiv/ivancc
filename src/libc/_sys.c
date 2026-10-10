@@ -35,16 +35,23 @@
 #define _SYS_NR_BRK            12
 #define _SYS_NR_RT_SIGACTION   13
 #define _SYS_NR_RT_SIGPROCMASK 14
+#define _SYS_NR_IOCTL          16
 #define _SYS_NR_GETPID         39
 #define _SYS_NR_KILL           62
 #define _SYS_NR_CLOCK_GETTIME  228
 #define _SYS_NR_EXIT_GROUP     231
+
+// The bytes of Linux's struct termios.
+#define _SYS_TERMIOS_SIZE 36
 
 // Linux's rt_sigreturn number, as the restorer's assembly writes it.
 #define _SYS_NR_RT_SIGRETURN "15"
 
 // The bytes of Linux's sigset_t.
 #define _SYS_SIGSET_SIZE 8
+
+// Check that struct termios is laid out as the kernel's.
+typedef char _Sys_CheckTermios[sizeof(struct _Sys_Termios) == _SYS_TERMIOS_SIZE ? 1 : -1];
 
 #ifdef __x86_64__
 // Make a syscall with its number and six arguments.
@@ -88,6 +95,12 @@ long _Sys_RtSigaction(int sig, const struct _Sys_Sigaction *act, struct _Sys_Sig
 long _Sys_RtSigprocmask(int how, const unsigned long *set, unsigned long *oset)
 {
     return _Sys_Syscall(_SYS_NR_RT_SIGPROCMASK, how, (long) set, (long) oset, _SYS_SIGSET_SIZE, 0, 0);
+}
+
+// Make the device request request of the descriptor fd, with its argument arg.
+long _Sys_Ioctl(int fd, unsigned long request, void *arg)
+{
+    return _Sys_Syscall(_SYS_NR_IOCTL, fd, (long) request, (long) arg, 0, 0, 0);
 }
 
 // Return the program's process ID.
