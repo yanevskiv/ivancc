@@ -1,6 +1,10 @@
 // (Test) Status: 0
-// <setjmp.h> declares jmp_buf, setjmp and longjmp, which jumps back to the setjmp that saved a buffer (S7.13).
+// <setjmp.h> declares jmp_buf, an array type fit for a struct's member and an array's element (S7.13p2), setjmp, which returns 0 called directly (S7.13.1.1p5), and longjmp, which returns to the setjmp that saved a buffer (S7.13.2.1p2),
+// setjmp then returning the value longjmp was given, any int but 0, for which it returns 1 (S7.13.2.1p4), in each context C99 allows a call of it (S7.13.1.1p4),
+// from any depth of calls and past arguments passed on the stack, a volatile object keeping what it was last given (S7.13.2.1p3) and the caller's registers what they held,
+// one buffer saved within another's reach, a buffer jumped to time after time, and longjmp a function a pointer reaches, and one a call reaches past any macro of its name (S7.1.4p1).
 
+#include <_test.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <iso646.h>
@@ -14,19 +18,32 @@
 #include <inttypes.h>
 #include <setjmp.h>
 
-struct holder {
-    char tag;
-    jmp_buf env;
-    int after;
+#define RETURNED (-1)
+#define LANDED   10
+#define STRAYED  100
+#define BUFS     3
+#define AFTER    77
+#define BASE     10
+#define VALUES   6
+#define DEEP     20
+#define CHURNS   10
+#define ROTATED  7654321
+
+struct Holder {
+    char ho_tag;
+    jmp_buf ho_env;
+    int ho_after;
 };
 
 static jmp_buf env;
 static jmp_buf outer;
 static volatile long seed = 1;
 static volatile unsigned long sink;
-static volatile long values[6] = {2, 20, -299, 4096, -5000, 66667};
 
-// Jump to `to` unless seed is 0, so gcc keeps every frame that leads here.
+// What six locals hold across a jump, volatile so gcc folds none of them.
+static volatile long values[VALUES] = {2, 20, -299, 4096, -5000, 66667};
+
+// Jump to a buffer unless seed is 0, so gcc keeps every frame that leads here.
 static void leap(jmp_buf to, int val)
 {
     if (seed != 0) {
@@ -34,6 +51,7 @@ static void leap(jmp_buf to, int val)
     }
 }
 
+// Jump to a buffer with a value from depth calls down.
 static void jump(jmp_buf to, int depth, int val)
 {
     if (depth > 0) {
@@ -42,6 +60,27 @@ static void jump(jmp_buf to, int depth, int val)
     leap(to, val);
 }
 
+// Step a count and, the first time, jump with a value from depth calls down.
+static void once(volatile int *count, jmp_buf to, int depth, int val)
+{
+    (*count)++;
+    if (*count == 1) {
+        jump(to, depth, val);
+        *count = RETURNED;
+    }
+}
+
+// Step a count and, up to a limit, jump with the count from depth calls down.
+static void each(volatile int *count, jmp_buf to, int depth, int limit)
+{
+    (*count)++;
+    if (*count <= limit) {
+        jump(to, depth, *count);
+        *count = RETURNED;
+    }
+}
+
+// Jump from depth calls down, each passing a seventh argument on the stack.
 static long spill(jmp_buf to, int depth, long a, long b, long c, long d, long e, long f, long g)
 {
     if (depth == 0) {
@@ -51,11 +90,13 @@ static long spill(jmp_buf to, int depth, long a, long b, long c, long d, long e,
     return spill(to, depth - 1, g, a, b, c, d, e, f) + 1;
 }
 
+// Return the sum of seven arguments, the last passed on the stack.
 static long add(long a, long b, long c, long d, long e, long f, long g)
 {
     return a + b + c + d + e + f + g;
 }
 
+// Jump from depth calls down, each holding six values across its own call.
 static unsigned long churn(jmp_buf to, int depth, unsigned long value)
 {
     unsigned long a = value + 1 + seed;
@@ -72,27 +113,39 @@ static unsigned long churn(jmp_buf to, int depth, unsigned long value)
     return ((((churn(to, depth - 1, a + b) * a + b) * c + d) * e + f) ^ a) * b;
 }
 
+// Return 1 once a jump out of churn's calls has landed here.
 static int churned(void)
 {
     jmp_buf local;
 
     if (setjmp(local) == 0) {
-        sink = churn(local, 10, seed);
+        sink = churn(local, CHURNS, seed);
     }
     return 1;
 }
 
+// Tell whether six values are the ones a caller took before a jump.
 static bool unchanged(long k1, long k2, long k3, long k4, long k5, long k6)
 {
-    return k1 == 2 and k2 == 20 and k3 == -299 and k4 == 4096 and k5 == -5000 and k6 == 66667;
+    int lost = 0;
+
+    lost += ! _TEST_INT(k1, values[0]);
+    lost += ! _TEST_INT(k2, values[1]);
+    lost += ! _TEST_INT(k3, values[2]);
+    lost += ! _TEST_INT(k4, values[3]);
+    lost += ! _TEST_INT(k5, values[4]);
+    lost += ! _TEST_INT(k6, values[5]);
+    return lost == 0;
 }
 
+// Called through volatile pointers, so gcc inlines neither into keep.
 static int (*volatile around)(void) = churned;
 static bool (*volatile check)(long, long, long, long, long, long) = unchanged;
 
 // Hold six values in gcc's callee-saved registers across a jump in a callee.
 static bool keep(void)
 {
+    int lost = 0;
     long k1 = values[0];
     long k2 = values[1];
     long k3 = values[2];
@@ -100,246 +153,356 @@ static bool keep(void)
     long k5 = values[4];
     long k6 = values[5];
 
-    if (around() != 1) return false;
-    return check(k1, k2, k3, k4, k5, k6);
+    lost += ! _TEST_INT(around(), 1);
+    lost += ! check(k1, k2, k3, k4, k5, k6);
+    return lost == 0;
 }
 
+// Called through a volatile pointer, so keep has registers of its own.
 static bool (*volatile kept)(void) = keep;
 
+// Return how many times a jump from five calls down lands in this function.
 static int inner(void)
 {
     jmp_buf local;
     volatile int count = 0;
 
     if (setjmp(local) == 0) {
-        count++;
-        jump(local, 5, 9);
+        once(&count, local, 5, 9);
     }
     return count;
 }
 
-static bool is_array(size_t whole, size_t element)
+// A jmp_buf is an array, and one in a struct or an array takes a jump too.
+static void Test_SetjmpType(void)
 {
-    return whole >= element and whole % element == 0;
+    jmp_buf many[BUFS];
+    volatile int count = 0;
+    struct Holder holder;
+
+    holder.ho_tag = 'h';
+    holder.ho_after = AFTER;
+    _TEST_TRUE(sizeof(jmp_buf) >= sizeof(env[0]));
+    _TEST_UINT(sizeof(jmp_buf) % sizeof(env[0]), 0);
+    _TEST_UINT(sizeof(holder.ho_env), sizeof(jmp_buf));
+    _TEST_UINT(sizeof(many), BUFS * sizeof(jmp_buf));
+    _TEST_TRUE(&env[0] == env);
+
+    if (setjmp(holder.ho_env) == 0) {
+        once(&count, holder.ho_env, 3, 2);
+    }
+    _TEST_INT(count, 1);
+    _TEST_INT(holder.ho_tag, 'h');
+    _TEST_INT(holder.ho_after, AFTER);
+
+    count = 0;
+    if (setjmp(many[1]) == 0) {
+        once(&count, many[1], 3, 2);
+    }
+    _TEST_INT(count, 1);
 }
 
-int main(void)
+// setjmp returns 0 from a direct call, whatever buffer it saves.
+static void Test_SetjmpDirect(void)
 {
-    struct holder holder;
-    jmp_buf many[3];
-    void (*jumper)(jmp_buf, int) = longjmp;
-    volatile int count;
-    volatile int step;
-    volatile long vl;
-    volatile char vc;
+    jmp_buf many[BUFS];
+    volatile int count = 0;
+    struct Holder holder;
+
+    if (setjmp(env) == 0) {
+        count++;
+    }
+    _TEST_INT(count, 1);
+    if (setjmp(many[2]) == 0) {
+        count++;
+    }
+    _TEST_INT(count, 2);
+    if (setjmp(holder.ho_env) == 0) {
+        count++;
+    }
+    _TEST_INT(count, 3);
+}
+
+// setjmp returns the value longjmp was given, any int but 0.
+static void Test_SetjmpValues(void)
+{
+    volatile int count = 0;
+
+    switch (setjmp(env)) {
+    case 0:
+        once(&count, env, 2, 42);
+        break;
+    case 42:
+        count += LANDED;
+        break;
+    default:
+        break;
+    }
+    _TEST_INT(count, 1 + LANDED);
+
+    count = 0;
+    if (setjmp(env) != 1) {
+        once(&count, env, 2, 1);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    if (setjmp(env) != -1) {
+        once(&count, env, 2, -1);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    if (-1 != setjmp(env)) {
+        once(&count, env, 2, -1);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    if (setjmp(env) != INT_MAX) {
+        once(&count, env, 2, INT_MAX);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    if (setjmp(env) != INT_MIN) {
+        once(&count, env, 2, INT_MIN);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    if (setjmp(env) < 0) {
+        count += LANDED;
+    } else {
+        once(&count, env, 2, -7);
+    }
+    _TEST_INT(count, 1 + LANDED);
+}
+
+// setjmp returns 1 where longjmp was given 0, called from far or near.
+static void Test_SetjmpZero(void)
+{
+    volatile int count = 0;
+
+    if (setjmp(env) != 1) {
+        once(&count, env, 2, 0);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    if (setjmp(env) == 0) {
+        count++;
+        if (count == 1) {
+            longjmp(env, 0);
+            count = RETURNED;
+        }
+    }
+    _TEST_INT(count, 1);
+}
+
+// setjmp takes a jump in each context C99 allows a call of it.
+static void Test_SetjmpContexts(void)
+{
+    volatile int count = 0;
+
+    if (setjmp(env)) {
+        count += LANDED;
+    } else {
+        once(&count, env, 1, 3);
+    }
+    _TEST_INT(count, 1 + LANDED);
+
+    count = 0;
+    while (! setjmp(env)) {
+        once(&count, env, 1, 3);
+        break;
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    for (; setjmp(env) <= 2; ) {
+        each(&count, env, 1, 3);
+        break;
+    }
+    _TEST_INT(count, 3);
+
+    count = 0;
+    do {
+        count++;
+        if (count == 2) {
+            jump(env, 1, 8);
+            count = RETURNED;
+        }
+        if (count != 1) {
+            break;
+        }
+    } while (setjmp(env) == 0);
+    _TEST_INT(count, 2);
+
+    count = 0;
+    if (2 > setjmp(env)) {
+        once(&count, env, 1, 2);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    if (setjmp(env) >= 5) {
+        count += LANDED;
+    } else {
+        once(&count, env, 1, 5);
+    }
+    _TEST_INT(count, 1 + LANDED);
+
+    count = 0;
+    if (0 == setjmp(env)) {
+        once(&count, env, 1, 4);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    setjmp(env);
+    once(&count, env, 1, 6);
+    _TEST_INT(count, 2);
+
+    count = 0;
+    (void) setjmp(env);
+    once(&count, env, 1, 6);
+    _TEST_INT(count, 2);
+}
+
+// longjmp returns from many calls down, past arguments passed on the stack.
+static void Test_SetjmpDepth(void)
+{
+    volatile int count = 0;
+
+    if (setjmp(env) == 0) {
+        once(&count, env, DEEP, 7);
+    }
+    _TEST_INT(count, 1);
+
+    count = 0;
+    if (setjmp(env) != ROTATED) {
+        count++;
+        if (count == 1) {
+            spill(env, DEEP + 1, 1, 2, 3, 4, 5, 6, 7);
+            count = RETURNED;
+        }
+    }
+    _TEST_INT(count, 1);
+    _TEST_INT(add(1, 2, 3, 4, 5, 6, 7), 28);
+}
+
+// A jump leaves a volatile object as last given, and locals not given since.
+static void Test_SetjmpLocals(void)
+{
     long k1 = seed + 1;
     long k2 = seed * 20;
     long k3 = seed - 300;
     long k4 = seed << 12;
     long k5 = seed * -5000;
     long k6 = seed + 66666;
+    volatile long vl = 5;
+    volatile char vc = 'a';
+    volatile int count = 0;
 
-    holder.tag = 'h';
-    holder.after = 77;
-    if (not is_array(sizeof(jmp_buf), sizeof(env[0])) or sizeof(holder.env) != sizeof(jmp_buf)) return 1;
-    if (sizeof(many) != 3 * sizeof(jmp_buf) or &env[0] != env) return 1;
-    count = 0;
-    if (setjmp(holder.env) == 0) {
-        count++;
-        jump(holder.env, 3, 2);
-    }
-    if (count != 1 or holder.tag != 'h' or holder.after != 77) return 1;
-    count = 0;
-    if (setjmp(many[1]) == 0) {
-        count++;
-        jump(many[1], 3, 2);
-    }
-    if (count != 1) return 1;
-
-    if (setjmp(env) != 0) return 2;
-    if (setjmp(many[2]) != 0) return 2;
-    if (setjmp(holder.env) != 0) return 2;
-
-    count = 0;
-    switch (setjmp(env)) {
-    case 0:
-        count++;
-        jump(env, 2, 42);
-        break;
-    case 42:
-        break;
-    default:
-        return 3;
-    }
-    if (count != 1) return 3;
-    count = 0;
-    if (setjmp(env) != 1) {
-        if (count++ > 0) return 3;
-        jump(env, 2, 1);
-    }
-    count = 0;
-    if (setjmp(env) != -1) {
-        if (count++ > 0) return 3;
-        jump(env, 2, -1);
-    }
-    count = 0;
-    if (-1 != setjmp(env)) {
-        if (count++ > 0) return 3;
-        jump(env, 2, -1);
-    }
-    count = 0;
-    if (setjmp(env) != INT_MAX) {
-        if (count++ > 0) return 3;
-        jump(env, 2, INT_MAX);
-    }
-    count = 0;
-    if (setjmp(env) != INT_MIN) {
-        if (count++ > 0) return 3;
-        jump(env, 2, INT_MIN);
-    }
-    count = 0;
-    if (setjmp(env) < 0) {
-        if (count != 1) return 3;
-    } else {
-        if (count++ > 0) return 3;
-        jump(env, 2, -7);
-    }
-
-    count = 0;
-    if (setjmp(env) != 1) {
-        if (count++ > 0) return 4;
-        jump(env, 2, 0);
-    }
-    count = 0;
-    if (setjmp(env) == 0) {
-        if (count++ > 0) return 4;
-        longjmp(env, 0);
-    }
-    if (count != 1) return 4;
-
-    count = 0;
-    if (setjmp(env)) {
-        count += 10;
-    } else {
-        count++;
-        jump(env, 1, 3);
-    }
-    if (count != 11) return 5;
-    count = 0;
-    while (not setjmp(env)) {
-        count++;
-        jump(env, 1, 3);
-    }
-    if (count != 1) return 5;
-    count = 0;
-    for (; setjmp(env) <= 2; ) {
-        count++;
-        jump(env, 1, count);
-    }
-    if (count != 3) return 5;
-    count = 0;
-    do {
-        count++;
-        if (count > 4) return 5;
-        if (count == 2) jump(env, 1, 8);
-    } while (setjmp(env) == 0);
-    if (count != 2) return 5;
-    count = 0;
-    if (2 > setjmp(env)) {
-        count++;
-        jump(env, 1, 2);
-    }
-    if (count != 1) return 5;
-    count = 0;
-    if (setjmp(env) >= 5) {
-        count += 10;
-    } else {
-        count++;
-        jump(env, 1, 5);
-    }
-    if (count != 11) return 5;
-    count = 0;
-    if (0 == setjmp(env)) {
-        count++;
-        jump(env, 1, 4);
-    }
-    if (count != 1) return 5;
-    count = 0;
-    setjmp(env);
-    if (count++ == 0) jump(env, 1, 6);
-    if (count != 2) return 5;
-    count = 0;
-    (void) setjmp(env);
-    if (count++ == 0) jump(env, 1, 6);
-    if (count != 2) return 5;
-
-    count = 0;
     if (setjmp(env) == 0) {
         count++;
-        jump(env, 20, 7);
-    }
-    if (count != 1) return 6;
-    count = 0;
-    if (setjmp(env) != 7654321) {
-        if (count++ > 0) return 6;
-        spill(env, 21, 1, 2, 3, 4, 5, 6, 7);
-    }
-    if (count != 1 or add(1, 2, 3, 4, 5, 6, 7) != 28) return 6;
-
-    count = 0;
-    vl = 5;
-    vc = 'a';
-    if (setjmp(env) == 0) {
-        count++;
-        vl = -123456789012L;
-        vc = 'z';
-        churn(env, 10, seed);
-    }
-    if (count != 1 or vl != -123456789012L or vc != 'z') return 7;
-    if (k1 != 2 or k2 != 20 or k3 != -299 or k4 != 4096 or k5 != -5000 or k6 != 66667) return 7;
-    if (not kept()) return 7;
-
-    step = 0;
-    if (setjmp(outer) == 0) {
-        step = step * 10 + 1;
-        if (setjmp(many[0]) == 0) {
-            step = step * 10 + 2;
-            jump(many[0], 4, 1);
+        if (count == 1) {
+            vl = -123456789012L;
+            vc = 'z';
+            churn(env, CHURNS, seed);
+            count = RETURNED;
         }
-        step = step * 10 + 3;
-        if (inner() != 1) return 8;
-        step = step * 10 + 4;
-        jump(outer, 4, 1);
     }
-    if (step != 1234) return 8;
+    _TEST_INT(count, 1);
+    _TEST_INT(vl, -123456789012L);
+    _TEST_INT(vc, 'z');
+    _TEST_TRUE(unchanged(k1, k2, k3, k4, k5, k6));
+    _TEST_TRUE(kept());
+}
+
+// A jump lands at its own buffer's setjmp, with others saved around it.
+static void Test_SetjmpNested(void)
+{
+    jmp_buf local;
+    volatile int step = 0;
+    volatile int count = 0;
+    volatile int nested = 0;
+
+    if (setjmp(outer) == 0) {
+        step = step * BASE + 1;
+        if (setjmp(local) == 0) {
+            step = step * BASE + 2;
+            once(&nested, local, 4, 1);
+        }
+        step = step * BASE + 3;
+        _TEST_INT(inner(), 1);
+        step = step * BASE + 4;
+        once(&count, outer, 4, 1);
+    }
+    _TEST_INT(step, 1234);
+    _TEST_INT(nested, 1);
+    _TEST_INT(count, 1);
+
     count = 0;
     if (setjmp(outer) == 0) {
         if (setjmp(env) == 0) {
-            count++;
-            jump(outer, 2, 1);
+            once(&count, outer, 2, 1);
         }
-        return 8;
+        count += STRAYED;
     }
-    if (count != 1) return 8;
+    _TEST_INT(count, 1);
+}
 
-    count = 0;
+// A buffer takes one jump after another, each with its own value.
+static void Test_SetjmpAgain(void)
+{
+    volatile int count = 0;
+
     while (setjmp(env) < 5) {
-        count++;
-        jump(env, 3, count);
+        each(&count, env, 3, 5);
+        break;
     }
-    if (count != 5) return 9;
+    _TEST_INT(count, 5);
+}
+
+// A pointer reaches longjmp, and a call in parentheses any macro's function.
+static void Test_SetjmpCalls(void)
+{
+    volatile int count = 0;
+    void (*jumper)(jmp_buf, int) = longjmp;
+
+    if (setjmp(env) == 0) {
+        count++;
+        if (count == 1) {
+            jumper(env, 3);
+            count = RETURNED;
+        }
+    }
+    _TEST_INT(count, 1);
 
     count = 0;
     if (setjmp(env) == 0) {
         count++;
-        jumper(env, 3);
+        if (count == 1) {
+            (longjmp)(env, 3);
+            count = RETURNED;
+        }
     }
-    if (count != 1) return 10;
-    count = 0;
-    if (setjmp(env) == 0) {
-        count++;
-        (longjmp)(env, 3);
-    }
-    if (count != 1) return 10;
-    return 0;
+    _TEST_INT(count, 1);
+}
+
+int main(void)
+{
+    Test_SetjmpType();
+    Test_SetjmpDirect();
+    Test_SetjmpValues();
+    Test_SetjmpZero();
+    Test_SetjmpContexts();
+    Test_SetjmpDepth();
+    Test_SetjmpLocals();
+    Test_SetjmpNested();
+    Test_SetjmpAgain();
+    Test_SetjmpCalls();
+    return _Test_Status();
 }
