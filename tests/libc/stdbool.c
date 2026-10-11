@@ -15,7 +15,7 @@
 #define LARGE 256
 
 // The three macros are the int constants 1, 0 and 1, in a directive too.
-static void test_macros(void)
+static void Test_StdboolMacros(void)
 {
     _TEST_INT(true, 1);
     _TEST_INT(false, 0);
@@ -26,7 +26,7 @@ static void test_macros(void)
 }
 
 // bool is _Bool, an unsigned type that holds true and false.
-static void test_bool(void)
+static void Test_StdboolBool(void)
 {
     bool no = false;
     bool yes = true;
@@ -40,7 +40,7 @@ static void test_bool(void)
 }
 
 // A value that compares unequal to 0 converts to 1, and one equal to 0.
-static void test_conversion(void)
+static void Test_StdboolConversion(void)
 {
     bool zero = 0;
     bool none = 0.0;
@@ -62,7 +62,7 @@ static void test_conversion(void)
 }
 
 // An increment of true stays true, and a decrement of false turns true.
-static void test_steps(void)
+static void Test_StdboolSteps(void)
 {
     bool flag = false;
 
@@ -78,9 +78,9 @@ static void test_steps(void)
 
 int main(void)
 {
-    test_macros();
-    test_bool();
-    test_conversion();
-    test_steps();
+    Test_StdboolMacros();
+    Test_StdboolBool();
+    Test_StdboolConversion();
+    Test_StdboolSteps();
     return _Test_Status();
 }

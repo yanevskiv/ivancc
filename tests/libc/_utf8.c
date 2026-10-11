@@ -67,13 +67,13 @@ static _Bool uncoded(unsigned int code)
 }
 
 // The locale encodes in ASCII until setlocale says otherwise.
-static void test_enabled(void)
+static void Test_Utf8Enabled(void)
 {
     _TEST_TRUE(! _Utf8_Enabled);
 }
 
 // A lead byte tells its sequence's length, and a byte that is none tells 0.
-static void test_lead_length(void)
+static void Test_Utf8LeadLength(void)
 {
     _TEST_INT(_Utf8_LeadLength(0x00), 1);
     _TEST_INT(_Utf8_LeadLength(0x7F), 1);
@@ -96,7 +96,7 @@ static void test_lead_length(void)
 }
 
 // The first and last code of each length, and some between, code both ways.
-static void test_coded(void)
+static void Test_Utf8Coded(void)
 {
     _TEST_TRUE(coded(0x00, "\x00", 1));
     _TEST_TRUE(coded(0x41, "A", 1));
@@ -120,7 +120,7 @@ static void test_coded(void)
 }
 
 // A surrogate and a code past 31 bits have no sequence.
-static void test_uncoded(void)
+static void Test_Utf8Uncoded(void)
 {
     _TEST_TRUE(uncoded(0xD800));
     _TEST_TRUE(uncoded(0xDBFF));
@@ -131,7 +131,7 @@ static void test_uncoded(void)
 }
 
 // No bytes are incomplete, and a malformed or overlong sequence is invalid.
-static void test_refused(void)
+static void Test_Utf8Refused(void)
 {
     _TEST_TRUE(refused("", 0, _UTF8_INCOMPLETE));
     _TEST_TRUE(refused("A", 0, _UTF8_INCOMPLETE));
@@ -157,7 +157,7 @@ static void test_refused(void)
 }
 
 // Encode and decode codes of every size, each a 64th past the one before.
-static void test_spread(void)
+static void Test_Utf8Spread(void)
 {
     int len;
     unsigned int back;
@@ -185,11 +185,11 @@ static void test_spread(void)
 
 int main(void)
 {
-    test_enabled();
-    test_lead_length();
-    test_coded();
-    test_uncoded();
-    test_refused();
-    test_spread();
+    Test_Utf8Enabled();
+    Test_Utf8LeadLength();
+    Test_Utf8Coded();
+    Test_Utf8Uncoded();
+    Test_Utf8Refused();
+    Test_Utf8Spread();
     return _Test_Status();
 }
