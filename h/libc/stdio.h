@@ -47,14 +47,12 @@
 // The descriptor of a stream with no file.
 #define _STDIO_NOFILE (-1)
 
-// A directive's flags, the last two a width and a precision in an argument.
-#define _STDIO_FLAG_LEFT      0x1
-#define _STDIO_FLAG_SIGN      0x2
-#define _STDIO_FLAG_SPACE     0x4
-#define _STDIO_FLAG_ALT       0x8
-#define _STDIO_FLAG_ZERO      0x10
-#define _STDIO_FLAG_WIDTH     0x20
-#define _STDIO_FLAG_PRECISION 0x40
+// A directive's flags: -, +, a space, # and 0.
+#define _STDIO_FLAG_LEFT  0x1
+#define _STDIO_FLAG_SIGN  0x2
+#define _STDIO_FLAG_SPACE 0x4
+#define _STDIO_FLAG_ALT   0x8
+#define _STDIO_FLAG_ZERO  0x10
 
 // The base a width or a precision is written in.
 #define _STDIO_COUNT_BASE 10
@@ -72,9 +70,6 @@
 #define _STDIO_LENGTH_SIZE    6
 #define _STDIO_LENGTH_PTRDIFF 7
 #define _STDIO_LENGTH_LDOUBLE 8
-
-// The conversions a directive may name.
-#define _STDIO_CONVERSIONS "%cs"
 
 // The characters a field's padding is given by at a time.
 #define _STDIO_PAD_CHUNK 32
@@ -201,18 +196,12 @@ int    _Stdio_FlushAll(void);
 void   _Stdio_FlushLines(void);
 
 // Formatted output
-void   _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len);
-void   _Stdio_Pad(_Stdio_Sink *sink, int ch, size_t len);
-void   _Stdio_Field(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *data, size_t len);
-size_t _Stdio_ParseFlags(const char *format, int *flags);
-size_t _Stdio_ParseCount(const char *format, int *count);
-size_t _Stdio_ParseLength(const char *format, int *length);
-size_t _Stdio_Parse(const char *format, _Stdio_Directive *dir);
-_Bool  _Stdio_Converts(const _Stdio_Directive *dir);
-void   _Stdio_Settle(_Stdio_Directive *dir);
-void   _Stdio_String(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *str);
-int    _Stdio_Format(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
-int    _Stdio_End(_Stdio_Sink *sink);
+void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len);
+void _Stdio_Pad(_Stdio_Sink *sink, int ch, size_t len);
+void _Stdio_Field(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *data, size_t len);
+void _Stdio_String(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *str);
+int  _Stdio_Format(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
+int  _Stdio_End(_Stdio_Sink *sink);
 
 // Positioning
 long _Stdio_Ahead(FILE *stream);

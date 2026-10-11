@@ -532,132 +532,6 @@ void _Stdio_Field(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *da
     }
 }
 
-// Read the flags at format, and return how many characters they are.
-size_t _Stdio_ParseFlags(const char *format, int *flags)
-{
-    size_t len;
-
-    *flags = 0;
-    for (len = 0; ; len++) {
-        switch (format[len]) {
-            case '-': {
-                *flags |= _STDIO_FLAG_LEFT;
-            } break;
-            case '+': {
-                *flags |= _STDIO_FLAG_SIGN;
-            } break;
-            case ' ': {
-                *flags |= _STDIO_FLAG_SPACE;
-            } break;
-            case '#': {
-                *flags |= _STDIO_FLAG_ALT;
-            } break;
-            case '0': {
-                *flags |= _STDIO_FLAG_ZERO;
-            } break;
-            default: {
-                return len;
-            } break;
-        }
-    }
-}
-
-// Read the decimal count at format, INT_MAX at most, and return its length.
-size_t _Stdio_ParseCount(const char *format, int *count)
-{
-    size_t len;
-
-    *count = 0;
-    for (len = 0; format[len] >= '0' && format[len] <= '9'; len++) {
-        int digit = format[len] - '0';
-
-        if (*count > (INT_MAX - digit) / _STDIO_COUNT_BASE) {
-            *count = INT_MAX;
-        } else {
-            *count = *count * _STDIO_COUNT_BASE + digit;
-        }
-    }
-    return len;
-}
-
-// Read the length modifier at format, and return how many characters it is.
-size_t _Stdio_ParseLength(const char *format, int *length)
-{
-    _Bool twice = format[0] != '\0' && format[1] == format[0];
-
-    switch (format[0]) {
-        case 'h': {
-            *length = twice ? _STDIO_LENGTH_CHAR : _STDIO_LENGTH_SHORT;
-        } break;
-        case 'l': {
-            *length = twice ? _STDIO_LENGTH_LLONG : _STDIO_LENGTH_LONG;
-        } break;
-        case 'j': {
-            *length = _STDIO_LENGTH_INTMAX;
-        } break;
-        case 'z': {
-            *length = _STDIO_LENGTH_SIZE;
-        } break;
-        case 't': {
-            *length = _STDIO_LENGTH_PTRDIFF;
-        } break;
-        case 'L': {
-            *length = _STDIO_LENGTH_LDOUBLE;
-        } break;
-        default: {
-            *length = _STDIO_LENGTH_NONE;
-            return 0;
-        } break;
-    }
-    return *length == _STDIO_LENGTH_CHAR || *length == _STDIO_LENGTH_LLONG ? 2 : 1;
-}
-
-// Read the directive after a percent sign at format, and return its length.
-size_t _Stdio_Parse(const char *format, _Stdio_Directive *dir)
-{
-    size_t len = _Stdio_ParseFlags(format, &dir->sd_flags);
-
-    dir->sd_width = 0;
-    dir->sd_precision = _STDIO_PRECISION_NONE;
-    if (format[len] == '*') {
-        dir->sd_flags |= _STDIO_FLAG_WIDTH;
-        len++;
-    } else {
-        len += _Stdio_ParseCount(format + len, &dir->sd_width);
-    }
-    if (format[len] == '.' && format[len + 1] == '*') {
-        dir->sd_flags |= _STDIO_FLAG_PRECISION;
-        len += 2;
-    } else if (format[len] == '.') {
-        len++;
-        len += _Stdio_ParseCount(format + len, &dir->sd_precision);
-    }
-    len += _Stdio_ParseLength(format + len, &dir->sd_length);
-    dir->sd_conv = format[len];
-    return dir->sd_conv != '\0' ? len + 1 : len;
-}
-
-// Return whether the directive names a conversion the engine makes.
-_Bool _Stdio_Converts(const _Stdio_Directive *dir)
-{
-    if (dir->sd_conv == '\0' || dir->sd_length != _STDIO_LENGTH_NONE) {
-        return 0;
-    }
-    return strchr(_STDIO_CONVERSIONS, dir->sd_conv) != NULL;
-}
-
-// Take a negative width as a left flag, and a negative precision as none.
-void _Stdio_Settle(_Stdio_Directive *dir)
-{
-    if (dir->sd_width < 0) {
-        dir->sd_flags |= _STDIO_FLAG_LEFT;
-        dir->sd_width = dir->sd_width == INT_MIN ? INT_MAX : -dir->sd_width;
-    }
-    if (dir->sd_precision < 0) {
-        dir->sd_precision = _STDIO_PRECISION_NONE;
-    }
-}
-
 // Convert the string str by the directive, a null one as glibc does.
 void _Stdio_String(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *str)
 {
@@ -681,31 +555,95 @@ void _Stdio_String(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *s
 int _Stdio_Format(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
 {
     char ch;
+    int digit;
+    size_t start;
     _Stdio_Directive dir;
 
-    while (format[0] != '\0') {
-        size_t len = strcspn(format, "%");
+    for (size_t i = 0; format[i] != '\0'; i++) {
+        if (format[i] != '%') {
+            _Stdio_Emit(sink, format + i, 1);
+            continue;
+        }
 
-        if (len > 0) {
-            _Stdio_Emit(sink, format, len);
-            format += len;
-            continue;
+        // Phase: parse the directive
+        start = i;
+        dir.sd_flags = 0;
+        for (i++; ; i++) {
+            if (format[i] == '-') {
+                dir.sd_flags |= _STDIO_FLAG_LEFT;
+            } else if (format[i] == '+') {
+                dir.sd_flags |= _STDIO_FLAG_SIGN;
+            } else if (format[i] == ' ') {
+                dir.sd_flags |= _STDIO_FLAG_SPACE;
+            } else if (format[i] == '#') {
+                dir.sd_flags |= _STDIO_FLAG_ALT;
+            } else if (format[i] == '0') {
+                dir.sd_flags |= _STDIO_FLAG_ZERO;
+            } else {
+                break;
+            }
         }
-        len = _Stdio_Parse(format + 1, &dir) + 1;
-        if (! _Stdio_Converts(&dir)) {
-            _Stdio_Emit(sink, format, 1);
-            format++;
-            continue;
-        }
-        format += len;
-        if (dir.sd_flags & _STDIO_FLAG_WIDTH) {
+        dir.sd_width = 0;
+        if (format[i] == '*') {
             dir.sd_width = va_arg(args, int);
+            i++;
+        } else {
+            for (; format[i] >= '0' && format[i] <= '9'; i++) {
+                digit = format[i] - '0';
+                dir.sd_width = dir.sd_width > (INT_MAX - digit) / _STDIO_COUNT_BASE ? INT_MAX : dir.sd_width * _STDIO_COUNT_BASE + digit;
+            }
         }
-        if (dir.sd_flags & _STDIO_FLAG_PRECISION) {
+        if (dir.sd_width < 0) {
+            dir.sd_flags |= _STDIO_FLAG_LEFT;
+            dir.sd_width = dir.sd_width == INT_MIN ? INT_MAX : -dir.sd_width;
+        }
+        dir.sd_precision = _STDIO_PRECISION_NONE;
+        if (format[i] == '.' && format[i + 1] == '*') {
             dir.sd_precision = va_arg(args, int);
+            i += 2;
+        } else if (format[i] == '.') {
+            dir.sd_precision = 0;
+            for (i++; format[i] >= '0' && format[i] <= '9'; i++) {
+                digit = format[i] - '0';
+                dir.sd_precision = dir.sd_precision > (INT_MAX - digit) / _STDIO_COUNT_BASE ? INT_MAX : dir.sd_precision * _STDIO_COUNT_BASE + digit;
+            }
         }
-        _Stdio_Settle(&dir);
-        switch (dir.sd_conv) {
+        if (dir.sd_precision < 0) {
+            dir.sd_precision = _STDIO_PRECISION_NONE;
+        }
+        dir.sd_length = _STDIO_LENGTH_NONE;
+        if (format[i] == 'h' && format[i + 1] == 'h') {
+            dir.sd_length = _STDIO_LENGTH_CHAR;
+            i += 2;
+        } else if (format[i] == 'h') {
+            dir.sd_length = _STDIO_LENGTH_SHORT;
+            i++;
+        } else if (format[i] == 'l' && format[i + 1] == 'l') {
+            dir.sd_length = _STDIO_LENGTH_LLONG;
+            i += 2;
+        } else if (format[i] == 'l') {
+            dir.sd_length = _STDIO_LENGTH_LONG;
+            i++;
+        } else if (format[i] == 'j') {
+            dir.sd_length = _STDIO_LENGTH_INTMAX;
+            i++;
+        } else if (format[i] == 'z') {
+            dir.sd_length = _STDIO_LENGTH_SIZE;
+            i++;
+        } else if (format[i] == 't') {
+            dir.sd_length = _STDIO_LENGTH_PTRDIFF;
+            i++;
+        } else if (format[i] == 'L') {
+            dir.sd_length = _STDIO_LENGTH_LDOUBLE;
+            i++;
+        }
+        dir.sd_conv = format[i];
+
+        // Phase: emit the conversion
+        switch (dir.sd_length == _STDIO_LENGTH_NONE ? dir.sd_conv : '\0') {
+            case '%': {
+                _Stdio_Emit(sink, "%", 1);
+            } break;
             case 'c': {
                 ch = (char) va_arg(args, int);
                 _Stdio_Field(sink, &dir, &ch, 1);
@@ -715,6 +653,7 @@ int _Stdio_Format(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
             } break;
             default: {
                 _Stdio_Emit(sink, "%", 1);
+                i = start;
             } break;
         }
     }
