@@ -18,7 +18,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-// Tell whether imaxdiv gives a quotient and a remainder.
+// (S7.8.2.2p2) imaxdiv should give the quotient and the remainder given.
 static bool divides(intmax_t numer, intmax_t denom, intmax_t quot, intmax_t rem)
 {
     int lost = 0;
@@ -29,7 +29,7 @@ static bool divides(intmax_t numer, intmax_t denom, intmax_t quot, intmax_t rem)
     return lost == 0;
 }
 
-// Tell whether strtoimax gives a number, a count of characters and an error.
+// (S7.8.2.3p3) strtoimax should give the number, the end and the error given.
 static bool to_signed(const char *str, int base, intmax_t want, long used, int error)
 {
     int lost = 0;
@@ -46,7 +46,7 @@ static bool to_signed(const char *str, int base, intmax_t want, long used, int e
     return lost == 0;
 }
 
-// Tell whether strtoumax gives a number, a count of characters and an error.
+// (S7.8.2.3p3) strtoumax should give the number, the end and the error given.
 static bool to_unsigned(const char *str, int base, uintmax_t want, long used, int error)
 {
     int lost = 0;
@@ -63,7 +63,7 @@ static bool to_unsigned(const char *str, int base, uintmax_t want, long used, in
     return lost == 0;
 }
 
-// Tell whether wcstoimax gives a number, a count of characters and an error.
+// (S7.8.2.4p2) wcstoimax should give the number, the end and the error given.
 static bool wide_to_signed(const wchar_t *str, int base, intmax_t want, long used, int error)
 {
     int lost = 0;
@@ -80,7 +80,7 @@ static bool wide_to_signed(const wchar_t *str, int base, intmax_t want, long use
     return lost == 0;
 }
 
-// Tell whether wcstoumax gives a number, a count of characters and an error.
+// (S7.8.2.4p2) wcstoumax should give the number, the end and the error given.
 static bool wide_to_unsigned(const wchar_t *str, int base, uintmax_t want, long used, int error)
 {
     int lost = 0;
@@ -97,7 +97,7 @@ static bool wide_to_unsigned(const wchar_t *str, int base, uintmax_t want, long 
     return lost == 0;
 }
 
-// Each PRI macro is its type's length modifier and its conversion.
+// (S7.8.1p1) Each PRI macro should be its type's length modifier and letter.
 static void Test_InttypesPrint(void)
 {
     _TEST_STR(PRId8, "d");
@@ -193,7 +193,7 @@ static void Test_InttypesPrint(void)
     _TEST_STR("%" PRId64 "|%" PRIXPTR, "%ld|%lX");
 }
 
-// Each SCN macro is its type's length modifier and its conversion.
+// (S7.8.1p1) Each SCN macro should be its type's length modifier and letter.
 static void Test_InttypesScan(void)
 {
     _TEST_STR(SCNd8, "hhd");
@@ -274,7 +274,7 @@ static void Test_InttypesScan(void)
     _TEST_STR("%" SCNd8 "|%" SCNxMAX, "%hhd|%lx");
 }
 
-// imaxdiv_t holds a quotient and a remainder, each an intmax_t.
+// (S7.8p2) imaxdiv_t should hold a quotient and a remainder, each intmax_t.
 static void Test_InttypesDivision(void)
 {
     imaxdiv_t result;
@@ -287,7 +287,7 @@ static void Test_InttypesDivision(void)
     _TEST_INT(result.rem, INTMAX_MIN);
 }
 
-// imaxabs gives a number without its sign.
+// (S7.8.2.1p2) imaxabs should give a number without its sign.
 static void Test_InttypesAbsolute(void)
 {
     _TEST_INT(imaxabs(0), 0);
@@ -297,7 +297,7 @@ static void Test_InttypesAbsolute(void)
     _TEST_INT(imaxabs(-INTMAX_MAX), INTMAX_MAX);
 }
 
-// imaxdiv truncates toward zero, its remainder taking the numerator's sign.
+// (S7.8.2.2p2) imaxdiv should truncate toward zero, the remainder to match.
 static void Test_InttypesDivide(void)
 {
     _TEST_TRUE(divides(7, 2, 3, 1));
@@ -310,7 +310,7 @@ static void Test_InttypesDivide(void)
     _TEST_TRUE(divides(INTMAX_MAX, INTMAX_MIN, 0, INTMAX_MAX));
 }
 
-// strtoimax takes white space, a sign, a prefix and digits, up to its limits.
+// (S7.8.2.3p2) strtoimax should take space, a sign, a prefix and digits.
 static void Test_InttypesSigned(void)
 {
     _TEST_TRUE(to_signed("0", 10, 0, 1, 0));
@@ -351,7 +351,7 @@ static void Test_InttypesSigned(void)
     _TEST_INT(errno, EDOM);
 }
 
-// strtoumax negates a number with a minus sign, in the unsigned type.
+// (S7.8.2.3p2) strtoumax should negate a number with a minus sign, unsigned.
 static void Test_InttypesUnsigned(void)
 {
     _TEST_TRUE(to_unsigned("18446744073709551615", 10, UINTMAX_MAX, 20, 0));
@@ -370,7 +370,7 @@ static void Test_InttypesUnsigned(void)
     _TEST_INT(errno, EDOM);
 }
 
-// wcstoimax takes what strtoimax does, and no wide digit or space past ASCII.
+// (S7.8.2.4p2) wcstoimax should take what strtoimax does, in ASCII alone.
 static void Test_InttypesWideSigned(void)
 {
     _TEST_TRUE(wide_to_signed(L" -0x1Fz", 0, -31, 6, 0));
@@ -386,7 +386,7 @@ static void Test_InttypesWideSigned(void)
     _TEST_INT(wcstoimax(L"12", NULL, 10), 12);
 }
 
-// wcstoumax takes what strtoumax does.
+// (S7.8.2.4p2) wcstoumax should take what strtoumax does.
 static void Test_InttypesWideUnsigned(void)
 {
     _TEST_TRUE(wide_to_unsigned(L"-1", 10, UINTMAX_MAX, 2, 0));
@@ -397,7 +397,7 @@ static void Test_InttypesWideUnsigned(void)
     _TEST_UINT(wcstoumax(L"12", NULL, 10), 12);
 }
 
-// A pointer reaches each function, and a call in parentheses any macro's.
+// (S7.1.4p1) A pointer and a call in parentheses should reach each function.
 static void Test_InttypesCalls(void)
 {
     intmax_t (*absolute)(intmax_t) = imaxabs;

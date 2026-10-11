@@ -1,7 +1,7 @@
 // (Test) Status: 0
 // <locale.h> defines struct lconv, NULL and the categories LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, LC_NUMERIC and LC_TIME, distinct constants fit for #if (S7.11p1-p3),
 // setlocale, which names a category's locale for a null one, selects "C" for any, refuses a locale it lacks and changes nothing then, and takes back a name it gave, of categories that differ too (S7.11.1.1),
-// and localeconv, which gives the "C" locale's formatting, a "." for the decimal point, each other string empty and each char CHAR_MAX (S7.11.2.1p10), a copy of it the program's to change,
+// and localeconv, which gives the "C" locale's formatting, a "." for the decimal point, each other string empty and each char CHAR_MAX (S7.11p2), a copy of it the program's to change,
 // the program starting in the "C" locale (S7.11.1.1p4), each a function a pointer reaches, and one a call reaches past any macro of its name (S7.1.4p1).
 
 #include <_test.h>
@@ -45,7 +45,7 @@ static const int cats[CATEGORIES] = {LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, 
 // The name of the locale the program started in.
 static char start[NAME_SIZE];
 
-// Return the place of the first category equal to one before it, or NONE.
+// (S7.11p3) The categories should be distinct: return the first to repeat.
 static int repeated(void)
 {
     int i;
@@ -61,7 +61,7 @@ static int repeated(void)
     return NONE;
 }
 
-// Return the place of the first category setlocale gives no name, or NONE.
+// (S7.11.1.1p6) Each category should get a name: return the first without.
 static int refused(const char *locale)
 {
     int i;
@@ -87,7 +87,7 @@ static bool keep(char *buf, int category)
     return true;
 }
 
-// Tell whether localeconv gives the formatting of the "C" locale.
+// (S7.11p2) localeconv should give the formatting of the "C" locale.
 static bool plain(void)
 {
     int lost = 0;
@@ -123,7 +123,7 @@ static bool plain(void)
     return lost == 0;
 }
 
-// The categories are distinct constants, in a directive too, and NULL is null.
+// (S7.11p3) The categories should be distinct constants, and NULL null.
 static void Test_LocaleMacros(void)
 {
     _TEST_INT(DIRECTIVE, 1);
@@ -131,7 +131,7 @@ static void Test_LocaleMacros(void)
     _TEST_TRUE(NULL == (void *) 0);
 }
 
-// The program starts in a locale each category names, formatting as "C" does.
+// (S7.11.1.1p4) The program should start in the "C" locale in each category.
 static void Test_LocaleStartup(void)
 {
     _TEST_TRUE(keep(start, LC_ALL));
@@ -139,7 +139,7 @@ static void Test_LocaleStartup(void)
     _TEST_TRUE(plain());
 }
 
-// Selecting "C" for any category gives the name the program started with.
+// (S7.11.1.1p6) Selecting "C" should give the name the program started with.
 static void Test_LocaleSelected(void)
 {
     _TEST_STR(setlocale(LC_ALL, "C"), start);
@@ -147,7 +147,7 @@ static void Test_LocaleSelected(void)
     _TEST_STR(setlocale(LC_ALL, NULL), start);
 }
 
-// A locale setlocale lacks is refused, and the program's locale stays.
+// (S7.11.1.1p6) A locale setlocale lacks should be refused, the locale kept.
 static void Test_LocaleLacking(void)
 {
     _TEST_STR(setlocale(LC_ALL, LACKING), NULL);
@@ -155,7 +155,7 @@ static void Test_LocaleLacking(void)
     _TEST_STR(setlocale(LC_ALL, NULL), start);
 }
 
-// One category in another locale gives LC_ALL a name that restores them all.
+// (S7.11.1.1p8) LC_ALL's name should restore categories of two locales.
 static void Test_LocaleMixed(void)
 {
     char mixed[NAME_SIZE];
@@ -173,7 +173,7 @@ static void Test_LocaleMixed(void)
     _TEST_STR(setlocale(LC_ALL, NULL), start);
 }
 
-// The name the program started with restores its locale and its formatting.
+// (S7.11.1.1p8) The name at startup should restore locale and formatting.
 static void Test_LocaleRestored(void)
 {
     _TEST_INT(refused(UTF8), NONE);
@@ -182,7 +182,7 @@ static void Test_LocaleRestored(void)
     _TEST_TRUE(plain());
 }
 
-// A copy of the formatting is the program's to change, and changes no other.
+// (S7.11.2.1p8) A copy of the formatting should be the program's to change.
 static void Test_LocaleFormatting(void)
 {
     struct lconv copy = *localeconv();
@@ -196,7 +196,7 @@ static void Test_LocaleFormatting(void)
     _TEST_TRUE(plain());
 }
 
-// A pointer reaches each function, and a call in parentheses any macro's.
+// (S7.1.4p1) A pointer and a call in parentheses should reach each function.
 static void Test_LocaleCalls(void)
 {
     struct lconv *(*conv)(void) = localeconv;

@@ -39,7 +39,7 @@ static int bump(void)
     return count;
 }
 
-// With NDEBUG never defined, assert evaluates its argument once.
+// (S7.2.1.1p2) Without NDEBUG, assert should evaluate its argument once.
 static void Test_AssertActive(void)
 {
     count = 0;
@@ -50,7 +50,7 @@ static void Test_AssertActive(void)
 #define NDEBUG
 #include <assert.h>
 
-// Under NDEBUG, assert evaluates nothing, and is an expression still.
+// (S7.2p1) Under NDEBUG, assert should evaluate nothing, an expression still.
 static void Test_AssertDisabled(void)
 {
     count = 0;
@@ -73,14 +73,14 @@ static void Test_AssertDisabled(void)
 #undef NDEBUG
 #include <assert.h>
 
-// assert is a macro, which #undef removes.
+// (S7.2p2) assert should be a macro, which #undef removes.
 static void Test_AssertMacro(void)
 {
     _TEST_INT(DEFINED, 1);
     _TEST_INT(SURVIVED, 0);
 }
 
-// Included again without NDEBUG, assert evaluates its argument once more.
+// (S7.2p1) Included again without NDEBUG, assert should evaluate once more.
 static void Test_AssertEnabled(void)
 {
     count = 0;
@@ -91,7 +91,7 @@ static void Test_AssertEnabled(void)
     _TEST_INT(count, TEN);
 }
 
-// assert takes a true scalar of any type, over lines too, and is an expression.
+// (S7.2.1.1p2) assert should take a true scalar of any type, over lines too.
 static void Test_AssertScalars(void)
 {
     int i = -1;
@@ -121,7 +121,7 @@ static void fail(const char *str)
     assert(str[0] == '"' || strcmp(str, "a\\b\"c") == 0);
 }
 
-// A false argument reports itself, quoted as written, and ends the program.
+// (S7.2.1.1p2) A false argument should report itself and end the program.
 static void Test_AssertFails(void)
 {
     fail("\"");

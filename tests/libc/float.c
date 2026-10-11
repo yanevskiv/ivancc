@@ -101,7 +101,7 @@ static int decimal(int binary)
     return binary * LOG_NUMERATOR / LOG_DENOMINATOR;
 }
 
-// The radix is 2, sums round to nearest, and no operation runs wider.
+// (S5.2.4.2.2p9) The radix should be 2, sums round to nearest, none run wider.
 static void Test_FloatModel(void)
 {
     _TEST_INT(FLT_RADIX, 2);
@@ -113,7 +113,7 @@ static void Test_FloatModel(void)
     _TEST_UINT(sizeof(long double), 16);
 }
 
-// float is IEC 60559's single format: 24 bits of precision.
+// (S5.2.4.2.2p9) float should be IEC 60559's single format, 24 bits precise.
 static void Test_FloatFloat(void)
 {
     _TEST_INT(FLT_MANT_DIG, 24);
@@ -138,7 +138,7 @@ static void Test_FloatFloat(void)
     _TEST_FLOAT(FLT_EPSILON, (float) scaled(1, 1 - FLT_MANT_DIG));
 }
 
-// double is IEC 60559's double format: 53 bits of precision.
+// (S5.2.4.2.2p9) double should be IEC 60559's double format, 53 bits precise.
 static void Test_FloatDouble(void)
 {
     _TEST_INT(DBL_MANT_DIG, 53);
@@ -163,7 +163,7 @@ static void Test_FloatDouble(void)
     _TEST_FLOAT(DBL_EPSILON, (double) scaled(1, 1 - DBL_MANT_DIG));
 }
 
-// long double is the x87's extended format: 64 bits of precision.
+// (S5.2.4.2.2p9) long double should be the x87's extended format, 64 bits.
 static void Test_FloatLongDouble(void)
 {
     _TEST_INT(LDBL_MANT_DIG, 64);
@@ -188,7 +188,7 @@ static void Test_FloatLongDouble(void)
     _TEST_FLOAT(LDBL_EPSILON, scaled(1, 1 - LDBL_MANT_DIG));
 }
 
-// An epsilon is the step from 1 to the next value, which half of it misses.
+// (S5.2.4.2.2p11) An epsilon should be the step from 1 to the next value.
 static void Test_FloatEpsilon(void)
 {
     float one = 1;
@@ -212,7 +212,7 @@ static void Test_FloatEpsilon(void)
     _TEST_UINT((unsigned long) (extended / LDBL_EPSILON), 1UL << (LDBL_MANT_DIG - 1));
 }
 
-// The decimal digits and exponents are the binary ones' worth in tens.
+// (S5.2.4.2.2p9) The decimal digits and exponents should follow the binary.
 static void Test_FloatDecimal(void)
 {
     _TEST_INT(FLT_DIG, decimal(FLT_MANT_DIG - 1));

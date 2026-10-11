@@ -55,7 +55,7 @@ static struct tm make(int year, int mon, int mday, int hour, int min, int sec)
     return tm;
 }
 
-// Tell whether a broken-down time has the fields given.
+// A broken-down time should have the fields given.
 static bool is(const struct tm *tm, int year, int mon, int mday, int hour, int min, int sec, int wday, int yday)
 {
     int lost = 0;
@@ -74,7 +74,7 @@ static bool is(const struct tm *tm, int year, int mon, int mday, int hour, int m
     return lost == 0;
 }
 
-// Tell whether mktime brings a broken-down time's fields to those given.
+// (S7.23.2.3p2) mktime should bring a broken-down time's fields to those given.
 static bool normalizes(struct tm tm, int year, int mon, int mday, int hour, int min, int sec, int wday, int yday)
 {
     int lost = 0;
@@ -98,13 +98,13 @@ static time_t back(time_t when)
     return mktime(&tm);
 }
 
-// Tell whether gmtime breaks a time down into the fields given.
+// (S7.23.3.3p2) gmtime should break a time down into the fields given.
 static bool breaks(time_t when, int year, int mon, int mday, int hour, int min, int sec, int wday, int yday)
 {
     return is(gmtime(&when), year, mon, mday, hour, min, sec, wday, yday);
 }
 
-// Return the first month of 2001 whose 15th gmtime breaks down wrong, or NONE.
+// gmtime should break down 2001's every 15th: return the first month it errs.
 static int misdated(void)
 {
     int mon;
@@ -118,7 +118,7 @@ static int misdated(void)
     return NONE;
 }
 
-// Tell whether strftime formats a time in UTC as the text given.
+// (S7.23.3.5p3) strftime should format a time in UTC as the text given.
 static bool formats(time_t when, const char *format, const char *want)
 {
     int lost = 0;
@@ -134,7 +134,7 @@ static bool formats(time_t when, const char *format, const char *want)
     return lost == 0;
 }
 
-// The processor time is known, counted in a positive unit, and never less.
+// (S7.23.2.1p3) The processor time should be known, and never run back.
 static void Test_TimeClock(void)
 {
     clock_t start = clock();
@@ -148,7 +148,7 @@ static void Test_TimeClock(void)
     _TEST_TRUE(clock() >= start);
 }
 
-// difftime gives the seconds from one time to another, as far apart as any.
+// (S7.23.2.2p3) difftime should give the seconds between two times, far apart.
 static void Test_TimeDifference(void)
 {
     _TEST_FLOAT(difftime(10, 4), 6.0);
@@ -158,7 +158,7 @@ static void Test_TimeDifference(void)
     _TEST_FLOAT(difftime(LONG_MIN, LONG_MAX), -18446744073709551615.0);
 }
 
-// mktime brings a field out of range into it, and sets the two day counts.
+// (S7.23.2.3p2) mktime should bring fields into range and set the day counts.
 static void Test_TimeMktime(void)
 {
     time_t now = time(NULL);
@@ -181,7 +181,7 @@ static void Test_TimeMktime(void)
     _TEST_INT(back(now), now);
 }
 
-// time gives the calendar time, stores it too, and never an earlier one.
+// (S7.23.2.4p3) time should give the calendar time, store it, and not go back.
 static void Test_TimeNow(void)
 {
     time_t now = 0;
@@ -195,7 +195,7 @@ static void Test_TimeNow(void)
     _TEST_TRUE(gmtime(&now)->tm_year >= YEAR_2020);
 }
 
-// asctime writes a broken-down time as "Www Mmm dd hh:mm:ss yyyy\n".
+// (S7.23.3.1p2) asctime should write "Www Mmm dd hh:mm:ss yyyy\n".
 static void Test_TimeAsctime(void)
 {
     time_t when = 0;
@@ -208,7 +208,7 @@ static void Test_TimeAsctime(void)
     _TEST_STR(asctime(gmtime(&when)), "Tue Feb 29 23:59:59 2000\n");
 }
 
-// ctime writes a calendar time as asctime writes its local time.
+// (S7.23.3.2p2) ctime should write a time as asctime writes its local time.
 static void Test_TimeCtime(void)
 {
     time_t now = time(NULL);
@@ -221,7 +221,7 @@ static void Test_TimeCtime(void)
     _TEST_STR(asctime(localtime(&now)), buf);
 }
 
-// gmtime breaks down any time whose year an int holds, and no other.
+// (S7.23.3.3p3) gmtime should break down any time whose year an int holds.
 static void Test_TimeGmtime(void)
 {
     time_t when = 0;
@@ -241,7 +241,7 @@ static void Test_TimeGmtime(void)
     _TEST_TRUE(gmtime(&when) == NULL);
 }
 
-// localtime breaks the calendar time down into fields within their ranges.
+// (S7.23.3.4p2) localtime should break a time down into fields within range.
 static void Test_TimeLocaltime(void)
 {
     time_t now = time(NULL);
@@ -259,7 +259,7 @@ static void Test_TimeLocaltime(void)
     }
 }
 
-// strftime writes each conversion as the "C" locale does, E and O changing none.
+// (S7.23.3.5p7) strftime should write each conversion as the "C" locale does.
 static void Test_TimeConversions(void)
 {
     _TEST_TRUE(formats(LAST_1999, "%a|%A|%b|%B|%c|%C|%d|%D|%e|%F|%g|%G|%h|%H|%I|%j|%m", "Fri|Friday|Dec|December|Fri Dec 31 23:59:58 1999|19|31|12/31/99|31|1999-12-31|99|1999|Dec|23|11|365|12"));
@@ -268,7 +268,7 @@ static void Test_TimeConversions(void)
     _TEST_TRUE(formats(LAST_1999, "%Od|%Oe|%OH|%OI|%Om|%OM|%OS|%Ou|%OU|%OV|%Ow|%OW|%Oy", "31|31|23|11|12|59|58|5|52|52|5|52|99"));
 }
 
-// A year's first and last days fall in the ISO 8601 week of a year either side.
+// (S7.23.3.5p5) A year's ends should fall in an ISO 8601 week of either year.
 static void Test_TimeWeeks(void)
 {
     _TEST_TRUE(formats(1104537600 + 309, "%G-W%V-%u %g %U %W %e %I %p %j", "2004-W53-6 04 00 00  1 12 AM 001"));
@@ -279,7 +279,7 @@ static void Test_TimeWeeks(void)
     _TEST_TRUE(formats(1167609600, "%G-W%V-%u %U %W", "2007-W01-1 00 01"));
 }
 
-// strftime counts what it wrote, and writes nothing its buffer cannot hold.
+// (S7.23.3.5p8) strftime should count what it wrote, nothing if too long.
 static void Test_TimeSizes(void)
 {
     time_t when = LAST_1999;
@@ -295,7 +295,7 @@ static void Test_TimeSizes(void)
     _TEST_STR(buf, "a%b\nc");
 }
 
-// A pointer reaches each function, and a call in parentheses any macro's.
+// (S7.1.4p1) A pointer and a call in parentheses should reach each function.
 static void Test_TimeCalls(void)
 {
     time_t when = 0;

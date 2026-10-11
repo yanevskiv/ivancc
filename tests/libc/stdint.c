@@ -131,7 +131,7 @@ static long least(size_t size)
     return -most(size) - 1;
 }
 
-// An exact-width type has just its bits, and the limits those give.
+// (S7.18.1.1p1) An exact-width type should have just its bits and their limits.
 static void Test_StdintExact(void)
 {
     _TEST_UINT(sizeof(int8_t) * CHAR_BIT, 8);
@@ -166,7 +166,7 @@ static void Test_StdintExact(void)
     _TEST_UINT(UINT64_MAX, 18446744073709551615UL);
 }
 
-// A minimum-width type has at least its bits, and the limits its size gives.
+// (S7.18.1.2p1) A minimum-width type should have at least its bits.
 static void Test_StdintLeast(void)
 {
     _TEST_TRUE(sizeof(int_least8_t) * CHAR_BIT >= 8);
@@ -201,7 +201,7 @@ static void Test_StdintLeast(void)
     _TEST_UINT(UINT_LEAST64_MAX, umost(sizeof(uint_least64_t)));
 }
 
-// A fastest type has at least its bits, and the limits its size gives.
+// (S7.18.1.3p2) A fastest type should have at least its bits.
 static void Test_StdintFast(void)
 {
     _TEST_TRUE(sizeof(int_fast8_t) * CHAR_BIT >= 8);
@@ -236,7 +236,7 @@ static void Test_StdintFast(void)
     _TEST_UINT(UINT_FAST64_MAX, umost(sizeof(uint_fast64_t)));
 }
 
-// A pointer to void survives intptr_t and uintptr_t, whose limits fit them.
+// (S7.18.1.4p1) A pointer to void should survive intptr_t and uintptr_t.
 static void Test_StdintPointer(void)
 {
     int number = 0;
@@ -253,7 +253,7 @@ static void Test_StdintPointer(void)
     _TEST_UINT(UINTPTR_MAX, umost(sizeof(uintptr_t)));
 }
 
-// intmax_t and uintmax_t are no narrower than long long, with limits to fit.
+// (S7.18.1.5p1) intmax_t and uintmax_t should be no narrower than long long.
 static void Test_StdintGreatest(void)
 {
     _TEST_TRUE(sizeof(intmax_t) >= sizeof(long long));
@@ -268,7 +268,7 @@ static void Test_StdintGreatest(void)
     _TEST_TRUE(UINTMAX_MAX >= ULLONG_MAX);
 }
 
-// The other types' limits are those their sizes give, or x86-64 Linux's.
+// (S7.18.3p2) The other types' limits should be those their sizes give.
 static void Test_StdintOther(void)
 {
     _TEST_INT(PTRDIFF_MIN, least(sizeof(ptrdiff_t)));
@@ -284,7 +284,7 @@ static void Test_StdintOther(void)
     _TEST_INT(WINT_MAX, 4294967295L);
 }
 
-// A limit has the type its own type promotes to, so an unsigned one wraps.
+// (S7.18.2p2) A limit should have the type its own type promotes to.
 static void Test_StdintLimitTypes(void)
 {
     _TEST_UINT(sizeof(INT8_MIN), sizeof(int));
@@ -326,7 +326,7 @@ static void Test_StdintLimitTypes(void)
     _TEST_TRUE(WINT_MIN - 1 > 0);
 }
 
-// A constant macro keeps its argument's value in any of the three bases.
+// (S7.18.4p3) A constant macro should keep its argument's value in any base.
 static void Test_StdintConstants(void)
 {
     _TEST_INT(INT8_C(127), 127);
@@ -348,7 +348,7 @@ static void Test_StdintConstants(void)
     _TEST_UINT(UINTMAX_C(18446744073709551615), UINTMAX_MAX);
 }
 
-// A constant macro makes a constant of its minimum-width type, promoted.
+// (S7.18.4.1p1) A constant macro should make a constant of its least type.
 static void Test_StdintConstantTypes(void)
 {
     _TEST_UINT(sizeof(INT8_C(1)), sizeof(int));
@@ -372,7 +372,7 @@ static void Test_StdintConstantTypes(void)
     _TEST_TRUE(UINTMAX_C(0) - 1 > 0);
 }
 
-// Every limit and constant macro holds in a directive as in an expression.
+// (S7.18.2p2) Every limit and constant macro should hold in a directive too.
 static void Test_StdintDirective(void)
 {
     _TEST_INT(DIRECTIVE_NARROW, 1);

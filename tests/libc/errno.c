@@ -29,7 +29,7 @@
 #define SECOND 2
 #define THIRD  3
 
-// Tell the three macros apart, as only distinct constants let a switch do.
+// (S7.5p2) The three macros should be distinct, as a switch's labels must be.
 static int place(int number)
 {
     switch (number) {
@@ -56,13 +56,13 @@ static int get(void)
     return errno;
 }
 
-// errno is zero before the program has stored anything in it.
+// (S7.5p3) errno should be zero before the program stores anything in it.
 static void Test_ErrnoStartup(void)
 {
     _TEST_INT(errno, 0);
 }
 
-// The three macros are distinct positive int constants, in a directive too.
+// (S7.5p2) The three macros should be distinct positive int constants.
 static void Test_ErrnoMacros(void)
 {
     _TEST_TRUE(EDOM > 0);
@@ -81,7 +81,7 @@ static void Test_ErrnoMacros(void)
     _TEST_INT(place(0), OTHER);
 }
 
-// errno is an int that keeps what any part of the program stores in it.
+// (S7.5p2) errno should be an int that keeps what the program stores in it.
 static void Test_ErrnoLvalue(void)
 {
     int *where = &errno;

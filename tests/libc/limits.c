@@ -52,7 +52,7 @@
 #define DIRECTIVE_LLONG 1
 #endif
 
-// A character has 8 bits, and char the limits of the type it behaves as.
+// (S5.2.4.2.1p2) A character should have 8 bits, and char its type's limits.
 static void Test_LimitsChar(void)
 {
     _TEST_INT(CHAR_BIT, 8);
@@ -67,7 +67,7 @@ static void Test_LimitsChar(void)
     _TEST_INT(MB_LEN_MAX, 16);
 }
 
-// short has 16 bits and int 32.
+// (S5.2.4.2.1p1) short should have 16 bits and int 32.
 static void Test_LimitsInt(void)
 {
     _TEST_INT(SHRT_MIN, -32768);
@@ -78,7 +78,7 @@ static void Test_LimitsInt(void)
     _TEST_INT(UINT_MAX, 4294967295L);
 }
 
-// long and long long have 64 bits.
+// (S5.2.4.2.1p1) long and long long should have 64 bits.
 static void Test_LimitsLong(void)
 {
     _TEST_INT(LONG_MIN, -9223372036854775807L - 1);
@@ -89,7 +89,7 @@ static void Test_LimitsLong(void)
     _TEST_UINT(ULLONG_MAX, 18446744073709551615ULL);
 }
 
-// A limit has the type its own type promotes to, so an unsigned one wraps.
+// (S5.2.4.2.1p1) A limit should have the type its own type promotes to.
 static void Test_LimitsTypes(void)
 {
     _TEST_UINT(sizeof(SCHAR_MIN), sizeof(int));
@@ -122,7 +122,7 @@ static void Test_LimitsTypes(void)
     _TEST_UINT(ULLONG_MAX + 1, 0);
 }
 
-// An object of each type holds both of its limits.
+// (S5.2.4.2.1p1) An object of each type should hold both of its limits.
 static void Test_LimitsObjects(void)
 {
     int ints[2] = {INT_MIN, INT_MAX};
@@ -156,7 +156,7 @@ static void Test_LimitsObjects(void)
     _TEST_UINT(ullong, ULLONG_MAX);
 }
 
-// Every limit holds in a directive as it does in an expression.
+// (S5.2.4.2.1p1) Every limit should hold in a directive as in an expression.
 static void Test_LimitsDirective(void)
 {
     _TEST_INT(DIRECTIVE_CHAR, 1);

@@ -44,7 +44,7 @@ static int next(void)
     return calls;
 }
 
-// Make each check with operands that pass, and count those that say so.
+// A check with operands that pass should return 1: count those that do.
 static int Test_TestPasses(void)
 {
     static const char bytes[] = {'a', 'b', '\0', 'c'};
@@ -77,7 +77,7 @@ static int Test_TestPasses(void)
     return kept;
 }
 
-// Make each check with operands that fail, and count those that say so.
+// A check with operands that fail should return 0: count those that do not.
 static int Test_TestFails(void)
 {
     static const char bytes[] = {'a', 'b', '\0', 'c'};

@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <setjmp.h> declares jmp_buf, an array type fit for a struct's member and an array's element (S7.13p2), setjmp, which returns 0 called directly (S7.13.1.1p5), and longjmp, which returns to the setjmp that saved a buffer (S7.13.2.1p2),
+// <setjmp.h> declares jmp_buf, an array type fit for a struct's member and an array's element (S7.13p2), setjmp, which returns 0 called directly (S7.13.1.1p3), and longjmp, which returns to the setjmp that saved a buffer (S7.13.2.1p2),
 // setjmp then returning the value longjmp was given, any int but 0, for which it returns 1 (S7.13.2.1p4), in each context C99 allows a call of it (S7.13.1.1p4),
 // from any depth of calls and past arguments passed on the stack, a volatile object keeping what it was last given (S7.13.2.1p3) and the caller's registers what they held,
 // one buffer saved within another's reach, a buffer jumped to time after time, and longjmp a function a pointer reaches, and one a call reaches past any macro of its name (S7.1.4p1).
@@ -113,7 +113,7 @@ static unsigned long churn(jmp_buf to, int depth, unsigned long value)
     return ((((churn(to, depth - 1, a + b) * a + b) * c + d) * e + f) ^ a) * b;
 }
 
-// Return 1 once a jump out of churn's calls has landed here.
+// A jump out of churn's calls should land here: return 1 once it has.
 static int churned(void)
 {
     jmp_buf local;
@@ -124,7 +124,7 @@ static int churned(void)
     return 1;
 }
 
-// Tell whether six values are the ones a caller took before a jump.
+// (S7.13.2.1p3) Six values a caller took before a jump should be unchanged.
 static bool unchanged(long k1, long k2, long k3, long k4, long k5, long k6)
 {
     int lost = 0;
@@ -161,7 +161,7 @@ static bool keep(void)
 // Called through a volatile pointer, so keep has registers of its own.
 static bool (*volatile kept)(void) = keep;
 
-// Return how many times a jump from five calls down lands in this function.
+// A jump from five calls down should land here once: return how many times.
 static int inner(void)
 {
     jmp_buf local;
@@ -173,7 +173,7 @@ static int inner(void)
     return count;
 }
 
-// A jmp_buf is an array, and one in a struct or an array takes a jump too.
+// (S7.13p2) A jmp_buf should be an array, and take a jump in a struct too.
 static void Test_SetjmpType(void)
 {
     jmp_buf many[BUFS];
@@ -202,7 +202,7 @@ static void Test_SetjmpType(void)
     _TEST_INT(count, 1);
 }
 
-// setjmp returns 0 from a direct call, whatever buffer it saves.
+// (S7.13.1.1p3) setjmp should return 0 from a direct call, whatever buffer.
 static void Test_SetjmpDirect(void)
 {
     jmp_buf many[BUFS];
@@ -223,7 +223,7 @@ static void Test_SetjmpDirect(void)
     _TEST_INT(count, 3);
 }
 
-// setjmp returns the value longjmp was given, any int but 0.
+// (S7.13.2.1p4) setjmp should return the value longjmp was given, if not 0.
 static void Test_SetjmpValues(void)
 {
     volatile int count = 0;
@@ -279,7 +279,7 @@ static void Test_SetjmpValues(void)
     _TEST_INT(count, 1 + LANDED);
 }
 
-// setjmp returns 1 where longjmp was given 0, called from far or near.
+// (S7.13.2.1p4) setjmp should return 1 where longjmp was given 0.
 static void Test_SetjmpZero(void)
 {
     volatile int count = 0;
@@ -300,7 +300,7 @@ static void Test_SetjmpZero(void)
     _TEST_INT(count, 1);
 }
 
-// setjmp takes a jump in each context C99 allows a call of it.
+// (S7.13.1.1p4) setjmp should take a jump in each context C99 allows it.
 static void Test_SetjmpContexts(void)
 {
     volatile int count = 0;
@@ -370,7 +370,7 @@ static void Test_SetjmpContexts(void)
     _TEST_INT(count, 2);
 }
 
-// longjmp returns from many calls down, past arguments passed on the stack.
+// (S7.13.2.1p2) longjmp should return from many calls down, past the stack.
 static void Test_SetjmpDepth(void)
 {
     volatile int count = 0;
@@ -392,7 +392,7 @@ static void Test_SetjmpDepth(void)
     _TEST_INT(add(1, 2, 3, 4, 5, 6, 7), 28);
 }
 
-// A jump leaves a volatile object as last given, and locals not given since.
+// (S7.13.2.1p3) A jump should leave volatile objects and unchanged locals.
 static void Test_SetjmpLocals(void)
 {
     long k1 = seed + 1;
@@ -421,7 +421,7 @@ static void Test_SetjmpLocals(void)
     _TEST_TRUE(kept());
 }
 
-// A jump lands at its own buffer's setjmp, with others saved around it.
+// (S7.13.2.1p2) A jump should land at its own buffer's setjmp, among others.
 static void Test_SetjmpNested(void)
 {
     jmp_buf local;
@@ -454,7 +454,7 @@ static void Test_SetjmpNested(void)
     _TEST_INT(count, 1);
 }
 
-// A buffer takes one jump after another, each with its own value.
+// (S7.13.2.1p2) A buffer should take jump after jump, each with its value.
 static void Test_SetjmpAgain(void)
 {
     volatile int count = 0;
@@ -466,7 +466,7 @@ static void Test_SetjmpAgain(void)
     _TEST_INT(count, 5);
 }
 
-// A pointer reaches longjmp, and a call in parentheses any macro's function.
+// (S7.1.4p1) A pointer and a call in parentheses should reach longjmp.
 static void Test_SetjmpCalls(void)
 {
     volatile int count = 0;

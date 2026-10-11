@@ -23,7 +23,7 @@ static int called(void)
     return 1;
 }
 
-// Each macro expands to its operator's token and nothing more.
+// (S7.9p1) Each macro should expand to its operator's token and no more.
 static void Test_Iso646Spellings(void)
 {
     _TEST_STR(SPELL(and), "&&");
@@ -39,7 +39,7 @@ static void Test_Iso646Spellings(void)
     _TEST_STR(SPELL(xor_eq), "^=");
 }
 
-// and, or and not yield 0 or 1, and and or skip a right operand not needed.
+// (S7.9p1) and, or and not should yield 0 or 1, and skip an operand unneeded.
 static void Test_Iso646Logical(void)
 {
     _TEST_INT(1 and 2, 1);
@@ -61,7 +61,7 @@ static void Test_Iso646Logical(void)
     _TEST_INT(calls, 2);
 }
 
-// bitand, bitor, xor and compl work on the bits of their operands.
+// (S7.9p1) bitand, bitor, xor and compl should work on their operands' bits.
 static void Test_Iso646Bitwise(void)
 {
     _TEST_INT(SIX bitand THREE, 2);
@@ -72,7 +72,7 @@ static void Test_Iso646Bitwise(void)
     _TEST_INT(SIX xor THREE bitand 1, 7);
 }
 
-// and_eq, or_eq and xor_eq store their result and yield it.
+// (S7.9p1) and_eq, or_eq and xor_eq should store their result and yield it.
 static void Test_Iso646Assignment(void)
 {
     int value = SIX;

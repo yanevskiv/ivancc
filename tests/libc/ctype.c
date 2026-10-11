@@ -38,7 +38,7 @@ static int place(const char *set, int ch)
     return NONE;
 }
 
-// Return the first character past null a class and its set differ on.
+// (S7.4.1p1) A class should hold of its set alone: return the first to differ.
 static int misjudged(int (*classify)(int), const char *set)
 {
     int ch;
@@ -51,7 +51,7 @@ static int misjudged(int (*classify)(int), const char *set)
     return NONE;
 }
 
-// Return the first character a mapping does not take from a set to another.
+// (S7.4.2) A mapping should take one set to another: return the first to err.
 static int mismapped(int (*map)(int), const char *from, const char *to)
 {
     int at;
@@ -66,7 +66,7 @@ static int mismapped(int (*map)(int), const char *from, const char *to)
     return NONE;
 }
 
-// Each classification is true of its class's characters and of no other.
+// (S7.4.1p1) Each class should be true of its own characters and of no other.
 static void Test_CtypeClasses(void)
 {
     _TEST_INT(misjudged(isalnum, UPPER LOWER DIGIT), NONE);
@@ -83,7 +83,7 @@ static void Test_CtypeClasses(void)
     _TEST_INT(misjudged(isxdigit, DIGIT HEX), NONE);
 }
 
-// The null character is a control character and of no other class.
+// (S7.4.1p1) The null character should be of the control class alone.
 static void Test_CtypeNull(void)
 {
     _TEST_TRUE(! isalnum('\0'));
@@ -100,7 +100,7 @@ static void Test_CtypeNull(void)
     _TEST_TRUE(! isxdigit('\0'));
 }
 
-// A mapping gives a letter's other case and leaves any other character.
+// (S7.4.2) A mapping should give a letter's other case and leave any other.
 static void Test_CtypeMapping(void)
 {
     _TEST_INT(mismapped(tolower, UPPER, LOWER), NONE);
@@ -115,7 +115,7 @@ static void Test_CtypeMapping(void)
     _TEST_INT(toupper('{'), '{');
 }
 
-// A plain call judges as the function does, and so does one past a macro.
+// (S7.1.4p1) A plain call and one past a macro should judge as the function.
 static void Test_CtypeCalls(void)
 {
     int ch = '0';

@@ -12,7 +12,7 @@
 #define UNSET  0xFFFFFFFFU
 #define SPREAD 64
 
-// Tell whether a decoding of the n bytes given fails as want, the code unset.
+// A decoding of the n bytes given should fail as want, the code left unset.
 static _Bool refused(const char *bytes, unsigned long n, int want)
 {
     int lost = 0;
@@ -23,7 +23,7 @@ static _Bool refused(const char *bytes, unsigned long n, int want)
     return lost == 0;
 }
 
-// Tell whether code encodes as the len bytes given, and they decode to it.
+// A code should encode as the len bytes given, and they decode to it.
 static _Bool coded(unsigned int code, const char *bytes, int len)
 {
     int k;
@@ -48,7 +48,7 @@ static _Bool coded(unsigned int code, const char *bytes, int len)
     return lost == 0;
 }
 
-// Tell whether code encodes as nothing, and writes nothing.
+// A code should encode as nothing, and write nothing.
 static _Bool uncoded(unsigned int code)
 {
     int k;
@@ -66,13 +66,13 @@ static _Bool uncoded(unsigned int code)
     return lost == 0;
 }
 
-// The locale encodes in ASCII until setlocale says otherwise.
+// The locale should encode in ASCII until setlocale says otherwise.
 static void Test_Utf8Enabled(void)
 {
     _TEST_TRUE(! _Utf8_Enabled);
 }
 
-// A lead byte tells its sequence's length, and a byte that is none tells 0.
+// A lead byte should tell its sequence's length, and any other byte 0.
 static void Test_Utf8LeadLength(void)
 {
     _TEST_INT(_Utf8_LeadLength(0x00), 1);
@@ -95,7 +95,7 @@ static void Test_Utf8LeadLength(void)
     _TEST_INT(_Utf8_LeadLength(0xFF), 0);
 }
 
-// The first and last code of each length, and some between, code both ways.
+// Each length's first and last code, and some between, should code both ways.
 static void Test_Utf8Coded(void)
 {
     _TEST_TRUE(coded(0x00, "\x00", 1));
@@ -119,7 +119,7 @@ static void Test_Utf8Coded(void)
     _TEST_TRUE(coded(0x7FFFFFFF, "\xFD\xBF\xBF\xBF\xBF\xBF", 6));
 }
 
-// A surrogate and a code past 31 bits have no sequence.
+// A surrogate and a code past 31 bits should have no sequence.
 static void Test_Utf8Uncoded(void)
 {
     _TEST_TRUE(uncoded(0xD800));
@@ -130,7 +130,7 @@ static void Test_Utf8Uncoded(void)
     _TEST_TRUE(uncoded(0xFFFFFFFFU));
 }
 
-// No bytes are incomplete, and a malformed or overlong sequence is invalid.
+// No bytes should be incomplete, a malformed or overlong sequence invalid.
 static void Test_Utf8Refused(void)
 {
     _TEST_TRUE(refused("", 0, _UTF8_INCOMPLETE));
@@ -156,7 +156,7 @@ static void Test_Utf8Refused(void)
     _TEST_TRUE(refused("\xED\xBF\xBF", 3, _UTF8_INVALID));
 }
 
-// Encode and decode codes of every size, each a 64th past the one before.
+// Codes of every size, each a 64th past the last, should code both ways.
 static void Test_Utf8Spread(void)
 {
     int len;

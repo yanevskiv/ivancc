@@ -42,7 +42,7 @@ static long offset(const char *str, const void *found)
     return found == NULL ? NONE : (const char *) found - str;
 }
 
-// A copy writes the bytes asked for and no other, and returns where it wrote.
+// (S7.21.2) A copy should write the bytes asked for alone, and return where.
 static void Test_StringCopying(void)
 {
     char buf[SIZE];
@@ -77,7 +77,7 @@ static void Test_StringCopying(void)
     _TEST_MEM(buf, "abc\0\0xxx", FILLED);
 }
 
-// A concatenation writes past a string's end, with a null character after.
+// (S7.21.3) A concatenation should write past a string's end, a null after.
 static void Test_StringConcatenation(void)
 {
     char buf[SIZE];
@@ -97,7 +97,7 @@ static void Test_StringConcatenation(void)
     _TEST_MEM(buf, "abcde\0xx", FILLED);
 }
 
-// A comparison's sign is that of the first bytes to differ, as unsigned char.
+// (S7.21.4p1) A comparison should take the sign of its first differing bytes.
 static void Test_StringComparison(void)
 {
     size_t len;
@@ -144,7 +144,7 @@ static void Test_StringComparison(void)
     }
 }
 
-// A search points at what it finds, or finds nothing, and counts what it spans.
+// (S7.21.5) A search should point at what it finds or nothing, and count spans.
 static void Test_StringSearch(void)
 {
     char buf[SIZE];
@@ -205,7 +205,7 @@ static void Test_StringSearch(void)
     _TEST_INT(offset(buf, strtok(NULL, ",")), NONE);
 }
 
-// memset fills, strerror names an error number and strlen counts to the null.
+// (S7.21.6) memset should fill, strerror name a number, strlen count to null.
 static void Test_StringMiscellaneous(void)
 {
     char buf[SIZE];
@@ -231,7 +231,7 @@ static void Test_StringMiscellaneous(void)
     _TEST_UINT(strlen("ab\0c"), 2);
 }
 
-// A pointer reaches each function, and a call in parentheses any macro's.
+// (S7.1.4p1) A pointer and a call in parentheses should reach each function.
 static void Test_StringCalls(void)
 {
     char buf[SIZE];

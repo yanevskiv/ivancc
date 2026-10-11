@@ -1,5 +1,5 @@
 // (Test) Status: 0
-// <stdarg.h> declares va_list and defines va_start, va_arg, va_copy and va_end (S7.15p1-p2), which walk the arguments a function takes past its last parameter (S7.15.1.4p2):
+// <stdarg.h> declares va_list and defines va_start, va_arg, va_copy and va_end (S7.15p1-p2), which walk the arguments a function takes past its last parameter (S7.15.1.4p4):
 // va_arg yielding each in turn as its type after the default argument promotions (S7.15.1.1p2), a struct and a long double among them, however many there are,
 // va_copy making a list that stands where its source does and walks on apart from it (S7.15.1.2p2), va_start walking the arguments again after va_end (S7.15.1.4p3),
 // and a list passed on to a function that walks it (S7.15p3), by a pointer too, where its owner then walks on from where that function stopped.
@@ -92,7 +92,7 @@ static long halves(const char *kinds, ...)
     return (long) (total * HALVES);
 }
 
-// Return the sum of the int arguments past the first, where two lists agree.
+// A list and its copy should agree: return the sum of the ints past the first.
 static int rest(int count, ...)
 {
     int copied = 0;
@@ -115,7 +115,7 @@ static int rest(int count, ...)
     return copied == total ? total : MISMATCH;
 }
 
-// Return the sum of count int arguments, where two walks of them agree.
+// Two walks should agree: return the sum of count int arguments.
 static int again(int count, ...)
 {
     int second = 0;
@@ -181,7 +181,7 @@ static long shared(int count, ...)
     return digits;
 }
 
-// va_arg yields each int argument in turn, in registers or on the stack.
+// (S7.15.1.1p2) va_arg should yield each int in turn, in registers or not.
 static void Test_StdargInts(void)
 {
     _TEST_INT(sum(0), 0);
@@ -193,7 +193,7 @@ static void Test_StdargInts(void)
     _TEST_INT(sum(3, INT_MAX, INT_MIN, -1), -2);
 }
 
-// va_arg yields an argument of any type as that type after promotion.
+// (S7.15.1.1p2) va_arg should yield an argument of any type, as promoted.
 static void Test_StdargKinds(void)
 {
     struct Wide wide = {{1, 2, 3}};
@@ -223,7 +223,7 @@ static void Test_StdargKinds(void)
     _TEST_INT(halves("iwdwi", 1, wide, 0.5, wide, 2), 31);
 }
 
-// va_copy's list stands where its source does and walks on apart from it.
+// (S7.15.1.2p2) va_copy's list should stand where its source does, and apart.
 static void Test_StdargCopy(void)
 {
     _TEST_INT(rest(1, 1), 0);
@@ -231,7 +231,7 @@ static void Test_StdargCopy(void)
     _TEST_INT(rest(10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 54);
 }
 
-// va_start after va_end walks the same arguments again.
+// (S7.15.1.4p3) va_start after va_end should walk the same arguments again.
 static void Test_StdargAgain(void)
 {
     _TEST_INT(again(0), 0);
@@ -239,7 +239,7 @@ static void Test_StdargAgain(void)
     _TEST_INT(again(10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 55);
 }
 
-// Another function walks a list it is passed, or one step of it by pointer.
+// (S7.15p3) Another function should walk a list it is passed, by pointer too.
 static void Test_StdargPassed(void)
 {
     _TEST_INT(forward(0), 0);

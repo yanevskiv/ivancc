@@ -116,7 +116,7 @@ static void fill(unsigned char *ptr, size_t n, unsigned char tag)
     }
 }
 
-// Return the place of the first of n bytes not counting up from tag, or NONE.
+// A block should count up from tag: return the first of n bytes that does not.
 static long spoiled(const unsigned char *ptr, size_t n, unsigned char tag)
 {
     size_t i;
@@ -129,7 +129,7 @@ static long spoiled(const unsigned char *ptr, size_t n, unsigned char tag)
     return NONE;
 }
 
-// Allocate a block of each size, and return the first size malloc fails.
+// (S7.20.3p1) Each size should get an aligned block: return the first without.
 static long allocate(void)
 {
     size_t i;
@@ -144,7 +144,7 @@ static long allocate(void)
     return NONE;
 }
 
-// Free each size's block, and return the first size whose bytes had changed.
+// A block should keep its bytes till freed: return the first size that did not.
 static long release(void)
 {
     size_t i;
@@ -160,7 +160,7 @@ static long release(void)
     return changed;
 }
 
-// Allocate, resize and free at random, each live block keeping its own bytes.
+// (S7.20.3p1) Blocks made, resized and freed at random should keep their bytes.
 static bool churn(void)
 {
     size_t i;
@@ -203,7 +203,7 @@ static bool churn(void)
     return true;
 }
 
-// Free small blocks and take a large one only they merged can hold, 200 times.
+// Freed small blocks should merge to hold a large one, 200 times over.
 static bool merges(void)
 {
     int i;
@@ -234,7 +234,7 @@ static bool merges(void)
     return true;
 }
 
-// Tell whether strtod reads a string as a value, bit for bit, and how far.
+// (S7.20.1.3p4) strtod should read a string as a value, bit for bit, and stop.
 static bool reads(const char *str, double value, long end)
 {
     int lost = 0;
@@ -246,7 +246,7 @@ static bool reads(const char *str, double value, long end)
     return lost == 0;
 }
 
-// Tell whether strtof reads a string as a value, bit for bit, and how far.
+// (S7.20.1.3p4) strtof should read a string as a value, bit for bit, and stop.
 static bool reads_float(const char *str, float value, long end)
 {
     int lost = 0;
@@ -258,7 +258,7 @@ static bool reads_float(const char *str, float value, long end)
     return lost == 0;
 }
 
-// Tell whether strtold reads a string as a value, bit for bit, and how far.
+// (S7.20.1.3p4) strtold should read a string as a value, bit for bit, and stop.
 static bool reads_long(const char *str, long double value, long end)
 {
     int lost = 0;
@@ -270,7 +270,7 @@ static bool reads_long(const char *str, long double value, long end)
     return lost == 0;
 }
 
-// Tell whether strtod reads all of a string as too large, of the sign given.
+// (S7.20.1.3p10) strtod should read all of a string as too large, of its sign.
 static bool overflows(const char *str, int sign)
 {
     int lost = 0;
@@ -287,7 +287,7 @@ static bool overflows(const char *str, int sign)
     return lost == 0;
 }
 
-// Tell whether strtod reads all of a string as too small, of the sign given.
+// (S7.20.1.3p10) strtod should read all of a string as too small, of its sign.
 static bool underflows(const char *str, int sign)
 {
     int lost = 0;
@@ -299,7 +299,7 @@ static bool underflows(const char *str, int sign)
     return lost == 0;
 }
 
-// Tell whether strtol reads a string in a base as a value, and how far.
+// (S7.20.1.4p5) strtol should read a string in a base as a value, and stop.
 static bool converts(const char *str, int base, long value, long end)
 {
     int lost = 0;
@@ -311,7 +311,7 @@ static bool converts(const char *str, int base, long value, long end)
     return lost == 0;
 }
 
-// Draw DRAWS numbers, and return the place of the first out of range, or NONE.
+// (S7.20.2.1p2) rand should draw within its range: return the first place out.
 static int draw(void)
 {
     int i;
@@ -326,7 +326,7 @@ static int draw(void)
     return out;
 }
 
-// Return the place of the first draw rand does not give again, or NONE.
+// (S7.20.2.2p2) rand should draw the same again: return the first place off.
 static int redrawn(void)
 {
     int i;
@@ -355,7 +355,7 @@ static int compare_first(const void *left, const void *right)
     return *(const unsigned char *) left - *(const unsigned char *) right;
 }
 
-// Return the first place in sorted whose int is below the one before, or NONE.
+// (S7.20.5.2p2) sorted should ascend: return the first place that descends.
 static int descent(void)
 {
     int i;
@@ -368,7 +368,7 @@ static int descent(void)
     return NONE;
 }
 
-// Return the first place whose record is out of order, torn or there twice.
+// A record should be whole, once and in order: return the first place not.
 static int misplaced(void)
 {
     int i;
@@ -387,7 +387,7 @@ static int misplaced(void)
     return NONE;
 }
 
-// Return the first place whose int bsearch finds no equal of, or NONE.
+// (S7.20.5.1p2) bsearch should find each int: return the first place it fails.
 static int unfound(void)
 {
     int i;
@@ -402,14 +402,14 @@ static int unfound(void)
     return NONE;
 }
 
-// Leave abort, as a handler of SIGABRT may (S7.20.4.1p2).
+// (S7.20.4.1p2) A handler of SIGABRT should be free to leave abort.
 static void on_abort(int sig)
 {
     aborted = sig == SIGABRT;
     longjmp(env, 1);
 }
 
-// Registered first, so run last, which finish never lets it be.
+// (S7.20.4.3p3) Registered first, this should run last, which finish prevents.
 static void skipped(void)
 {
     int reached = 1;
@@ -418,7 +418,7 @@ static void skipped(void)
     _Exit(_Test_Status());
 }
 
-// Registered second: each later one has run, and _Exit runs no other.
+// (S7.20.4.3p3) Registered second, this should run once each later one has.
 static void finish(void)
 {
     _TEST_INT(stage, 1);
@@ -426,7 +426,7 @@ static void finish(void)
     _Exit(_Test_Status());
 }
 
-// Registered between them, MIDDLES times, and counted once last has run.
+// (S7.20.4.3p3) Registered between them, this should run once last has.
 static void middle(void)
 {
     if (stage == 1) {
@@ -434,7 +434,7 @@ static void middle(void)
     }
 }
 
-// Registered last, so run first.
+// (S7.20.4.3p3) Registered last, this should run first.
 static void last(void)
 {
     if (stage == 0 && middles == 0) {
@@ -442,7 +442,7 @@ static void last(void)
     }
 }
 
-// Register middle MIDDLES times, and return the first time atexit refuses.
+// (S7.20.4.2p3) atexit should take 32 functions: return the first it refuses.
 static int unregistered(void)
 {
     int i;
@@ -455,7 +455,7 @@ static int unregistered(void)
     return NONE;
 }
 
-// The macros are defined, in a directive too, and within their limits.
+// (S7.20p3) The macros should be defined and within their limits.
 static void Test_StdlibMacros(void)
 {
     _TEST_INT(DIRECTIVE, 1);
@@ -465,7 +465,7 @@ static void Test_StdlibMacros(void)
     _TEST_TRUE(NULL == (void *) 0);
 }
 
-// malloc gives aligned blocks that keep their bytes, and none too large.
+// (S7.20.3.3p2) malloc should give aligned blocks that keep their bytes.
 static void Test_StdlibMalloc(void)
 {
     void *empty;
@@ -493,7 +493,7 @@ static void Test_StdlibMalloc(void)
     _TEST_TRUE(malloc(huge) == NULL);
 }
 
-// calloc gives zeroed memory, of a block freed too, and none too large.
+// (S7.20.3.1p2) calloc should give zeroed memory, of a block freed too.
 static void Test_StdlibCalloc(void)
 {
     unsigned char *ptr = malloc(ZEROED);
@@ -513,7 +513,7 @@ static void Test_StdlibCalloc(void)
     _TEST_TRUE(calloc(huge / 2 + 2, 2) == NULL);
 }
 
-// realloc keeps a block's bytes as it grows, shrinks, moves or fails.
+// (S7.20.3.4p2) realloc should keep a block's bytes as it grows or shrinks.
 static void Test_StdlibRealloc(void)
 {
     unsigned char *ptr = realloc(NULL, BLOCK);
@@ -554,14 +554,14 @@ static void Test_StdlibRealloc(void)
     }
 }
 
-// Blocks that come and go at random keep their bytes, and freed ones merge.
+// (S7.20.3p1) Live blocks should keep their bytes, and freed ones merge.
 static void Test_StdlibHeap(void)
 {
     _TEST_TRUE(churn());
     _TEST_TRUE(merges());
 }
 
-// strtod reads each form of a decimal and a hexadecimal number, and no other.
+// (S7.20.1.3p3) strtod should read each decimal and hexadecimal form alone.
 static void Test_StdlibStrtodForms(void)
 {
     _TEST_TRUE(reads("1.5", 1.5, 3));
@@ -591,7 +591,7 @@ static void Test_StdlibStrtodForms(void)
     _TEST_TRUE(reads("x", 0.0, 0));
 }
 
-// strtod reads an infinity and a NaN, in any case, with a NaN's characters.
+// (S7.20.1.3p3) strtod should read an infinity and a NaN, in any case.
 static void Test_StdlibStrtodSpecials(void)
 {
     double invalid = nought / nought;
@@ -611,7 +611,7 @@ static void Test_StdlibStrtodSpecials(void)
     _TEST_TRUE(reads("nan(-1)", invalid, 3));
 }
 
-// strtod reads a zero of either sign and the least and greatest values.
+// (S7.20.1.3p4) strtod should read either zero and the least and greatest.
 static void Test_StdlibStrtodLimits(void)
 {
     _TEST_TRUE(reads("0", 0.0, 1));
@@ -625,7 +625,7 @@ static void Test_StdlibStrtodLimits(void)
     _TEST_TRUE(reads("0e999999999999999999999", 0.0, 23));
 }
 
-// strtod rounds a number between two values to the nearest, a tie to even.
+// (S7.20.1.3p5) strtod should round to the nearest value, a tie to even.
 static void Test_StdlibStrtodRounding(void)
 {
     _TEST_TRUE(reads("0.1", 0.1, 3));
@@ -642,7 +642,7 @@ static void Test_StdlibStrtodRounding(void)
     _TEST_TRUE(reads("0x1.fffffffffffff8p0", 2.0, 20));
 }
 
-// strtod reads a number out of range as a huge or a tiny one of its sign.
+// (S7.20.1.3p10) strtod should read a number out of range as huge or tiny.
 static void Test_StdlibStrtodRange(void)
 {
     _TEST_TRUE(overflows("1e400", 1));
@@ -653,7 +653,7 @@ static void Test_StdlibStrtodRange(void)
     _TEST_TRUE(underflows("0x1p-1080", 1));
 }
 
-// strtof reads to the nearest float, and a number out of its range as strtod.
+// (S7.20.1.3p10) strtof should read to the nearest float, and range as strtod.
 static void Test_StdlibStrtof(void)
 {
     _TEST_TRUE(reads_float("1.5", 1.5F, 3));
@@ -668,7 +668,7 @@ static void Test_StdlibStrtof(void)
     _TEST_TRUE(strtof("1e-50", NULL) <= FLT_MIN);
 }
 
-// strtold reads to the nearest long double, up to its limits and no further.
+// (S7.20.1.3p10) strtold should read to the nearest long double, to its limits.
 static void Test_StdlibStrtold(void)
 {
     _TEST_TRUE(reads_long("1.5", 1.5L, 3));
@@ -681,7 +681,7 @@ static void Test_StdlibStrtold(void)
     _TEST_INT(errno, ERANGE);
 }
 
-// strtol and its kin read a number of any base, and a limit past their range.
+// (S7.20.1.4p8) strtol and its kin should read any base, a limit past range.
 static void Test_StdlibIntegers(void)
 {
     char *stop = NULL;
@@ -723,7 +723,7 @@ static void Test_StdlibIntegers(void)
     _TEST_FLOAT(atof("2.5x"), 2.5);
 }
 
-// rand draws within its range, and the same numbers again after their seed.
+// (S7.20.2.2p2) rand should draw within its range, and again after its seed.
 static void Test_StdlibRand(void)
 {
     _TEST_INT(draw(), NONE);
@@ -735,7 +735,7 @@ static void Test_StdlibRand(void)
     _TEST_INT(redrawn(), NONE);
 }
 
-// qsort orders its elements by the comparison alone, each kept whole.
+// (S7.20.5.2p2) qsort should order by the comparison alone, each element whole.
 static void Test_StdlibSort(void)
 {
     int i;
@@ -769,7 +769,7 @@ static void Test_StdlibSort(void)
     _TEST_INT(descent(), NONE);
 }
 
-// bsearch finds an element of the ints qsort left in order, and no other.
+// (S7.20.5.1p2) bsearch should find an element of the sorted ints, no other.
 static void Test_StdlibSearch(void)
 {
     int missing = RANGE;
@@ -779,7 +779,7 @@ static void Test_StdlibSearch(void)
     _TEST_TRUE((bsearch)(&sorted[0], sorted, 0, sizeof(sorted[0]), compare_int) == NULL);
 }
 
-// The absolute values, and quotients truncated toward zero with remainders.
+// (S7.20.6.2p2) abs should drop a sign, and div truncate toward zero.
 static void Test_StdlibArithmetic(void)
 {
     _TEST_INT(abs(-5), 5);
@@ -797,7 +797,7 @@ static void Test_StdlibArithmetic(void)
     _TEST_INT(lldiv(-7LL, -2LL).rem, -1);
 }
 
-// In the "C" locale a multibyte character is one byte, with no shift states.
+// (S7.20.7p1) In the "C" locale a multibyte character should be one byte.
 static void Test_StdlibMultibyte(void)
 {
     wchar_t wc = L'?';
@@ -834,7 +834,7 @@ static void Test_StdlibMultibyte(void)
     _TEST_MEM(bytes, "helx", 4);
 }
 
-// In a UTF-8 locale a character is one to four bytes, and a stray byte none.
+// (S7.20.7p1) In UTF-8 a character should be one to four bytes, a stray none.
 static void Test_StdlibUtf8(void)
 {
     wchar_t wc = L'?';
@@ -867,7 +867,7 @@ static void Test_StdlibUtf8(void)
     _TEST_TRUE(setlocale(LC_CTYPE, "C") != NULL);
 }
 
-// getenv gives a variable's value, the same each time, and none for no other.
+// (S7.20.4.5p2) getenv should give a variable's value, none for no other.
 static void Test_StdlibEnvironment(void)
 {
     const char *value = getenv("IVANCC_TEST");
@@ -880,7 +880,7 @@ static void Test_StdlibEnvironment(void)
     (void) (system)(NULL);
 }
 
-// A pointer reaches each function, and a call in parentheses any macro's.
+// (S7.1.4p1) A pointer and a call in parentheses should reach each function.
 static void Test_StdlibCalls(void)
 {
     unsigned char *ptr = (malloc)(1);
@@ -921,7 +921,7 @@ static void Test_StdlibCalls(void)
     _TEST_INT((lldiv)(7LL, 2LL).quot, 3);
 }
 
-// abort raises SIGABRT, whose handler may leave it by longjmp.
+// (S7.20.4.1p2) abort should raise SIGABRT, whose handler may leave it.
 static void Test_StdlibAbort(void)
 {
     volatile int returned = 0;
@@ -938,7 +938,7 @@ static void Test_StdlibAbort(void)
     }
 }
 
-// exit runs the functions registered, last first, and finish ends the program.
+// (S7.20.4.3p3) exit should run the functions registered, last first.
 static void Test_StdlibExit(void)
 {
     int returned = 0;

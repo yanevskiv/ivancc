@@ -58,7 +58,7 @@ static void on_leave(int sig)
     longjmp(env, 1);
 }
 
-// Return the place of the first signal no greater than 0, or NONE.
+// (S7.14p3) Each signal should be positive: return the first that is not.
 static int nonpositive(void)
 {
     int i;
@@ -71,7 +71,7 @@ static int nonpositive(void)
     return NONE;
 }
 
-// Return the place of the first signal equal to one before it, or NONE.
+// (S7.14p3) The signals should be distinct: return the first to repeat.
 static int repeated(void)
 {
     int i;
@@ -87,7 +87,7 @@ static int repeated(void)
     return NONE;
 }
 
-// Tell whether raise runs a signal's handler once, with the signal's number.
+// (S7.14.2.1p2) raise should run a signal's handler once, with its number.
 static bool raises(int sig)
 {
     int lost = 0;
@@ -103,7 +103,7 @@ static bool raises(int sig)
     return lost == 0;
 }
 
-// Tell whether signal refuses a number, and says why in errno.
+// (S7.14.1.1p8) signal should refuse a number, and say why in errno.
 static bool refuses(int sig)
 {
     int lost = 0;
@@ -118,7 +118,7 @@ static bool refuses(int sig)
     return lost == 0;
 }
 
-// The signals are distinct and positive, the three handlers no function's.
+// (S7.14p3) The signals should be distinct, the three handlers no function's.
 static void Test_SignalMacros(void)
 {
     _TEST_INT(nonpositive(), NONE);
@@ -132,7 +132,7 @@ static void Test_SignalMacros(void)
     _TEST_TRUE(SIG_IGN != on_signal);
 }
 
-// A sig_atomic_t holds each of its limits.
+// (S7.14p2) A sig_atomic_t should hold each of its limits.
 static void Test_SignalAtomic(void)
 {
     volatile sig_atomic_t atom = SIG_ATOMIC_MAX;
@@ -144,7 +144,7 @@ static void Test_SignalAtomic(void)
     _TEST_INT(atom, 0);
 }
 
-// signal returns the handler it replaces, the default or none at startup.
+// (S7.14.1.1p8) signal should return the handler it replaces.
 static void Test_SignalInstalls(void)
 {
     void (*first)(int) = signal(SIGTERM, on_signal);
@@ -156,7 +156,7 @@ static void Test_SignalInstalls(void)
     _TEST_TRUE(signal(SIGTERM, first) == first);
 }
 
-// raise runs the handler of each signal C99 names.
+// (S7.14.2.1p2) raise should run the handler of each signal C99 names.
 static void Test_SignalRaises(void)
 {
     _TEST_TRUE(raises(SIGABRT));
@@ -167,7 +167,7 @@ static void Test_SignalRaises(void)
     _TEST_TRUE(raises(SIGTERM));
 }
 
-// raise runs the handler last installed, none for a signal ignored.
+// (S7.14.1.1p2) raise should run the handler last installed, none if ignored.
 static void Test_SignalHandlers(void)
 {
     got = 0;
@@ -191,7 +191,7 @@ static void Test_SignalHandlers(void)
     }
 }
 
-// signal refuses a number that is no signal's.
+// (S7.14.1.1p8) signal should refuse a number that is no signal's.
 static void Test_SignalRefused(void)
 {
     _TEST_TRUE(refuses(-1));
@@ -199,7 +199,7 @@ static void Test_SignalRefused(void)
     _TEST_TRUE(refuses(INT_MAX));
 }
 
-// A handler that leaves by longjmp never returns to raise.
+// (S7.14.2.1p2) A handler that leaves by longjmp should not return to raise.
 static void Test_SignalLeaves(void)
 {
     volatile int returned = 0;
@@ -215,7 +215,7 @@ static void Test_SignalLeaves(void)
     }
 }
 
-// A pointer reaches each function, and a call in parentheses any macro's.
+// (S7.1.4p1) A pointer and a call in parentheses should reach each function.
 static void Test_SignalCalls(void)
 {
     int (*send)(int) = raise;

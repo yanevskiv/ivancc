@@ -32,7 +32,7 @@ static long distance(const void *whole, const void *member)
     return (const char *) member - (const char *) whole;
 }
 
-// ptrdiff_t is signed and holds what subtracting two pointers yields.
+// (S7.17p2) ptrdiff_t should be signed and hold two pointers' difference.
 static void Test_StddefPtrdiff(void)
 {
     int numbers[TAIL];
@@ -47,7 +47,7 @@ static void Test_StddefPtrdiff(void)
     _TEST_INT(back, -AHEAD);
 }
 
-// size_t is unsigned and holds what sizeof yields.
+// (S7.17p2) size_t should be unsigned and hold what sizeof yields.
 static void Test_StddefSize(void)
 {
     size_t size = sizeof(struct Pair);
@@ -57,7 +57,7 @@ static void Test_StddefSize(void)
     _TEST_UINT(size, sizeof(struct Pair));
 }
 
-// wchar_t is the type of a wide character constant and holds its value.
+// (S7.17p2) wchar_t should be a wide character constant's type, and hold it.
 static void Test_StddefWchar(void)
 {
     wchar_t null = L'\0';
@@ -68,7 +68,7 @@ static void Test_StddefWchar(void)
     _TEST_INT(null, 0);
 }
 
-// NULL is a null pointer constant: it compares equal to 0 and to no object.
+// (S7.17p3) NULL should be a null pointer constant, equal to 0 and no object.
 static void Test_StddefNull(void)
 {
     int number = 0;
@@ -87,7 +87,7 @@ static void Test_StddefNull(void)
     _TEST_TRUE(some == none);
 }
 
-// offsetof is a member's offset in bytes, an integer constant of type size_t.
+// (S7.17p3) offsetof should be a member's offset in bytes, a size_t constant.
 static void Test_StddefOffsetof(void)
 {
     char sized[offsetof(struct Pair, pa_tail)];

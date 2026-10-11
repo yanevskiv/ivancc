@@ -22,14 +22,14 @@
 // remove, rename, tmpfile and tmpnam (S7.19.4), fclose, fflush, fopen, freopen, setbuf and setvbuf (S7.19.5), fgetc, fgets, fputc, fputs, getc, getchar, gets, putc, putchar, puts and ungetc (S7.19.7),
 // fread and fwrite (S7.19.8), fgetpos, fseek, fsetpos, ftell and rewind (S7.19.9), and clearerr, feof, ferror and perror (S7.19.10),
 // a stream's output reaching its file by the time exit has called what atexit registered (S7.20.4.3p4),
-// its end-of-file indicator staying set until clearerr or ungetc clears it (S7.19.7.1p3, S7.19.7.11p3),
+// its end-of-file indicator staying set until clearerr or ungetc clears it (S7.19.7.1p3, S7.19.7.11p5),
 // each of fopen's fifteen modes (S7.19.5.3p3), an update stream writing after a flush or a read to the end of its file (S7.19.5.3p6),
-// FOPEN_MAX streams open at once (S7.19.1p3), freopen giving a stream another file and clearing its indicators (S7.19.5.4p3),
+// FOPEN_MAX streams open at once (S7.19.1p3), freopen giving a stream another file and clearing its indicators (S7.19.5.4p4),
 // a binary stream's position counted in characters from its file's start (S7.19.9.4p2) and one less after ungetc (S7.19.7.11p5),
 // fseek dropping a pushed-back character and the end-of-file indicator (S7.19.9.2p5), a text stream returning to what ftell gave (S7.19.9.2p4),
 // an update stream reading and writing either side of a positioning call (S7.19.5.3p6), an append stream writing at its file's end wherever it is positioned (S7.19.5.3p5),
 // a removed file opening no more (S7.19.4.1p2) and a renamed one by its new name alone (S7.19.4.2p2), tmpfile's streams each reading back what it was written (S7.19.4.3p2),
-// tmpnam giving a different name each call, one no file has (S7.19.4.4p2), in its array or its own (S7.19.4.4p3),
+// tmpnam giving a different name each call (S7.19.4.4p3), one no file has (S7.19.4.4p2), in its array or its own (S7.19.4.4p5),
 // and perror writing its string, a colon and a space, where it has one, then strerror's text and a new-line to stderr (S7.19.10.4p2).
 
 #include <_test.h>
@@ -114,7 +114,7 @@ static void last(void)
     puts("atexit's");
 }
 
-// Tell whether a file opened in a mode takes a string and closes.
+// (S7.19.5.3p3) A file opened in a mode should take a string and close.
 static bool put(const char *name, const char *mode, const char *str)
 {
     int lost = 0;
@@ -128,7 +128,7 @@ static bool put(const char *name, const char *mode, const char *str)
     return lost == 0;
 }
 
-// Tell whether a file holds a string and no more.
+// A file should hold a string and no more.
 static bool holds(const char *name, const char *str)
 {
     int lost = 0;
@@ -148,7 +148,7 @@ static bool holds(const char *name, const char *str)
     return lost == 0;
 }
 
-// Tell whether fgets reads a stream's next line, or what is left, as given.
+// (S7.19.7.2p2) fgets should read a stream's next line, or what is left.
 static bool reads(FILE *file, const char *want)
 {
     int lost = 0;
@@ -160,7 +160,7 @@ static bool reads(FILE *file, const char *want)
     return lost == 0;
 }
 
-// Return the place of the first mode a file does not open and close in.
+// (S7.19.5.3p3) A file should open in each mode: return the first it does not.
 static int unopened(void)
 {
     int k;
@@ -175,7 +175,7 @@ static int unopened(void)
     return NONE;
 }
 
-// Write BIG bytes one at a time, and return the first fputc fails, or NONE.
+// (S7.19.7.3p3) fputc should write BIG bytes: return the first it fails.
 static long unwritten(FILE *file)
 {
     long k;
@@ -188,7 +188,7 @@ static long unwritten(FILE *file)
     return NONE;
 }
 
-// Read BIG bytes one at a time, and return the first that is not its own.
+// (S7.19.7.1p2) fgetc should read BIG bytes back: return the first to differ.
 static long misread(FILE *file)
 {
     long k;
@@ -211,7 +211,7 @@ static void pattern(void)
     }
 }
 
-// Return the place of the first byte of the wide block not its own, or NONE.
+// The wide block should hold its pattern: return the first byte that does not.
 static long unpatterned(void)
 {
     size_t k;
@@ -224,7 +224,7 @@ static long unpatterned(void)
     return NONE;
 }
 
-// Open MANY files at once, a digit to each, and return the first to fail.
+// (S7.19.3p15) MANY files should open at once: return the first to fail.
 static int crowd(void)
 {
     int k;
@@ -251,7 +251,7 @@ static int crowd(void)
     return NONE;
 }
 
-// Return the first of the MANY files that does not hold its digit, or NONE.
+// Each of the MANY files should hold its digit: return the first without.
 static int uncrowded(void)
 {
     int k;
@@ -269,7 +269,7 @@ static int uncrowded(void)
     return NONE;
 }
 
-// Tell whether a stream buffered one way writes and reads lines past its size.
+// (S7.19.5.6p2) A stream buffered one way should pass lines past its size.
 static bool buffers(int kind)
 {
     int lost = 0;
@@ -296,7 +296,7 @@ static bool buffers(int kind)
     return lost == 0;
 }
 
-// Take NAMES names from tmpnam, and return the first that is not a new one.
+// (S7.19.4.4p3) tmpnam should give NAMES new names: return the first not new.
 static int unnamed(void)
 {
     int k;
@@ -323,7 +323,7 @@ static int unnamed(void)
     return NONE;
 }
 
-// The macros are defined, in a directive too, and within their limits.
+// (S7.19.1p3) The macros should be defined and within their limits.
 static void Test_StdioMacros(void)
 {
     _TEST_INT(DIRECTIVE, 1);
@@ -342,7 +342,7 @@ static void Test_StdioMacros(void)
     _TEST_TRUE(sizeof(LONGER) > SMALL);
 }
 
-// The three standard streams are three streams.
+// (S7.19.3p7) The three standard streams should be three streams.
 static void Test_StdioStreams(void)
 {
     FILE *in = stdin;
@@ -357,7 +357,7 @@ static void Test_StdioStreams(void)
     _TEST_TRUE(out != err);
 }
 
-// Each output function writes through a buffer smaller than what it is given.
+// (S7.19.3p3) Each output function should write through a smaller buffer.
 static void Test_StdioOutput(void)
 {
     int bad = 0;
@@ -390,7 +390,7 @@ static void Test_StdioOutput(void)
     _TEST_INT(fflush(stderr), 0);
 }
 
-// Each input function reads through a small buffer, to the end of its file.
+// (S7.19.3p3) Each input function should read through a small buffer.
 static void Test_StdioInput(void)
 {
     char line[LINE];
@@ -444,7 +444,7 @@ static void Test_StdioInput(void)
     _TEST_TRUE(feof(stdin));
 }
 
-// fopen makes, appends to and empties a file, and opens no file to read.
+// (S7.19.5.3p3) fopen should make, extend and empty a file, and read none lost.
 static void Test_StdioOpening(void)
 {
     FILE *file;
@@ -473,7 +473,7 @@ static void Test_StdioOpening(void)
     _TEST_TRUE(holds("made by a+", "a+"));
 }
 
-// An update stream writes after a flush or a read to its file's end.
+// (S7.19.5.3p6) Update streams should write after a flush or a read to the end.
 static void Test_StdioUpdate(void)
 {
     FILE *file = fopen("file", "r+");
@@ -516,7 +516,7 @@ static void Test_StdioUpdate(void)
     _TEST_TRUE(holds("file", ""));
 }
 
-// A binary stream keeps every byte, through more than its buffer holds.
+// (S7.19.2p3) A binary stream should keep every byte, past its buffer's size.
 static void Test_StdioBinary(void)
 {
     FILE *file = fopen("bytes", "wb");
@@ -572,14 +572,14 @@ static void Test_StdioBinary(void)
     _TEST_INT(fclose(file), 0);
 }
 
-// As many streams as FOPEN_MAX allows are open at once, each its own file's.
+// (S7.19.3p15) FOPEN_MAX streams should be open at once, each its own file's.
 static void Test_StdioMany(void)
 {
     _TEST_INT(crowd(), NONE);
     _TEST_INT(uncrowded(), NONE);
 }
 
-// A stream writes and reads the same however setvbuf buffers it.
+// (S7.19.5.6p2) A stream should write and read the same however buffered.
 static void Test_StdioBuffering(void)
 {
     _TEST_TRUE(buffers(_IOFBF));
@@ -587,7 +587,7 @@ static void Test_StdioBuffering(void)
     _TEST_TRUE(buffers(_IONBF));
 }
 
-// freopen gives a stream another file, its indicators and pushed-back gone.
+// (S7.19.5.4p2) freopen should give a stream another file, indicators cleared.
 static void Test_StdioFreopen(void)
 {
     FILE *file = fopen("file", "w");
@@ -638,7 +638,7 @@ static void Test_StdioFreopen(void)
     _TEST_STR(line, "econd!");
 }
 
-// A binary stream's position counts characters, and each call moves it.
+// (S7.19.9.4p2) A binary stream's position should count characters.
 static void Test_StdioPositions(void)
 {
     fpos_t pos;
@@ -701,7 +701,7 @@ static void Test_StdioPositions(void)
     _TEST_TRUE(holds("pos", "0123456789abXYefghijklmnopqrstuvwxyz"));
 }
 
-// A text stream returns to where ftell said it was, and writes at its end.
+// (S7.19.9.2p4) A text stream should return to where ftell said it was.
 static void Test_StdioTextPositions(void)
 {
     long at;
@@ -731,7 +731,7 @@ static void Test_StdioTextPositions(void)
     _TEST_TRUE(holds("pos", "one\ntwo\nthree\nfour\n"));
 }
 
-// An append stream writes at its file's end wherever it is positioned.
+// (S7.19.5.3p5) An append stream should write at its file's end, wherever set.
 static void Test_StdioAppend(void)
 {
     FILE *file;
@@ -756,7 +756,7 @@ static void Test_StdioAppend(void)
     _TEST_TRUE(holds("pos", "abcdefg"));
 }
 
-// fseek moves within a stream's buffer and past it, either way.
+// (S7.19.9.2p2) fseek should move within a stream's buffer and past it.
 static void Test_StdioSeeking(void)
 {
     FILE *file = fopen("big", "rb");
@@ -775,7 +775,7 @@ static void Test_StdioSeeking(void)
     _TEST_INT(fclose(file), 0);
 }
 
-// A removed file opens no more, and a renamed one by its new name alone.
+// (S7.19.4.2p2) A removed or renamed file should open by its old name no more.
 static void Test_StdioFiles(void)
 {
     _TEST_TRUE(remove("missing") != 0);
@@ -789,7 +789,7 @@ static void Test_StdioFiles(void)
     _TEST_TRUE(remove("new") != 0);
 }
 
-// Each of tmpfile's streams is an update stream of a file of its own.
+// (S7.19.4.3p2) Each of tmpfile's streams should update a file of its own.
 static void Test_StdioTmpfile(void)
 {
     FILE *file = tmpfile();
@@ -815,7 +815,7 @@ static void Test_StdioTmpfile(void)
     _TEST_INT(fclose(other), 0);
 }
 
-// tmpnam gives a new name each call, one a file can then be made by.
+// (S7.19.4.4p3) tmpnam should give a new name each call, one a file can take.
 static void Test_StdioTmpnam(void)
 {
     _TEST_INT(unnamed(), NONE);
@@ -824,7 +824,7 @@ static void Test_StdioTmpnam(void)
     _TEST_INT(remove(names[0]), 0);
 }
 
-// perror writes its string, where it has one, and errno's text to stderr.
+// (S7.19.10.4p2) perror should write its string and errno's text to stderr.
 static void Test_StdioPerror(void)
 {
     errno = EDOM;
@@ -837,7 +837,7 @@ static void Test_StdioPerror(void)
     _TEST_INT(fflush(stderr), 0);
 }
 
-// A standard stream closes as any other does.
+// (S7.19.5.1p2) A standard stream should close as any other does.
 static void Test_StdioClosing(void)
 {
     _TEST_INT(fclose(stdin), 0);
