@@ -1,0 +1,33 @@
+// (Test) Status: 0
+// A test file for <stdint.h> constant macros.
+
+// Include helpers.
+#include "libc05_00_stdint_helpers.inc"
+
+// (S7.18.4p3) A constant macro should keep its argument's value in any base.
+static void Test_StdintConstants(void)
+{
+    _TEST_INT(INT8_C(127), 127);
+    _TEST_INT(INT8_C(0177), 127);
+    _TEST_INT(INT8_C(0x7F), 127);
+    _TEST_INT(INT16_C(32767), 32767);
+    _TEST_INT(INT32_C(2147483647), 2147483647);
+    _TEST_INT(INT64_C(9223372036854775807), INT64_MAX);
+    _TEST_INT(INT64_C(0x7FFFFFFFFFFFFFFF), INT64_MAX);
+    _TEST_INT(-INT64_C(9223372036854775807) - 1, INT64_MIN);
+    _TEST_INT(INTMAX_C(9223372036854775807), INTMAX_MAX);
+    _TEST_INT(UINT8_C(255), 255);
+    _TEST_INT(UINT16_C(65535), 65535);
+    _TEST_INT(UINT16_C(0xFFFF), 65535);
+    _TEST_INT(UINT32_C(4294967295), 4294967295L);
+    _TEST_UINT(UINT64_C(18446744073709551615), UINT64_MAX);
+    _TEST_UINT(UINT64_C(01777777777777777777777), UINT64_MAX);
+    _TEST_UINT(UINT64_C(0xFFFFFFFFFFFFFFFF), UINT64_MAX);
+    _TEST_UINT(UINTMAX_C(18446744073709551615), UINTMAX_MAX);
+}
+
+int main(void)
+{
+    Test_StdintConstants();
+    return _Test_Status();
+}
