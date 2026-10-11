@@ -1,6 +1,6 @@
 // (Test) Status: 0
 // <stdbool.h> defines bool, true, false and __bool_true_false_are_defined (S7.16p2-p3), true, false and the last as the int constants 1, 0 and 1, each fit for #if,
-// and bool as _Bool, an unsigned type which holds 0 or 1 and takes any value that compares unequal to 0 as 1 (S6.3.1.2p1), a fraction and an address among them.
+// and bool as _Bool, an unsigned type which holds 0 or 1 and takes any value that compares unequal to 0 as 1 (S6.3.1.2p1), a fraction, an address and what an increment or a decrement leaves among them.
 
 #include <_test.h>
 #include <stddef.h>
@@ -61,10 +61,26 @@ static void test_conversion(void)
     _TEST_INT(address, 1);
 }
 
+// An increment of true stays true, and a decrement of false turns true.
+static void test_steps(void)
+{
+    bool flag = false;
+
+    flag++;
+    _TEST_INT(flag, 1);
+    flag++;
+    _TEST_INT(flag, 1);
+    flag--;
+    _TEST_INT(flag, 0);
+    flag--;
+    _TEST_INT(flag, 1);
+}
+
 int main(void)
 {
     test_macros();
     test_bool();
     test_conversion();
+    test_steps();
     return _Test_Status();
 }
