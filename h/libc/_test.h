@@ -68,17 +68,17 @@
 // The status so far.
 extern int _Test_Result;
 
-// Report
+// Text
 unsigned long _Test_Length(const char *str);
 void          _Test_Write(const char *str);
 void          _Test_WriteChar(char ch);
-void          _Test_WriteUint(unsigned long value);
-void          _Test_WriteInt(long value);
-void          _Test_WriteByte(unsigned char byte);
-void          _Test_WriteBytes(const void *obj, unsigned long size);
-void          _Test_WriteHexBytes(const void *obj, unsigned long size);
-void          _Test_WriteStr(const char *str);
-void          _Test_Fail(const char *expr, const char *file, unsigned int line, const char *func);
+
+// Operands
+void _Test_ShowInt(long value);
+void _Test_ShowUint(unsigned long value);
+void _Test_ShowFloat(long double value);
+void _Test_ShowStr(const char *str);
+void _Test_ShowMem(const void *obj, unsigned long size);
 
 // Comparison
 _Bool _Test_Same(const void *obj1, const void *obj2, unsigned long size);
@@ -86,6 +86,7 @@ _Bool _Test_Equal(const char *str1, const char *str2);
 _Bool _Test_Alike(long double value1, long double value2);
 
 // Checks
+void  _Test_Fail(const char *expr, const char *file, unsigned int line, const char *func);
 _Bool _Test_True(long value, const char *expr, const char *file, unsigned int line, const char *func);
 _Bool _Test_Int(long got, long expected, const char *expr, const char *file, unsigned int line, const char *func);
 _Bool _Test_Uint(unsigned long got, unsigned long expected, const char *expr, const char *file, unsigned int line, const char *func);

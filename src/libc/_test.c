@@ -58,8 +58,19 @@ void _Test_WriteChar(char ch)
     _Sys_Write(_SYS_STDERR_FILENO, &ch, sizeof(ch));
 }
 
-// Write the number value to standard error.
-void _Test_WriteUint(unsigned long value)
+// Show a signed number as _TEST_INT reports it, its sign where negative.
+void _Test_ShowInt(long value)
+{
+    if (value < 0) {
+        _Test_WriteChar('-');
+        _Test_ShowUint(-(unsigned long) value);
+    } else {
+        _Test_ShowUint((unsigned long) value);
+    }
+}
+
+// Show an unsigned number as _TEST_UINT reports it, in decimal.
+void _Test_ShowUint(unsigned long value)
 {
     char text[_TEST_NUMBER_SIZE];
     char *ptr = text + _TEST_NUMBER_SIZE - 1;
@@ -73,54 +84,11 @@ void _Test_WriteUint(unsigned long value)
     _Test_Write(ptr);
 }
 
-// Write the number value to standard error, with its sign where negative.
-void _Test_WriteInt(long value)
+// Show a floating value as _TEST_FLOAT reports it, its bytes as one hex number.
+void _Test_ShowFloat(long double value)
 {
-    if (value < 0) {
-        _Test_WriteChar('-');
-        _Test_WriteUint(-(unsigned long) value);
-    } else {
-        _Test_WriteUint((unsigned long) value);
-    }
-}
-
-// Write a byte as a string literal would spell it, in octal where it must.
-void _Test_WriteByte(unsigned char byte)
-{
-    int shift = _TEST_OCTAL_BITS * _TEST_OCTAL_DIGITS;
-
-    if (byte == '"' || byte == '\\') {
-        _Test_WriteChar('\\');
-        _Test_WriteChar((char) byte);
-    } else if (byte >= _TEST_PRINT_FIRST && byte <= _TEST_PRINT_LAST) {
-        _Test_WriteChar((char) byte);
-    } else {
-        _Test_WriteChar('\\');
-        while (shift > 0) {
-            shift -= _TEST_OCTAL_BITS;
-            _Test_WriteChar((char) ('0' + ((byte >> shift) & _TEST_OCTAL_MASK)));
-        }
-    }
-}
-
-// Write the size bytes of obj as a string literal.
-void _Test_WriteBytes(const void *obj, unsigned long size)
-{
-    unsigned long k;
-    const unsigned char *bytes = obj;
-
-    _Test_WriteChar('"');
-    for (k = 0; k < size; k++) {
-        _Test_WriteByte(bytes[k]);
-    }
-    _Test_WriteChar('"');
-}
-
-// Write the size bytes of obj as one hexadecimal number, its last byte first.
-void _Test_WriteHexBytes(const void *obj, unsigned long size)
-{
-    unsigned long k = size;
-    const unsigned char *bytes = obj;
+    unsigned long k = _TEST_FLOAT_SIZE;
+    const unsigned char *bytes = (const unsigned char *) &value;
 
     _Test_Write(_ERR_TEST_HEX);
     while (k > 0) {
@@ -130,27 +98,40 @@ void _Test_WriteHexBytes(const void *obj, unsigned long size)
     }
 }
 
-// Write the string str as a string literal, or say that it is none.
-void _Test_WriteStr(const char *str)
+// Show a string as _TEST_STR reports it, a string literal or none.
+void _Test_ShowStr(const char *str)
 {
     if (str == _TEST_NULL) {
         _Test_Write(_ERR_TEST_NULL);
     } else {
-        _Test_WriteBytes(str, _Test_Length(str));
+        _Test_ShowMem(str, _Test_Length(str));
     }
 }
 
-// Note a failed check and open its report with where it stands.
-void _Test_Fail(const char *expr, const char *file, unsigned int line, const char *func)
+// Show an object as _TEST_MEM reports it, a string literal of its size bytes.
+void _Test_ShowMem(const void *obj, unsigned long size)
 {
-    _Test_Result = _TEST_FAILED;
-    _Test_Write(file);
-    _Test_Write(_ERR_TEST_FILE);
-    _Test_WriteUint(line);
-    _Test_Write(_ERR_TEST_LINE);
-    _Test_Write(func);
-    _Test_Write(_ERR_TEST_FUNC);
-    _Test_Write(expr);
+    int shift;
+    unsigned long k;
+    const unsigned char *bytes = obj;
+
+    _Test_WriteChar('"');
+    for (k = 0; k < size; k++) {
+        if (bytes[k] == '"' || bytes[k] == '\\') {
+            _Test_WriteChar('\\');
+            _Test_WriteChar((char) bytes[k]);
+        } else if (bytes[k] >= _TEST_PRINT_FIRST && bytes[k] <= _TEST_PRINT_LAST) {
+            _Test_WriteChar((char) bytes[k]);
+        } else {
+            shift = _TEST_OCTAL_BITS * _TEST_OCTAL_DIGITS;
+            _Test_WriteChar('\\');
+            while (shift > 0) {
+                shift -= _TEST_OCTAL_BITS;
+                _Test_WriteChar((char) ('0' + ((bytes[k] >> shift) & _TEST_OCTAL_MASK)));
+            }
+        }
+    }
+    _Test_WriteChar('"');
 }
 
 // Tell whether the size bytes of obj1 and obj2 are the same.
@@ -189,6 +170,19 @@ _Bool _Test_Alike(long double value1, long double value2)
     return _Test_Same(&value1, &value2, _TEST_FLOAT_SIZE);
 }
 
+// Note a failed check and open its report with where it stands.
+void _Test_Fail(const char *expr, const char *file, unsigned int line, const char *func)
+{
+    _Test_Result = _TEST_FAILED;
+    _Test_Write(file);
+    _Test_Write(_ERR_TEST_FILE);
+    _Test_ShowUint(line);
+    _Test_Write(_ERR_TEST_LINE);
+    _Test_Write(func);
+    _Test_Write(_ERR_TEST_FUNC);
+    _Test_Write(expr);
+}
+
 // Check that a value is not zero, and report it where it is.
 _Bool _Test_True(long value, const char *expr, const char *file, unsigned int line, const char *func)
 {
@@ -205,9 +199,9 @@ _Bool _Test_Int(long got, long expected, const char *expr, const char *file, uns
     if (got != expected) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_EXPR);
-        _Test_WriteInt(got);
+        _Test_ShowInt(got);
         _Test_Write(_ERR_TEST_GOT);
-        _Test_WriteInt(expected);
+        _Test_ShowInt(expected);
         _Test_Write(_ERR_TEST_EXPECTED);
     }
     return got == expected;
@@ -219,9 +213,9 @@ _Bool _Test_Uint(unsigned long got, unsigned long expected, const char *expr, co
     if (got != expected) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_EXPR);
-        _Test_WriteUint(got);
+        _Test_ShowUint(got);
         _Test_Write(_ERR_TEST_GOT);
-        _Test_WriteUint(expected);
+        _Test_ShowUint(expected);
         _Test_Write(_ERR_TEST_EXPECTED);
     }
     return got == expected;
@@ -235,9 +229,9 @@ _Bool _Test_Float(long double got, long double expected, const char *expr, const
     if (! alike) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_EXPR);
-        _Test_WriteHexBytes(&got, _TEST_FLOAT_SIZE);
+        _Test_ShowFloat(got);
         _Test_Write(_ERR_TEST_GOT);
-        _Test_WriteHexBytes(&expected, _TEST_FLOAT_SIZE);
+        _Test_ShowFloat(expected);
         _Test_Write(_ERR_TEST_EXPECTED);
     }
     return alike;
@@ -251,9 +245,9 @@ _Bool _Test_Str(const char *got, const char *expected, const char *expr, const c
     if (! equal) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_EXPR);
-        _Test_WriteStr(got);
+        _Test_ShowStr(got);
         _Test_Write(_ERR_TEST_GOT);
-        _Test_WriteStr(expected);
+        _Test_ShowStr(expected);
         _Test_Write(_ERR_TEST_EXPECTED);
     }
     return equal;
@@ -267,9 +261,9 @@ _Bool _Test_Mem(const void *got, const void *expected, unsigned long size, const
     if (! same) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_EXPR);
-        _Test_WriteBytes(got, size);
+        _Test_ShowMem(got, size);
         _Test_Write(_ERR_TEST_GOT);
-        _Test_WriteBytes(expected, size);
+        _Test_ShowMem(expected, size);
         _Test_Write(_ERR_TEST_EXPECTED);
     }
     return same;
