@@ -22,10 +22,15 @@
 #include <signal.h>
 #include <locale.h>
 
-#if LC_ALL != LC_COLLATE && LC_COLLATE != LC_CTYPE && LC_CTYPE != LC_MONETARY && LC_MONETARY != LC_NUMERIC && LC_NUMERIC != LC_TIME
-#define DIRECTIVE 1
-#else
+// Whether a directive finds each category apart from the next.
 #define DIRECTIVE 0
+#if (LC_ALL != LC_COLLATE) \
+    && (LC_COLLATE != LC_CTYPE) \
+    && (LC_CTYPE != LC_MONETARY) \
+    && (LC_MONETARY != LC_NUMERIC) \
+    && (LC_NUMERIC != LC_TIME)
+#undef DIRECTIVE
+#define DIRECTIVE 1
 #endif
 
 #define NONE       (-1)

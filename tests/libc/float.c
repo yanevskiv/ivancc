@@ -12,28 +12,49 @@
 #include <stdint.h>
 #include <float.h>
 
-#if FLT_RADIX == 2 && FLT_EVAL_METHOD == 0 && DECIMAL_DIG == 21
-#define DIRECTIVE_MODEL 1
-#else
+// Whether a directive finds the radix, the evaluation method and DECIMAL_DIG.
 #define DIRECTIVE_MODEL 0
+#if (FLT_RADIX == 2) \
+    && (FLT_EVAL_METHOD == 0) \
+    && (DECIMAL_DIG == 21)
+#undef DIRECTIVE_MODEL
+#define DIRECTIVE_MODEL 1
 #endif
 
-#if FLT_MANT_DIG == 24 && FLT_DIG == 6 && FLT_MIN_EXP == -125 && FLT_MIN_10_EXP == -37 && FLT_MAX_EXP == 128 && FLT_MAX_10_EXP == 38
-#define DIRECTIVE_FLT 1
-#else
+// Whether a directive finds float's characteristics.
 #define DIRECTIVE_FLT 0
+#if (FLT_MANT_DIG == 24) \
+    && (FLT_DIG == 6) \
+    && (FLT_MIN_EXP == -125) \
+    && (FLT_MIN_10_EXP == -37) \
+    && (FLT_MAX_EXP == 128) \
+    && (FLT_MAX_10_EXP == 38)
+#undef DIRECTIVE_FLT
+#define DIRECTIVE_FLT 1
 #endif
 
-#if DBL_MANT_DIG == 53 && DBL_DIG == 15 && DBL_MIN_EXP == -1021 && DBL_MIN_10_EXP == -307 && DBL_MAX_EXP == 1024 && DBL_MAX_10_EXP == 308
-#define DIRECTIVE_DBL 1
-#else
+// Whether a directive finds double's characteristics.
 #define DIRECTIVE_DBL 0
+#if (DBL_MANT_DIG == 53) \
+    && (DBL_DIG == 15) \
+    && (DBL_MIN_EXP == -1021) \
+    && (DBL_MIN_10_EXP == -307) \
+    && (DBL_MAX_EXP == 1024) \
+    && (DBL_MAX_10_EXP == 308)
+#undef DIRECTIVE_DBL
+#define DIRECTIVE_DBL 1
 #endif
 
-#if LDBL_MANT_DIG == 64 && LDBL_DIG == 18 && LDBL_MIN_EXP == -16381 && LDBL_MIN_10_EXP == -4931 && LDBL_MAX_EXP == 16384 && LDBL_MAX_10_EXP == 4932
-#define DIRECTIVE_LDBL 1
-#else
+// Whether a directive finds long double's characteristics.
 #define DIRECTIVE_LDBL 0
+#if (LDBL_MANT_DIG == 64) \
+    && (LDBL_DIG == 18) \
+    && (LDBL_MIN_EXP == -16381) \
+    && (LDBL_MIN_10_EXP == -4931) \
+    && (LDBL_MAX_EXP == 16384) \
+    && (LDBL_MAX_10_EXP == 4932)
+#undef DIRECTIVE_LDBL
+#define DIRECTIVE_LDBL 1
 #endif
 
 #define BITS_FLT_MAX      "\377\377\177\177"

@@ -1,6 +1,6 @@
 // (Test) Status: 134
 // (Test) Error:
-// | a.out: assert.c:119: fail: Assertion `str[0] == '"' || strcmp(str, "a\\b\"c") == 0' failed.
+// | a.out: assert.c:121: fail: Assertion `str[0] == '"' || strcmp(str, "a\\b\"c") == 0' failed.
 // <assert.h> defines assert, a macro that #undef removes and each inclusion defines again by whether NDEBUG is defined there (S7.2p1),
 // one that under NDEBUG is a void expression evaluating nothing, and otherwise a void expression that evaluates a scalar argument of any type once (S7.2.1.1p2),
 // and for a false one writes its text, file, line and function to standard error and ends the program by SIGABRT, the checks before it reporting nothing.
@@ -20,10 +20,11 @@
 #include <setjmp.h>
 #include <assert.h>
 
-#ifdef assert
-#define DEFINED 1
-#else
+// Whether assert is a macro once its header is included.
 #define DEFINED 0
+#if defined(assert)
+#undef DEFINED
+#define DEFINED 1
 #endif
 
 #define FIVE 5
@@ -62,10 +63,11 @@ static void Test_AssertDisabled(void)
 
 #undef assert
 
-#ifdef assert
-#define SURVIVED 1
-#else
+// Whether assert is still a macro after #undef.
 #define SURVIVED 0
+#if defined(assert)
+#undef SURVIVED
+#define SURVIVED 1
 #endif
 
 #undef NDEBUG

@@ -25,10 +25,14 @@
 #include <locale.h>
 #include <stdlib.h>
 
-#if defined(EXIT_FAILURE) && defined(EXIT_SUCCESS) && defined(RAND_MAX) && RAND_MAX >= 32767
-#define DIRECTIVE 1
-#else
+// Whether a directive finds the macros defined, and RAND_MAX large enough.
 #define DIRECTIVE 0
+#if defined(EXIT_FAILURE) \
+    && defined(EXIT_SUCCESS) \
+    && defined(RAND_MAX) \
+    && (RAND_MAX >= 32767)
+#undef DIRECTIVE
+#define DIRECTIVE 1
 #endif
 
 #define NONE      (-1)

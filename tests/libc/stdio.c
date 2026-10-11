@@ -52,16 +52,33 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#if defined(NULL) && _IOFBF != _IOLBF && _IOFBF != _IONBF && _IOLBF != _IONBF && BUFSIZ >= 256 && EOF < 0 && FOPEN_MAX >= 8 && FILENAME_MAX >= 1 && L_tmpnam >= 1 && TMP_MAX >= 25 && SEEK_CUR != SEEK_END && SEEK_CUR != SEEK_SET && SEEK_END != SEEK_SET
-#define DIRECTIVE 1
-#else
+
+// Whether a directive finds the macros distinct and within their limits.
 #define DIRECTIVE 0
+#if defined(NULL) \
+    && (_IOFBF != _IOLBF) \
+    && (_IOFBF != _IONBF) \
+    && (_IOLBF != _IONBF) \
+    && (BUFSIZ >= 256) \
+    && (EOF < 0) \
+    && (FOPEN_MAX >= 8) \
+    && (FILENAME_MAX >= 1) \
+    && (L_tmpnam >= 1) \
+    && (TMP_MAX >= 25) \
+    && (SEEK_CUR != SEEK_END) \
+    && (SEEK_CUR != SEEK_SET) \
+    && (SEEK_END != SEEK_SET)
+#undef DIRECTIVE
+#define DIRECTIVE 1
 #endif
 
-#if defined(stderr) && defined(stdin) && defined(stdout)
-#define STREAMS 1
-#else
+// Whether stderr, stdin and stdout are macros.
 #define STREAMS 0
+#if defined(stderr) \
+    && defined(stdin) \
+    && defined(stdout)
+#undef STREAMS
+#define STREAMS 1
 #endif
 
 #define NONE   (-1)

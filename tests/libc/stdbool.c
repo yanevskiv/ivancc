@@ -6,10 +6,13 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#if true == 1 && false == 0 && __bool_true_false_are_defined == 1
-#define DIRECTIVE 1
-#else
+// Whether a directive finds true 1, false 0 and the macros defined.
 #define DIRECTIVE 0
+#if (true == 1) \
+    && (false == 0) \
+    && (__bool_true_false_are_defined == 1)
+#undef DIRECTIVE
+#define DIRECTIVE 1
 #endif
 
 #define LARGE 256

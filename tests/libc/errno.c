@@ -12,10 +12,16 @@
 #include <stdarg.h>
 #include <errno.h>
 
-#if EDOM > 0 && EILSEQ > 0 && ERANGE > 0 && EDOM != EILSEQ && EDOM != ERANGE && EILSEQ != ERANGE
-#define DIRECTIVE 1
-#else
+// Whether a directive finds the three macros positive and distinct.
 #define DIRECTIVE 0
+#if (EDOM > 0) \
+    && (EILSEQ > 0) \
+    && (ERANGE > 0) \
+    && (EDOM != EILSEQ) \
+    && (EDOM != ERANGE) \
+    && (EILSEQ != ERANGE)
+#undef DIRECTIVE
+#define DIRECTIVE 1
 #endif
 
 #define OTHER  0
