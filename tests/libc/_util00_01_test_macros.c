@@ -1,35 +1,32 @@
 // (Test) Status: 1
 // (Test) Error:
-// | _test.c:96: Test_TestFails: zero is false
-// | _test.c:97: Test_TestFails: 1 == 2 is false
-// | _test.c:98: Test_TestFails: none is false
-// | _test.c:99: Test_TestFails: -5 is -5, expected 5
-// | _test.c:100: Test_TestFails: least is -9223372036854775808, expected 0
-// | _test.c:101: Test_TestFails: 0 is 0, expected 9223372036854775807
-// | _test.c:102: Test_TestFails: most is 18446744073709551615, expected 0
-// | _test.c:103: Test_TestFails: sizeof(word) is 4, expected 3
-// | _test.c:104: Test_TestFails: 1.5 is 0x3fffc000000000000000, expected 0x4000a000000000000000
-// | _test.c:105: Test_TestFails: 0.1F is 0x3ffbcccccd0000000000, expected 0x3ffbccccccccccccd000
-// | _test.c:106: Test_TestFails: nought is 0x00000000000000000000, expected 0x80000000000000000000
-// | _test.c:107: Test_TestFails: infinite is 0x7fff8000000000000000, expected 0x3fff8000000000000000
-// | _test.c:108: Test_TestFails: third is 0x3ffdaaaaaaaaaaaaaaab, expected 0x3ffd8000000000000000
-// | _test.c:109: Test_TestFails: infinite is 0x7fff8000000000000000, expected 0xffff8000000000000000
-// | _test.c:110: Test_TestFails: invalid is 0xffffc000000000000000, expected 0x7fff8000000000000000
-// | _test.c:111: Test_TestFails: word is "abc", expected "abd"
-// | _test.c:112: Test_TestFails: word is "abc", expected "ab"
-// | _test.c:113: Test_TestFails: "" is "", expected "a"
-// | _test.c:114: Test_TestFails: none is a null pointer, expected ""
-// | _test.c:115: Test_TestFails: word is "abc", expected a null pointer
-// | _test.c:116: Test_TestFails: odd is "a\"b\\c\012\177\377 ~", expected ""
-// | _test.c:117: Test_TestFails: bytes is "ab\000c", expected "ab\000d"
-// | _test.c:118: Test_TestFails: word is "abc\000", expected "abc\001"
-// | _test.c:129: main: _Test_Status() is 1, expected 0
-// <_test.h> defines _TEST_TRUE, _TEST_INT, _TEST_UINT, _TEST_FLOAT, _TEST_STR and _TEST_MEM, and declares _Test_Status,
-// a check that holds printing nothing and returning 1, one that does not returning 0 and reporting its file, line, function and expression to standard error,
-// with both values but for a condition's, a floating value written as the ten bytes of its long double in hexadecimal, a string or an object as a string literal and a null string as none,
-// a floating value matching one of its bytes alone, so a zero no zero of the other sign, but for two that are no numbers, which match,
-// each check evaluating its operands once, and the status 0 until a check fails and 1 from then on.
+// | _util00_01_test_macros.c:93: Test_TestFails: zero is false
+// | _util00_01_test_macros.c:94: Test_TestFails: 1 == 2 is false
+// | _util00_01_test_macros.c:95: Test_TestFails: none is false
+// | _util00_01_test_macros.c:96: Test_TestFails: -5 is -5, expected 5
+// | _util00_01_test_macros.c:97: Test_TestFails: least is -9223372036854775808, expected 0
+// | _util00_01_test_macros.c:98: Test_TestFails: 0 is 0, expected 9223372036854775807
+// | _util00_01_test_macros.c:99: Test_TestFails: most is 18446744073709551615, expected 0
+// | _util00_01_test_macros.c:100: Test_TestFails: sizeof(word) is 4, expected 3
+// | _util00_01_test_macros.c:101: Test_TestFails: 1.5 is 0x3fffc000000000000000, expected 0x4000a000000000000000
+// | _util00_01_test_macros.c:102: Test_TestFails: 0.1F is 0x3ffbcccccd0000000000, expected 0x3ffbccccccccccccd000
+// | _util00_01_test_macros.c:103: Test_TestFails: nought is 0x00000000000000000000, expected 0x80000000000000000000
+// | _util00_01_test_macros.c:104: Test_TestFails: infinite is 0x7fff8000000000000000, expected 0x3fff8000000000000000
+// | _util00_01_test_macros.c:105: Test_TestFails: third is 0x3ffdaaaaaaaaaaaaaaab, expected 0x3ffd8000000000000000
+// | _util00_01_test_macros.c:106: Test_TestFails: infinite is 0x7fff8000000000000000, expected 0xffff8000000000000000
+// | _util00_01_test_macros.c:107: Test_TestFails: invalid is 0xffffc000000000000000, expected 0x7fff8000000000000000
+// | _util00_01_test_macros.c:108: Test_TestFails: word is "abc", expected "abd"
+// | _util00_01_test_macros.c:109: Test_TestFails: word is "abc", expected "ab"
+// | _util00_01_test_macros.c:110: Test_TestFails: "" is "", expected "a"
+// | _util00_01_test_macros.c:111: Test_TestFails: none is a null pointer, expected ""
+// | _util00_01_test_macros.c:112: Test_TestFails: word is "abc", expected a null pointer
+// | _util00_01_test_macros.c:113: Test_TestFails: odd is "a\"b\\c\012\177\377 ~", expected ""
+// | _util00_01_test_macros.c:114: Test_TestFails: bytes is "ab\000c", expected "ab\000d"
+// | _util00_01_test_macros.c:115: Test_TestFails: word is "abc\000", expected "abc\001"
+// | _util00_01_test_macros.c:126: main: _Test_Status() is 1, expected 0
+// A test file for <_test.h> check macros.
 
+// Includes.
 #include <_test.h>
 
 #define PASSES 19
