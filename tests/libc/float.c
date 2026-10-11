@@ -1,7 +1,7 @@
 // (Test) Status: 0
 // <float.h> defines the characteristics of float, double and long double (S7.7, S5.2.4.2.2), those of x86-64 Linux: a radix of 2, rounding to nearest, no evaluation wider than a type,
 // IEC 60559's single and double formats and the x87's extended one for long double, each integer value but FLT_ROUNDS fit for #if and each floating value a constant expression of its type,
-// the greatest value, the least normalized one and the step above 1 holding the bits their formats give them and what the model makes of the radix, the precision and the exponents' range,
+// the greatest value, the least normalized one and the step above 1 holding the bits their formats give them, a hexadecimal constant's value, and what the model makes of the radix, the precision and the exponents' range,
 // and the decimal digits and exponents following from the binary ones by the logarithm of 2.
 
 #include <_test.h>
@@ -109,12 +109,12 @@ static void Test_FloatFloat(void)
     _TEST_MEM(&float_max, BITS_FLT_MAX, sizeof(float));
     _TEST_MEM(&float_min, BITS_FLT_MIN, sizeof(float));
     _TEST_MEM(&float_epsilon, BITS_FLT_EPSILON, sizeof(float));
-    _TEST_TRUE(FLT_MAX == 0x1.FFFFFEp127F);
-    _TEST_TRUE(FLT_MIN == 0x1p-126F);
-    _TEST_TRUE(FLT_EPSILON == 0x1p-23F);
-    _TEST_TRUE(FLT_MAX == (float) scaled(FLT_RADIX - FLT_EPSILON, FLT_MAX_EXP - 1));
-    _TEST_TRUE(FLT_MIN == (float) scaled(1, FLT_MIN_EXP - 1));
-    _TEST_TRUE(FLT_EPSILON == (float) scaled(1, 1 - FLT_MANT_DIG));
+    _TEST_FLOAT(FLT_MAX, 0x1.FFFFFEp127F);
+    _TEST_FLOAT(FLT_MIN, 0x1p-126F);
+    _TEST_FLOAT(FLT_EPSILON, 0x1p-23F);
+    _TEST_FLOAT(FLT_MAX, (float) scaled(FLT_RADIX - FLT_EPSILON, FLT_MAX_EXP - 1));
+    _TEST_FLOAT(FLT_MIN, (float) scaled(1, FLT_MIN_EXP - 1));
+    _TEST_FLOAT(FLT_EPSILON, (float) scaled(1, 1 - FLT_MANT_DIG));
 }
 
 // double is IEC 60559's double format: 53 bits of precision.
@@ -134,12 +134,12 @@ static void Test_FloatDouble(void)
     _TEST_MEM(&double_max, BITS_DBL_MAX, sizeof(double));
     _TEST_MEM(&double_min, BITS_DBL_MIN, sizeof(double));
     _TEST_MEM(&double_epsilon, BITS_DBL_EPSILON, sizeof(double));
-    _TEST_TRUE(DBL_MAX == 0x1.FFFFFFFFFFFFFp1023);
-    _TEST_TRUE(DBL_MIN == 0x1p-1022);
-    _TEST_TRUE(DBL_EPSILON == 0x1p-52);
-    _TEST_TRUE(DBL_MAX == (double) scaled(FLT_RADIX - DBL_EPSILON, DBL_MAX_EXP - 1));
-    _TEST_TRUE(DBL_MIN == (double) scaled(1, DBL_MIN_EXP - 1));
-    _TEST_TRUE(DBL_EPSILON == (double) scaled(1, 1 - DBL_MANT_DIG));
+    _TEST_FLOAT(DBL_MAX, 0x1.FFFFFFFFFFFFFp1023);
+    _TEST_FLOAT(DBL_MIN, 0x1p-1022);
+    _TEST_FLOAT(DBL_EPSILON, 0x1p-52);
+    _TEST_FLOAT(DBL_MAX, (double) scaled(FLT_RADIX - DBL_EPSILON, DBL_MAX_EXP - 1));
+    _TEST_FLOAT(DBL_MIN, (double) scaled(1, DBL_MIN_EXP - 1));
+    _TEST_FLOAT(DBL_EPSILON, (double) scaled(1, 1 - DBL_MANT_DIG));
 }
 
 // long double is the x87's extended format: 64 bits of precision.
@@ -159,12 +159,12 @@ static void Test_FloatLongDouble(void)
     _TEST_MEM(&extended_max, BITS_LDBL_MAX, BITS_LDBL_SIZE);
     _TEST_MEM(&extended_min, BITS_LDBL_MIN, BITS_LDBL_SIZE);
     _TEST_MEM(&extended_epsilon, BITS_LDBL_EPSILON, BITS_LDBL_SIZE);
-    _TEST_TRUE(LDBL_MAX == 0x1.FFFFFFFFFFFFFFFEp16383L);
-    _TEST_TRUE(LDBL_MIN == 0x1p-16382L);
-    _TEST_TRUE(LDBL_EPSILON == 0x1p-63L);
-    _TEST_TRUE(LDBL_MAX == scaled(FLT_RADIX - LDBL_EPSILON, LDBL_MAX_EXP - 1));
-    _TEST_TRUE(LDBL_MIN == scaled(1, LDBL_MIN_EXP - 1));
-    _TEST_TRUE(LDBL_EPSILON == scaled(1, 1 - LDBL_MANT_DIG));
+    _TEST_FLOAT(LDBL_MAX, 0x1.FFFFFFFFFFFFFFFEp16383L);
+    _TEST_FLOAT(LDBL_MIN, 0x1p-16382L);
+    _TEST_FLOAT(LDBL_EPSILON, 0x1p-63L);
+    _TEST_FLOAT(LDBL_MAX, scaled(FLT_RADIX - LDBL_EPSILON, LDBL_MAX_EXP - 1));
+    _TEST_FLOAT(LDBL_MIN, scaled(1, LDBL_MIN_EXP - 1));
+    _TEST_FLOAT(LDBL_EPSILON, scaled(1, 1 - LDBL_MANT_DIG));
 }
 
 // An epsilon is the step from 1 to the next value, which half of it misses.
@@ -181,13 +181,13 @@ static void Test_FloatEpsilon(void)
     long double extended_short_of = extended + LDBL_EPSILON / FLT_RADIX;
 
     _TEST_TRUE(above > one);
-    _TEST_TRUE(short_of == one);
+    _TEST_FLOAT(short_of, one);
     _TEST_INT((long) (one / FLT_EPSILON), 1L << (FLT_MANT_DIG - 1));
     _TEST_TRUE(wide_above > wide);
-    _TEST_TRUE(wide_short_of == wide);
+    _TEST_FLOAT(wide_short_of, wide);
     _TEST_INT((long) (wide / DBL_EPSILON), 1L << (DBL_MANT_DIG - 1));
     _TEST_TRUE(extended_above > extended);
-    _TEST_TRUE(extended_short_of == extended);
+    _TEST_FLOAT(extended_short_of, extended);
     _TEST_UINT((unsigned long) (extended / LDBL_EPSILON), 1UL << (LDBL_MANT_DIG - 1));
 }
 
