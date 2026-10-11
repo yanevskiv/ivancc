@@ -1,8 +1,11 @@
 // (Test) Status: 134
 // (Test) Error:
-// | a.out: assert.c:92: fail: Assertion `str[0] == '"' || strcmp(str, "a\\b\"c") == 0' failed.
-// <assert.h> defines assert, which does nothing under NDEBUG and otherwise reports a false argument and ends the program by SIGABRT (S7.2).
+// | a.out: assert.c:119: fail: Assertion `str[0] == '"' || strcmp(str, "a\\b\"c") == 0' failed.
+// <assert.h> defines assert, a macro that #undef removes and each inclusion defines again by whether NDEBUG is defined there (S7.2p1),
+// one that under NDEBUG is a void expression evaluating nothing, and otherwise a void expression that evaluates a scalar argument of any type once (S7.2.1.1p2),
+// and for a false one writes its text, file, line and function to standard error and ends the program by SIGABRT, the checks before it reporting nothing.
 
+#include <_test.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <iso646.h>
@@ -17,61 +20,84 @@
 #include <setjmp.h>
 #include <assert.h>
 
-#ifndef assert
-#error "assert is not a macro"
+#ifdef assert
+#define DEFINED 1
+#else
+#define DEFINED 0
 #endif
+
+#define FIVE 5
+#define TEN  10
 
 static int count;
 
+// Return the number of calls made since count was cleared, this one counted.
 static int bump(void)
 {
     count++;
     return count;
 }
 
-static bool active(void)
+// With NDEBUG never defined, assert evaluates its argument once.
+static void Test_AssertActive(void)
 {
     count = 0;
     assert(bump() == 1);
-    return count == 1;
+    _TEST_INT(count, 1);
 }
 
 #define NDEBUG
 #include <assert.h>
 
-static bool disabled(void)
+// Under NDEBUG, assert evaluates nothing, and is an expression still.
+static void Test_AssertDisabled(void)
 {
     count = 0;
     assert(0);
     assert(bump() == 0);
-    assert(count = 10);
-    return count == 0 and (assert(0), 5) == 5;
+    assert(count = TEN);
+    _TEST_INT(count, 0);
+    _TEST_INT((assert(0), FIVE), FIVE);
 }
 
 #undef assert
+
 #ifdef assert
-#error "assert survived #undef"
+#define SURVIVED 1
+#else
+#define SURVIVED 0
 #endif
+
 #undef NDEBUG
 #include <assert.h>
 
-static bool enabled(void)
+// assert is a macro, which #undef removes.
+static void Test_AssertMacro(void)
+{
+    _TEST_INT(DEFINED, 1);
+    _TEST_INT(SURVIVED, 0);
+}
+
+// Included again without NDEBUG, assert evaluates its argument once more.
+static void Test_AssertEnabled(void)
 {
     count = 0;
     assert(bump() == 1);
     assert(bump() == 2);
-    assert(count = 10);
-    return count == 10;
+    _TEST_INT(count, 2);
+    assert(count = TEN);
+    _TEST_INT(count, TEN);
 }
 
-static bool scalars(void)
+// assert takes a true scalar of any type, over lines too, and is an expression.
+static void Test_AssertScalars(void)
 {
     int i = -1;
     char ch = 'c';
-    unsigned long ul = ULONG_MAX;
+    int *ptr = &i;
     double dbl = 0.5;
     const char *str = "s";
-    int *ptr = &i;
+    unsigned long ul = ULONG_MAX;
 
     assert(i);
     assert(ch);
@@ -84,20 +110,30 @@ static bool scalars(void)
     assert(i < 0 ? 1 : 0);
     assert(i
            == -1);
-    return (assert(1), 5) == 5;
+    _TEST_INT((assert(1), FIVE), FIVE);
 }
 
+// Assert a string opens with a quote or is one with a quote and a backslash.
 static void fail(const char *str)
 {
     assert(str[0] == '"' || strcmp(str, "a\\b\"c") == 0);
 }
 
+// A false argument reports itself, quoted as written, and ends the program.
+static void Test_AssertFails(void)
+{
+    fail("\"");
+    fail("a\\b\"c");
+    fail("b");
+}
+
 int main(void)
 {
-    if (not active()) return 1;
-    if (not disabled()) return 2;
-    if (not enabled()) return 3;
-    if (not scalars()) return 4;
-    fail("b");
-    return 5;
+    Test_AssertActive();
+    Test_AssertDisabled();
+    Test_AssertMacro();
+    Test_AssertEnabled();
+    Test_AssertScalars();
+    Test_AssertFails();
+    return _Test_Status();
 }
