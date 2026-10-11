@@ -45,6 +45,12 @@
 // The files' calls, the terminal's settings and the standard descriptors.
 #include <_sys.h>
 
+// The arguments a format converts.
+#include <stdarg.h>
+
+// The text a null string is written as.
+#include <_err.h>
+
 // A temporary name: where it is, and the characters and length of its end.
 #define _STDIO_TEMP_PREFIX  "/tmp/tmp."
 #define _STDIO_TEMP_LETTERS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -61,6 +67,9 @@ typedef char _Stdio_CheckSeek[SEEK_SET == _SYS_SEEK_SET && SEEK_CUR == _SYS_SEEK
 // Check that a temporary name's characters are its radix and it fits L_tmpnam.
 typedef char _Stdio_CheckTempRadix[sizeof(_STDIO_TEMP_LETTERS) - 1 == _STDIO_TEMP_RADIX ? 1 : -1];
 typedef char _Stdio_CheckTempName[sizeof(_STDIO_TEMP_PREFIX) + _STDIO_TEMP_DIGITS <= L_tmpnam ? 1 : -1];
+
+// Check the header's own argument list against stdarg.h's.
+typedef char _Stdio_CheckVaList[sizeof(_Stdio_VaList) == sizeof(va_list) ? 1 : -1];
 
 // Standard input, read-only, its buffering picked at its first use.
 FILE _Stdio_Stdin = {
@@ -239,6 +248,32 @@ _Bool _Stdio_IsTerminal(int fd)
     struct _Sys_Termios term;
 
     return _Sys_Ioctl(fd, _SYS_TCGETS, &term) == 0;
+}
+
+// Ready the stream for output, and lend an unbuffered one buf for a call.
+int _Stdio_Lend(FILE *stream, unsigned char *buf, size_t size)
+{
+    if (_Stdio_ToWrite(stream) != 0) {
+        return EOF;
+    }
+    if (stream->sf_mode == _IONBF) {
+        stream->sf_buf = buf;
+        stream->sf_size = size;
+    }
+    return 0;
+}
+
+// Write what a lent buffer holds, and give the stream its own byte back.
+int _Stdio_Reclaim(FILE *stream)
+{
+    int result = 0;
+
+    if (stream->sf_mode == _IONBF && stream->sf_state == _STDIO_WRITING) {
+        result = _Stdio_Flush(stream);
+        stream->sf_buf = &stream->sf_byte;
+        stream->sf_size = 1;
+    }
+    return result;
 }
 
 // Ready the stream for input, or set its error indicator if it is write-only.
@@ -444,6 +479,257 @@ void _Stdio_FlushLines(void)
             _Stdio_Flush(stream);
         }
     }
+}
+
+// Give the sink len characters of data, counted though its string be full.
+void _Stdio_Emit(struct _Stdio_Sink *sink, const char *data, size_t len)
+{
+    size_t room;
+
+    if (sink->ss_failed) {
+        return;
+    }
+    if (len > (size_t) INT_MAX - sink->ss_count) {
+        errno = _SYS_EOVERFLOW;
+        sink->ss_failed = 1;
+        return;
+    }
+    if (sink->ss_stream != NULL) {
+        sink->ss_failed = _Stdio_Put(sink->ss_stream, data, len) != len;
+    } else if (sink->ss_count + 1 < sink->ss_size) {
+        room = sink->ss_size - 1 - sink->ss_count;
+        memcpy(sink->ss_str + sink->ss_count, data, len < room ? len : room);
+    }
+    sink->ss_count += len;
+}
+
+// Give the sink len copies of the character ch.
+void _Stdio_Pad(struct _Stdio_Sink *sink, int ch, size_t len)
+{
+    char chunk[_STDIO_PAD_CHUNK];
+
+    memset(chunk, ch, sizeof(chunk));
+    while (len > 0 && ! sink->ss_failed) {
+        size_t part = len < sizeof(chunk) ? len : sizeof(chunk);
+
+        _Stdio_Emit(sink, chunk, part);
+        len -= part;
+    }
+}
+
+// Give the sink len characters of data in the directive's width, on its side.
+void _Stdio_Field(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir, const char *data, size_t len)
+{
+    size_t width = (size_t) dir->sd_width;
+    size_t pad = width > len ? width - len : 0;
+
+    if (! (dir->sd_flags & _STDIO_FLAG_LEFT)) {
+        _Stdio_Pad(sink, ' ', pad);
+    }
+    _Stdio_Emit(sink, data, len);
+    if (dir->sd_flags & _STDIO_FLAG_LEFT) {
+        _Stdio_Pad(sink, ' ', pad);
+    }
+}
+
+// Read the flags at format, and return how many characters they are.
+size_t _Stdio_ParseFlags(const char *format, int *flags)
+{
+    size_t len;
+
+    *flags = 0;
+    for (len = 0; ; len++) {
+        switch (format[len]) {
+            case '-': {
+                *flags |= _STDIO_FLAG_LEFT;
+            } break;
+            case '+': {
+                *flags |= _STDIO_FLAG_SIGN;
+            } break;
+            case ' ': {
+                *flags |= _STDIO_FLAG_SPACE;
+            } break;
+            case '#': {
+                *flags |= _STDIO_FLAG_ALT;
+            } break;
+            case '0': {
+                *flags |= _STDIO_FLAG_ZERO;
+            } break;
+            default: {
+                return len;
+            } break;
+        }
+    }
+}
+
+// Read the decimal count at format, INT_MAX at most, and return its length.
+size_t _Stdio_ParseCount(const char *format, int *count)
+{
+    size_t len;
+
+    *count = 0;
+    for (len = 0; format[len] >= '0' && format[len] <= '9'; len++) {
+        int digit = format[len] - '0';
+
+        if (*count > (INT_MAX - digit) / _STDIO_COUNT_BASE) {
+            *count = INT_MAX;
+        } else {
+            *count = *count * _STDIO_COUNT_BASE + digit;
+        }
+    }
+    return len;
+}
+
+// Read the length modifier at format, and return how many characters it is.
+size_t _Stdio_ParseLength(const char *format, int *length)
+{
+    _Bool twice = format[0] != '\0' && format[1] == format[0];
+
+    switch (format[0]) {
+        case 'h': {
+            *length = twice ? _STDIO_LENGTH_CHAR : _STDIO_LENGTH_SHORT;
+        } break;
+        case 'l': {
+            *length = twice ? _STDIO_LENGTH_LLONG : _STDIO_LENGTH_LONG;
+        } break;
+        case 'j': {
+            *length = _STDIO_LENGTH_INTMAX;
+        } break;
+        case 'z': {
+            *length = _STDIO_LENGTH_SIZE;
+        } break;
+        case 't': {
+            *length = _STDIO_LENGTH_PTRDIFF;
+        } break;
+        case 'L': {
+            *length = _STDIO_LENGTH_LDOUBLE;
+        } break;
+        default: {
+            *length = _STDIO_LENGTH_NONE;
+            return 0;
+        } break;
+    }
+    return *length == _STDIO_LENGTH_CHAR || *length == _STDIO_LENGTH_LLONG ? 2 : 1;
+}
+
+// Read the directive after a percent sign at format, and return its length.
+size_t _Stdio_Parse(const char *format, struct _Stdio_Directive *dir)
+{
+    size_t len = _Stdio_ParseFlags(format, &dir->sd_flags);
+
+    dir->sd_width = 0;
+    dir->sd_precision = _STDIO_PRECISION_NONE;
+    if (format[len] == '*') {
+        dir->sd_flags |= _STDIO_FLAG_WIDTH;
+        len++;
+    } else {
+        len += _Stdio_ParseCount(format + len, &dir->sd_width);
+    }
+    if (format[len] == '.' && format[len + 1] == '*') {
+        dir->sd_flags |= _STDIO_FLAG_PRECISION;
+        len += 2;
+    } else if (format[len] == '.') {
+        len++;
+        len += _Stdio_ParseCount(format + len, &dir->sd_precision);
+    }
+    len += _Stdio_ParseLength(format + len, &dir->sd_length);
+    dir->sd_conv = format[len];
+    return dir->sd_conv != '\0' ? len + 1 : len;
+}
+
+// Return whether the directive names a conversion the engine makes.
+_Bool _Stdio_Converts(const struct _Stdio_Directive *dir)
+{
+    if (dir->sd_conv == '\0' || dir->sd_length != _STDIO_LENGTH_NONE) {
+        return 0;
+    }
+    return strchr(_STDIO_CONVERSIONS, dir->sd_conv) != NULL;
+}
+
+// Take a negative width as a left flag, and a negative precision as none.
+void _Stdio_Settle(struct _Stdio_Directive *dir)
+{
+    if (dir->sd_width < 0) {
+        dir->sd_flags |= _STDIO_FLAG_LEFT;
+        dir->sd_width = dir->sd_width == INT_MIN ? INT_MAX : -dir->sd_width;
+    }
+    if (dir->sd_precision < 0) {
+        dir->sd_precision = _STDIO_PRECISION_NONE;
+    }
+}
+
+// Convert the string str by the directive, a null one as glibc does.
+void _Stdio_String(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir, const char *str)
+{
+    size_t len;
+    const char *end;
+    int limit = dir->sd_precision;
+
+    if (str == NULL) {
+        str = limit == _STDIO_PRECISION_NONE || limit >= (int) sizeof(_ERR_STDIO_NULL) - 1 ? _ERR_STDIO_NULL : "";
+    }
+    if (limit == _STDIO_PRECISION_NONE) {
+        len = strlen(str);
+    } else {
+        end = memchr(str, '\0', (size_t) limit);
+        len = end != NULL ? (size_t) (end - str) : (size_t) limit;
+    }
+    _Stdio_Field(sink, dir, str, len);
+}
+
+// Give the sink the format's text, each directive converting an argument.
+int _Stdio_Format(struct _Stdio_Sink *sink, const char *format, _Stdio_VaList args)
+{
+    char ch;
+    struct _Stdio_Directive dir;
+
+    while (format[0] != '\0') {
+        size_t len = strcspn(format, "%");
+
+        if (len > 0) {
+            _Stdio_Emit(sink, format, len);
+            format += len;
+            continue;
+        }
+        len = _Stdio_Parse(format + 1, &dir) + 1;
+        if (! _Stdio_Converts(&dir)) {
+            _Stdio_Emit(sink, format, 1);
+            format++;
+            continue;
+        }
+        format += len;
+        if (dir.sd_flags & _STDIO_FLAG_WIDTH) {
+            dir.sd_width = va_arg(args, int);
+        }
+        if (dir.sd_flags & _STDIO_FLAG_PRECISION) {
+            dir.sd_precision = va_arg(args, int);
+        }
+        _Stdio_Settle(&dir);
+        switch (dir.sd_conv) {
+            case 'c': {
+                ch = (char) va_arg(args, int);
+                _Stdio_Field(sink, &dir, &ch, 1);
+            } break;
+            case 's': {
+                _Stdio_String(sink, &dir, va_arg(args, const char *));
+            } break;
+            default: {
+                _Stdio_Emit(sink, "%", 1);
+            } break;
+        }
+    }
+    return _Stdio_End(sink);
+}
+
+// End the sink's string, and return its count, or EOF if it failed.
+int _Stdio_End(struct _Stdio_Sink *sink)
+{
+    if (sink->ss_stream == NULL && sink->ss_size > 0) {
+        size_t last = sink->ss_size - 1;
+
+        sink->ss_str[sink->ss_count < last ? sink->ss_count : last] = '\0';
+    }
+    return sink->ss_failed ? EOF : (int) sink->ss_count;
 }
 
 // Return how many bytes the stream took from its file and has yet to give out.
@@ -679,6 +965,93 @@ int setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size)
     return 0;
 }
 
+// Write the arguments to the stream as the format says.
+int fprintf(FILE *restrict stream, const char *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vfprintf(stream, format, args);
+    va_end(args);
+    return result;
+}
+
+// Write the arguments to standard output as the format says.
+int printf(const char *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vfprintf(stdout, format, args);
+    va_end(args);
+    return result;
+}
+
+// Write the arguments into str's n characters as the format says.
+int snprintf(char *restrict str, size_t n, const char *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vsnprintf(str, n, format, args);
+    va_end(args);
+    return result;
+}
+
+// Write the arguments into str, however long, as the format says.
+int sprintf(char *restrict str, const char *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vsnprintf(str, SIZE_MAX, format, args);
+    va_end(args);
+    return result;
+}
+
+// Write the list's arguments to the stream as the format says.
+int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList arg)
+{
+    int result;
+    unsigned char lent[BUFSIZ];
+    struct _Stdio_Sink sink = {
+        .ss_stream = stream
+    };
+
+    if (_Stdio_Lend(stream, lent, sizeof(lent)) != 0) {
+        return EOF;
+    }
+    result = _Stdio_Format(&sink, format, arg);
+    return _Stdio_Reclaim(stream) == 0 ? result : EOF;
+}
+
+// Write the list's arguments to standard output as the format says.
+int vprintf(const char *restrict format, _Stdio_VaList arg)
+{
+    return vfprintf(stdout, format, arg);
+}
+
+// Write the list's arguments into str's n characters as the format says.
+int vsnprintf(char *restrict str, size_t n, const char *restrict format, _Stdio_VaList arg)
+{
+    struct _Stdio_Sink sink = {
+        .ss_str  = str,
+        .ss_size = n
+    };
+
+    return _Stdio_Format(&sink, format, arg);
+}
+
+// Write the list's arguments into str, however long, as the format says.
+int vsprintf(char *restrict str, const char *restrict format, _Stdio_VaList arg)
+{
+    return vsnprintf(str, SIZE_MAX, format, arg);
+}
+
 // Read the stream's next character, as an unsigned char, or EOF at its end.
 int fgetc(FILE *stream)
 {
@@ -872,11 +1245,14 @@ int ferror(FILE *stream)
 void perror(const char *str)
 {
     const char *text = strerror(errno);
+    unsigned char lent[BUFSIZ];
 
+    _Stdio_Lend(stderr, lent, sizeof(lent));
     if (str != NULL && str[0] != '\0') {
         fputs(str, stderr);
         fputs(": ", stderr);
     }
     fputs(text, stderr);
     fputs("\n", stderr);
+    _Stdio_Reclaim(stderr);
 }

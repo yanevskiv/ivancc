@@ -47,6 +47,38 @@
 // The descriptor of a stream with no file.
 #define _STDIO_NOFILE (-1)
 
+// A directive's flags, the last two a width and a precision in an argument.
+#define _STDIO_FLAG_LEFT      0x1
+#define _STDIO_FLAG_SIGN      0x2
+#define _STDIO_FLAG_SPACE     0x4
+#define _STDIO_FLAG_ALT       0x8
+#define _STDIO_FLAG_ZERO      0x10
+#define _STDIO_FLAG_WIDTH     0x20
+#define _STDIO_FLAG_PRECISION 0x40
+
+// The base a width or a precision is written in.
+#define _STDIO_COUNT_BASE 10
+
+// The precision of a directive that gives none.
+#define _STDIO_PRECISION_NONE (-1)
+
+// A directive's length modifier: none, hh, h, l, ll, j, z, t or L.
+#define _STDIO_LENGTH_NONE    0
+#define _STDIO_LENGTH_CHAR    1
+#define _STDIO_LENGTH_SHORT   2
+#define _STDIO_LENGTH_LONG    3
+#define _STDIO_LENGTH_LLONG   4
+#define _STDIO_LENGTH_INTMAX  5
+#define _STDIO_LENGTH_SIZE    6
+#define _STDIO_LENGTH_PTRDIFF 7
+#define _STDIO_LENGTH_LDOUBLE 8
+
+// The conversions a directive may name.
+#define _STDIO_CONVERSIONS "%cs"
+
+// The characters a field's padding is given by at a time.
+#define _STDIO_PAD_CHUNK 32
+
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
 
@@ -74,6 +106,9 @@
 #define stdin  (&_Stdio_Stdin)
 #define stdout (&_Stdio_Stdout)
 
+// The argument list, which stdio.h may not name.
+typedef __builtin_va_list _Stdio_VaList;
+
 #ifndef __SIZE_T__
 #define __SIZE_T__
 typedef unsigned long size_t;
@@ -94,6 +129,24 @@ struct _Stdio_File {
     unsigned char sf_byte;       // an unbuffered stream's buffer
     unsigned char sf_back;       // the character ungetc pushed back
     struct _Stdio_File *sf_next;
+};
+
+// Where formatted output goes: a stream, or else a string of a size.
+struct _Stdio_Sink {
+    struct _Stdio_File *ss_stream;
+    char *ss_str;
+    size_t ss_size;              // the string's size, its null counted
+    size_t ss_count;             // the characters given so far, kept or not
+    _Bool ss_failed;
+};
+
+// A conversion specification: its flags, width, precision, length and letter.
+struct _Stdio_Directive {
+    int sd_flags;                // _STDIO_FLAG_LEFT and the rest
+    int sd_width;
+    int sd_precision;            // _STDIO_PRECISION_NONE if it gives none
+    int sd_length;               // _STDIO_LENGTH_NONE and the rest
+    char sd_conv;
 };
 
 // (S7.19.1) Introduction
@@ -126,6 +179,8 @@ void  _Stdio_Free(FILE *stream);
 // Buffering
 void  _Stdio_Setup(FILE *stream);
 _Bool _Stdio_IsTerminal(int fd);
+int   _Stdio_Lend(FILE *stream, unsigned char *buf, size_t size);
+int   _Stdio_Reclaim(FILE *stream);
 
 // Input
 int    _Stdio_ToRead(FILE *stream);
@@ -141,6 +196,20 @@ int    _Stdio_WriteAll(FILE *stream, const unsigned char *data, size_t len);
 int    _Stdio_Flush(FILE *stream);
 int    _Stdio_FlushAll(void);
 void   _Stdio_FlushLines(void);
+
+// Formatted output
+void   _Stdio_Emit(struct _Stdio_Sink *sink, const char *data, size_t len);
+void   _Stdio_Pad(struct _Stdio_Sink *sink, int ch, size_t len);
+void   _Stdio_Field(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir, const char *data, size_t len);
+size_t _Stdio_ParseFlags(const char *format, int *flags);
+size_t _Stdio_ParseCount(const char *format, int *count);
+size_t _Stdio_ParseLength(const char *format, int *length);
+size_t _Stdio_Parse(const char *format, struct _Stdio_Directive *dir);
+_Bool  _Stdio_Converts(const struct _Stdio_Directive *dir);
+void   _Stdio_Settle(struct _Stdio_Directive *dir);
+void   _Stdio_String(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir, const char *str);
+int    _Stdio_Format(struct _Stdio_Sink *sink, const char *format, _Stdio_VaList args);
+int    _Stdio_End(struct _Stdio_Sink *sink);
 
 // Positioning
 long _Stdio_Ahead(FILE *stream);
@@ -164,6 +233,16 @@ FILE *fopen(const char *restrict filename, const char *restrict mode);
 FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *restrict stream);
 void  setbuf(FILE *restrict stream, char *restrict buf);
 int   setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size);
+
+// (S7.19.6) Formatted input/output functions
+int fprintf(FILE *restrict stream, const char *restrict format, ...);
+int printf(const char *restrict format, ...);
+int snprintf(char *restrict str, size_t n, const char *restrict format, ...);
+int sprintf(char *restrict str, const char *restrict format, ...);
+int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList arg);
+int vprintf(const char *restrict format, _Stdio_VaList arg);
+int vsnprintf(char *restrict str, size_t n, const char *restrict format, _Stdio_VaList arg);
+int vsprintf(char *restrict str, const char *restrict format, _Stdio_VaList arg);
 
 // (S7.19.7) Character input/output functions
 int   fgetc(FILE *stream);

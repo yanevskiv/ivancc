@@ -179,6 +179,9 @@
 #define _ERR_ASSERT_FUNC    ": Assertion `"
 #define _ERR_ASSERT_EXPR    "' failed.\n"
 
+// The text printf gives for a string that is none, as glibc's does.
+#define _ERR_STDIO_NULL "(null)"
+
 // The text a failed check's report puts after each of its parts.
 #define _ERR_TEST_FILE     ":"
 #define _ERR_TEST_LINE     ": "

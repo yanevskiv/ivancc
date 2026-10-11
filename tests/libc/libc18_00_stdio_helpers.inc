@@ -31,6 +31,7 @@
 #define NAMES  25
 #define BYTES  8
 #define CTRL_Z 26
+#define FILL   '#'
 #define LONGER "a line longer than the buffer it passes through\n"
 #define DIGITS "0123456789abcdefghijklmnopqrstuvwxyz"
 
@@ -94,4 +95,20 @@ static void pattern(void)
     for (k = 0; k < sizeof(wide); k++) {
         wide[k] = (unsigned char) (k % PRIME);
     }
+}
+
+// (S7.19.6.12p3) A format should give its text and return the text's length.
+static bool prints(const char *want, const char *format, ...)
+{
+    int n;
+    int lost = 0;
+    va_list args;
+    char got[HOLD];
+
+    va_start(args, format);
+    n = vsnprintf(got, sizeof(got), format, args);
+    va_end(args);
+    lost += ! _TEST_STR(got, want);
+    lost += ! _TEST_INT(n, (int) strlen(want));
+    return lost == 0;
 }
