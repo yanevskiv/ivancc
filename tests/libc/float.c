@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <float.h>
 
-// Whether a directive finds the radix, the evaluation method and DECIMAL_DIG.
+// (S5.2.4.2.2p6) The radix, evaluation and DECIMAL_DIG should be 2, 0 and 21.
 #define DIRECTIVE_MODEL 0
 #if (FLT_RADIX == 2) \
     && (FLT_EVAL_METHOD == 0) \
@@ -21,7 +21,7 @@
 #define DIRECTIVE_MODEL 1
 #endif
 
-// Whether a directive finds float's characteristics.
+// (S5.2.4.2.2p6) float should have IEC 60559's single format in #if.
 #define DIRECTIVE_FLT 0
 #if (FLT_MANT_DIG == 24) \
     && (FLT_DIG == 6) \
@@ -33,7 +33,7 @@
 #define DIRECTIVE_FLT 1
 #endif
 
-// Whether a directive finds double's characteristics.
+// (S5.2.4.2.2p6) double should have IEC 60559's double format in #if.
 #define DIRECTIVE_DBL 0
 #if (DBL_MANT_DIG == 53) \
     && (DBL_DIG == 15) \
@@ -45,7 +45,7 @@
 #define DIRECTIVE_DBL 1
 #endif
 
-// Whether a directive finds long double's characteristics.
+// (S5.2.4.2.2p6) long double should have the x87's 80-bit format in #if.
 #define DIRECTIVE_LDBL 0
 #if (LDBL_MANT_DIG == 64) \
     && (LDBL_DIG == 18) \

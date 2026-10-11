@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include <errno.h>
 
-// Whether a directive finds the three macros positive and distinct.
+// (S7.5p2) EDOM, EILSEQ and ERANGE should be positive and distinct in #if.
 #define DIRECTIVE 0
 #if (EDOM > 0) \
     && (EILSEQ > 0) \

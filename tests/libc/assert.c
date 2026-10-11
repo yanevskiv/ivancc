@@ -20,7 +20,7 @@
 #include <setjmp.h>
 #include <assert.h>
 
-// Whether assert is a macro once its header is included.
+// (S7.2p2) assert should be a macro.
 #define DEFINED 0
 #if defined(assert)
 #undef DEFINED
@@ -63,7 +63,7 @@ static void Test_AssertDisabled(void)
 
 #undef assert
 
-// Whether assert is still a macro after #undef.
+// (S6.10.3.5p2) assert should be no macro after #undef.
 #define SURVIVED 0
 #if defined(assert)
 #undef SURVIVED

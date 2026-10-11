@@ -9,7 +9,7 @@
 #include <iso646.h>
 #include <limits.h>
 
-// Whether a directive finds the limits of the character types.
+// (S5.2.4.2.1p1) The character types' limits should be x86-64 Linux's in #if.
 #define DIRECTIVE_CHAR 0
 #if (CHAR_BIT == 8) \
     && (SCHAR_MIN == -128) \
@@ -22,7 +22,7 @@
 #define DIRECTIVE_CHAR 1
 #endif
 
-// Whether a directive finds the limits of short and int.
+// (S5.2.4.2.1p1) The limits of short and int should be x86-64 Linux's in #if.
 #define DIRECTIVE_INT 0
 #if (SHRT_MIN == -32768) \
     && (SHRT_MAX == 32767) \
@@ -34,7 +34,7 @@
 #define DIRECTIVE_INT 1
 #endif
 
-// Whether a directive finds the limits of long.
+// (S5.2.4.2.1p1) The limits of long should be x86-64 Linux's in #if.
 #define DIRECTIVE_LONG 0
 #if (LONG_MIN == -9223372036854775807L - 1) \
     && (LONG_MAX == 9223372036854775807L) \
@@ -43,7 +43,7 @@
 #define DIRECTIVE_LONG 1
 #endif
 
-// Whether a directive finds the limits of long long.
+// (S5.2.4.2.1p1) The limits of long long should be x86-64 Linux's in #if.
 #define DIRECTIVE_LLONG 0
 #if (LLONG_MIN == -9223372036854775807LL - 1) \
     && (LLONG_MAX == 9223372036854775807LL) \

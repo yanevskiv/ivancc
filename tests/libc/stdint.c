@@ -10,7 +10,7 @@
 #include <limits.h>
 #include <stdint.h>
 
-// Whether a directive finds the limits of the 8-bit and 16-bit types.
+// (S7.18.2p2) The 8-bit and 16-bit types' limits should be exact in #if.
 #define DIRECTIVE_NARROW 0
 #if (INT8_MIN == -128) \
     && (INT8_MAX == 127) \
@@ -22,7 +22,7 @@
 #define DIRECTIVE_NARROW 1
 #endif
 
-// Whether a directive finds the limits of the 32-bit and 64-bit types.
+// (S7.18.2p2) The 32-bit and 64-bit types' limits should be exact in #if.
 #define DIRECTIVE_WIDE 0
 #if (INT32_MIN == -2147483647 - 1) \
     && (INT32_MAX == 2147483647) \
@@ -34,7 +34,7 @@
 #define DIRECTIVE_WIDE 1
 #endif
 
-// Whether a directive finds the least-width types' limits wide enough.
+// (S7.18.2p2) The least-width types' limits should be wide enough in #if.
 #define DIRECTIVE_LEAST 0
 #if (INT_LEAST8_MIN <= -127) \
     && (INT_LEAST8_MAX >= 127) \
@@ -52,7 +52,7 @@
 #define DIRECTIVE_LEAST 1
 #endif
 
-// Whether a directive finds the fastest types' limits wide enough.
+// (S7.18.2p2) The fastest types' limits should be wide enough in #if.
 #define DIRECTIVE_FAST 0
 #if (INT_FAST8_MIN <= -127) \
     && (INT_FAST8_MAX >= 127) \
@@ -70,7 +70,7 @@
 #define DIRECTIVE_FAST 1
 #endif
 
-// Whether a directive finds intptr_t's and intmax_t's limits wide enough.
+// (S7.18.2p2) intptr_t's and intmax_t's limits should be wide enough in #if.
 #define DIRECTIVE_GREATEST 0
 #if (INTPTR_MIN <= -32767) \
     && (INTPTR_MAX >= 32767) \
@@ -82,7 +82,7 @@
 #define DIRECTIVE_GREATEST 1
 #endif
 
-// Whether a directive finds the other integer types' limits wide enough.
+// (S7.18.3p2) The other integer types' limits should be wide enough in #if.
 #define DIRECTIVE_OTHER 0
 #if (PTRDIFF_MIN <= -65535) \
     && (PTRDIFF_MAX >= 65535) \
@@ -97,7 +97,7 @@
 #define DIRECTIVE_OTHER 1
 #endif
 
-// Whether a directive finds each constant macro giving its type's value.
+// (S7.18.4p3) Each constant macro should give its argument's value in #if.
 #define DIRECTIVE_CONSTANT 0
 #if (INT8_C(127) == 127) \
     && (INT16_C(32767) == 32767) \

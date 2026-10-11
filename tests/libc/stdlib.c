@@ -25,7 +25,7 @@
 #include <locale.h>
 #include <stdlib.h>
 
-// Whether a directive finds the macros defined, and RAND_MAX large enough.
+// (S7.20p3) The macros should be defined, RAND_MAX at least 32767 in #if.
 #define DIRECTIVE 0
 #if defined(EXIT_FAILURE) \
     && defined(EXIT_SUCCESS) \

@@ -22,7 +22,7 @@
 #include <signal.h>
 #include <locale.h>
 
-// Whether a directive finds each category apart from the next.
+// (S7.11p3) Each category should differ from the next in #if.
 #define DIRECTIVE 0
 #if (LC_ALL != LC_COLLATE) \
     && (LC_COLLATE != LC_CTYPE) \

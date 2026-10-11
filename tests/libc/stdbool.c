@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-// Whether a directive finds true 1, false 0 and the macros defined.
+// (S7.16p3) true and __bool_true_false_are_defined should be 1, false 0.
 #define DIRECTIVE 0
 #if (true == 1) \
     && (false == 0) \

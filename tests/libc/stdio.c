@@ -53,7 +53,7 @@
 #include <stdio.h>
 
 
-// Whether a directive finds the macros distinct and within their limits.
+// (S7.19.1p3) The macros should be distinct and within their limits in #if.
 #define DIRECTIVE 0
 #if defined(NULL) \
     && (_IOFBF != _IOLBF) \
@@ -72,7 +72,7 @@
 #define DIRECTIVE 1
 #endif
 
-// Whether stderr, stdin and stdout are macros.
+// (S7.19.1p3) File streams stderr, stdin and stdout should be macros.
 #define STREAMS 0
 #if defined(stderr) \
     && defined(stdin) \
