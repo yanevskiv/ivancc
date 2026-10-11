@@ -140,7 +140,7 @@ void _Test_Fail(const char *expr, const char *file, unsigned int line, const cha
 }
 
 // Tell whether the size bytes of obj1 and obj2 are the same.
-int _Test_Same(const void *obj1, const void *obj2, unsigned long size)
+_Bool _Test_Same(const void *obj1, const void *obj2, unsigned long size)
 {
     unsigned long k = 0;
     const unsigned char *bytes1 = obj1;
@@ -153,7 +153,7 @@ int _Test_Same(const void *obj1, const void *obj2, unsigned long size)
 }
 
 // Tell whether str1 and str2 are the same string, or both none.
-int _Test_Equal(const char *str1, const char *str2)
+_Bool _Test_Equal(const char *str1, const char *str2)
 {
     unsigned long k = 0;
 
@@ -166,18 +166,18 @@ int _Test_Equal(const char *str1, const char *str2)
     return str1[k] == str2[k];
 }
 
-// Check that a condition holds, and report it where it does not.
-int _Test_True(int value, const char *expr, const char *file, unsigned int line, const char *func)
+// Check that a value is not zero, and report it where it is.
+_Bool _Test_True(long value, const char *expr, const char *file, unsigned int line, const char *func)
 {
-    if (! value) {
+    if (value == 0) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_FALSE);
     }
-    return value;
+    return value != 0;
 }
 
 // Check that a signed number is the one expected, and report another.
-int _Test_Int(long got, long expected, const char *expr, const char *file, unsigned int line, const char *func)
+_Bool _Test_Int(long got, long expected, const char *expr, const char *file, unsigned int line, const char *func)
 {
     if (got != expected) {
         _Test_Fail(expr, file, line, func);
@@ -191,7 +191,7 @@ int _Test_Int(long got, long expected, const char *expr, const char *file, unsig
 }
 
 // Check that an unsigned number is the one expected, and report another.
-int _Test_Uint(unsigned long got, unsigned long expected, const char *expr, const char *file, unsigned int line, const char *func)
+_Bool _Test_Uint(unsigned long got, unsigned long expected, const char *expr, const char *file, unsigned int line, const char *func)
 {
     if (got != expected) {
         _Test_Fail(expr, file, line, func);
@@ -205,9 +205,9 @@ int _Test_Uint(unsigned long got, unsigned long expected, const char *expr, cons
 }
 
 // Check that a string is the one expected, and report another.
-int _Test_Str(const char *got, const char *expected, const char *expr, const char *file, unsigned int line, const char *func)
+_Bool _Test_Str(const char *got, const char *expected, const char *expr, const char *file, unsigned int line, const char *func)
 {
-    int equal = _Test_Equal(got, expected);
+    _Bool equal = _Test_Equal(got, expected);
 
     if (! equal) {
         _Test_Fail(expr, file, line, func);
@@ -221,9 +221,9 @@ int _Test_Str(const char *got, const char *expected, const char *expr, const cha
 }
 
 // Check that an object holds the bytes expected, and report others.
-int _Test_Mem(const void *got, const void *expected, unsigned long size, const char *expr, const char *file, unsigned int line, const char *func)
+_Bool _Test_Mem(const void *got, const void *expected, unsigned long size, const char *expr, const char *file, unsigned int line, const char *func)
 {
-    int same = _Test_Same(got, expected, size);
+    _Bool same = _Test_Same(got, expected, size);
 
     if (! same) {
         _Test_Fail(expr, file, line, func);

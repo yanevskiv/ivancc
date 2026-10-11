@@ -71,15 +71,15 @@ void          _Test_WriteStr(const char *str);
 void          _Test_Fail(const char *expr, const char *file, unsigned int line, const char *func);
 
 // Comparison
-int _Test_Same(const void *obj1, const void *obj2, unsigned long size);
-int _Test_Equal(const char *str1, const char *str2);
+_Bool _Test_Same(const void *obj1, const void *obj2, unsigned long size);
+_Bool _Test_Equal(const char *str1, const char *str2);
 
 // Checks
-int _Test_True(int value, const char *expr, const char *file, unsigned int line, const char *func);
-int _Test_Int(long got, long expected, const char *expr, const char *file, unsigned int line, const char *func);
-int _Test_Uint(unsigned long got, unsigned long expected, const char *expr, const char *file, unsigned int line, const char *func);
-int _Test_Str(const char *got, const char *expected, const char *expr, const char *file, unsigned int line, const char *func);
-int _Test_Mem(const void *got, const void *expected, unsigned long size, const char *expr, const char *file, unsigned int line, const char *func);
-int _Test_Status(void);
+_Bool _Test_True(long value, const char *expr, const char *file, unsigned int line, const char *func);
+_Bool _Test_Int(long got, long expected, const char *expr, const char *file, unsigned int line, const char *func);
+_Bool _Test_Uint(unsigned long got, unsigned long expected, const char *expr, const char *file, unsigned int line, const char *func);
+_Bool _Test_Str(const char *got, const char *expected, const char *expr, const char *file, unsigned int line, const char *func);
+_Bool _Test_Mem(const void *got, const void *expected, unsigned long size, const char *expr, const char *file, unsigned int line, const char *func);
+int   _Test_Status(void);
 
 #endif
