@@ -26,6 +26,9 @@
 #ifndef _ERR_H
 #define _ERR_H
 
+// The string that is none.
+#define _ERR_NULL ((char *) 0)
+
 // The error number of no error.
 #define _ERR_ERRNO_NONE 0
 

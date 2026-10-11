@@ -64,7 +64,7 @@
 #define _SYS_CLOCK_REALTIME           0
 #define _SYS_CLOCK_PROCESS_CPUTIME_ID 2
 
-// Linux's error numbers C99 does not name.
+// Linux's error numbers.
 #define _SYS_EPERM           1
 #define _SYS_ENOENT          2
 #define _SYS_ESRCH           3
@@ -97,6 +97,8 @@
 #define _SYS_EROFS           30
 #define _SYS_EMLINK          31
 #define _SYS_EPIPE           32
+#define _SYS_EDOM            33
+#define _SYS_ERANGE          34
 #define _SYS_EDEADLK         35
 #define _SYS_ENAMETOOLONG    36
 #define _SYS_ENOLCK          37
@@ -144,6 +146,7 @@
 #define _SYS_ELIBSCN         81
 #define _SYS_ELIBMAX         82
 #define _SYS_ELIBEXEC        83
+#define _SYS_EILSEQ          84
 #define _SYS_ERESTART        85
 #define _SYS_ESTRPIPE        86
 #define _SYS_EUSERS          87

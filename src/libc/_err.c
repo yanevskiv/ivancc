@@ -26,13 +26,7 @@
 // Module header.
 #include <_err.h>
 
-// The error numbers the texts name.
-#include <errno.h>
-
-// The null pointer.
-#include <stddef.h>
-
-// Linux's error numbers C99 does not name.
+// Linux's error numbers.
 #include <_sys.h>
 
 // strerror's texts by error number, null for the numbers Linux leaves out.
@@ -70,8 +64,8 @@ const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT] = {
     [_SYS_EROFS]           = _ERR_ERRNO_EROFS,
     [_SYS_EMLINK]          = _ERR_ERRNO_EMLINK,
     [_SYS_EPIPE]           = _ERR_ERRNO_EPIPE,
-    [EDOM]                 = _ERR_ERRNO_EDOM,
-    [ERANGE]               = _ERR_ERRNO_ERANGE,
+    [_SYS_EDOM]            = _ERR_ERRNO_EDOM,
+    [_SYS_ERANGE]          = _ERR_ERRNO_ERANGE,
     [_SYS_EDEADLK]         = _ERR_ERRNO_EDEADLK,
     [_SYS_ENAMETOOLONG]    = _ERR_ERRNO_ENAMETOOLONG,
     [_SYS_ENOLCK]          = _ERR_ERRNO_ENOLCK,
@@ -119,7 +113,7 @@ const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT] = {
     [_SYS_ELIBSCN]         = _ERR_ERRNO_ELIBSCN,
     [_SYS_ELIBMAX]         = _ERR_ERRNO_ELIBMAX,
     [_SYS_ELIBEXEC]        = _ERR_ERRNO_ELIBEXEC,
-    [EILSEQ]               = _ERR_ERRNO_EILSEQ,
+    [_SYS_EILSEQ]          = _ERR_ERRNO_EILSEQ,
     [_SYS_ERESTART]        = _ERR_ERRNO_ERESTART,
     [_SYS_ESTRPIPE]        = _ERR_ERRNO_ESTRPIPE,
     [_SYS_EUSERS]          = _ERR_ERRNO_EUSERS,
@@ -175,7 +169,7 @@ const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT] = {
 const char *_Err_ErrnoText(int errnum)
 {
     if (errnum < 0 || errnum >= _ERR_ERRNO_COUNT) {
-        return NULL;
+        return _ERR_NULL;
     }
     return _Err_ErrnoTexts[errnum];
 }
