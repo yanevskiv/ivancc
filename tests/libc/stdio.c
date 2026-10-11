@@ -8,6 +8,9 @@
 // | atexit's
 // (Test) Error:
 // | unbuffered
+// | first: Numerical argument out of domain
+// | Numerical result out of range
+// | Invalid or incomplete multibyte or wide character
 // (Test) Input:
 // | abc
 // | a line read in two parts
@@ -29,6 +32,7 @@
 // tmpnam giving a different name each call, one no file has (S7.19.4.4p2), in its array or its own (S7.19.4.4p3),
 // and perror writing its string, a colon and a space, where it has one, then strerror's text and a new-line to stderr (S7.19.10.4p2).
 
+#include <_test.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <iso646.h>
@@ -48,56 +52,38 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define SMALL 16
-#define HOLD  64
-#define PRIME 251
-#define BIG   (3 * BUFSIZ + 5)
-#define WIDE  (BUFSIZ + 100)
-#define MANY  (FOPEN_MAX - 3)
-#define KINDS 3
-#define NAMES 25
+#if defined(NULL) && _IOFBF != _IOLBF && _IOFBF != _IONBF && _IOLBF != _IONBF && BUFSIZ >= 256 && EOF < 0 && FOPEN_MAX >= 8 && FILENAME_MAX >= 1 && L_tmpnam >= 1 && TMP_MAX >= 25 && SEEK_CUR != SEEK_END && SEEK_CUR != SEEK_SET && SEEK_END != SEEK_SET
+#define DIRECTIVE 1
+#else
+#define DIRECTIVE 0
+#endif
 
+#if defined(stderr) && defined(stdin) && defined(stdout)
+#define STREAMS 1
+#else
+#define STREAMS 0
+#endif
+
+#define NONE   (-1)
+#define SMALL  16
+#define LINE   32
+#define HOLD   64
+#define PRIME  251
+#define BIG    (3 * BUFSIZ + 5)
+#define WIDE   (BUFSIZ + 100)
+#define MANY   (FOPEN_MAX - 3)
+#define MODES  15
+#define NAMES  25
+#define BYTES  8
+#define CTRL_Z 26
 #define LONGER "a line longer than the buffer it passes through\n"
+#define DIGITS "0123456789abcdefghijklmnopqrstuvwxyz"
 
-#ifndef NULL
-#error "NULL is not defined"
-#endif
+// Bytes a text stream might change, which a binary one must not.
+static const unsigned char bytes[BYTES] = {0, UCHAR_MAX, '\n', '\r', '\n', CTRL_Z, 'a', 0};
 
-#if ! defined(_IOFBF) || ! defined(_IOLBF) || ! defined(_IONBF) || _IOFBF == _IOLBF || _IOFBF == _IONBF || _IOLBF == _IONBF
-#error "_IOFBF, _IOLBF and _IONBF are not distinct"
-#endif
-
-#if ! defined(BUFSIZ) || BUFSIZ < 256
-#error "BUFSIZ is not defined as at least 256"
-#endif
-
-#if ! defined(EOF) || EOF >= 0
-#error "EOF is not defined as negative"
-#endif
-
-#if ! defined(FOPEN_MAX) || FOPEN_MAX < 8
-#error "FOPEN_MAX is not defined as at least 8"
-#endif
-
-#if ! defined(FILENAME_MAX) || FILENAME_MAX < 1
-#error "FILENAME_MAX is not defined as positive"
-#endif
-
-#if ! defined(L_tmpnam) || L_tmpnam < 1
-#error "L_tmpnam is not defined as positive"
-#endif
-
-#if ! defined(TMP_MAX) || TMP_MAX < 25
-#error "TMP_MAX is not defined as at least 25"
-#endif
-
-#if ! defined(SEEK_CUR) || ! defined(SEEK_END) || ! defined(SEEK_SET) || SEEK_CUR == SEEK_END || SEEK_CUR == SEEK_SET || SEEK_END == SEEK_SET
-#error "SEEK_CUR, SEEK_END and SEEK_SET are not distinct"
-#endif
-
-#if ! defined(stderr) || ! defined(stdin) || ! defined(stdout)
-#error "stderr, stdin and stdout are not macros"
-#endif
+// fopen's modes, the last of which leaves its file empty.
+static const char *const modes[MODES] = {"r", "rb", "r+", "rb+", "r+b", "a", "ab", "a+", "ab+", "a+b", "w", "wb", "w+", "wb+", "w+b"};
 
 static char outbuf[SMALL];
 static char inbuf[SMALL];
@@ -105,307 +91,761 @@ static char filebuf[SMALL];
 static unsigned char wide[WIDE];
 static char names[NAMES][L_tmpnam];
 
+// Write a line as exit runs, after all that main wrote.
 static void last(void)
 {
     puts("atexit's");
 }
 
-static int put(const char *name, const char *mode, const char *str)
+// Tell whether a file opened in a mode takes a string and closes.
+static bool put(const char *name, const char *mode, const char *str)
 {
+    int lost = 0;
     FILE *file = fopen(name, mode);
 
-    return file != NULL and fputs(str, file) >= 0 and fclose(file) == 0;
+    if (! _TEST_TRUE(file != NULL)) {
+        return false;
+    }
+    lost += ! _TEST_TRUE(fputs(str, file) >= 0);
+    lost += ! _TEST_INT(fclose(file), 0);
+    return lost == 0;
 }
 
-static int holds(const char *name, const char *str)
+// Tell whether a file holds a string and no more.
+static bool holds(const char *name, const char *str)
 {
+    int lost = 0;
+    size_t len;
     FILE *file = fopen(name, "r");
     char got[HOLD];
-    size_t len;
 
-    if (file == NULL) return 0;
+    if (! _TEST_TRUE(file != NULL)) {
+        return false;
+    }
     len = fread(got, 1, sizeof(got) - 1, file);
     got[len] = '\0';
-    return feof(file) and not ferror(file) and fclose(file) == 0 and strcmp(got, str) == 0;
+    lost += ! _TEST_STR(got, str);
+    lost += ! _TEST_TRUE(feof(file));
+    lost += ! _TEST_TRUE(! ferror(file));
+    lost += ! _TEST_INT(fclose(file), 0);
+    return lost == 0;
 }
 
-static int reads(FILE *file, const char *prefix, int number)
+// Tell whether fgets reads a stream's next line, or what is left, as given.
+static bool reads(FILE *file, const char *want)
 {
-    char want[HOLD];
+    int lost = 0;
     char got[HOLD];
 
-    strcat(strcat(strcpy(want, prefix), strerror(number)), "\n");
-    return fgets(got, sizeof(got), file) == got and strcmp(got, want) == 0;
+    got[0] = '\0';
+    lost += ! _TEST_TRUE(fgets(got, sizeof(got), file) == got);
+    lost += ! _TEST_STR(got, want);
+    return lost == 0;
 }
 
-int main(void)
+// Return the place of the first mode a file does not open and close in.
+static int unopened(void)
 {
-    static const char *const modes[] = {"r", "rb", "r+", "rb+", "r+b", "a", "ab", "a+", "ab+", "a+b", "w", "wb", "w+", "wb+", "w+b"};
-    static const unsigned char bytes[] = {0, UCHAR_MAX, '\n', '\r', '\n', 26, 'a', 0};
-    static const int kinds[KINDS] = {_IOFBF, _IOLBF, _IONBF};
-    static const char longer[] = LONGER;
-    static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-    FILE *streams[3];
-    FILE *many[MANY];
+    int k;
     FILE *file;
-    FILE *other;
-    char name[] = "many?";
-    char block[HOLD];
-    char line[32];
-    size_t size = sizeof(FILE);
-    size_t k;
-    size_t n;
-    fpos_t pos;
-    long at;
-    int bad = 0;
 
-    streams[0] = stdin;
-    streams[1] = stdout;
-    streams[2] = stderr;
-    if (streams[0] == NULL or streams[1] == NULL or streams[2] == NULL) return 1;
-    if (streams[0] == streams[1] or streams[0] == streams[2] or streams[1] == streams[2]) return 2;
-    if (size == 0) return 3;
-    if (sizeof(longer) <= SMALL) return 4;
-
-    while (bad == _IOFBF or bad == _IOLBF or bad == _IONBF) {
-        bad++;
-    }
-    if (setvbuf(stdout, NULL, bad, 0) == 0) return 5;
-    if (setvbuf(stdout, outbuf, _IOFBF, sizeof(outbuf)) != 0) return 6;
-    setbuf(stderr, NULL);
-    if (atexit(last) != 0) return 7;
-
-    if (putchar('a') != 'a') return 8;
-    if (putc('b', stdout) != 'b') return 9;
-    if (fputc('c' + UCHAR_MAX + 1, stdout) != 'c') return 10;
-    if (fputc('\n', stdout) != '\n') return 11;
-    if (fputs("fputs, ", stdout) < 0) return 12;
-    if (puts("puts") < 0) return 13;
-    if (fwrite("fwrite ", 1, 7, stdout) != 7) return 14;
-    if (fwrite("0123456789", 5, 2, stdout) != 2) return 15;
-    if (fwrite("x", 0, 3, stdout) != 0 or fwrite("x", 1, 0, stdout) != 0) return 16;
-    if (putchar('\n') != '\n') return 17;
-    if (fputs(longer, stdout) < 0) return 18;
-    if (fflush(stdout) != 0) return 19;
-    if (fputs("after the flush\n", stdout) < 0) return 20;
-    if (fflush(NULL) != 0) return 21;
-
-    if (fputs("unbuffered\n", stderr) < 0) return 22;
-    if (fflush(stderr) != 0) return 23;
-
-    if (setvbuf(stdin, inbuf, _IOFBF, sizeof(inbuf)) != 0) return 24;
-    if (feof(stdin) or ferror(stdin)) return 25;
-    if (getchar() != 'a') return 26;
-    if (getc(stdin) != 'b') return 27;
-    if (fgetc(stdin) != 'c') return 28;
-    if (ungetc(EOF, stdin) != EOF) return 29;
-    if (ungetc('x' + UCHAR_MAX + 1, stdin) != 'x') return 30;
-    if (fgetc(stdin) != 'x' or fgetc(stdin) != '\n') return 31;
-    if (fgets(line, 8, stdin) != line or strcmp(line, "a line ") != 0) return 32;
-    if (fgets(line, sizeof(line), stdin) != line or strcmp(line, "read in two parts\n") != 0) return 33;
-    if (gets(line) != line or strcmp(line, "gets takes this one") != 0) return 34;
-    if (fread(block, 4, 9, stdin) != 9 or memcmp(block, digits, 36) != 0) return 35;
-    if (fread(block, 0, 3, stdin) != 0 or fread(block, 1, 0, stdin) != 0) return 36;
-    if (fgetc(stdin) != '\n') return 37;
-    if (fread(block, 7, 3, stdin) != 3 or memcmp(block, "a block over a refill", 21) != 0) return 38;
-    if (ungetc(UCHAR_MAX, stdin) != UCHAR_MAX or fgetc(stdin) != UCHAR_MAX) return 39;
-    if (fgetc(stdin) != '\n' or feof(stdin)) return 40;
-    if (fread(block, 3, 2, stdin) != 1 or memcmp(block, "end", 3) != 0) return 41;
-    if (not feof(stdin) or ferror(stdin)) return 42;
-    if (fgetc(stdin) != EOF) return 43;
-    if (fgets(line, sizeof(line), stdin) != NULL or strcmp(line, "gets takes this one") != 0) return 44;
-    if (gets(line) != NULL) return 45;
-    clearerr(stdin);
-    if (feof(stdin) or ferror(stdin)) return 46;
-    if (fgetc(stdin) != EOF or not feof(stdin)) return 47;
-    if (ungetc('z', stdin) != 'z' or feof(stdin)) return 48;
-    if (fgets(line, sizeof(line), stdin) != line or strcmp(line, "z") != 0 or not feof(stdin)) return 49;
-
-    if (fopen("missing", "r") != NULL or fopen("missing", "rb") != NULL or fopen("missing", "r+") != NULL) return 50;
-    file = fopen("file", "w");
-    if (file == NULL or file == stdin or file == stdout or file == stderr) return 51;
-    if (fputs("abcdef\n", file) < 0 or ferror(file) or fclose(file) != 0) return 52;
-    if (not holds("file", "abcdef\n")) return 53;
-    if (not put("file", "a", "gh\n") or not holds("file", "abcdef\ngh\n")) return 54;
-    if (not put("file", "w", "abcdef") or not holds("file", "abcdef")) return 55;
-    if (not put("made by a", "a", "a") or not put("made by w+", "w+", "w+") or not put("made by a+", "a+", "a+")) return 56;
-    if (not holds("made by a", "a") or not holds("made by w+", "w+") or not holds("made by a+", "a+")) return 57;
-
-    file = fopen("file", "r+");
-    if (file == NULL or fputs("XY", file) < 0 or fflush(file) != 0) return 58;
-    if (fgetc(file) != 'c' or fread(block, 1, 8, file) != 3 or memcmp(block, "def", 3) != 0) return 59;
-    if (not feof(file) or fputs("gh", file) < 0 or fclose(file) != 0) return 60;
-    if (not holds("file", "XYcdefgh")) return 61;
-    file = fopen("file", "w+");
-    if (file == NULL or fputs("hello", file) < 0 or fflush(file) != 0) return 62;
-    if (fgetc(file) != EOF or not feof(file) or fclose(file) != 0) return 63;
-    file = fopen("file", "a+");
-    if (file == NULL or fputs(", world", file) < 0 or fflush(file) != 0) return 64;
-    if (fgetc(file) != EOF or fclose(file) != 0 or not holds("file", "hello, world")) return 65;
-    for (k = 0; k < sizeof(modes) / sizeof(modes[0]); k++) {
+    for (k = 0; k < MODES; k++) {
         file = fopen("file", modes[k]);
-        if (file == NULL or fclose(file) != 0) return 66;
+        if (file == NULL || fclose(file) != 0) {
+            return k;
+        }
     }
-    if (not holds("file", "")) return 67;
+    return NONE;
+}
 
-    file = fopen("bytes", "wb");
-    if (file == NULL or fwrite(bytes, 1, sizeof(bytes), file) != sizeof(bytes) or fclose(file) != 0) return 68;
-    file = fopen("bytes", "rb");
-    if (file == NULL or fread(block, 1, sizeof(block), file) != sizeof(bytes) or memcmp(block, bytes, sizeof(bytes)) != 0) return 69;
-    if (not feof(file) or fclose(file) != 0) return 70;
-    file = fopen("big", "wb");
-    if (file == NULL) return 71;
+// Write BIG bytes one at a time, and return the first fputc fails, or NONE.
+static long unwritten(FILE *file)
+{
+    long k;
+
     for (k = 0; k < BIG; k++) {
-        if (fputc((int) (k % PRIME), file) == EOF) return 72;
+        if (fputc((int) (k % PRIME), file) == EOF) {
+            return k;
+        }
     }
-    if (fclose(file) != 0) return 73;
-    file = fopen("big", "rb");
-    if (file == NULL) return 74;
+    return NONE;
+}
+
+// Read BIG bytes one at a time, and return the first that is not its own.
+static long misread(FILE *file)
+{
+    long k;
+
     for (k = 0; k < BIG; k++) {
-        if (fgetc(file) != (int) (k % PRIME)) return 75;
+        if (fgetc(file) != (int) (k % PRIME)) {
+            return k;
+        }
     }
-    if (fgetc(file) != EOF or not feof(file) or ferror(file) or fclose(file) != 0) return 76;
+    return NONE;
+}
+
+// Give each byte of the wide block a value its place alone decides.
+static void pattern(void)
+{
+    size_t k;
+
     for (k = 0; k < sizeof(wide); k++) {
         wide[k] = (unsigned char) (k % PRIME);
     }
-    file = fopen("big", "wb");
-    if (file == NULL or fputc('!', file) != '!' or fwrite(wide, sizeof(wide), 1, file) != 1 or fclose(file) != 0) return 77;
-    memset(wide, 0, sizeof(wide));
-    file = fopen("big", "rb");
-    if (file == NULL or fgetc(file) != '!' or fread(wide, 1, sizeof(wide), file) != sizeof(wide)) return 78;
+}
+
+// Return the place of the first byte of the wide block not its own, or NONE.
+static long unpatterned(void)
+{
+    size_t k;
+
     for (k = 0; k < sizeof(wide); k++) {
-        if (wide[k] != k % PRIME) return 79;
-    }
-    if (fgetc(file) != EOF or fclose(file) != 0) return 80;
-
-    for (k = 0; k < MANY; k++) {
-        name[strlen(name) - 1] = digits[k];
-        many[k] = fopen(name, "w");
-        if (many[k] == NULL or fputc(digits[k], many[k]) == EOF) return 81;
-    }
-    for (k = 1; k < MANY; k += 2) {
-        if (fclose(many[k]) != 0) return 82;
-    }
-    for (k = 0; k < MANY; k += 2) {
-        if (fclose(many[k]) != 0) return 83;
-    }
-    for (k = 0; k < MANY; k++) {
-        name[strlen(name) - 1] = digits[k];
-        line[0] = digits[k];
-        line[1] = '\0';
-        if (not holds(name, line)) return 84;
-    }
-
-    for (k = 0; k < KINDS; k++) {
-        file = fopen("file", "w");
-        if (file == NULL or setvbuf(file, kinds[k] == _IONBF ? NULL : filebuf, kinds[k], sizeof(filebuf)) != 0) return 85;
-        if (fputs(longer, file) < 0 or fputs("two\n", file) < 0 or fclose(file) != 0) return 86;
-        file = fopen("file", "r");
-        if (file == NULL or setvbuf(file, kinds[k] == _IONBF ? NULL : filebuf, kinds[k], sizeof(filebuf)) != 0) return 87;
-        if (fgets(block, sizeof(block), file) != block or strcmp(block, longer) != 0) return 88;
-        if (fgets(block, sizeof(block), file) != block or strcmp(block, "two\n") != 0) return 89;
-        if (fgets(block, sizeof(block), file) != NULL or not feof(file) or fclose(file) != 0) return 90;
-    }
-
-    file = fopen("file", "w");
-    if (file == NULL or fputs("first", file) < 0) return 91;
-    if (freopen("other", "w", file) != file or fputs("second", file) < 0) return 92;
-    if (freopen("file", "r", file) != file or fgets(line, sizeof(line), file) != line or strcmp(line, "first") != 0) return 93;
-    if (not feof(file) or freopen("other", "a+", file) != file or feof(file) or ferror(file)) return 94;
-    if (fputs("!", file) < 0 or fclose(file) != 0 or not holds("other", "second!")) return 95;
-    file = fopen("file", "r");
-    if (file == NULL or fgetc(file) != 'f' or ungetc('?', file) != '?') return 96;
-    if (freopen("other", "r", file) != file or fgets(line, sizeof(line), file) != line or strcmp(line, "second!") != 0) return 97;
-    if (freopen("missing", "r", file) != NULL) return 98;
-    if (not feof(stdin) or freopen("other", "r", stdin) != stdin or feof(stdin) or ferror(stdin)) return 99;
-    if (getchar() != 's' or gets(line) != line or strcmp(line, "econd!") != 0) return 100;
-
-    file = fopen("pos", "w+b");
-    if (file == NULL or ftell(file) != 0 or fwrite(digits, 1, 36, file) != 36 or ftell(file) != 36) return 101;
-    rewind(file);
-    if (ftell(file) != 0 or fgetc(file) != '0' or ftell(file) != 1) return 102;
-    if (fseek(file, 10, SEEK_SET) != 0 or fgetc(file) != 'a' or ftell(file) != 11) return 103;
-    if (fseek(file, 5, SEEK_CUR) != 0 or ftell(file) != 16 or fgetc(file) != 'g') return 104;
-    if (fseek(file, -7, SEEK_CUR) != 0 or ftell(file) != 10 or fgetc(file) != 'a') return 105;
-    if (ungetc('?', file) != '?' or ftell(file) != 10 or fseek(file, 0, SEEK_CUR) != 0 or fgetc(file) != 'a') return 106;
-    if (fread(block, 1, sizeof(block), file) != 25 or not feof(file)) return 107;
-    if (fseek(file, 0, SEEK_CUR) != 0 or feof(file) or ftell(file) != 36) return 108;
-    if (fgetc(file) != EOF or not feof(file)) return 109;
-    rewind(file);
-    if (feof(file) or ferror(file) or fgetc(file) != '0') return 110;
-    if (fseek(file, -1, SEEK_SET) == 0) return 111;
-    if (fseek(file, 10, SEEK_SET) != 0 or fread(block, 1, 2, file) != 2 or memcmp(block, "ab", 2) != 0) return 112;
-    if (fseek(file, 0, SEEK_CUR) != 0 or fwrite("XY", 1, 2, file) != 2 or ftell(file) != 14) return 113;
-    if (fseek(file, -4, SEEK_CUR) != 0 or fread(block, 1, 6, file) != 6 or memcmp(block, "abXYef", 6) != 0) return 114;
-    if (fgetpos(file, &pos) != 0 or fgetc(file) != 'g' or fgetc(file) != 'h') return 115;
-    if (fsetpos(file, &pos) != 0 or fgetc(file) != 'g' or ftell(file) != 17) return 116;
-    if (fclose(file) != 0 or not holds("pos", "0123456789abXYefghijklmnopqrstuvwxyz")) return 117;
-
-    if (not put("pos", "w", "one\ntwo\nthree\n")) return 118;
-    file = fopen("pos", "r+");
-    if (file == NULL or fgets(line, sizeof(line), file) != line or strcmp(line, "one\n") != 0) return 119;
-    at = ftell(file);
-    if (at < 0 or fgets(line, sizeof(line), file) != line or strcmp(line, "two\n") != 0) return 120;
-    if (fgets(line, sizeof(line), file) != line or strcmp(line, "three\n") != 0) return 121;
-    if (fseek(file, at, SEEK_SET) != 0 or fgets(line, sizeof(line), file) != line or strcmp(line, "two\n") != 0) return 122;
-    if (fseek(file, 0, SEEK_END) != 0 or fgetc(file) != EOF or not feof(file)) return 123;
-    if (fseek(file, 0, SEEK_END) != 0 or feof(file) or fputs("four\n", file) < 0) return 124;
-    if (fseek(file, at, SEEK_SET) != 0 or fgets(line, sizeof(line), file) != line or strcmp(line, "two\n") != 0) return 125;
-    if (fclose(file) != 0 or not holds("pos", "one\ntwo\nthree\nfour\n")) return 126;
-
-    if (not put("pos", "w", "abc")) return 127;
-    file = fopen("pos", "a");
-    if (file == NULL or fseek(file, 0, SEEK_SET) != 0 or fputs("def", file) < 0 or fclose(file) != 0) return 128;
-    file = fopen("pos", "a+b");
-    if (file == NULL or fseek(file, 1, SEEK_SET) != 0 or fgetc(file) != 'b') return 129;
-    if (fseek(file, 0, SEEK_SET) != 0 or fputc('g', file) != 'g' or fclose(file) != 0) return 130;
-    if (not holds("pos", "abcdefg")) return 131;
-
-    file = fopen("big", "rb");
-    if (file == NULL or fseek(file, BUFSIZ + 50, SEEK_SET) != 0 or fgetc(file) != (BUFSIZ + 49) % PRIME) return 132;
-    if (ftell(file) != BUFSIZ + 51 or fseek(file, -(long) BUFSIZ, SEEK_CUR) != 0 or fgetc(file) != 50) return 133;
-    if (fseek(file, 3, SEEK_CUR) != 0 or fgetc(file) != 54 or ftell(file) != 56 or fclose(file) != 0) return 134;
-
-    if (remove("missing") == 0 or rename("missing", "other name") == 0) return 135;
-    if (not put("old", "w", "moved") or rename("old", "new") != 0) return 136;
-    if (fopen("old", "r") != NULL or not holds("new", "moved")) return 137;
-    if (remove("new") != 0 or fopen("new", "r") != NULL or remove("new") == 0) return 138;
-
-    file = tmpfile();
-    other = tmpfile();
-    if (file == NULL or other == NULL or file == other) return 139;
-    if (fwrite(bytes, 1, sizeof(bytes), file) != sizeof(bytes) or fputs("the other's", other) < 0) return 140;
-    rewind(file);
-    rewind(other);
-    if (fread(block, 1, sizeof(block), file) != sizeof(bytes) or memcmp(block, bytes, sizeof(bytes)) != 0) return 141;
-    if (fgets(line, sizeof(line), other) != line or strcmp(line, "the other's") != 0) return 142;
-    if (fseek(file, 2, SEEK_SET) != 0 or fputc('!', file) != '!' or fseek(file, 2, SEEK_SET) != 0 or fgetc(file) != '!') return 143;
-    if (fclose(file) != 0 or fclose(other) != 0) return 144;
-
-    for (k = 0; k < NAMES; k++) {
-        char *got = tmpnam(k % 2 == 0 ? names[k] : NULL);
-
-        if (got == NULL or strlen(got) >= L_tmpnam or (k % 2 == 0 and got != names[k])) return 145;
-        if (k % 2 != 0) strcpy(names[k], got);
-        if (fopen(names[k], "r") != NULL) return 146;
-        for (n = 0; n < k; n++) {
-            if (strcmp(names[n], names[k]) == 0) return 147;
+        if (wide[k] != k % PRIME) {
+            return (long) k;
         }
     }
-    if (not put(names[0], "w", "named") or not holds(names[0], "named") or remove(names[0]) != 0) return 148;
+    return NONE;
+}
 
-    if (freopen("errors", "w", stderr) != stderr) return 149;
+// Open MANY files at once, a digit to each, and return the first to fail.
+static int crowd(void)
+{
+    int k;
+    char name[] = "many?";
+    FILE *many[MANY];
+
+    for (k = 0; k < MANY; k++) {
+        name[sizeof(name) - 2] = DIGITS[k];
+        many[k] = fopen(name, "w");
+        if (many[k] == NULL || fputc(DIGITS[k], many[k]) == EOF) {
+            return k;
+        }
+    }
+    for (k = 1; k < MANY; k += 2) {
+        if (fclose(many[k]) != 0) {
+            return k;
+        }
+    }
+    for (k = 0; k < MANY; k += 2) {
+        if (fclose(many[k]) != 0) {
+            return k;
+        }
+    }
+    return NONE;
+}
+
+// Return the first of the MANY files that does not hold its digit, or NONE.
+static int uncrowded(void)
+{
+    int k;
+    char name[] = "many?";
+    char digit[2];
+
+    for (k = 0; k < MANY; k++) {
+        name[sizeof(name) - 2] = DIGITS[k];
+        digit[0] = DIGITS[k];
+        digit[1] = '\0';
+        if (! holds(name, digit)) {
+            return k;
+        }
+    }
+    return NONE;
+}
+
+// Tell whether a stream buffered one way writes and reads lines past its size.
+static bool buffers(int kind)
+{
+    int lost = 0;
+    char *buf = kind == _IONBF ? NULL : filebuf;
+    FILE *file = fopen("file", "w");
+
+    if (! _TEST_TRUE(file != NULL)) {
+        return false;
+    }
+    lost += ! _TEST_INT(setvbuf(file, buf, kind, sizeof(filebuf)), 0);
+    lost += ! _TEST_TRUE(fputs(LONGER, file) >= 0);
+    lost += ! _TEST_TRUE(fputs("two\n", file) >= 0);
+    lost += ! _TEST_INT(fclose(file), 0);
+    file = fopen("file", "r");
+    if (! _TEST_TRUE(file != NULL)) {
+        return false;
+    }
+    lost += ! _TEST_INT(setvbuf(file, buf, kind, sizeof(filebuf)), 0);
+    lost += ! reads(file, LONGER);
+    lost += ! reads(file, "two\n");
+    lost += ! _TEST_INT(fgetc(file), EOF);
+    lost += ! _TEST_TRUE(feof(file));
+    lost += ! _TEST_INT(fclose(file), 0);
+    return lost == 0;
+}
+
+// Take NAMES names from tmpnam, and return the first that is not a new one.
+static int unnamed(void)
+{
+    int k;
+    int n;
+    const char *got;
+
+    for (k = 0; k < NAMES; k++) {
+        got = tmpnam(k % 2 == 0 ? names[k] : NULL);
+        if (got == NULL || strlen(got) >= L_tmpnam || (k % 2 == 0 && got != names[k])) {
+            return k;
+        }
+        if (k % 2 != 0) {
+            strcpy(names[k], got);
+        }
+        if (fopen(names[k], "r") != NULL) {
+            return k;
+        }
+        for (n = 0; n < k; n++) {
+            if (strcmp(names[n], names[k]) == 0) {
+                return k;
+            }
+        }
+    }
+    return NONE;
+}
+
+// The macros are defined, in a directive too, and within their limits.
+static void Test_StdioMacros(void)
+{
+    _TEST_INT(DIRECTIVE, 1);
+    _TEST_INT(STREAMS, 1);
+    _TEST_TRUE(NULL == (void *) 0);
+    _TEST_TRUE(_IOFBF != _IOLBF && _IOFBF != _IONBF && _IOLBF != _IONBF);
+    _TEST_TRUE(BUFSIZ >= 256);
+    _TEST_TRUE(EOF < 0);
+    _TEST_TRUE(FOPEN_MAX >= 8);
+    _TEST_TRUE(FILENAME_MAX >= 1);
+    _TEST_TRUE(L_tmpnam >= 1);
+    _TEST_TRUE(TMP_MAX >= NAMES);
+    _TEST_TRUE(SEEK_CUR != SEEK_END && SEEK_CUR != SEEK_SET && SEEK_END != SEEK_SET);
+    _TEST_TRUE(sizeof(FILE) > 0);
+    _TEST_TRUE(sizeof(fpos_t) > 0);
+    _TEST_TRUE(sizeof(LONGER) > SMALL);
+}
+
+// The three standard streams are three streams.
+static void Test_StdioStreams(void)
+{
+    FILE *in = stdin;
+    FILE *out = stdout;
+    FILE *err = stderr;
+
+    _TEST_TRUE(in != NULL);
+    _TEST_TRUE(out != NULL);
+    _TEST_TRUE(err != NULL);
+    _TEST_TRUE(in != out);
+    _TEST_TRUE(in != err);
+    _TEST_TRUE(out != err);
+}
+
+// Each output function writes through a buffer smaller than what it is given.
+static void Test_StdioOutput(void)
+{
+    int bad = 0;
+
+    while (bad == _IOFBF || bad == _IOLBF || bad == _IONBF) {
+        bad++;
+    }
+    _TEST_TRUE(setvbuf(stdout, NULL, bad, 0) != 0);
+    _TEST_INT(setvbuf(stdout, outbuf, _IOFBF, sizeof(outbuf)), 0);
+    setbuf(stderr, NULL);
+    _TEST_INT(atexit(last), 0);
+
+    _TEST_INT(putchar('a'), 'a');
+    _TEST_INT(putc('b', stdout), 'b');
+    _TEST_INT(fputc('c' + UCHAR_MAX + 1, stdout), 'c');
+    _TEST_INT(fputc('\n', stdout), '\n');
+    _TEST_TRUE(fputs("fputs, ", stdout) >= 0);
+    _TEST_TRUE(puts("puts") >= 0);
+    _TEST_UINT(fwrite("fwrite ", 1, 7, stdout), 7);
+    _TEST_UINT(fwrite("0123456789", 5, 2, stdout), 2);
+    _TEST_UINT(fwrite("x", 0, 3, stdout), 0);
+    _TEST_UINT(fwrite("x", 1, 0, stdout), 0);
+    _TEST_INT(putchar('\n'), '\n');
+    _TEST_TRUE(fputs(LONGER, stdout) >= 0);
+    _TEST_INT(fflush(stdout), 0);
+    _TEST_TRUE(fputs("after the flush\n", stdout) >= 0);
+    _TEST_INT(fflush(NULL), 0);
+
+    _TEST_TRUE(fputs("unbuffered\n", stderr) >= 0);
+    _TEST_INT(fflush(stderr), 0);
+}
+
+// Each input function reads through a small buffer, to the end of its file.
+static void Test_StdioInput(void)
+{
+    char line[LINE];
+    char block[HOLD];
+
+    _TEST_INT(setvbuf(stdin, inbuf, _IOFBF, sizeof(inbuf)), 0);
+    _TEST_TRUE(! feof(stdin));
+    _TEST_TRUE(! ferror(stdin));
+    _TEST_INT(getchar(), 'a');
+    _TEST_INT(getc(stdin), 'b');
+    _TEST_INT(fgetc(stdin), 'c');
+    _TEST_INT(ungetc(EOF, stdin), EOF);
+    _TEST_INT(ungetc('x' + UCHAR_MAX + 1, stdin), 'x');
+    _TEST_INT(fgetc(stdin), 'x');
+    _TEST_INT(fgetc(stdin), '\n');
+    _TEST_TRUE(fgets(line, 8, stdin) == line);
+    _TEST_STR(line, "a line ");
+    _TEST_TRUE(fgets(line, sizeof(line), stdin) == line);
+    _TEST_STR(line, "read in two parts\n");
+    _TEST_TRUE(gets(line) == line);
+    _TEST_STR(line, "gets takes this one");
+    _TEST_UINT(fread(block, 4, 9, stdin), 9);
+    _TEST_MEM(block, DIGITS, 36);
+    _TEST_UINT(fread(block, 0, 3, stdin), 0);
+    _TEST_UINT(fread(block, 1, 0, stdin), 0);
+    _TEST_INT(fgetc(stdin), '\n');
+    _TEST_UINT(fread(block, 7, 3, stdin), 3);
+    _TEST_MEM(block, "a block over a refill", 21);
+    _TEST_INT(ungetc(UCHAR_MAX, stdin), UCHAR_MAX);
+    _TEST_INT(fgetc(stdin), UCHAR_MAX);
+    _TEST_INT(fgetc(stdin), '\n');
+    _TEST_TRUE(! feof(stdin));
+    _TEST_UINT(fread(block, 3, 2, stdin), 1);
+    _TEST_MEM(block, "end", 3);
+    _TEST_TRUE(feof(stdin));
+    _TEST_TRUE(! ferror(stdin));
+
+    _TEST_INT(fgetc(stdin), EOF);
+    _TEST_TRUE(fgets(line, sizeof(line), stdin) == NULL);
+    _TEST_STR(line, "gets takes this one");
+    _TEST_TRUE(gets(line) == NULL);
+    clearerr(stdin);
+    _TEST_TRUE(! feof(stdin));
+    _TEST_TRUE(! ferror(stdin));
+    _TEST_INT(fgetc(stdin), EOF);
+    _TEST_TRUE(feof(stdin));
+    _TEST_INT(ungetc('z', stdin), 'z');
+    _TEST_TRUE(! feof(stdin));
+    _TEST_TRUE(fgets(line, sizeof(line), stdin) == line);
+    _TEST_STR(line, "z");
+    _TEST_TRUE(feof(stdin));
+}
+
+// fopen makes, appends to and empties a file, and opens no file to read.
+static void Test_StdioOpening(void)
+{
+    FILE *file;
+
+    _TEST_TRUE(fopen("missing", "r") == NULL);
+    _TEST_TRUE(fopen("missing", "rb") == NULL);
+    _TEST_TRUE(fopen("missing", "r+") == NULL);
+    file = fopen("file", "w");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_TRUE(file != stdin && file != stdout && file != stderr);
+    _TEST_TRUE(fputs("abcdef\n", file) >= 0);
+    _TEST_TRUE(! ferror(file));
+    _TEST_INT(fclose(file), 0);
+    _TEST_TRUE(holds("file", "abcdef\n"));
+    _TEST_TRUE(put("file", "a", "gh\n"));
+    _TEST_TRUE(holds("file", "abcdef\ngh\n"));
+    _TEST_TRUE(put("file", "w", "abcdef"));
+    _TEST_TRUE(holds("file", "abcdef"));
+    _TEST_TRUE(put("made by a", "a", "a"));
+    _TEST_TRUE(put("made by w+", "w+", "w+"));
+    _TEST_TRUE(put("made by a+", "a+", "a+"));
+    _TEST_TRUE(holds("made by a", "a"));
+    _TEST_TRUE(holds("made by w+", "w+"));
+    _TEST_TRUE(holds("made by a+", "a+"));
+}
+
+// An update stream writes after a flush or a read to its file's end.
+static void Test_StdioUpdate(void)
+{
+    FILE *file = fopen("file", "r+");
+    char block[HOLD];
+
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_TRUE(fputs("XY", file) >= 0);
+    _TEST_INT(fflush(file), 0);
+    _TEST_INT(fgetc(file), 'c');
+    _TEST_UINT(fread(block, 1, 8, file), 3);
+    _TEST_MEM(block, "def", 3);
+    _TEST_TRUE(feof(file));
+    _TEST_TRUE(fputs("gh", file) >= 0);
+    _TEST_INT(fclose(file), 0);
+    _TEST_TRUE(holds("file", "XYcdefgh"));
+
+    file = fopen("file", "w+");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_TRUE(fputs("hello", file) >= 0);
+    _TEST_INT(fflush(file), 0);
+    _TEST_INT(fgetc(file), EOF);
+    _TEST_TRUE(feof(file));
+    _TEST_INT(fclose(file), 0);
+
+    file = fopen("file", "a+");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_TRUE(fputs(", world", file) >= 0);
+    _TEST_INT(fflush(file), 0);
+    _TEST_INT(fgetc(file), EOF);
+    _TEST_INT(fclose(file), 0);
+    _TEST_TRUE(holds("file", "hello, world"));
+
+    _TEST_INT(unopened(), NONE);
+    _TEST_TRUE(holds("file", ""));
+}
+
+// A binary stream keeps every byte, through more than its buffer holds.
+static void Test_StdioBinary(void)
+{
+    FILE *file = fopen("bytes", "wb");
+    char block[HOLD];
+
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_UINT(fwrite(bytes, 1, sizeof(bytes), file), sizeof(bytes));
+    _TEST_INT(fclose(file), 0);
+    file = fopen("bytes", "rb");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_UINT(fread(block, 1, sizeof(block), file), sizeof(bytes));
+    _TEST_MEM(block, bytes, sizeof(bytes));
+    _TEST_TRUE(feof(file));
+    _TEST_INT(fclose(file), 0);
+
+    file = fopen("big", "wb");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(unwritten(file), NONE);
+    _TEST_INT(fclose(file), 0);
+    file = fopen("big", "rb");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(misread(file), NONE);
+    _TEST_INT(fgetc(file), EOF);
+    _TEST_TRUE(feof(file));
+    _TEST_TRUE(! ferror(file));
+    _TEST_INT(fclose(file), 0);
+
+    pattern();
+    file = fopen("big", "wb");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(fputc('!', file), '!');
+    _TEST_UINT(fwrite(wide, sizeof(wide), 1, file), 1);
+    _TEST_INT(fclose(file), 0);
+    memset(wide, 0, sizeof(wide));
+    file = fopen("big", "rb");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(fgetc(file), '!');
+    _TEST_UINT(fread(wide, 1, sizeof(wide), file), sizeof(wide));
+    _TEST_INT(unpatterned(), NONE);
+    _TEST_INT(fgetc(file), EOF);
+    _TEST_INT(fclose(file), 0);
+}
+
+// As many streams as FOPEN_MAX allows are open at once, each its own file's.
+static void Test_StdioMany(void)
+{
+    _TEST_INT(crowd(), NONE);
+    _TEST_INT(uncrowded(), NONE);
+}
+
+// A stream writes and reads the same however setvbuf buffers it.
+static void Test_StdioBuffering(void)
+{
+    _TEST_TRUE(buffers(_IOFBF));
+    _TEST_TRUE(buffers(_IOLBF));
+    _TEST_TRUE(buffers(_IONBF));
+}
+
+// freopen gives a stream another file, its indicators and pushed-back gone.
+static void Test_StdioFreopen(void)
+{
+    FILE *file = fopen("file", "w");
+    char line[LINE];
+
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_TRUE(fputs("first", file) >= 0);
+    if (! _TEST_TRUE(freopen("other", "w", file) == file)) {
+        return;
+    }
+    _TEST_TRUE(fputs("second", file) >= 0);
+    if (! _TEST_TRUE(freopen("file", "r", file) == file)) {
+        return;
+    }
+    _TEST_TRUE(reads(file, "first"));
+    _TEST_TRUE(feof(file));
+    if (! _TEST_TRUE(freopen("other", "a+", file) == file)) {
+        return;
+    }
+    _TEST_TRUE(! feof(file));
+    _TEST_TRUE(! ferror(file));
+    _TEST_TRUE(fputs("!", file) >= 0);
+    _TEST_INT(fclose(file), 0);
+    _TEST_TRUE(holds("other", "second!"));
+
+    file = fopen("file", "r");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(fgetc(file), 'f');
+    _TEST_INT(ungetc('?', file), '?');
+    if (! _TEST_TRUE(freopen("other", "r", file) == file)) {
+        return;
+    }
+    _TEST_TRUE(reads(file, "second!"));
+    _TEST_TRUE(freopen("missing", "r", file) == NULL);
+
+    _TEST_TRUE(feof(stdin));
+    if (! _TEST_TRUE(freopen("other", "r", stdin) == stdin)) {
+        return;
+    }
+    _TEST_TRUE(! feof(stdin));
+    _TEST_TRUE(! ferror(stdin));
+    _TEST_INT(getchar(), 's');
+    _TEST_TRUE(gets(line) == line);
+    _TEST_STR(line, "econd!");
+}
+
+// A binary stream's position counts characters, and each call moves it.
+static void Test_StdioPositions(void)
+{
+    fpos_t pos;
+    FILE *file = fopen("pos", "w+b");
+    char block[HOLD];
+
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(ftell(file), 0);
+    _TEST_UINT(fwrite(DIGITS, 1, 36, file), 36);
+    _TEST_INT(ftell(file), 36);
+    rewind(file);
+    _TEST_INT(ftell(file), 0);
+    _TEST_INT(fgetc(file), '0');
+    _TEST_INT(ftell(file), 1);
+    _TEST_INT(fseek(file, 10, SEEK_SET), 0);
+    _TEST_INT(fgetc(file), 'a');
+    _TEST_INT(ftell(file), 11);
+    _TEST_INT(fseek(file, 5, SEEK_CUR), 0);
+    _TEST_INT(ftell(file), 16);
+    _TEST_INT(fgetc(file), 'g');
+    _TEST_INT(fseek(file, -7, SEEK_CUR), 0);
+    _TEST_INT(ftell(file), 10);
+    _TEST_INT(fgetc(file), 'a');
+
+    _TEST_INT(ungetc('?', file), '?');
+    _TEST_INT(ftell(file), 10);
+    _TEST_INT(fseek(file, 0, SEEK_CUR), 0);
+    _TEST_INT(fgetc(file), 'a');
+    _TEST_UINT(fread(block, 1, sizeof(block), file), 25);
+    _TEST_TRUE(feof(file));
+    _TEST_INT(fseek(file, 0, SEEK_CUR), 0);
+    _TEST_TRUE(! feof(file));
+    _TEST_INT(ftell(file), 36);
+    _TEST_INT(fgetc(file), EOF);
+    _TEST_TRUE(feof(file));
+    rewind(file);
+    _TEST_TRUE(! feof(file));
+    _TEST_TRUE(! ferror(file));
+    _TEST_INT(fgetc(file), '0');
+    _TEST_TRUE(fseek(file, -1, SEEK_SET) != 0);
+
+    _TEST_INT(fseek(file, 10, SEEK_SET), 0);
+    _TEST_UINT(fread(block, 1, 2, file), 2);
+    _TEST_MEM(block, "ab", 2);
+    _TEST_INT(fseek(file, 0, SEEK_CUR), 0);
+    _TEST_UINT(fwrite("XY", 1, 2, file), 2);
+    _TEST_INT(ftell(file), 14);
+    _TEST_INT(fseek(file, -4, SEEK_CUR), 0);
+    _TEST_UINT(fread(block, 1, 6, file), 6);
+    _TEST_MEM(block, "abXYef", 6);
+    _TEST_INT(fgetpos(file, &pos), 0);
+    _TEST_INT(fgetc(file), 'g');
+    _TEST_INT(fgetc(file), 'h');
+    _TEST_INT(fsetpos(file, &pos), 0);
+    _TEST_INT(fgetc(file), 'g');
+    _TEST_INT(ftell(file), 17);
+    _TEST_INT(fclose(file), 0);
+    _TEST_TRUE(holds("pos", "0123456789abXYefghijklmnopqrstuvwxyz"));
+}
+
+// A text stream returns to where ftell said it was, and writes at its end.
+static void Test_StdioTextPositions(void)
+{
+    long at;
+    FILE *file;
+
+    _TEST_TRUE(put("pos", "w", "one\ntwo\nthree\n"));
+    file = fopen("pos", "r+");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_TRUE(reads(file, "one\n"));
+    at = ftell(file);
+    _TEST_TRUE(at >= 0);
+    _TEST_TRUE(reads(file, "two\n"));
+    _TEST_TRUE(reads(file, "three\n"));
+    _TEST_INT(fseek(file, at, SEEK_SET), 0);
+    _TEST_TRUE(reads(file, "two\n"));
+    _TEST_INT(fseek(file, 0, SEEK_END), 0);
+    _TEST_INT(fgetc(file), EOF);
+    _TEST_TRUE(feof(file));
+    _TEST_INT(fseek(file, 0, SEEK_END), 0);
+    _TEST_TRUE(! feof(file));
+    _TEST_TRUE(fputs("four\n", file) >= 0);
+    _TEST_INT(fseek(file, at, SEEK_SET), 0);
+    _TEST_TRUE(reads(file, "two\n"));
+    _TEST_INT(fclose(file), 0);
+    _TEST_TRUE(holds("pos", "one\ntwo\nthree\nfour\n"));
+}
+
+// An append stream writes at its file's end wherever it is positioned.
+static void Test_StdioAppend(void)
+{
+    FILE *file;
+
+    _TEST_TRUE(put("pos", "w", "abc"));
+    file = fopen("pos", "a");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(fseek(file, 0, SEEK_SET), 0);
+    _TEST_TRUE(fputs("def", file) >= 0);
+    _TEST_INT(fclose(file), 0);
+    file = fopen("pos", "a+b");
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(fseek(file, 1, SEEK_SET), 0);
+    _TEST_INT(fgetc(file), 'b');
+    _TEST_INT(fseek(file, 0, SEEK_SET), 0);
+    _TEST_INT(fputc('g', file), 'g');
+    _TEST_INT(fclose(file), 0);
+    _TEST_TRUE(holds("pos", "abcdefg"));
+}
+
+// fseek moves within a stream's buffer and past it, either way.
+static void Test_StdioSeeking(void)
+{
+    FILE *file = fopen("big", "rb");
+
+    if (! _TEST_TRUE(file != NULL)) {
+        return;
+    }
+    _TEST_INT(fseek(file, BUFSIZ + 50, SEEK_SET), 0);
+    _TEST_INT(fgetc(file), (BUFSIZ + 49) % PRIME);
+    _TEST_INT(ftell(file), BUFSIZ + 51);
+    _TEST_INT(fseek(file, -(long) BUFSIZ, SEEK_CUR), 0);
+    _TEST_INT(fgetc(file), 50);
+    _TEST_INT(fseek(file, 3, SEEK_CUR), 0);
+    _TEST_INT(fgetc(file), 54);
+    _TEST_INT(ftell(file), 56);
+    _TEST_INT(fclose(file), 0);
+}
+
+// A removed file opens no more, and a renamed one by its new name alone.
+static void Test_StdioFiles(void)
+{
+    _TEST_TRUE(remove("missing") != 0);
+    _TEST_TRUE(rename("missing", "other name") != 0);
+    _TEST_TRUE(put("old", "w", "moved"));
+    _TEST_INT(rename("old", "new"), 0);
+    _TEST_TRUE(fopen("old", "r") == NULL);
+    _TEST_TRUE(holds("new", "moved"));
+    _TEST_INT(remove("new"), 0);
+    _TEST_TRUE(fopen("new", "r") == NULL);
+    _TEST_TRUE(remove("new") != 0);
+}
+
+// Each of tmpfile's streams is an update stream of a file of its own.
+static void Test_StdioTmpfile(void)
+{
+    FILE *file = tmpfile();
+    FILE *other = tmpfile();
+    char block[HOLD];
+
+    if (! _TEST_TRUE(file != NULL && other != NULL)) {
+        return;
+    }
+    _TEST_TRUE(file != other);
+    _TEST_UINT(fwrite(bytes, 1, sizeof(bytes), file), sizeof(bytes));
+    _TEST_TRUE(fputs("the other's", other) >= 0);
+    rewind(file);
+    rewind(other);
+    _TEST_UINT(fread(block, 1, sizeof(block), file), sizeof(bytes));
+    _TEST_MEM(block, bytes, sizeof(bytes));
+    _TEST_TRUE(reads(other, "the other's"));
+    _TEST_INT(fseek(file, 2, SEEK_SET), 0);
+    _TEST_INT(fputc('!', file), '!');
+    _TEST_INT(fseek(file, 2, SEEK_SET), 0);
+    _TEST_INT(fgetc(file), '!');
+    _TEST_INT(fclose(file), 0);
+    _TEST_INT(fclose(other), 0);
+}
+
+// tmpnam gives a new name each call, one a file can then be made by.
+static void Test_StdioTmpnam(void)
+{
+    _TEST_INT(unnamed(), NONE);
+    _TEST_TRUE(put(names[0], "w", "named"));
+    _TEST_TRUE(holds(names[0], "named"));
+    _TEST_INT(remove(names[0]), 0);
+}
+
+// perror writes its string, where it has one, and errno's text to stderr.
+static void Test_StdioPerror(void)
+{
     errno = EDOM;
     perror("first");
     errno = ERANGE;
     perror(NULL);
     errno = EILSEQ;
     perror("");
-    if (ferror(stderr) or fflush(stderr) != 0) return 150;
-    file = fopen("errors", "r");
-    if (file == NULL or not reads(file, "first: ", EDOM)) return 151;
-    if (not reads(file, "", ERANGE) or not reads(file, "", EILSEQ)) return 152;
-    if (fgetc(file) != EOF or fclose(file) != 0) return 153;
-    if (fclose(stdin) != 0) return 154;
-    return 0;
+    _TEST_TRUE(! ferror(stderr));
+    _TEST_INT(fflush(stderr), 0);
+}
+
+// A standard stream closes as any other does.
+static void Test_StdioClosing(void)
+{
+    _TEST_INT(fclose(stdin), 0);
+}
+
+int main(void)
+{
+    Test_StdioMacros();
+    Test_StdioStreams();
+    Test_StdioOutput();
+    Test_StdioInput();
+    Test_StdioOpening();
+    Test_StdioUpdate();
+    Test_StdioBinary();
+    Test_StdioMany();
+    Test_StdioBuffering();
+    Test_StdioFreopen();
+    Test_StdioPositions();
+    Test_StdioTextPositions();
+    Test_StdioAppend();
+    Test_StdioSeeking();
+    Test_StdioFiles();
+    Test_StdioTmpfile();
+    Test_StdioTmpnam();
+    Test_StdioPerror();
+    Test_StdioClosing();
+    return _Test_Status();
 }
