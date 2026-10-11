@@ -116,6 +116,20 @@ void _Test_WriteBytes(const void *obj, unsigned long size)
     _Test_WriteChar('"');
 }
 
+// Write the size bytes of obj as one hexadecimal number, its last byte first.
+void _Test_WriteHexBytes(const void *obj, unsigned long size)
+{
+    unsigned long k = size;
+    const unsigned char *bytes = obj;
+
+    _Test_Write(_ERR_TEST_HEX);
+    while (k > 0) {
+        k--;
+        _Test_WriteChar(_TEST_HEX_DIGITS[bytes[k] >> _TEST_HEX_BITS]);
+        _Test_WriteChar(_TEST_HEX_DIGITS[bytes[k] & _TEST_HEX_MASK]);
+    }
+}
+
 // Write the string str as a string literal, or say that it is none.
 void _Test_WriteStr(const char *str)
 {
@@ -166,6 +180,15 @@ _Bool _Test_Equal(const char *str1, const char *str2)
     return str1[k] == str2[k];
 }
 
+// Tell whether two floating values have the same bytes, or neither a number.
+_Bool _Test_Alike(long double value1, long double value2)
+{
+    if (value1 != value1 && value2 != value2) {
+        return 1;
+    }
+    return _Test_Same(&value1, &value2, _TEST_FLOAT_SIZE);
+}
+
 // Check that a value is not zero, and report it where it is.
 _Bool _Test_True(long value, const char *expr, const char *file, unsigned int line, const char *func)
 {
@@ -202,6 +225,22 @@ _Bool _Test_Uint(unsigned long got, unsigned long expected, const char *expr, co
         _Test_Write(_ERR_TEST_EXPECTED);
     }
     return got == expected;
+}
+
+// Check that a floating value is the one expected, and report another's bytes.
+_Bool _Test_Float(long double got, long double expected, const char *expr, const char *file, unsigned int line, const char *func)
+{
+    _Bool alike = _Test_Alike(got, expected);
+
+    if (! alike) {
+        _Test_Fail(expr, file, line, func);
+        _Test_Write(_ERR_TEST_EXPR);
+        _Test_WriteHexBytes(&got, _TEST_FLOAT_SIZE);
+        _Test_Write(_ERR_TEST_GOT);
+        _Test_WriteHexBytes(&expected, _TEST_FLOAT_SIZE);
+        _Test_Write(_ERR_TEST_EXPECTED);
+    }
+    return alike;
 }
 
 // Check that a string is the one expected, and report another.

@@ -49,10 +49,19 @@
 #define _TEST_OCTAL_MASK   7
 #define _TEST_OCTAL_DIGITS 3
 
-// Check a condition, a number, a string or an object where the test stands.
+// The bits of a hexadecimal digit, its largest value, and every digit.
+#define _TEST_HEX_BITS   4
+#define _TEST_HEX_MASK   15
+#define _TEST_HEX_DIGITS "0123456789abcdef"
+
+// The bytes of a long double that hold its value: the x87's ten of sixteen.
+#define _TEST_FLOAT_SIZE 10
+
+// Check a condition, a value, a string or an object where the test stands.
 #define _TEST_TRUE(cond)               _Test_True((cond) != 0, #cond, __FILE__, __LINE__, __func__)
 #define _TEST_INT(got, expected)       _Test_Int((got), (expected), #got, __FILE__, __LINE__, __func__)
 #define _TEST_UINT(got, expected)      _Test_Uint((got), (expected), #got, __FILE__, __LINE__, __func__)
+#define _TEST_FLOAT(got, expected)     _Test_Float((got), (expected), #got, __FILE__, __LINE__, __func__)
 #define _TEST_STR(got, expected)       _Test_Str((got), (expected), #got, __FILE__, __LINE__, __func__)
 #define _TEST_MEM(got, expected, size) _Test_Mem((got), (expected), (size), #got, __FILE__, __LINE__, __func__)
 
@@ -67,17 +76,20 @@ void          _Test_WriteUint(unsigned long value);
 void          _Test_WriteInt(long value);
 void          _Test_WriteByte(unsigned char byte);
 void          _Test_WriteBytes(const void *obj, unsigned long size);
+void          _Test_WriteHexBytes(const void *obj, unsigned long size);
 void          _Test_WriteStr(const char *str);
 void          _Test_Fail(const char *expr, const char *file, unsigned int line, const char *func);
 
 // Comparison
 _Bool _Test_Same(const void *obj1, const void *obj2, unsigned long size);
 _Bool _Test_Equal(const char *str1, const char *str2);
+_Bool _Test_Alike(long double value1, long double value2);
 
 // Checks
 _Bool _Test_True(long value, const char *expr, const char *file, unsigned int line, const char *func);
 _Bool _Test_Int(long got, long expected, const char *expr, const char *file, unsigned int line, const char *func);
 _Bool _Test_Uint(unsigned long got, unsigned long expected, const char *expr, const char *file, unsigned int line, const char *func);
+_Bool _Test_Float(long double got, long double expected, const char *expr, const char *file, unsigned int line, const char *func);
 _Bool _Test_Str(const char *got, const char *expected, const char *expr, const char *file, unsigned int line, const char *func);
 _Bool _Test_Mem(const void *got, const void *expected, unsigned long size, const char *expr, const char *file, unsigned int line, const char *func);
 int   _Test_Status(void);

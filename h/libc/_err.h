@@ -191,6 +191,9 @@
 // The text a failed check's report gives for a string that is none.
 #define _ERR_TEST_NULL "a null pointer"
 
+// The text a failed check's report puts before a floating value's bytes.
+#define _ERR_TEST_HEX "0x"
+
 // strerror's texts by error number, null for the numbers Linux leaves out.
 extern const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT];
 

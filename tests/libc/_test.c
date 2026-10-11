@@ -1,30 +1,36 @@
 // (Test) Status: 1
 // (Test) Error:
-// | _test.c:75: Test_TestFails: zero is false
-// | _test.c:76: Test_TestFails: 1 == 2 is false
-// | _test.c:77: Test_TestFails: none is false
-// | _test.c:78: Test_TestFails: -5 is -5, expected 5
-// | _test.c:79: Test_TestFails: least is -9223372036854775808, expected 0
-// | _test.c:80: Test_TestFails: 0 is 0, expected 9223372036854775807
-// | _test.c:81: Test_TestFails: most is 18446744073709551615, expected 0
-// | _test.c:82: Test_TestFails: sizeof(word) is 4, expected 3
-// | _test.c:83: Test_TestFails: word is "abc", expected "abd"
-// | _test.c:84: Test_TestFails: word is "abc", expected "ab"
-// | _test.c:85: Test_TestFails: "" is "", expected "a"
-// | _test.c:86: Test_TestFails: none is a null pointer, expected ""
-// | _test.c:87: Test_TestFails: word is "abc", expected a null pointer
-// | _test.c:88: Test_TestFails: odd is "a\"b\\c\012\177\377 ~", expected ""
-// | _test.c:89: Test_TestFails: bytes is "ab\000c", expected "ab\000d"
-// | _test.c:90: Test_TestFails: word is "abc\000", expected "abc\001"
-// | _test.c:101: main: _Test_Status() is 1, expected 0
-// <_test.h> defines _TEST_TRUE, _TEST_INT, _TEST_UINT, _TEST_STR and _TEST_MEM, and declares _Test_Status,
+// | _test.c:95: Test_TestFails: zero is false
+// | _test.c:96: Test_TestFails: 1 == 2 is false
+// | _test.c:97: Test_TestFails: none is false
+// | _test.c:98: Test_TestFails: -5 is -5, expected 5
+// | _test.c:99: Test_TestFails: least is -9223372036854775808, expected 0
+// | _test.c:100: Test_TestFails: 0 is 0, expected 9223372036854775807
+// | _test.c:101: Test_TestFails: most is 18446744073709551615, expected 0
+// | _test.c:102: Test_TestFails: sizeof(word) is 4, expected 3
+// | _test.c:103: Test_TestFails: 1.5 is 0x3fffc000000000000000, expected 0x4000a000000000000000
+// | _test.c:104: Test_TestFails: 0.1F is 0x3ffbcccccd0000000000, expected 0x3ffbccccccccccccd000
+// | _test.c:105: Test_TestFails: nought is 0x00000000000000000000, expected 0x80000000000000000000
+// | _test.c:106: Test_TestFails: infinite is 0x7fff8000000000000000, expected 0x3fff8000000000000000
+// | _test.c:107: Test_TestFails: third is 0x3ffdaaaaaaaaaaaaaaab, expected 0x3ffd8000000000000000
+// | _test.c:108: Test_TestFails: word is "abc", expected "abd"
+// | _test.c:109: Test_TestFails: word is "abc", expected "ab"
+// | _test.c:110: Test_TestFails: "" is "", expected "a"
+// | _test.c:111: Test_TestFails: none is a null pointer, expected ""
+// | _test.c:112: Test_TestFails: word is "abc", expected a null pointer
+// | _test.c:113: Test_TestFails: odd is "a\"b\\c\012\177\377 ~", expected ""
+// | _test.c:114: Test_TestFails: bytes is "ab\000c", expected "ab\000d"
+// | _test.c:115: Test_TestFails: word is "abc\000", expected "abc\001"
+// | _test.c:126: main: _Test_Status() is 1, expected 0
+// <_test.h> defines _TEST_TRUE, _TEST_INT, _TEST_UINT, _TEST_FLOAT, _TEST_STR and _TEST_MEM, and declares _Test_Status,
 // a check that holds printing nothing and returning 1, one that does not returning 0 and reporting its file, line, function and expression to standard error,
-// with both values but for a condition's, a string or an object written as a string literal and a null string as none,
+// with both values but for a condition's, a floating value written as the ten bytes of its long double in hexadecimal, a string or an object as a string literal and a null string as none,
+// a floating value matching one of its bytes alone, so a zero no zero of the other sign, but for two that are no numbers, which match,
 // each check evaluating its operands once, and the status 0 until a check fails and 1 from then on.
 
 #include <_test.h>
 
-#define PASSES 13
+#define PASSES 21
 #define FIRST  1
 
 static int calls;
@@ -41,6 +47,9 @@ static int Test_TestPasses(void)
 {
     static const char bytes[] = {'a', 'b', '\0', 'c'};
     static const char word[] = "abc";
+    volatile double nought = 0.0;
+    double invalid = nought / nought;
+    double infinite = 1 / nought;
     const char *none = 0;
     int kept = 0;
 
@@ -51,6 +60,14 @@ static int Test_TestPasses(void)
     kept += _TEST_INT(-9223372036854775807L - 1, -9223372036854775807L - 1);
     kept += _TEST_UINT(sizeof(word), 4);
     kept += _TEST_UINT(18446744073709551615UL, 18446744073709551615UL);
+    kept += _TEST_FLOAT(1.5F, 1.5);
+    kept += _TEST_FLOAT(0.1, 0.1);
+    kept += _TEST_FLOAT(1.0L / 3, 1.0L / 3);
+    kept += _TEST_FLOAT(-nought, -0.0);
+    kept += _TEST_FLOAT(infinite, infinite);
+    kept += _TEST_FLOAT(invalid, -invalid);
+    kept += _TEST_TRUE(! _Test_Alike(invalid, infinite));
+    kept += _TEST_TRUE(! _Test_Alike(infinite, -infinite));
     kept += _TEST_STR(word, "abc");
     kept += _TEST_STR("", "");
     kept += _TEST_STR(none, none);
@@ -68,6 +85,9 @@ static int Test_TestFails(void)
     static const char word[] = "abc";
     unsigned long most = 18446744073709551615UL;
     long least = -9223372036854775807L - 1;
+    long double third = 1.0L / 3;
+    volatile double nought = 0.0;
+    double infinite = 1 / nought;
     const char *none = 0;
     int zero = 0;
     int lost = 0;
@@ -80,6 +100,11 @@ static int Test_TestFails(void)
     lost += _TEST_INT(0, 9223372036854775807L);
     lost += _TEST_UINT(most, 0);
     lost += _TEST_UINT(sizeof(word), 3);
+    lost += _TEST_FLOAT(1.5, 2.5);
+    lost += _TEST_FLOAT(0.1F, 0.1);
+    lost += _TEST_FLOAT(nought, -nought);
+    lost += _TEST_FLOAT(infinite, 1);
+    lost += _TEST_FLOAT(third, 0.25);
     lost += _TEST_STR(word, "abd");
     lost += _TEST_STR(word, "ab");
     lost += _TEST_STR("", "a");
