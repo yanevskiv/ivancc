@@ -1,22 +1,22 @@
 // (Test) Status: 1
 // (Test) Error:
-// | libc_test__test.c:75: fails: zero is false
-// | libc_test__test.c:76: fails: 1 == 2 is false
-// | libc_test__test.c:77: fails: none is false
-// | libc_test__test.c:78: fails: -5 is -5, expected 5
-// | libc_test__test.c:79: fails: least is -9223372036854775808, expected 0
-// | libc_test__test.c:80: fails: 0 is 0, expected 9223372036854775807
-// | libc_test__test.c:81: fails: most is 18446744073709551615, expected 0
-// | libc_test__test.c:82: fails: sizeof(word) is 4, expected 3
-// | libc_test__test.c:83: fails: word is "abc", expected "abd"
-// | libc_test__test.c:84: fails: word is "abc", expected "ab"
-// | libc_test__test.c:85: fails: "" is "", expected "a"
-// | libc_test__test.c:86: fails: none is a null pointer, expected ""
-// | libc_test__test.c:87: fails: word is "abc", expected a null pointer
-// | libc_test__test.c:88: fails: odd is "a\"b\\c\012\177\377 ~", expected ""
-// | libc_test__test.c:89: fails: bytes is "ab\000c", expected "ab\000d"
-// | libc_test__test.c:90: fails: word is "abc\000", expected "abc\001"
-// | libc_test__test.c:101: main: _Test_Status() is 1, expected 0
+// | _test.c:75: fails: zero is false
+// | _test.c:76: fails: 1 == 2 is false
+// | _test.c:77: fails: none is false
+// | _test.c:78: fails: -5 is -5, expected 5
+// | _test.c:79: fails: least is -9223372036854775808, expected 0
+// | _test.c:80: fails: 0 is 0, expected 9223372036854775807
+// | _test.c:81: fails: most is 18446744073709551615, expected 0
+// | _test.c:82: fails: sizeof(word) is 4, expected 3
+// | _test.c:83: fails: word is "abc", expected "abd"
+// | _test.c:84: fails: word is "abc", expected "ab"
+// | _test.c:85: fails: "" is "", expected "a"
+// | _test.c:86: fails: none is a null pointer, expected ""
+// | _test.c:87: fails: word is "abc", expected a null pointer
+// | _test.c:88: fails: odd is "a\"b\\c\012\177\377 ~", expected ""
+// | _test.c:89: fails: bytes is "ab\000c", expected "ab\000d"
+// | _test.c:90: fails: word is "abc\000", expected "abc\001"
+// | _test.c:101: main: _Test_Status() is 1, expected 0
 // <_test.h> defines _TEST_TRUE, _TEST_INT, _TEST_UINT, _TEST_STR and _TEST_MEM, and declares _Test_Status,
 // a check that holds printing nothing and returning 1, one that does not returning 0 and reporting its file, line, function and expression to standard error,
 // with both values but for a condition's, a string or an object written as a string literal and a null string as none,

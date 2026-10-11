@@ -1,6 +1,6 @@
 // (Test) Status: 134
 // (Test) Error:
-// | a.out: libc_test_assert.c:92: fail: Assertion `str[0] == '"' || strcmp(str, "a\\b\"c") == 0' failed.
+// | a.out: assert.c:92: fail: Assertion `str[0] == '"' || strcmp(str, "a\\b\"c") == 0' failed.
 // <assert.h> defines assert, which does nothing under NDEBUG and otherwise reports a false argument and ends the program by SIGABRT (S7.2).
 
 #include <stddef.h>
