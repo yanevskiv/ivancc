@@ -1,6 +1,9 @@
 // (Test) Status: 0
-// <ctype.h> declares the character classification and case mapping functions (S7.4).
+// <ctype.h> declares isalnum, isalpha, isblank, iscntrl, isdigit, isgraph, islower, isprint, ispunct, isspace, isupper and isxdigit, each true of the characters of its class in the "C" locale and of no other (S7.4.1),
+// and tolower and toupper, each mapping a letter of the one case to its letter in the other and any other character to itself (S7.4.2), over every value of unsigned char (S7.4p1),
+// each a function a pointer reaches, and one a call reaches past any macro of its name, evaluating its argument once (S7.1.4p1).
 
+#include <_test.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <iso646.h>
@@ -11,62 +14,151 @@
 #include <errno.h>
 #include <ctype.h>
 
-#define UPPER  "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-#define LOWER  "abcdefghijklmnopqrstuvwxyz"
-#define DIGIT  "0123456789"
-#define XDIGIT "0123456789abcdefABCDEF"
-#define SPACE  " \t\n\v\f\r"
-#define BLANK  " \t"
-#define PUNCT  "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+#define NONE (-1)
 
-static int where(const char *set, int c)
+#define UPPER "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#define LOWER "abcdefghijklmnopqrstuvwxyz"
+#define DIGIT "0123456789"
+#define HEX   "abcdefABCDEF"
+#define SPACE " \t\n\v\f\r"
+#define BLANK " \t"
+#define PUNCT "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+#define CNTRL "\001\002\003\004\005\006\007\010\011\012\013\014\015\016\017\020\021\022\023\024\025\026\027\030\031\032\033\034\035\036\037\177"
+
+// Return a character's place in a set, or NONE where the set lacks it.
+static int place(const char *set, int ch)
 {
     int i;
 
     for (i = 0; set[i] != '\0'; i++) {
-        if ((unsigned char) set[i] == c) return i;
+        if ((unsigned char) set[i] == ch) {
+            return i;
+        }
     }
-    return -1;
+    return NONE;
 }
 
-static bool in(const char *set, int c)
+// Return the first character past null a class and its set differ on.
+static int misjudged(int (*classify)(int), const char *set)
 {
-    return where(set, c) >= 0;
+    int ch;
+
+    for (ch = 1; ch <= UCHAR_MAX; ch++) {
+        if ((classify(ch) != 0) != (place(set, ch) != NONE)) {
+            return ch;
+        }
+    }
+    return NONE;
 }
 
-static bool same(int got, bool want)
+// Return the first character a mapping does not take from a set to another.
+static int mismapped(int (*map)(int), const char *from, const char *to)
 {
-    return (got != 0) == want;
+    int at;
+    int ch;
+
+    for (ch = 0; ch <= UCHAR_MAX; ch++) {
+        at = place(from, ch);
+        if (map(ch) != (at == NONE ? ch : to[at])) {
+            return ch;
+        }
+    }
+    return NONE;
+}
+
+// Each classification is true of its class's characters and of no other.
+static void Test_CtypeClasses(void)
+{
+    _TEST_INT(misjudged(isalnum, UPPER LOWER DIGIT), NONE);
+    _TEST_INT(misjudged(isalpha, UPPER LOWER), NONE);
+    _TEST_INT(misjudged(isblank, BLANK), NONE);
+    _TEST_INT(misjudged(iscntrl, CNTRL), NONE);
+    _TEST_INT(misjudged(isdigit, DIGIT), NONE);
+    _TEST_INT(misjudged(isgraph, UPPER LOWER DIGIT PUNCT), NONE);
+    _TEST_INT(misjudged(islower, LOWER), NONE);
+    _TEST_INT(misjudged(isprint, UPPER LOWER DIGIT PUNCT " "), NONE);
+    _TEST_INT(misjudged(ispunct, PUNCT), NONE);
+    _TEST_INT(misjudged(isspace, SPACE), NONE);
+    _TEST_INT(misjudged(isupper, UPPER), NONE);
+    _TEST_INT(misjudged(isxdigit, DIGIT HEX), NONE);
+}
+
+// The null character is a control character and of no other class.
+static void Test_CtypeNull(void)
+{
+    _TEST_TRUE(! isalnum('\0'));
+    _TEST_TRUE(! isalpha('\0'));
+    _TEST_TRUE(! isblank('\0'));
+    _TEST_TRUE(iscntrl('\0'));
+    _TEST_TRUE(! isdigit('\0'));
+    _TEST_TRUE(! isgraph('\0'));
+    _TEST_TRUE(! islower('\0'));
+    _TEST_TRUE(! isprint('\0'));
+    _TEST_TRUE(! ispunct('\0'));
+    _TEST_TRUE(! isspace('\0'));
+    _TEST_TRUE(! isupper('\0'));
+    _TEST_TRUE(! isxdigit('\0'));
+}
+
+// A mapping gives a letter's other case and leaves any other character.
+static void Test_CtypeMapping(void)
+{
+    _TEST_INT(mismapped(tolower, UPPER, LOWER), NONE);
+    _TEST_INT(mismapped(toupper, LOWER, UPPER), NONE);
+    _TEST_INT(tolower('Q'), 'q');
+    _TEST_INT(tolower('q'), 'q');
+    _TEST_INT(tolower('7'), '7');
+    _TEST_INT(tolower('['), '[');
+    _TEST_INT(toupper('q'), 'Q');
+    _TEST_INT(toupper('Q'), 'Q');
+    _TEST_INT(toupper('7'), '7');
+    _TEST_INT(toupper('{'), '{');
+}
+
+// A plain call judges as the function does, and so does one past a macro.
+static void Test_CtypeCalls(void)
+{
+    int ch = '0';
+
+    _TEST_TRUE(isalnum('a') && isalnum('7') && ! isalnum('_'));
+    _TEST_TRUE(isalpha('a') && isalpha('Z') && ! isalpha('7'));
+    _TEST_TRUE(isblank(' ') && isblank('\t') && ! isblank('\n'));
+    _TEST_TRUE(iscntrl('\n') && iscntrl('\177') && ! iscntrl(' '));
+    _TEST_TRUE(isdigit('0') && isdigit('9') && ! isdigit('a'));
+    _TEST_TRUE(isgraph('a') && isgraph('~') && ! isgraph(' '));
+    _TEST_TRUE(islower('a') && islower('z') && ! islower('A'));
+    _TEST_TRUE(isprint('a') && isprint(' ') && ! isprint('\t'));
+    _TEST_TRUE(ispunct('!') && ispunct('~') && ! ispunct('a'));
+    _TEST_TRUE(isspace(' ') && isspace('\v') && ! isspace('a'));
+    _TEST_TRUE(isupper('A') && isupper('Z') && ! isupper('a'));
+    _TEST_TRUE(isxdigit('9') && isxdigit('f') && isxdigit('F') && ! isxdigit('g'));
+
+    _TEST_TRUE((isalnum)('a') && ! (isalnum)('_'));
+    _TEST_TRUE((isalpha)('a') && ! (isalpha)('7'));
+    _TEST_TRUE((isblank)(' ') && ! (isblank)('\n'));
+    _TEST_TRUE((iscntrl)('\n') && ! (iscntrl)(' '));
+    _TEST_TRUE((isdigit)('7') && ! (isdigit)('a'));
+    _TEST_TRUE((isgraph)('a') && ! (isgraph)(' '));
+    _TEST_TRUE((islower)('a') && ! (islower)('A'));
+    _TEST_TRUE((isprint)(' ') && ! (isprint)('\t'));
+    _TEST_TRUE((ispunct)('!') && ! (ispunct)('a'));
+    _TEST_TRUE((isspace)('\v') && ! (isspace)('a'));
+    _TEST_TRUE((isupper)('A') && ! (isupper)('a'));
+    _TEST_TRUE((isxdigit)('f') && ! (isxdigit)('g'));
+    _TEST_INT((tolower)('Q'), 'q');
+    _TEST_INT((toupper)('q'), 'Q');
+
+    _TEST_TRUE(isdigit(ch++));
+    _TEST_INT(ch, '1');
+    _TEST_INT(toupper(ch++), '1');
+    _TEST_INT(ch, '2');
 }
 
 int main(void)
 {
-    int (*classify)(int) = isalpha;
-    int (*map)(int) = toupper;
-    int c;
-
-    for (c = 0; c <= UCHAR_MAX; c++) {
-        bool alpha = in(UPPER, c) or in(LOWER, c);
-        bool alnum = alpha or in(DIGIT, c);
-        bool graph = alnum or in(PUNCT, c);
-
-        if (not same(isupper(c), in(UPPER, c))) return 1;
-        if (not same(islower(c), in(LOWER, c))) return 2;
-        if (not same(isalpha(c), alpha)) return 3;
-        if (not same(isdigit(c), in(DIGIT, c))) return 4;
-        if (not same(isalnum(c), alnum)) return 5;
-        if (not same(isxdigit(c), in(XDIGIT, c))) return 6;
-        if (not same(isspace(c), in(SPACE, c))) return 7;
-        if (not same(isblank(c), in(BLANK, c))) return 8;
-        if (not same(ispunct(c), in(PUNCT, c))) return 9;
-        if (not same(isgraph(c), graph)) return 10;
-        if (not same(isprint(c), graph or c == ' ')) return 11;
-        if (not same(iscntrl(c), c < ' ' or c == 0x7F)) return 12;
-        if (toupper(c) != (in(LOWER, c) ? UPPER[where(LOWER, c)] : c)) return 13;
-        if (tolower(c) != (in(UPPER, c) ? LOWER[where(UPPER, c)] : c)) return 14;
-    }
-    if (not classify('a') or classify('1')) return 15;
-    if (map('a') != 'A' or map('A') != 'A') return 16;
-    if (not (isdigit)('7') or (tolower)('Q') != 'q') return 17;
-    return 0;
+    Test_CtypeClasses();
+    Test_CtypeNull();
+    Test_CtypeMapping();
+    Test_CtypeCalls();
+    return _Test_Status();
 }
