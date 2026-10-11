@@ -63,13 +63,13 @@
 #include <_utf8.h>
 
 // Check that a block's header keeps the memory after it aligned.
-typedef char _Stdlib_CheckBlock[sizeof(struct _Stdlib_Block) == _STDLIB_ALIGN && _STDLIB_BLOCK_MIN == 2 * _STDLIB_ALIGN ? 1 : -1];
+typedef char _Stdlib_CheckBlock[sizeof(_Stdlib_Block) == _STDLIB_ALIGN && _STDLIB_BLOCK_MIN == 2 * _STDLIB_ALIGN ? 1 : -1];
 
 // Check that long and long long are intmax_t, as strtol and its family take.
 typedef char _Stdlib_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
 
 // The format of float, its exponents one below C's.
-const struct _Stdlib_Format _Stdlib_FloatFormat = {
+const _Stdlib_Format _Stdlib_FloatFormat = {
     .sf_mant     = FLT_MANT_DIG,
     .sf_min      = FLT_MIN_EXP - 1,
     .sf_max      = FLT_MAX_EXP - 1,
@@ -77,7 +77,7 @@ const struct _Stdlib_Format _Stdlib_FloatFormat = {
 };
 
 // The format of double, its exponents one below C's.
-const struct _Stdlib_Format _Stdlib_DoubleFormat = {
+const _Stdlib_Format _Stdlib_DoubleFormat = {
     .sf_mant     = DBL_MANT_DIG,
     .sf_min      = DBL_MIN_EXP - 1,
     .sf_max      = DBL_MAX_EXP - 1,
@@ -85,7 +85,7 @@ const struct _Stdlib_Format _Stdlib_DoubleFormat = {
 };
 
 // The format of long double, its exponents one below C's, its leading bit kept.
-const struct _Stdlib_Format _Stdlib_LongDoubleFormat = {
+const _Stdlib_Format _Stdlib_LongDoubleFormat = {
     .sf_mant     = LDBL_MANT_DIG,
     .sf_min      = LDBL_MIN_EXP - 1,
     .sf_max      = LDBL_MAX_EXP - 1,
@@ -99,11 +99,11 @@ int _Stdlib_RandRear;
 _Bool _Stdlib_RandSeeded;
 
 // The free blocks, in address order.
-struct _Stdlib_Block *_Stdlib_FreeList;
+_Stdlib_Block *_Stdlib_FreeList;
 
 // The first block of atexit's, C99's 32 without malloc, and the newest.
-struct _Stdlib_Exits _Stdlib_ExitBase;
-struct _Stdlib_Exits *_Stdlib_ExitTop = &_Stdlib_ExitBase;
+_Stdlib_Exits _Stdlib_ExitBase;
+_Stdlib_Exits *_Stdlib_ExitTop = &_Stdlib_ExitBase;
 
 // Read character index of str, a wide string when wide.
 int _Stdlib_CharAt(const void *str, _Bool wide, size_t index)
@@ -226,7 +226,7 @@ size_t _Stdlib_NotANumber(const void *str, _Bool wide, size_t index, unsigned lo
 }
 
 // Scan a decimal's digits and exponent at index, and give the index past them.
-size_t _Stdlib_ScanDecimal(const void *str, _Bool wide, size_t index, int point, struct _Stdlib_Decimal *dec)
+size_t _Stdlib_ScanDecimal(const void *str, _Bool wide, size_t index, int point, _Stdlib_Decimal *dec)
 {
     size_t i;
     _Bool digits = 0;
@@ -272,10 +272,10 @@ size_t _Stdlib_ScanDecimal(const void *str, _Bool wide, size_t index, int point,
 }
 
 // Convert a scanned decimal exactly to 64 bits and what lies below them.
-void _Stdlib_Decimal(const void *str, _Bool wide, int point, const struct _Stdlib_Decimal *dec, struct _Stdlib_Unrounded *value)
+void _Stdlib_ConvertDecimal(const void *str, _Bool wide, int point, const _Stdlib_Decimal *dec, _Stdlib_Unrounded *value)
 {
-    struct _Bigint_Number num;
-    struct _Bigint_Number den;
+    _Bigint_Number num;
+    _Bigint_Number den;
     size_t i = dec->sd_first;
     long count = dec->sd_count + dec->sd_sticky;
     long exp = dec->sd_exp - dec->sd_sticky;
@@ -340,7 +340,7 @@ void _Stdlib_Decimal(const void *str, _Bool wide, int point, const struct _Stdli
 }
 
 // Read a hexadecimal's digits and exponent at index, and give the end.
-size_t _Stdlib_Hex(const void *str, _Bool wide, size_t index, int point, struct _Stdlib_Unrounded *value)
+size_t _Stdlib_Hex(const void *str, _Bool wide, size_t index, int point, _Stdlib_Unrounded *value)
 {
     unsigned long long mant = 0;
     unsigned int extra = 0;
@@ -404,7 +404,7 @@ size_t _Stdlib_Hex(const void *str, _Bool wide, size_t index, int point, struct 
 }
 
 // Drop the low bits of value's mantissa, keeping what they were against half.
-void _Stdlib_Shift(struct _Stdlib_Unrounded *value, long bits)
+void _Stdlib_Shift(_Stdlib_Unrounded *value, long bits)
 {
     unsigned long long mant = value->su_mant;
     _Bool rest = value->su_rest != _STDLIB_REST_NONE;
@@ -427,9 +427,9 @@ void _Stdlib_Shift(struct _Stdlib_Unrounded *value, long bits)
 }
 
 // Round value to fmt to nearest, ties to even, with ERANGE as glibc's.
-void _Stdlib_Round(const struct _Stdlib_Unrounded *value, const struct _Stdlib_Format *fmt, struct _Stdlib_Real *real)
+void _Stdlib_Round(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real)
 {
-    struct _Stdlib_Unrounded part = *value;
+    _Stdlib_Unrounded part = *value;
     unsigned long long ones = ~0ULL >> (_STDLIB_MANT_BITS - fmt->sf_mant);
     _Bool tiny;
 
@@ -470,10 +470,10 @@ void _Stdlib_Round(const struct _Stdlib_Unrounded *value, const struct _Stdlib_F
 }
 
 // Convert the number at the start of str to fmt's fields, and give its end.
-size_t _Stdlib_ToReal(const void *str, _Bool wide, const struct _Stdlib_Format *fmt, struct _Stdlib_Real *real)
+size_t _Stdlib_ToReal(const void *str, _Bool wide, const _Stdlib_Format *fmt, _Stdlib_Real *real)
 {
-    struct _Stdlib_Unrounded value;
-    struct _Stdlib_Decimal dec;
+    _Stdlib_Unrounded value;
+    _Stdlib_Decimal dec;
     unsigned long long payload;
     int point = (unsigned char) localeconv()->decimal_point[0];
     size_t i = 0;
@@ -513,7 +513,7 @@ size_t _Stdlib_ToReal(const void *str, _Bool wide, const struct _Stdlib_Format *
             real->sr_mant = 0;
             return 0;
         }
-        _Stdlib_Decimal(str, wide, point, &dec, &value);
+        _Stdlib_ConvertDecimal(str, wide, point, &dec, &value);
     }
     _Stdlib_Round(&value, fmt, real);
     return end;
@@ -522,7 +522,7 @@ size_t _Stdlib_ToReal(const void *str, _Bool wide, const struct _Stdlib_Format *
 // Return the block size for size bytes, or 0 past PTRDIFF_MAX, as glibc's.
 size_t _Stdlib_BlockSize(size_t size)
 {
-    size_t header = sizeof(struct _Stdlib_Block);
+    size_t header = sizeof(_Stdlib_Block);
     size_t block;
 
     if (size > ((size_t) -1 >> 1) - header - _STDLIB_ALIGN) {
@@ -533,9 +533,9 @@ size_t _Stdlib_BlockSize(size_t size)
 }
 
 // Return the link to the first free block of at least size bytes, or NULL.
-struct _Stdlib_Block **_Stdlib_Fit(size_t size)
+_Stdlib_Block **_Stdlib_Fit(size_t size)
 {
-    struct _Stdlib_Block **link = &_Stdlib_FreeList;
+    _Stdlib_Block **link = &_Stdlib_FreeList;
 
     while (*link && (*link)->sb_size < size) {
         link = &(*link)->sb_next;
@@ -544,10 +544,10 @@ struct _Stdlib_Block **_Stdlib_Fit(size_t size)
 }
 
 // Return the link to the free block that starts where block ends, or NULL.
-struct _Stdlib_Block **_Stdlib_Link(const struct _Stdlib_Block *block)
+_Stdlib_Block **_Stdlib_Link(const _Stdlib_Block *block)
 {
     const char *end = (const char *) block + block->sb_size;
-    struct _Stdlib_Block **link = &_Stdlib_FreeList;
+    _Stdlib_Block **link = &_Stdlib_FreeList;
 
     while (*link && (const char *) *link < end) {
         link = &(*link)->sb_next;
@@ -556,14 +556,14 @@ struct _Stdlib_Block **_Stdlib_Link(const struct _Stdlib_Block *block)
 }
 
 // Take size bytes of the free block at link, and leave the rest of it free.
-void *_Stdlib_Take(struct _Stdlib_Block **link, size_t size)
+void *_Stdlib_Take(_Stdlib_Block **link, size_t size)
 {
-    struct _Stdlib_Block *block = *link;
+    _Stdlib_Block *block = *link;
 
     if (block->sb_size - size < _STDLIB_BLOCK_MIN) {
         *link = block->sb_next;
     } else {
-        struct _Stdlib_Block *rest = (struct _Stdlib_Block *) ((char *) block + size);
+        _Stdlib_Block *rest = (_Stdlib_Block *) ((char *) block + size);
         rest->sb_size = block->sb_size - size;
         rest->sb_next = block->sb_next;
         block->sb_size = size;
@@ -573,9 +573,9 @@ void *_Stdlib_Take(struct _Stdlib_Block **link, size_t size)
 }
 
 // Free what a block in use holds past size bytes.
-void _Stdlib_Trim(struct _Stdlib_Block *block, size_t size)
+void _Stdlib_Trim(_Stdlib_Block *block, size_t size)
 {
-    struct _Stdlib_Block *rest = (struct _Stdlib_Block *) ((char *) block + size);
+    _Stdlib_Block *rest = (_Stdlib_Block *) ((char *) block + size);
 
     if (block->sb_size - size >= _STDLIB_BLOCK_MIN) {
         rest->sb_size = block->sb_size - size;
@@ -585,11 +585,11 @@ void _Stdlib_Trim(struct _Stdlib_Block *block, size_t size)
 }
 
 // Free a block, in address order and merged with its free neighbours.
-void _Stdlib_Release(struct _Stdlib_Block *block)
+void _Stdlib_Release(_Stdlib_Block *block)
 {
-    struct _Stdlib_Block **link = &_Stdlib_FreeList;
-    struct _Stdlib_Block *prev = NULL;
-    struct _Stdlib_Block *next;
+    _Stdlib_Block **link = &_Stdlib_FreeList;
+    _Stdlib_Block *prev = NULL;
+    _Stdlib_Block *next;
 
     while (*link && *link < block) {
         prev = *link;
@@ -613,7 +613,7 @@ void _Stdlib_Release(struct _Stdlib_Block *block)
 int _Stdlib_Grow(size_t size)
 {
     char *start = _Sys_Brk(NULL);
-    struct _Stdlib_Block *block;
+    _Stdlib_Block *block;
     char *end;
 
     start += (_STDLIB_ALIGN - (unsigned long) start % _STDLIB_ALIGN) % _STDLIB_ALIGN;
@@ -624,7 +624,7 @@ int _Stdlib_Grow(size_t size)
     if (_Sys_Brk(end) != end) {
         return 0;
     }
-    block = (struct _Stdlib_Block *) start;
+    block = (_Stdlib_Block *) start;
     block->sb_size = size;
     _Stdlib_Release(block);
     return 1;
@@ -633,7 +633,7 @@ int _Stdlib_Grow(size_t size)
 // Take the function atexit registered last, or return NULL when none is left.
 void (*_Stdlib_PopExit(void))(void)
 {
-    struct _Stdlib_Exits *block = _Stdlib_ExitTop;
+    _Stdlib_Exits *block = _Stdlib_ExitTop;
 
     while (block->se_count == 0 && block->se_next) {
         _Stdlib_ExitTop = block->se_next;
@@ -861,7 +861,7 @@ long long atoll(const char *nptr)
 // Convert the start of the string nptr to a double, correctly rounded.
 double strtod(const char *restrict nptr, char **restrict endptr)
 {
-    struct _Stdlib_Real real;
+    _Stdlib_Real real;
     size_t end = _Stdlib_ToReal(nptr, 0, &_Stdlib_DoubleFormat, &real);
     unsigned long long bits = (unsigned long long) real.sr_exp << (DBL_MANT_DIG - 1) | real.sr_mant;
     double value;
@@ -879,7 +879,7 @@ double strtod(const char *restrict nptr, char **restrict endptr)
 // Convert the start of the string nptr to a float, correctly rounded.
 float strtof(const char *restrict nptr, char **restrict endptr)
 {
-    struct _Stdlib_Real real;
+    _Stdlib_Real real;
     size_t end = _Stdlib_ToReal(nptr, 0, &_Stdlib_FloatFormat, &real);
     unsigned int bits = real.sr_exp << (FLT_MANT_DIG - 1) | (unsigned int) real.sr_mant;
     float value;
@@ -897,7 +897,7 @@ float strtof(const char *restrict nptr, char **restrict endptr)
 // Convert the start of the string nptr to a long double, correctly rounded.
 long double strtold(const char *restrict nptr, char **restrict endptr)
 {
-    struct _Stdlib_Real real;
+    _Stdlib_Real real;
     size_t end = _Stdlib_ToReal(nptr, 0, &_Stdlib_LongDoubleFormat, &real);
     unsigned short top = (unsigned short) real.sr_exp;
     long double value = 0;
@@ -995,7 +995,7 @@ void *calloc(size_t nmemb, size_t size)
 void free(void *ptr)
 {
     if (ptr) {
-        _Stdlib_Release((struct _Stdlib_Block *) ptr - 1);
+        _Stdlib_Release((_Stdlib_Block *) ptr - 1);
     }
 }
 
@@ -1003,7 +1003,7 @@ void free(void *ptr)
 void *malloc(size_t size)
 {
     size_t need = _Stdlib_BlockSize(size);
-    struct _Stdlib_Block **link = need ? _Stdlib_Fit(need) : NULL;
+    _Stdlib_Block **link = need ? _Stdlib_Fit(need) : NULL;
 
     if (! link && need && _Stdlib_Grow(need)) {
         link = _Stdlib_Fit(need);
@@ -1019,8 +1019,8 @@ void *malloc(size_t size)
 void *realloc(void *ptr, size_t size)
 {
     size_t need = _Stdlib_BlockSize(size);
-    struct _Stdlib_Block *block;
-    struct _Stdlib_Block **link;
+    _Stdlib_Block *block;
+    _Stdlib_Block **link;
     void *moved;
 
     if (! ptr) {
@@ -1034,7 +1034,7 @@ void *realloc(void *ptr, size_t size)
         errno = _SYS_ENOMEM;
         return NULL;
     }
-    block = (struct _Stdlib_Block *) ptr - 1;
+    block = (_Stdlib_Block *) ptr - 1;
     link = need > block->sb_size ? _Stdlib_Link(block) : NULL;
     if (link && block->sb_size + (*link)->sb_size >= need) {
         block->sb_size += (*link)->sb_size;
@@ -1046,7 +1046,7 @@ void *realloc(void *ptr, size_t size)
     }
     moved = malloc(size);
     if (moved) {
-        memcpy(moved, ptr, block->sb_size - sizeof(struct _Stdlib_Block));
+        memcpy(moved, ptr, block->sb_size - sizeof(_Stdlib_Block));
         free(ptr);
     }
     return moved;
@@ -1067,7 +1067,7 @@ void abort(void)
 // Register func for exit to call, or return -1 out of memory, as glibc's.
 int atexit(void (*func)(void))
 {
-    struct _Stdlib_Exits *block = _Stdlib_ExitTop;
+    _Stdlib_Exits *block = _Stdlib_ExitTop;
 
     if (block->se_count == _STDLIB_EXITS) {
         block = malloc(sizeof(*block));

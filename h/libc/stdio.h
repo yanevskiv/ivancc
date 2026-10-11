@@ -117,6 +117,7 @@ typedef unsigned long size_t;
 typedef long fpos_t;
 
 // A stream: its descriptor, its buffer, what it may do and the stream after it.
+typedef struct _Stdio_File _Stdio_File;
 struct _Stdio_File {
     int sf_fd;
     int sf_flags;                // _STDIO_READ, _STDIO_WRITE and what happened
@@ -128,12 +129,13 @@ struct _Stdio_File {
     size_t sf_tail;              // the bytes the buffer holds, read or to write
     unsigned char sf_byte;       // an unbuffered stream's buffer
     unsigned char sf_back;       // the character ungetc pushed back
-    struct _Stdio_File *sf_next;
+    _Stdio_File *sf_next;
 };
 
 // Where formatted output goes: a stream, or else a string of a size.
+typedef struct _Stdio_Sink _Stdio_Sink;
 struct _Stdio_Sink {
-    struct _Stdio_File *ss_stream;
+    _Stdio_File *ss_stream;
     char *ss_str;
     size_t ss_size;              // the string's size, its null counted
     size_t ss_count;             // the characters given so far, kept or not
@@ -141,6 +143,7 @@ struct _Stdio_Sink {
 };
 
 // A conversion specification: its flags, width, precision, length and letter.
+typedef struct _Stdio_Directive _Stdio_Directive;
 struct _Stdio_Directive {
     int sd_flags;                // _STDIO_FLAG_LEFT and the rest
     int sd_width;
@@ -198,18 +201,18 @@ int    _Stdio_FlushAll(void);
 void   _Stdio_FlushLines(void);
 
 // Formatted output
-void   _Stdio_Emit(struct _Stdio_Sink *sink, const char *data, size_t len);
-void   _Stdio_Pad(struct _Stdio_Sink *sink, int ch, size_t len);
-void   _Stdio_Field(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir, const char *data, size_t len);
+void   _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len);
+void   _Stdio_Pad(_Stdio_Sink *sink, int ch, size_t len);
+void   _Stdio_Field(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *data, size_t len);
 size_t _Stdio_ParseFlags(const char *format, int *flags);
 size_t _Stdio_ParseCount(const char *format, int *count);
 size_t _Stdio_ParseLength(const char *format, int *length);
-size_t _Stdio_Parse(const char *format, struct _Stdio_Directive *dir);
-_Bool  _Stdio_Converts(const struct _Stdio_Directive *dir);
-void   _Stdio_Settle(struct _Stdio_Directive *dir);
-void   _Stdio_String(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir, const char *str);
-int    _Stdio_Format(struct _Stdio_Sink *sink, const char *format, _Stdio_VaList args);
-int    _Stdio_End(struct _Stdio_Sink *sink);
+size_t _Stdio_Parse(const char *format, _Stdio_Directive *dir);
+_Bool  _Stdio_Converts(const _Stdio_Directive *dir);
+void   _Stdio_Settle(_Stdio_Directive *dir);
+void   _Stdio_String(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *str);
+int    _Stdio_Format(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
+int    _Stdio_End(_Stdio_Sink *sink);
 
 // Positioning
 long _Stdio_Ahead(FILE *stream);

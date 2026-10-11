@@ -63,10 +63,10 @@
 #define _SYS_SIGSET_SIZE 8
 
 // Check that struct stat is as large as the kernel's.
-typedef char _Sys_CheckStat[sizeof(struct _Sys_Stat) == _SYS_STAT_SIZE ? 1 : -1];
+typedef char _Sys_CheckStat[sizeof(_Sys_Stat) == _SYS_STAT_SIZE ? 1 : -1];
 
 // Check that struct termios is laid out as the kernel's.
-typedef char _Sys_CheckTermios[sizeof(struct _Sys_Termios) == _SYS_TERMIOS_SIZE ? 1 : -1];
+typedef char _Sys_CheckTermios[sizeof(_Sys_Termios) == _SYS_TERMIOS_SIZE ? 1 : -1];
 
 #ifdef __x86_64__
 // Make a syscall with its number and six arguments.
@@ -113,7 +113,7 @@ long _Sys_Close(int fd)
 }
 
 // Fill info with what the file at path is, a link's own and not its target's.
-long _Sys_Lstat(const char *path, struct _Sys_Stat *info)
+long _Sys_Lstat(const char *path, _Sys_Stat *info)
 {
     return _Sys_Syscall(_SYS_NR_LSTAT, (long) path, (long) info, 0, 0, 0, 0);
 }
@@ -131,7 +131,7 @@ void *_Sys_Brk(void *addr)
 }
 
 // Install act as the action of the signal sig, and store the old one in oact.
-long _Sys_RtSigaction(int sig, const struct _Sys_Sigaction *act, struct _Sys_Sigaction *oact)
+long _Sys_RtSigaction(int sig, const _Sys_Sigaction *act, _Sys_Sigaction *oact)
 {
     return _Sys_Syscall(_SYS_NR_RT_SIGACTION, sig, (long) act, (long) oact, _SYS_SIGSET_SIZE, 0, 0);
 }
@@ -185,7 +185,7 @@ long _Sys_Unlink(const char *path)
 }
 
 // Read the clock clock into spec.
-long _Sys_ClockGettime(int clock, struct _Sys_Timespec *spec)
+long _Sys_ClockGettime(int clock, _Sys_Timespec *spec)
 {
     return _Sys_Syscall(_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
 }

@@ -42,7 +42,7 @@
 typedef char _Locale_CheckSize[sizeof(_Locale_SizeType) == sizeof(size_t) && (_Locale_SizeType) -1 == (size_t) -1 ? 1 : -1];
 
 // The names setlocale takes, each with the name it returns, as glibc's do.
-const struct _Locale_Name _Locale_Names[_LOCALE_NAMES] = {
+const _Locale_Name _Locale_Names[_LOCALE_NAMES] = {
     { _LOCALE_NAME_C, _LOCALE_NAME_C, 0 },
     { _LOCALE_NAME_POSIX, _LOCALE_NAME_C, 0 },
     { _LOCALE_NAME_UTF8, _LOCALE_NAME_UTF8, 1 },

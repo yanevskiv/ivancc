@@ -62,6 +62,7 @@
 typedef unsigned long _Locale_SizeType;
 
 // A name setlocale takes, the name it returns for it and its encoding.
+typedef struct _Locale_Name _Locale_Name;
 struct _Locale_Name {
     const char *ln_name;
     const char *ln_reported;
@@ -97,7 +98,7 @@ struct lconv {
 };
 
 // The names setlocale takes, each with the name it returns, as glibc's do.
-extern const struct _Locale_Name _Locale_Names[_LOCALE_NAMES];
+extern const _Locale_Name _Locale_Names[_LOCALE_NAMES];
 
 // The names of the categories, as a composite name writes them.
 extern const char *const _Locale_Categories[_LOCALE_CATEGORIES];

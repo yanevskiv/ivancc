@@ -136,7 +136,7 @@ struct tm *_Time_BreakDown(time_t value, struct tm *tm, const char *zone)
 }
 
 // Append the character ch to text.
-void _Time_PutChar(struct _Time_Text *text, char ch)
+void _Time_PutChar(_Time_Text *text, char ch)
 {
     if (text->tt_len < text->tt_size) {
         text->tt_str[text->tt_len] = ch;
@@ -145,7 +145,7 @@ void _Time_PutChar(struct _Time_Text *text, char ch)
 }
 
 // Append at most len characters of the string str to text.
-void _Time_PutString(struct _Time_Text *text, const char *str, size_t len)
+void _Time_PutString(_Time_Text *text, const char *str, size_t len)
 {
     for (size_t i = 0; i < len && str[i] != '\0'; i++) {
         _Time_PutChar(text, str[i]);
@@ -153,7 +153,7 @@ void _Time_PutString(struct _Time_Text *text, const char *str, size_t len)
 }
 
 // Append value to text in at least width characters padded with pad.
-void _Time_PutNumber(struct _Time_Text *text, long value, int width, char pad)
+void _Time_PutNumber(_Time_Text *text, long value, int width, char pad)
 {
     unsigned long mag = value < 0 ? 0UL - (unsigned long) value : (unsigned long) value;
     char digits[_TIME_NUMBER_SIZE];
@@ -182,7 +182,7 @@ void _Time_PutNumber(struct _Time_Text *text, long value, int width, char pad)
 }
 
 // Append value to text as printf's %.2d does.
-void _Time_PutTwoDigits(struct _Time_Text *text, int value)
+void _Time_PutTwoDigits(_Time_Text *text, int value)
 {
     long mag = value;
 
@@ -212,7 +212,7 @@ const char *_Time_MonName(int mon)
 }
 
 // Append at most len characters of the name name to text.
-void _Time_PutName(struct _Time_Text *text, const char *name, size_t len, const char *unknown)
+void _Time_PutName(_Time_Text *text, const char *name, size_t len, const char *unknown)
 {
     if (name == NULL) {
         _Time_PutString(text, unknown, strlen(unknown));
@@ -292,7 +292,7 @@ const char *_Time_Composite(char conv)
 }
 
 // Append strftime's conversion conv of tm to text.
-void _Time_PutConversion(struct _Time_Text *text, char conv, const struct tm *tm)
+void _Time_PutConversion(_Time_Text *text, char conv, const struct tm *tm)
 {
     long year = tm->tm_year + _TIME_YEAR_BASE;
     int hour = tm->tm_hour;
@@ -400,7 +400,7 @@ void _Time_PutConversion(struct _Time_Text *text, char conv, const struct tm *tm
 }
 
 // Append the conversions of tm that format names to text.
-void _Time_PutFormat(struct _Time_Text *text, const char *format, const struct tm *tm)
+void _Time_PutFormat(_Time_Text *text, const char *format, const struct tm *tm)
 {
     const char *ptr = format;
 
@@ -439,7 +439,7 @@ void _Time_PutFormat(struct _Time_Text *text, const char *format, const struct t
 // Return the processor time the program has used.
 clock_t clock(void)
 {
-    struct _Sys_Timespec spec;
+    _Sys_Timespec spec;
 
     if (_Sys_ClockGettime(_SYS_CLOCK_PROCESS_CPUTIME_ID, &spec) != 0) {
         return (clock_t) -1;
@@ -475,7 +475,7 @@ time_t mktime(struct tm *timeptr)
 // Return the current calendar time.
 time_t time(time_t *timer)
 {
-    struct _Sys_Timespec spec;
+    _Sys_Timespec spec;
     time_t value = (time_t) -1;
 
     if (_Sys_ClockGettime(_SYS_CLOCK_REALTIME, &spec) == 0) {
@@ -490,7 +490,7 @@ time_t time(time_t *timer)
 // Write the broken-down time timeptr as text.
 char *asctime(const struct tm *timeptr)
 {
-    struct _Time_Text text = {
+    _Time_Text text = {
         .tt_str  = _Time_AsctimeText,
         .tt_size = _TIME_ASCTIME_SIZE,
         .tt_len  = 0
@@ -543,7 +543,7 @@ struct tm *localtime(const time_t *timer)
 // Write the conversions of timeptr that format names into str.
 size_t strftime(char *restrict str, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr)
 {
-    struct _Time_Text text = {
+    _Time_Text text = {
         .tt_str  = str,
         .tt_size = maxsize,
         .tt_len  = 0

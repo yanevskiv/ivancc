@@ -209,6 +209,7 @@
 #define _SYS_SIG_UNBLOCK 1
 
 // Linux's struct stat, the kernel's and not glibc's.
+typedef struct _Sys_Stat _Sys_Stat;
 struct _Sys_Stat {
     unsigned long st_dev;
     unsigned long st_ino;
@@ -231,6 +232,7 @@ struct _Sys_Stat {
 };
 
 // Linux's struct termios, the kernel's and not glibc's.
+typedef struct _Sys_Termios _Sys_Termios;
 struct _Sys_Termios {
     unsigned int c_iflag;
     unsigned int c_oflag;
@@ -241,12 +243,14 @@ struct _Sys_Termios {
 };
 
 // Linux's struct timespec.
+typedef struct _Sys_Timespec _Sys_Timespec;
 struct _Sys_Timespec {
     long tv_sec;
     long tv_nsec;
 };
 
 // Linux's struct sigaction.
+typedef struct _Sys_Sigaction _Sys_Sigaction;
 struct _Sys_Sigaction {
     void (*sa_handler)(int);
     unsigned long sa_flags;
@@ -260,10 +264,10 @@ long  _Sys_Read(int fd, void *buf, unsigned long len);
 long  _Sys_Write(int fd, const void *buf, unsigned long len);
 long  _Sys_Open(const char *path, int flags, int mode);
 long  _Sys_Close(int fd);
-long  _Sys_Lstat(const char *path, struct _Sys_Stat *info);
+long  _Sys_Lstat(const char *path, _Sys_Stat *info);
 long  _Sys_Lseek(int fd, long offset, int whence);
 void *_Sys_Brk(void *addr);
-long  _Sys_RtSigaction(int sig, const struct _Sys_Sigaction *act, struct _Sys_Sigaction *oact);
+long  _Sys_RtSigaction(int sig, const _Sys_Sigaction *act, _Sys_Sigaction *oact);
 long  _Sys_RtSigprocmask(int how, const unsigned long *set, unsigned long *oset);
 long  _Sys_Ioctl(int fd, unsigned long request, void *arg);
 long  _Sys_Dup2(int fd, int as);
@@ -272,7 +276,7 @@ long  _Sys_Kill(int pid, int sig);
 long  _Sys_Rename(const char *from, const char *to);
 long  _Sys_Rmdir(const char *path);
 long  _Sys_Unlink(const char *path);
-long  _Sys_ClockGettime(int clock, struct _Sys_Timespec *spec);
+long  _Sys_ClockGettime(int clock, _Sys_Timespec *spec);
 void  _Sys_ExitGroup(int status);
 
 // Signal handlers

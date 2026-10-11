@@ -37,20 +37,21 @@
 #define _BIGINT_POW5_STEP 13
 
 // An unsigned number in words, least significant first, its top word nonzero.
+typedef struct _Bigint_Number _Bigint_Number;
 struct _Bigint_Number {
     int bn_len;
     unsigned int bn_word[_BIGINT_WORDS];
 };
 
 // Arithmetic
-void               _Bigint_Set(struct _Bigint_Number *num, unsigned long long value);
-void               _Bigint_MulAdd(struct _Bigint_Number *num, unsigned int mul, unsigned int add);
-void               _Bigint_MulPow5(struct _Bigint_Number *num, int exp);
-void               _Bigint_ShiftLeft(struct _Bigint_Number *num, int bits);
-void               _Bigint_ShiftRight(struct _Bigint_Number *num, int bits);
-int                _Bigint_Compare(const struct _Bigint_Number *num1, const struct _Bigint_Number *num2);
-void               _Bigint_Sub(struct _Bigint_Number *num1, const struct _Bigint_Number *num2);
-int                _Bigint_Bits(const struct _Bigint_Number *num);
-unsigned long long _Bigint_Divide(struct _Bigint_Number *num, const struct _Bigint_Number *den);
+void               _Bigint_Set(_Bigint_Number *num, unsigned long long value);
+void               _Bigint_MulAdd(_Bigint_Number *num, unsigned int mul, unsigned int add);
+void               _Bigint_MulPow5(_Bigint_Number *num, int exp);
+void               _Bigint_ShiftLeft(_Bigint_Number *num, int bits);
+void               _Bigint_ShiftRight(_Bigint_Number *num, int bits);
+int                _Bigint_Compare(const _Bigint_Number *num1, const _Bigint_Number *num2);
+void               _Bigint_Sub(_Bigint_Number *num1, const _Bigint_Number *num2);
+int                _Bigint_Bits(const _Bigint_Number *num);
+unsigned long long _Bigint_Divide(_Bigint_Number *num, const _Bigint_Number *den);
 
 #endif // _BIGINT_H

@@ -35,8 +35,8 @@
 // Install func as the handler of the signal sig.
 void (*signal(int sig, void (*func)(int)))(int)
 {
-    struct _Sys_Sigaction act;
-    struct _Sys_Sigaction old;
+    _Sys_Sigaction act;
+    _Sys_Sigaction old;
     long ret;
 
     if (sig < _SYS_SIGNAL_FIRST || sig > _SYS_SIGNAL_LAST || func == SIG_ERR) {

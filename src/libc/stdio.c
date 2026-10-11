@@ -245,7 +245,7 @@ void _Stdio_Setup(FILE *stream)
 // Return whether the descriptor fd is a terminal, which answers TCGETS.
 _Bool _Stdio_IsTerminal(int fd)
 {
-    struct _Sys_Termios term;
+    _Sys_Termios term;
 
     return _Sys_Ioctl(fd, _SYS_TCGETS, &term) == 0;
 }
@@ -482,7 +482,7 @@ void _Stdio_FlushLines(void)
 }
 
 // Give the sink len characters of data, counted though its string be full.
-void _Stdio_Emit(struct _Stdio_Sink *sink, const char *data, size_t len)
+void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len)
 {
     size_t room;
 
@@ -504,7 +504,7 @@ void _Stdio_Emit(struct _Stdio_Sink *sink, const char *data, size_t len)
 }
 
 // Give the sink len copies of the character ch.
-void _Stdio_Pad(struct _Stdio_Sink *sink, int ch, size_t len)
+void _Stdio_Pad(_Stdio_Sink *sink, int ch, size_t len)
 {
     char chunk[_STDIO_PAD_CHUNK];
 
@@ -518,7 +518,7 @@ void _Stdio_Pad(struct _Stdio_Sink *sink, int ch, size_t len)
 }
 
 // Give the sink len characters of data in the directive's width, on its side.
-void _Stdio_Field(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir, const char *data, size_t len)
+void _Stdio_Field(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *data, size_t len)
 {
     size_t width = (size_t) dir->sd_width;
     size_t pad = width > len ? width - len : 0;
@@ -613,7 +613,7 @@ size_t _Stdio_ParseLength(const char *format, int *length)
 }
 
 // Read the directive after a percent sign at format, and return its length.
-size_t _Stdio_Parse(const char *format, struct _Stdio_Directive *dir)
+size_t _Stdio_Parse(const char *format, _Stdio_Directive *dir)
 {
     size_t len = _Stdio_ParseFlags(format, &dir->sd_flags);
 
@@ -638,7 +638,7 @@ size_t _Stdio_Parse(const char *format, struct _Stdio_Directive *dir)
 }
 
 // Return whether the directive names a conversion the engine makes.
-_Bool _Stdio_Converts(const struct _Stdio_Directive *dir)
+_Bool _Stdio_Converts(const _Stdio_Directive *dir)
 {
     if (dir->sd_conv == '\0' || dir->sd_length != _STDIO_LENGTH_NONE) {
         return 0;
@@ -647,7 +647,7 @@ _Bool _Stdio_Converts(const struct _Stdio_Directive *dir)
 }
 
 // Take a negative width as a left flag, and a negative precision as none.
-void _Stdio_Settle(struct _Stdio_Directive *dir)
+void _Stdio_Settle(_Stdio_Directive *dir)
 {
     if (dir->sd_width < 0) {
         dir->sd_flags |= _STDIO_FLAG_LEFT;
@@ -659,7 +659,7 @@ void _Stdio_Settle(struct _Stdio_Directive *dir)
 }
 
 // Convert the string str by the directive, a null one as glibc does.
-void _Stdio_String(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir, const char *str)
+void _Stdio_String(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *str)
 {
     size_t len;
     const char *end;
@@ -678,10 +678,10 @@ void _Stdio_String(struct _Stdio_Sink *sink, const struct _Stdio_Directive *dir,
 }
 
 // Give the sink the format's text, each directive converting an argument.
-int _Stdio_Format(struct _Stdio_Sink *sink, const char *format, _Stdio_VaList args)
+int _Stdio_Format(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
 {
     char ch;
-    struct _Stdio_Directive dir;
+    _Stdio_Directive dir;
 
     while (format[0] != '\0') {
         size_t len = strcspn(format, "%");
@@ -722,7 +722,7 @@ int _Stdio_Format(struct _Stdio_Sink *sink, const char *format, _Stdio_VaList ar
 }
 
 // End the sink's string, and return its count, or EOF if it failed.
-int _Stdio_End(struct _Stdio_Sink *sink)
+int _Stdio_End(_Stdio_Sink *sink)
 {
     if (sink->ss_stream == NULL && sink->ss_size > 0) {
         size_t last = sink->ss_size - 1;
@@ -779,7 +779,7 @@ void _Stdio_Unread(FILE *stream)
 // Return a number that differs from run to run, by the clock and the stack.
 unsigned long _Stdio_TempSeed(void)
 {
-    struct _Sys_Timespec now = {0, 0};
+    _Sys_Timespec now = {0, 0};
 
     _Sys_ClockGettime(_SYS_CLOCK_REALTIME, &now);
     return (unsigned long) now.tv_sec ^ (unsigned long) now.tv_nsec ^ (unsigned long) &now;
@@ -863,7 +863,7 @@ FILE *tmpfile(void)
 char *tmpnam(char *str)
 {
     int tries;
-    struct _Sys_Stat info;
+    _Sys_Stat info;
 
     if (str == NULL) {
         str = _Stdio_TempBuffer;
@@ -1018,7 +1018,7 @@ int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList a
 {
     int result;
     unsigned char lent[BUFSIZ];
-    struct _Stdio_Sink sink = {
+    _Stdio_Sink sink = {
         .ss_stream = stream
     };
 
@@ -1038,7 +1038,7 @@ int vprintf(const char *restrict format, _Stdio_VaList arg)
 // Write the list's arguments into str's n characters as the format says.
 int vsnprintf(char *restrict str, size_t n, const char *restrict format, _Stdio_VaList arg)
 {
-    struct _Stdio_Sink sink = {
+    _Stdio_Sink sink = {
         .ss_str  = str,
         .ss_size = n
     };

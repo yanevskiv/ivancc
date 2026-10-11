@@ -116,6 +116,7 @@ typedef int wchar_t;
 #endif
 
 // A floating type: its mantissa's bits, its exponents' range, and an explicit leading bit.
+typedef struct _Stdlib_Format _Stdlib_Format;
 struct _Stdlib_Format {
     int sf_mant;
     int sf_min;
@@ -124,6 +125,7 @@ struct _Stdlib_Format {
 };
 
 // A converted number's sign and its biased exponent and mantissa fields.
+typedef struct _Stdlib_Real _Stdlib_Real;
 struct _Stdlib_Real {
     _Bool sr_negative;
     unsigned int sr_exp;
@@ -131,6 +133,7 @@ struct _Stdlib_Real {
 };
 
 // A number before rounding: 64 bits from the top one, its exponent and the rest below.
+typedef struct _Stdlib_Unrounded _Stdlib_Unrounded;
 struct _Stdlib_Unrounded {
     unsigned long long su_mant;
     long su_exp;
@@ -138,6 +141,7 @@ struct _Stdlib_Unrounded {
 };
 
 // A decimal's first significant digit, the digits kept, its exponent and a dropped nonzero.
+typedef struct _Stdlib_Decimal _Stdlib_Decimal;
 struct _Stdlib_Decimal {
     size_t sd_first;
     long sd_count;
@@ -146,14 +150,16 @@ struct _Stdlib_Decimal {
 };
 
 // A block of the heap: its size with this header, and while free the next free block.
+typedef struct _Stdlib_Block _Stdlib_Block;
 struct _Stdlib_Block {
     size_t sb_size;
-    struct _Stdlib_Block *sb_next;
+    _Stdlib_Block *sb_next;
 };
 
 // A block of the functions atexit registered, and the block before it.
+typedef struct _Stdlib_Exits _Stdlib_Exits;
 struct _Stdlib_Exits {
-    struct _Stdlib_Exits *se_next;
+    _Stdlib_Exits *se_next;
     int se_count;
     void (*se_func[_STDLIB_EXITS])(void);
 };
@@ -175,9 +181,9 @@ typedef struct {
 } lldiv_t;
 
 // The formats of float, double and long double.
-extern const struct _Stdlib_Format _Stdlib_FloatFormat;
-extern const struct _Stdlib_Format _Stdlib_DoubleFormat;
-extern const struct _Stdlib_Format _Stdlib_LongDoubleFormat;
+extern const _Stdlib_Format _Stdlib_FloatFormat;
+extern const _Stdlib_Format _Stdlib_DoubleFormat;
+extern const _Stdlib_Format _Stdlib_LongDoubleFormat;
 
 // The state of rand, its taps and whether srand has seeded it.
 extern unsigned int _Stdlib_RandState[_STDLIB_RAND_WORDS];
@@ -186,11 +192,11 @@ extern int _Stdlib_RandRear;
 extern _Bool _Stdlib_RandSeeded;
 
 // The free blocks, in address order.
-extern struct _Stdlib_Block *_Stdlib_FreeList;
+extern _Stdlib_Block *_Stdlib_FreeList;
 
 // The first block of atexit's, and the newest.
-extern struct _Stdlib_Exits _Stdlib_ExitBase;
-extern struct _Stdlib_Exits *_Stdlib_ExitTop;
+extern _Stdlib_Exits _Stdlib_ExitBase;
+extern _Stdlib_Exits *_Stdlib_ExitTop;
 
 // Conversion
 int                _Stdlib_CharAt(const void *str, _Bool wide, size_t index);
@@ -200,21 +206,21 @@ size_t             _Stdlib_Match(const void *str, _Bool wide, size_t index, cons
 size_t             _Stdlib_Exponent(const void *str, _Bool wide, size_t index, int letter, long *exp);
 unsigned long long _Stdlib_Payload(const void *str, _Bool wide, size_t index, size_t stop);
 size_t             _Stdlib_NotANumber(const void *str, _Bool wide, size_t index, unsigned long long *payload);
-size_t             _Stdlib_ScanDecimal(const void *str, _Bool wide, size_t index, int point, struct _Stdlib_Decimal *dec);
-void               _Stdlib_Decimal(const void *str, _Bool wide, int point, const struct _Stdlib_Decimal *dec, struct _Stdlib_Unrounded *value);
-size_t             _Stdlib_Hex(const void *str, _Bool wide, size_t index, int point, struct _Stdlib_Unrounded *value);
-void               _Stdlib_Shift(struct _Stdlib_Unrounded *value, long bits);
-void               _Stdlib_Round(const struct _Stdlib_Unrounded *value, const struct _Stdlib_Format *fmt, struct _Stdlib_Real *real);
-size_t             _Stdlib_ToReal(const void *str, _Bool wide, const struct _Stdlib_Format *fmt, struct _Stdlib_Real *real);
+size_t             _Stdlib_ScanDecimal(const void *str, _Bool wide, size_t index, int point, _Stdlib_Decimal *dec);
+void               _Stdlib_ConvertDecimal(const void *str, _Bool wide, int point, const _Stdlib_Decimal *dec, _Stdlib_Unrounded *value);
+size_t             _Stdlib_Hex(const void *str, _Bool wide, size_t index, int point, _Stdlib_Unrounded *value);
+void               _Stdlib_Shift(_Stdlib_Unrounded *value, long bits);
+void               _Stdlib_Round(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real);
+size_t             _Stdlib_ToReal(const void *str, _Bool wide, const _Stdlib_Format *fmt, _Stdlib_Real *real);
 
 // Heap
-size_t                 _Stdlib_BlockSize(size_t size);
-struct _Stdlib_Block **_Stdlib_Fit(size_t size);
-struct _Stdlib_Block **_Stdlib_Link(const struct _Stdlib_Block *block);
-void                  *_Stdlib_Take(struct _Stdlib_Block **link, size_t size);
-void                   _Stdlib_Trim(struct _Stdlib_Block *block, size_t size);
-void                   _Stdlib_Release(struct _Stdlib_Block *block);
-int                    _Stdlib_Grow(size_t size);
+size_t          _Stdlib_BlockSize(size_t size);
+_Stdlib_Block **_Stdlib_Fit(size_t size);
+_Stdlib_Block **_Stdlib_Link(const _Stdlib_Block *block);
+void           *_Stdlib_Take(_Stdlib_Block **link, size_t size);
+void            _Stdlib_Trim(_Stdlib_Block *block, size_t size);
+void            _Stdlib_Release(_Stdlib_Block *block);
+int             _Stdlib_Grow(size_t size);
 
 // Exit
 void (*_Stdlib_PopExit(void))(void);

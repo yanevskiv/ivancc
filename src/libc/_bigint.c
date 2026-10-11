@@ -27,7 +27,7 @@
 #include <_bigint.h>
 
 // Set num to value.
-void _Bigint_Set(struct _Bigint_Number *num, unsigned long long value)
+void _Bigint_Set(_Bigint_Number *num, unsigned long long value)
 {
     num->bn_len = 0;
     while (value != 0) {
@@ -38,7 +38,7 @@ void _Bigint_Set(struct _Bigint_Number *num, unsigned long long value)
 }
 
 // Multiply num by mul and add add.
-void _Bigint_MulAdd(struct _Bigint_Number *num, unsigned int mul, unsigned int add)
+void _Bigint_MulAdd(_Bigint_Number *num, unsigned int mul, unsigned int add)
 {
     unsigned long long carry = add;
     int i;
@@ -55,7 +55,7 @@ void _Bigint_MulAdd(struct _Bigint_Number *num, unsigned int mul, unsigned int a
 }
 
 // Multiply num by 5^exp.
-void _Bigint_MulPow5(struct _Bigint_Number *num, int exp)
+void _Bigint_MulPow5(_Bigint_Number *num, int exp)
 {
     unsigned int mul = 1;
 
@@ -71,7 +71,7 @@ void _Bigint_MulPow5(struct _Bigint_Number *num, int exp)
 }
 
 // Multiply num by 2^bits.
-void _Bigint_ShiftLeft(struct _Bigint_Number *num, int bits)
+void _Bigint_ShiftLeft(_Bigint_Number *num, int bits)
 {
     int words = bits / _BIGINT_WORD_BITS;
     int shift = bits % _BIGINT_WORD_BITS;
@@ -104,7 +104,7 @@ void _Bigint_ShiftLeft(struct _Bigint_Number *num, int bits)
 }
 
 // Divide num by 2^bits, dropping the bits shifted out.
-void _Bigint_ShiftRight(struct _Bigint_Number *num, int bits)
+void _Bigint_ShiftRight(_Bigint_Number *num, int bits)
 {
     int words = bits / _BIGINT_WORD_BITS;
     int shift = bits % _BIGINT_WORD_BITS;
@@ -130,7 +130,7 @@ void _Bigint_ShiftRight(struct _Bigint_Number *num, int bits)
 }
 
 // Compare num1 with num2, as strcmp does.
-int _Bigint_Compare(const struct _Bigint_Number *num1, const struct _Bigint_Number *num2)
+int _Bigint_Compare(const _Bigint_Number *num1, const _Bigint_Number *num2)
 {
     int i;
 
@@ -146,7 +146,7 @@ int _Bigint_Compare(const struct _Bigint_Number *num1, const struct _Bigint_Numb
 }
 
 // Subtract num2 from num1, which is no smaller.
-void _Bigint_Sub(struct _Bigint_Number *num1, const struct _Bigint_Number *num2)
+void _Bigint_Sub(_Bigint_Number *num1, const _Bigint_Number *num2)
 {
     unsigned long long borrow = 0;
     unsigned long long word;
@@ -163,7 +163,7 @@ void _Bigint_Sub(struct _Bigint_Number *num1, const struct _Bigint_Number *num2)
 }
 
 // Give the number of bits num takes, 0 for zero.
-int _Bigint_Bits(const struct _Bigint_Number *num)
+int _Bigint_Bits(const _Bigint_Number *num)
 {
     unsigned int top;
     int bits;
@@ -179,9 +179,9 @@ int _Bigint_Bits(const struct _Bigint_Number *num)
 }
 
 // Divide num by den, a quotient under 2^64, and leave the remainder in num.
-unsigned long long _Bigint_Divide(struct _Bigint_Number *num, const struct _Bigint_Number *den)
+unsigned long long _Bigint_Divide(_Bigint_Number *num, const _Bigint_Number *den)
 {
-    struct _Bigint_Number part;
+    _Bigint_Number part;
     unsigned long long quot = 0;
     int shift = _Bigint_Bits(num) - _Bigint_Bits(den);
     int i;

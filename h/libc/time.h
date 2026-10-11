@@ -118,6 +118,7 @@ typedef long clock_t;
 typedef long time_t;
 
 // Text written into a buffer.
+typedef struct _Time_Text _Time_Text;
 struct _Time_Text {
     char   *tt_str;
     size_t tt_size;
@@ -162,21 +163,21 @@ long       _Time_MonthDays(long year, int mon);
 struct tm *_Time_BreakDown(time_t value, struct tm *tm, const char *zone);
 
 // Text
-void        _Time_PutChar(struct _Time_Text *text, char ch);
-void        _Time_PutString(struct _Time_Text *text, const char *str, size_t len);
-void        _Time_PutNumber(struct _Time_Text *text, long value, int width, char pad);
-void        _Time_PutTwoDigits(struct _Time_Text *text, int value);
+void        _Time_PutChar(_Time_Text *text, char ch);
+void        _Time_PutString(_Time_Text *text, const char *str, size_t len);
+void        _Time_PutNumber(_Time_Text *text, long value, int width, char pad);
+void        _Time_PutTwoDigits(_Time_Text *text, int value);
 const char *_Time_WdayName(int wday);
 const char *_Time_MonName(int mon);
-void        _Time_PutName(struct _Time_Text *text, const char *name, size_t len, const char *unknown);
+void        _Time_PutName(_Time_Text *text, const char *name, size_t len, const char *unknown);
 
 // strftime
 long        _Time_IsoDays(long yday, long wday);
 long        _Time_IsoYear(const struct tm *tm, long *days);
 _Bool       _Time_IsConversion(char mod, char conv);
 const char *_Time_Composite(char conv);
-void        _Time_PutConversion(struct _Time_Text *text, char conv, const struct tm *tm);
-void        _Time_PutFormat(struct _Time_Text *text, const char *format, const struct tm *tm);
+void        _Time_PutConversion(_Time_Text *text, char conv, const struct tm *tm);
+void        _Time_PutFormat(_Time_Text *text, const char *format, const struct tm *tm);
 
 // (S7.23.2) Time manipulation functions
 clock_t clock(void);
