@@ -1,6 +1,10 @@
 // (Test) Status: 0
-// <locale.h> defines struct lconv and the categories, setlocale, which selects and names a locale, and localeconv, which gives its formatting (S7.11).
+// <locale.h> defines struct lconv, NULL and the categories LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, LC_NUMERIC and LC_TIME, distinct constants fit for #if (S7.11p1-p3),
+// setlocale, which names a category's locale for a null one, selects "C" for any, refuses a locale it lacks and changes nothing then, and takes back a name it gave, of categories that differ too (S7.11.1.1),
+// and localeconv, which gives the "C" locale's formatting, a "." for the decimal point, each other string empty and each char CHAR_MAX (S7.11.2.1p10), a copy of it the program's to change,
+// the program starting in the "C" locale (S7.11.1.1p4), each a function a pointer reaches, and one a call reaches past any macro of its name (S7.1.4p1).
 
+#include <_test.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <iso646.h>
@@ -18,88 +22,198 @@
 #include <signal.h>
 #include <locale.h>
 
-static char start[256];
-static char mixed[256];
+#if LC_ALL != LC_COLLATE && LC_COLLATE != LC_CTYPE && LC_CTYPE != LC_MONETARY && LC_MONETARY != LC_NUMERIC && LC_NUMERIC != LC_TIME
+#define DIRECTIVE 1
+#else
+#define DIRECTIVE 0
+#endif
 
-// Copy the name setlocale returns, which its next call may overwrite.
-static bool keep(char *buf, const char *name)
+#define NONE       (-1)
+#define NAME_SIZE  256
+#define CATEGORIES 6
+#define LACKING    "no_SUCH.locale"
+#define UTF8       "C.UTF-8"
+
+// The categories, LC_ALL first.
+static const int cats[CATEGORIES] = {LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, LC_NUMERIC, LC_TIME};
+
+// The name of the locale the program started in.
+static char start[NAME_SIZE];
+
+// Return the place of the first category equal to one before it, or NONE.
+static int repeated(void)
 {
-    if (name == NULL or strlen(name) >= 256) return false;
+    int i;
+    int j;
+
+    for (i = 0; i < CATEGORIES; i++) {
+        for (j = 0; j < i; j++) {
+            if (cats[i] == cats[j]) {
+                return i;
+            }
+        }
+    }
+    return NONE;
+}
+
+// Return the place of the first category setlocale gives no name, or NONE.
+static int refused(const char *locale)
+{
+    int i;
+
+    for (i = 0; i < CATEGORIES; i++) {
+        if (setlocale(cats[i], locale) == NULL) {
+            return i;
+        }
+    }
+    return NONE;
+}
+
+// Copy a category's name, which setlocale's next call may overwrite.
+static bool keep(char *buf, int category)
+{
+    const char *name = setlocale(category, NULL);
+
+    buf[0] = '\0';
+    if (! _TEST_TRUE(name != NULL) || ! _TEST_TRUE(strlen(name) < NAME_SIZE)) {
+        return false;
+    }
     strcpy(buf, name);
     return true;
 }
 
-// Check the formatting (S7.11.2.1) gives the "C" locale.
-static bool is_c_lconv(const struct lconv *conv)
+// Tell whether localeconv gives the formatting of the "C" locale.
+static bool plain(void)
 {
-    if (conv == NULL) return false;
-    if (strcmp(conv->decimal_point, ".") != 0) return false;
-    if (strcmp(conv->thousands_sep, "") != 0 or strcmp(conv->grouping, "") != 0) return false;
-    if (strcmp(conv->mon_decimal_point, "") != 0 or strcmp(conv->mon_thousands_sep, "") != 0) return false;
-    if (strcmp(conv->mon_grouping, "") != 0 or strcmp(conv->positive_sign, "") != 0) return false;
-    if (strcmp(conv->negative_sign, "") != 0 or strcmp(conv->currency_symbol, "") != 0) return false;
-    if (strcmp(conv->int_curr_symbol, "") != 0) return false;
-    if (conv->frac_digits != CHAR_MAX or conv->p_cs_precedes != CHAR_MAX or conv->n_cs_precedes != CHAR_MAX) return false;
-    if (conv->p_sep_by_space != CHAR_MAX or conv->n_sep_by_space != CHAR_MAX) return false;
-    if (conv->p_sign_posn != CHAR_MAX or conv->n_sign_posn != CHAR_MAX) return false;
-    if (conv->int_frac_digits != CHAR_MAX or conv->int_p_cs_precedes != CHAR_MAX or conv->int_n_cs_precedes != CHAR_MAX) return false;
-    if (conv->int_p_sep_by_space != CHAR_MAX or conv->int_n_sep_by_space != CHAR_MAX) return false;
-    if (conv->int_p_sign_posn != CHAR_MAX or conv->int_n_sign_posn != CHAR_MAX) return false;
-    return true;
+    int lost = 0;
+    const struct lconv *conv = localeconv();
+
+    if (! _TEST_TRUE(conv != NULL)) {
+        return false;
+    }
+    lost += ! _TEST_STR(conv->decimal_point, ".");
+    lost += ! _TEST_STR(conv->thousands_sep, "");
+    lost += ! _TEST_STR(conv->grouping, "");
+    lost += ! _TEST_STR(conv->mon_decimal_point, "");
+    lost += ! _TEST_STR(conv->mon_thousands_sep, "");
+    lost += ! _TEST_STR(conv->mon_grouping, "");
+    lost += ! _TEST_STR(conv->positive_sign, "");
+    lost += ! _TEST_STR(conv->negative_sign, "");
+    lost += ! _TEST_STR(conv->currency_symbol, "");
+    lost += ! _TEST_STR(conv->int_curr_symbol, "");
+    lost += ! _TEST_INT(conv->frac_digits, CHAR_MAX);
+    lost += ! _TEST_INT(conv->p_cs_precedes, CHAR_MAX);
+    lost += ! _TEST_INT(conv->n_cs_precedes, CHAR_MAX);
+    lost += ! _TEST_INT(conv->p_sep_by_space, CHAR_MAX);
+    lost += ! _TEST_INT(conv->n_sep_by_space, CHAR_MAX);
+    lost += ! _TEST_INT(conv->p_sign_posn, CHAR_MAX);
+    lost += ! _TEST_INT(conv->n_sign_posn, CHAR_MAX);
+    lost += ! _TEST_INT(conv->int_frac_digits, CHAR_MAX);
+    lost += ! _TEST_INT(conv->int_p_cs_precedes, CHAR_MAX);
+    lost += ! _TEST_INT(conv->int_n_cs_precedes, CHAR_MAX);
+    lost += ! _TEST_INT(conv->int_p_sep_by_space, CHAR_MAX);
+    lost += ! _TEST_INT(conv->int_n_sep_by_space, CHAR_MAX);
+    lost += ! _TEST_INT(conv->int_p_sign_posn, CHAR_MAX);
+    lost += ! _TEST_INT(conv->int_n_sign_posn, CHAR_MAX);
+    return lost == 0;
+}
+
+// The categories are distinct constants, in a directive too, and NULL is null.
+static void Test_LocaleMacros(void)
+{
+    _TEST_INT(DIRECTIVE, 1);
+    _TEST_INT(repeated(), NONE);
+    _TEST_TRUE(NULL == (void *) 0);
+}
+
+// The program starts in a locale each category names, formatting as "C" does.
+static void Test_LocaleStartup(void)
+{
+    _TEST_TRUE(keep(start, LC_ALL));
+    _TEST_INT(refused(NULL), NONE);
+    _TEST_TRUE(plain());
+}
+
+// Selecting "C" for any category gives the name the program started with.
+static void Test_LocaleSelected(void)
+{
+    _TEST_STR(setlocale(LC_ALL, "C"), start);
+    _TEST_INT(refused("C"), NONE);
+    _TEST_STR(setlocale(LC_ALL, NULL), start);
+}
+
+// A locale setlocale lacks is refused, and the program's locale stays.
+static void Test_LocaleLacking(void)
+{
+    _TEST_STR(setlocale(LC_ALL, LACKING), NULL);
+    _TEST_STR(setlocale(LC_CTYPE, LACKING), NULL);
+    _TEST_STR(setlocale(LC_ALL, NULL), start);
+}
+
+// One category in another locale gives LC_ALL a name that restores them all.
+static void Test_LocaleMixed(void)
+{
+    char mixed[NAME_SIZE];
+    char numeric[NAME_SIZE];
+
+    _TEST_TRUE(setlocale(LC_CTYPE, UTF8) != NULL);
+    _TEST_TRUE(keep(mixed, LC_ALL));
+    _TEST_TRUE(keep(numeric, LC_NUMERIC));
+    _TEST_STR(setlocale(LC_TIME, NULL), numeric);
+    _TEST_TRUE(setlocale(LC_ALL, "C") != NULL);
+    _TEST_STR(setlocale(LC_ALL, NULL), start);
+    _TEST_TRUE(setlocale(LC_ALL, mixed) != NULL);
+    _TEST_STR(setlocale(LC_ALL, NULL), mixed);
+    _TEST_TRUE(setlocale(LC_CTYPE, "C") != NULL);
+    _TEST_STR(setlocale(LC_ALL, NULL), start);
+}
+
+// The name the program started with restores its locale and its formatting.
+static void Test_LocaleRestored(void)
+{
+    _TEST_INT(refused(UTF8), NONE);
+    _TEST_TRUE(setlocale(LC_ALL, start) != NULL);
+    _TEST_STR(setlocale(LC_ALL, NULL), start);
+    _TEST_TRUE(plain());
+}
+
+// A copy of the formatting is the program's to change, and changes no other.
+static void Test_LocaleFormatting(void)
+{
+    struct lconv copy = *localeconv();
+
+    _TEST_STR(copy.decimal_point, ".");
+    _TEST_INT(copy.frac_digits, CHAR_MAX);
+    copy.decimal_point = ",";
+    copy.frac_digits = 2;
+    _TEST_STR(copy.decimal_point, ",");
+    _TEST_INT(copy.frac_digits, 2);
+    _TEST_TRUE(plain());
+}
+
+// A pointer reaches each function, and a call in parentheses any macro's.
+static void Test_LocaleCalls(void)
+{
+    struct lconv *(*conv)(void) = localeconv;
+    char *(*set)(int, const char *) = setlocale;
+
+    _TEST_TRUE(set(LC_TIME, "C") != NULL);
+    _TEST_TRUE((setlocale)(LC_TIME, NULL) != NULL);
+    _TEST_STR(set(LC_ALL, NULL), start);
+    _TEST_STR((setlocale)(LC_ALL, LACKING), NULL);
+    _TEST_STR(conv()->decimal_point, ".");
+    _TEST_STR((localeconv)()->decimal_point, ".");
 }
 
 int main(void)
 {
-    static const int cats[6] = {LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, LC_NUMERIC, LC_TIME};
-    char *(*set)(int, const char *) = setlocale;
-    struct lconv *(*conv)(void) = localeconv;
-    struct lconv copy;
-    char *name;
-
-    for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < i; j++) {
-            if (cats[i] == cats[j]) return 1;
-        }
-    }
-    if (NULL != (void *) 0) return 1;
-
-    if (not keep(start, setlocale(LC_ALL, NULL))) return 2;
-    for (int i = 1; i < 6; i++) {
-        if (setlocale(cats[i], NULL) == NULL) return 2;
-    }
-    if (not is_c_lconv(localeconv())) return 3;
-
-    name = setlocale(LC_ALL, "C");
-    if (name == NULL or strcmp(name, start) != 0) return 4;
-    for (int i = 0; i < 6; i++) {
-        if (setlocale(cats[i], "C") == NULL) return 4;
-    }
-    if (strcmp(setlocale(LC_ALL, NULL), start) != 0) return 4;
-
-    if (setlocale(LC_ALL, "no_SUCH.locale") != NULL) return 5;
-    if (setlocale(LC_CTYPE, "no_SUCH.locale") != NULL) return 5;
-    if (strcmp(setlocale(LC_ALL, NULL), start) != 0) return 5;
-
-    if (setlocale(LC_CTYPE, "C.UTF-8") == NULL) return 6;
-    if (not keep(mixed, setlocale(LC_ALL, NULL))) return 6;
-    if (strcmp(setlocale(LC_NUMERIC, NULL), setlocale(LC_TIME, NULL)) != 0) return 6;
-    if (setlocale(LC_ALL, "C") == NULL) return 6;
-    if (setlocale(LC_ALL, mixed) == NULL) return 6;
-    if (strcmp(setlocale(LC_ALL, NULL), mixed) != 0) return 6;
-    if (setlocale(LC_CTYPE, "C") == NULL or strcmp(setlocale(LC_ALL, NULL), start) != 0) return 6;
-
-    for (int i = 0; i < 6; i++) {
-        if (setlocale(cats[i], "C.UTF-8") == NULL) return 7;
-    }
-    if (setlocale(LC_ALL, start) == NULL or strcmp(setlocale(LC_ALL, NULL), start) != 0) return 7;
-    if (not is_c_lconv(localeconv())) return 7;
-
-    copy = *localeconv();
-    copy.decimal_point = ",";
-    if (not is_c_lconv(localeconv())) return 8;
-    if ((*conv)() == NULL or (localeconv)() == NULL) return 8;
-
-    if ((*set)(LC_TIME, "C") == NULL or (setlocale)(LC_TIME, NULL) == NULL) return 9;
-
-    return 0;
+    Test_LocaleMacros();
+    Test_LocaleStartup();
+    Test_LocaleSelected();
+    Test_LocaleLacking();
+    Test_LocaleMixed();
+    Test_LocaleRestored();
+    Test_LocaleFormatting();
+    Test_LocaleCalls();
+    return _Test_Status();
 }
