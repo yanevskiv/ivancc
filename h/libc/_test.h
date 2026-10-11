@@ -80,11 +80,6 @@ void _Test_ShowFloat(long double value);
 void _Test_ShowStr(const char *str);
 void _Test_ShowMem(const void *obj, unsigned long size);
 
-// Comparison
-_Bool _Test_Same(const void *obj1, const void *obj2, unsigned long size);
-_Bool _Test_Equal(const char *str1, const char *str2);
-_Bool _Test_Alike(long double value1, long double value2);
-
 // Checks
 void  _Test_Fail(const char *expr, const char *file, unsigned int line, const char *func);
 _Bool _Test_True(long value, const char *expr, const char *file, unsigned int line, const char *func);

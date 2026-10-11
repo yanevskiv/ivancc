@@ -134,42 +134,6 @@ void _Test_ShowMem(const void *obj, unsigned long size)
     _Test_WriteChar('"');
 }
 
-// Tell whether the size bytes of obj1 and obj2 are the same.
-_Bool _Test_Same(const void *obj1, const void *obj2, unsigned long size)
-{
-    unsigned long k = 0;
-    const unsigned char *bytes1 = obj1;
-    const unsigned char *bytes2 = obj2;
-
-    while (k < size && bytes1[k] == bytes2[k]) {
-        k++;
-    }
-    return k == size;
-}
-
-// Tell whether str1 and str2 are the same string, or both none.
-_Bool _Test_Equal(const char *str1, const char *str2)
-{
-    unsigned long k = 0;
-
-    if (str1 == _TEST_NULL || str2 == _TEST_NULL) {
-        return str1 == str2;
-    }
-    while (str1[k] == str2[k] && str1[k] != '\0') {
-        k++;
-    }
-    return str1[k] == str2[k];
-}
-
-// Tell whether two floating values have the same bytes, or neither a number.
-_Bool _Test_Alike(long double value1, long double value2)
-{
-    if (value1 != value1 && value2 != value2) {
-        return 1;
-    }
-    return _Test_Same(&value1, &value2, _TEST_FLOAT_SIZE);
-}
-
 // Note a failed check and open its report with where it stands.
 void _Test_Fail(const char *expr, const char *file, unsigned int line, const char *func)
 {
@@ -221,12 +185,20 @@ _Bool _Test_Uint(unsigned long got, unsigned long expected, const char *expr, co
     return got == expected;
 }
 
-// Check that a floating value is the one expected, and report another's bytes.
+// Check that a floating value has the bytes expected, or neither is a number.
 _Bool _Test_Float(long double got, long double expected, const char *expr, const char *file, unsigned int line, const char *func)
 {
-    _Bool alike = _Test_Alike(got, expected);
+    unsigned long k = 0;
+    const unsigned char *got_bytes = (const unsigned char *) &got;
+    const unsigned char *expected_bytes = (const unsigned char *) &expected;
 
-    if (! alike) {
+    if (got != got && expected != expected) {
+        k = _TEST_FLOAT_SIZE;
+    }
+    while (k < _TEST_FLOAT_SIZE && got_bytes[k] == expected_bytes[k]) {
+        k++;
+    }
+    if (k < _TEST_FLOAT_SIZE) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_EXPR);
         _Test_ShowFloat(got);
@@ -234,14 +206,21 @@ _Bool _Test_Float(long double got, long double expected, const char *expr, const
         _Test_ShowFloat(expected);
         _Test_Write(_ERR_TEST_EXPECTED);
     }
-    return alike;
+    return k == _TEST_FLOAT_SIZE;
 }
 
-// Check that a string is the one expected, and report another.
+// Check that a string is the one expected, or both none, and report another.
 _Bool _Test_Str(const char *got, const char *expected, const char *expr, const char *file, unsigned int line, const char *func)
 {
-    _Bool equal = _Test_Equal(got, expected);
+    _Bool equal = got == expected;
+    unsigned long k = 0;
 
+    if (got != _TEST_NULL && expected != _TEST_NULL) {
+        while (got[k] == expected[k] && got[k] != '\0') {
+            k++;
+        }
+        equal = got[k] == expected[k];
+    }
     if (! equal) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_EXPR);
@@ -256,9 +235,14 @@ _Bool _Test_Str(const char *got, const char *expected, const char *expr, const c
 // Check that an object holds the bytes expected, and report others.
 _Bool _Test_Mem(const void *got, const void *expected, unsigned long size, const char *expr, const char *file, unsigned int line, const char *func)
 {
-    _Bool same = _Test_Same(got, expected, size);
+    unsigned long k = 0;
+    const unsigned char *got_bytes = got;
+    const unsigned char *expected_bytes = expected;
 
-    if (! same) {
+    while (k < size && got_bytes[k] == expected_bytes[k]) {
+        k++;
+    }
+    if (k < size) {
         _Test_Fail(expr, file, line, func);
         _Test_Write(_ERR_TEST_EXPR);
         _Test_ShowMem(got, size);
@@ -266,7 +250,7 @@ _Bool _Test_Mem(const void *got, const void *expected, unsigned long size, const
         _Test_ShowMem(expected, size);
         _Test_Write(_ERR_TEST_EXPECTED);
     }
-    return same;
+    return k == size;
 }
 
 // Return the status a test returns: whether every check so far held.
