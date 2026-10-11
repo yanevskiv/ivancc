@@ -1,6 +1,10 @@
 // (Test) Status: 0
-// <string.h> declares the copying, concatenation, comparison, search and miscellaneous functions (S7.21).
+// <string.h> declares the copying functions memcpy, memmove, strcpy and strncpy (S7.21.2), the concatenation functions strcat and strncat (S7.21.3),
+// the comparison functions memcmp, strcmp, strcoll, strncmp and strxfrm (S7.21.4), the search functions memchr, strchr, strcspn, strpbrk, strrchr, strspn, strstr and strtok (S7.21.5),
+// and memset, strerror and strlen (S7.21.6), each writing the bytes it is asked for and no other, comparing bytes as unsigned char (S7.21.4p1) and taking a character as an int it converts,
+// each a function a pointer reaches, and one a call reaches past any macro of its name (S7.1.4p1).
 
+#include <_test.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <iso646.h>
@@ -12,6 +16,11 @@
 #include <ctype.h>
 #include <string.h>
 
+#define NONE   (-1)
+#define SIZE   32
+#define FILLED 9
+
+// Fill a buffer's first bytes by no function under test.
 static void put(char *to, const char *from, size_t n)
 {
     size_t i;
@@ -21,115 +30,253 @@ static void put(char *to, const char *from, size_t n)
     }
 }
 
-static bool same(const char *got, const char *want, size_t n)
-{
-    size_t i;
-
-    for (i = 0; i < n; i++) {
-        if (got[i] != want[i]) return false;
-    }
-    return true;
-}
-
+// Return -1, 0 or 1 as a comparison's result is negative, zero or positive.
 static int sign(int value)
 {
     return (value > 0) - (value < 0);
 }
 
-int main(void)
+// Return how far into a string a search's result points, or NONE for null.
+static long offset(const char *str, const void *found)
 {
-    static char text[] = "?a???b,,,#c";
-    const char *bytes = "ab\0cab";
-    const char *word = "abcabc";
-    void *(*copy)(void *restrict, const void *restrict, size_t) = memcpy;
-    size_t (*length)(const char *) = strlen;
-    char buf[32];
-    char other[32];
+    return found == NULL ? NONE : (const char *) found - str;
+}
+
+// A copy writes the bytes asked for and no other, and returns where it wrote.
+static void Test_StringCopying(void)
+{
+    char buf[SIZE];
+
+    put(buf, "xxxxxxxx", FILLED);
+    _TEST_TRUE(memcpy(buf, "ab\0cd", 5) == buf);
+    _TEST_MEM(buf, "ab\0cdxxx", FILLED);
+    _TEST_TRUE(memcpy(buf, "z", 0) == buf);
+    _TEST_MEM(buf, "ab\0cdxxx", FILLED);
+
+    put(buf, "abcdefgh", FILLED);
+    _TEST_TRUE(memmove(buf + 2, buf, 5) == buf + 2);
+    _TEST_MEM(buf, "ababcdeh", FILLED);
+    put(buf, "abcdefgh", FILLED);
+    _TEST_TRUE(memmove(buf, buf + 2, 5) == buf);
+    _TEST_MEM(buf, "cdefgfgh", FILLED);
+    _TEST_TRUE(memmove(buf, buf, FILLED) == buf);
+    _TEST_MEM(buf, "cdefgfgh", FILLED);
+
+    put(buf, "xxxxxxxx", FILLED);
+    _TEST_TRUE(strcpy(buf, "abc") == buf);
+    _TEST_MEM(buf, "abc\0xxxx", FILLED);
+    _TEST_TRUE(strcpy(buf, "") == buf);
+    _TEST_MEM(buf, "\0bc\0xxxx", FILLED);
+
+    put(buf, "xxxxxxxx", FILLED);
+    _TEST_TRUE(strncpy(buf, "ab", 5) == buf);
+    _TEST_MEM(buf, "ab\0\0\0xxx", FILLED);
+    _TEST_TRUE(strncpy(buf, "abcdefg", 3) == buf);
+    _TEST_MEM(buf, "abc\0\0xxx", FILLED);
+    _TEST_TRUE(strncpy(buf, "z", 0) == buf);
+    _TEST_MEM(buf, "abc\0\0xxx", FILLED);
+}
+
+// A concatenation writes past a string's end, with a null character after.
+static void Test_StringConcatenation(void)
+{
+    char buf[SIZE];
+
+    put(buf, "ab\0xxxxx", FILLED);
+    _TEST_TRUE(strcat(buf, "cd") == buf);
+    _TEST_MEM(buf, "abcd\0xxx", FILLED);
+    _TEST_TRUE(strcat(buf, "") == buf);
+    _TEST_MEM(buf, "abcd\0xxx", FILLED);
+
+    put(buf, "ab\0xxxxx", FILLED);
+    _TEST_TRUE(strncat(buf, "cdef", 2) == buf);
+    _TEST_MEM(buf, "abcd\0xxx", FILLED);
+    _TEST_TRUE(strncat(buf, "e", 5) == buf);
+    _TEST_MEM(buf, "abcde\0xx", FILLED);
+    _TEST_TRUE(strncat(buf, "z", 0) == buf);
+    _TEST_MEM(buf, "abcde\0xx", FILLED);
+}
+
+// A comparison's sign is that of the first bytes to differ, as unsigned char.
+static void Test_StringComparison(void)
+{
     size_t len;
+    char buf[SIZE];
+    char other[SIZE];
 
-    put(buf, "xxxxxxxx", 9);
-    if (memcpy(buf, "ab\0cd", 5) != buf or not same(buf, "ab\0cdxxx", 9)) return 1;
-    if (memcpy(buf, "z", 0) != buf or not same(buf, "ab\0cdxxx", 9)) return 1;
+    _TEST_INT(sign(memcmp("abc", "abd", 3)), -1);
+    _TEST_INT(sign(memcmp("abd", "abc", 3)), 1);
+    _TEST_INT(memcmp("abc", "abd", 2), 0);
+    _TEST_INT(memcmp("ab\0c", "ab\0c", 4), 0);
+    _TEST_INT(sign(memcmp("ab\0c", "ab\0d", 4)), -1);
+    _TEST_INT(memcmp("a", "b", 0), 0);
+    _TEST_INT(sign(memcmp("\x80", "\x01", 1)), 1);
 
-    put(buf, "abcdefgh", 9);
-    if (memmove(buf + 2, buf, 5) != buf + 2 or not same(buf, "ababcdeh", 9)) return 2;
-    put(buf, "abcdefgh", 9);
-    if (memmove(buf, buf + 2, 5) != buf or not same(buf, "cdefgfgh", 9)) return 2;
+    _TEST_INT(strcmp("abc", "abc"), 0);
+    _TEST_INT(sign(strcmp("abc", "abd")), -1);
+    _TEST_INT(sign(strcmp("abd", "abc")), 1);
+    _TEST_INT(sign(strcmp("ab", "abc")), -1);
+    _TEST_INT(sign(strcmp("abc", "ab")), 1);
+    _TEST_INT(strcmp("", ""), 0);
+    _TEST_INT(sign(strcmp("\x80", "a")), 1);
 
-    put(buf, "xxxxxxxx", 9);
-    if (strcpy(buf, "abc") != buf or not same(buf, "abc\0xxxx", 9)) return 3;
-    if (strcpy(buf, "") != buf or not same(buf, "\0bc\0xxxx", 9)) return 3;
+    _TEST_INT(sign(strcoll("abc", "abd")), -1);
+    _TEST_INT(sign(strcoll("b", "a")), 1);
+    _TEST_INT(strcoll("abc", "abc"), 0);
+    _TEST_INT(sign(strcoll("ab", "abc")), -1);
+    _TEST_INT(sign(strcoll("\x80", "a")), 1);
 
-    put(buf, "xxxxxxxx", 9);
-    if (strncpy(buf, "ab", 5) != buf or not same(buf, "ab\0\0\0xxx", 9)) return 4;
-    if (strncpy(buf, "abcdefg", 3) != buf or not same(buf, "abc\0\0xxx", 9)) return 4;
-
-    put(buf, "ab\0xxxxx", 9);
-    if (strcat(buf, "cd") != buf or not same(buf, "abcd\0xxx", 9)) return 5;
-    if (strcat(buf, "") != buf or not same(buf, "abcd\0xxx", 9)) return 5;
-
-    put(buf, "ab\0xxxxx", 9);
-    if (strncat(buf, "cdef", 2) != buf or not same(buf, "abcd\0xxx", 9)) return 6;
-    if (strncat(buf, "e", 5) != buf or not same(buf, "abcde\0xx", 9)) return 6;
-
-    if (memcmp("abc", "abd", 3) >= 0 or memcmp("abd", "abc", 3) <= 0 or memcmp("abc", "abd", 2) != 0) return 7;
-    if (memcmp("ab\0c", "ab\0c", 4) != 0 or memcmp("a", "b", 0) != 0 or memcmp("\x80", "\x01", 1) <= 0) return 7;
-
-    if (strcmp("abc", "abc") != 0 or strcmp("abc", "abd") >= 0 or strcmp("abd", "abc") <= 0) return 8;
-    if (strcmp("ab", "abc") >= 0 or strcmp("abc", "ab") <= 0 or strcmp("", "") != 0 or strcmp("\x80", "a") <= 0) return 8;
-
-    if (sign(strcoll("abc", "abd")) != -1 or sign(strcoll("b", "a")) != 1 or strcoll("abc", "abc") != 0) return 9;
-    if (sign(strcoll("ab", "abc")) != -1 or sign(strcoll("\x80", "a")) != 1) return 9;
-
-    if (strncmp("abcx", "abcy", 3) != 0 or strncmp("abcx", "abcy", 4) >= 0 or strncmp("ab", "abc", 5) >= 0) return 10;
-    if (strncmp("ab\0x", "ab\0y", 4) != 0 or strncmp("a", "b", 0) != 0 or strncmp("\x80", "a", 1) <= 0) return 10;
+    _TEST_INT(strncmp("abcx", "abcy", 3), 0);
+    _TEST_INT(sign(strncmp("abcx", "abcy", 4)), -1);
+    _TEST_INT(sign(strncmp("ab", "abc", 5)), -1);
+    _TEST_INT(strncmp("ab\0x", "ab\0y", 4), 0);
+    _TEST_INT(strncmp("a", "b", 0), 0);
+    _TEST_INT(sign(strncmp("\x80", "a", 1)), 1);
 
     len = strxfrm(buf, "abd", sizeof(buf));
-    if (len >= sizeof(buf) or buf[len] != '\0' or strxfrm(NULL, "abd", 0) != len) return 11;
-    len = strxfrm(other, "abc", sizeof(other));
-    if (len >= sizeof(other) or sign(strcmp(other, buf)) != sign(strcoll("abc", "abd"))) return 11;
+    _TEST_UINT(strxfrm(NULL, "abd", 0), len);
+    if (_TEST_TRUE(len < sizeof(buf))) {
+        _TEST_UINT(strlen(buf), len);
+        len = strxfrm(other, "abc", sizeof(other));
+        if (_TEST_TRUE(len < sizeof(other))) {
+            _TEST_INT(sign(strcmp(other, buf)), sign(strcoll("abc", "abd")));
+        }
+    }
+}
 
-    if (memchr(bytes, 'b', 6) != bytes + 1 or memchr(bytes, 'c', 6) != bytes + 3 or memchr(bytes, '\0', 6) != bytes + 2) return 12;
-    if (memchr(bytes, 'c', 3) != NULL or memchr(bytes, 'z', 6) != NULL or memchr(bytes, 0x100 + 'b', 6) != bytes + 1) return 12;
-    if (memchr("\xFF", -1, 1) == NULL) return 12;
+// A search points at what it finds, or finds nothing, and counts what it spans.
+static void Test_StringSearch(void)
+{
+    char buf[SIZE];
+    const char *word = "abcabc";
+    const char *bytes = "ab\0cab";
+    static char text[] = "?a???b,,,#c";
 
-    if (strchr(word, 'b') != word + 1 or strchr(word, '\0') != word + 6 or strchr(word, 'z') != NULL) return 13;
-    if (strchr(word, 0x100 + 'c') != word + 2 or strchr("\xFF", -1) == NULL) return 13;
+    _TEST_INT(offset(bytes, memchr(bytes, 'b', 6)), 1);
+    _TEST_INT(offset(bytes, memchr(bytes, 'c', 6)), 3);
+    _TEST_INT(offset(bytes, memchr(bytes, '\0', 6)), 2);
+    _TEST_INT(offset(bytes, memchr(bytes, 'c', 3)), NONE);
+    _TEST_INT(offset(bytes, memchr(bytes, 'z', 6)), NONE);
+    _TEST_INT(offset(bytes, memchr(bytes, 'a', 0)), NONE);
+    _TEST_INT(offset(bytes, memchr(bytes, 0x100 + 'b', 6)), 1);
+    _TEST_TRUE(memchr("\xFF", -1, 1) != NULL);
 
-    if (strcspn("abcde", "dc") != 2 or strcspn("abc", "") != 3 or strcspn("", "a") != 0 or strcspn("abc", "xyz") != 3) return 14;
+    _TEST_INT(offset(word, strchr(word, 'b')), 1);
+    _TEST_INT(offset(word, strchr(word, '\0')), 6);
+    _TEST_INT(offset(word, strchr(word, 'z')), NONE);
+    _TEST_INT(offset(word, strchr(word, 0x100 + 'c')), 2);
+    _TEST_TRUE(strchr("\xFF", -1) != NULL);
 
-    if (strpbrk(word, "cb") != word + 1 or strpbrk(word, "xyz") != NULL or strpbrk(word, "") != NULL) return 15;
+    _TEST_UINT(strcspn("abcde", "dc"), 2);
+    _TEST_UINT(strcspn("abc", ""), 3);
+    _TEST_UINT(strcspn("", "a"), 0);
+    _TEST_UINT(strcspn("abc", "xyz"), 3);
 
-    if (strrchr(word, 'b') != word + 4 or strrchr(word, '\0') != word + 6 or strrchr(word, 'z') != NULL) return 16;
+    _TEST_INT(offset(word, strpbrk(word, "cb")), 1);
+    _TEST_INT(offset(word, strpbrk(word, "xyz")), NONE);
+    _TEST_INT(offset(word, strpbrk(word, "")), NONE);
 
-    if (strspn("aabbc", "ab") != 4 or strspn("abc", "") != 0 or strspn("", "a") != 0 or strspn("abc", "cba") != 3) return 17;
+    _TEST_INT(offset(word, strrchr(word, 'b')), 4);
+    _TEST_INT(offset(word, strrchr(word, '\0')), 6);
+    _TEST_INT(offset(word, strrchr(word, 'z')), NONE);
 
-    if (strstr(word, "ca") != word + 2 or strstr(word, "") != word or strstr(word, "abd") != NULL) return 18;
-    if (strstr("aaaab", "aaab") == NULL or strstr("ab", "abc") != NULL or strstr("", "") == NULL) return 18;
+    _TEST_UINT(strspn("aabbc", "ab"), 4);
+    _TEST_UINT(strspn("abc", ""), 0);
+    _TEST_UINT(strspn("", "a"), 0);
+    _TEST_UINT(strspn("abc", "cba"), 3);
 
-    if (strtok(text, "?") != text + 1 or not same(text + 1, "a", 2)) return 19;
-    if (strtok(NULL, ",") != text + 3 or not same(text + 3, "??b", 4)) return 19;
-    if (strtok(NULL, "#,") != text + 10 or not same(text + 10, "c", 2)) return 19;
-    if (strtok(NULL, "?") != NULL) return 19;
+    _TEST_INT(offset(word, strstr(word, "ca")), 2);
+    _TEST_INT(offset(word, strstr(word, "")), 0);
+    _TEST_INT(offset(word, strstr(word, "abd")), NONE);
+    _TEST_INT(offset(word, strstr(word, "abcabcd")), NONE);
+    _TEST_TRUE(strstr("aaaab", "aaab") != NULL);
+    _TEST_TRUE(strstr("ab", "abc") == NULL);
+    _TEST_TRUE(strstr("", "") != NULL);
+
+    _TEST_INT(offset(text, strtok(text, "?")), 1);
+    _TEST_MEM(text + 1, "a", 2);
+    _TEST_INT(offset(text, strtok(NULL, ",")), 3);
+    _TEST_MEM(text + 3, "??b", 4);
+    _TEST_INT(offset(text, strtok(NULL, "#,")), 10);
+    _TEST_MEM(text + 10, "c", 2);
+    _TEST_INT(offset(text, strtok(NULL, "?")), NONE);
     put(buf, ",,,", 4);
-    if (strtok(buf, ",") != NULL or strtok(NULL, ",") != NULL) return 19;
+    _TEST_INT(offset(buf, strtok(buf, ",")), NONE);
+    _TEST_INT(offset(buf, strtok(NULL, ",")), NONE);
+}
 
-    put(buf, "xxxxxxxx", 9);
-    if (memset(buf, 'a', 3) != buf or not same(buf, "aaaxxxxx", 9)) return 20;
-    if (memset(buf, 0x100 + 'b', 2) != buf or not same(buf, "bbaxxxxx", 9)) return 20;
-    if (memset(buf, 'c', 0) != buf or not same(buf, "bbaxxxxx", 9)) return 20;
+// memset fills, strerror names an error number and strlen counts to the null.
+static void Test_StringMiscellaneous(void)
+{
+    char buf[SIZE];
 
-    if (strcmp(strerror(EDOM), "Numerical argument out of domain") != 0) return 21;
-    if (strcmp(strerror(EILSEQ), "Invalid or incomplete multibyte or wide character") != 0) return 21;
-    if (strcmp(strerror(ERANGE), "Numerical result out of range") != 0) return 21;
-    if (strcmp(strerror(0), "Success") != 0) return 21;
-    if (strcmp(strerror(1000), "Unknown error 1000") != 0) return 21;
-    if (strcmp(strerror(-1), "Unknown error -1") != 0) return 21;
-    if (strcmp(strerror(INT_MIN), "Unknown error -2147483648") != 0) return 21;
+    put(buf, "xxxxxxxx", FILLED);
+    _TEST_TRUE(memset(buf, 'a', 3) == buf);
+    _TEST_MEM(buf, "aaaxxxxx", FILLED);
+    _TEST_TRUE(memset(buf, 0x100 + 'b', 2) == buf);
+    _TEST_MEM(buf, "bbaxxxxx", FILLED);
+    _TEST_TRUE(memset(buf, 'c', 0) == buf);
+    _TEST_MEM(buf, "bbaxxxxx", FILLED);
 
-    if (strlen("") != 0 or strlen("abc") != 3 or strlen("ab\0c") != 2) return 22;
+    _TEST_STR(strerror(EDOM), "Numerical argument out of domain");
+    _TEST_STR(strerror(EILSEQ), "Invalid or incomplete multibyte or wide character");
+    _TEST_STR(strerror(ERANGE), "Numerical result out of range");
+    _TEST_STR(strerror(0), "Success");
+    _TEST_STR(strerror(1000), "Unknown error 1000");
+    _TEST_STR(strerror(-1), "Unknown error -1");
+    _TEST_STR(strerror(INT_MIN), "Unknown error -2147483648");
 
-    if (copy(buf, "zy", 3) != buf or not same(buf, "zy", 3) or length("abcd") != 4) return 23;
-    if ((strlen)("abcd") != 4 or (strcmp)("a", "a") != 0 or (memset)(buf, 'q', 1) != buf or buf[0] != 'q') return 23;
-    return 0;
+    _TEST_UINT(strlen(""), 0);
+    _TEST_UINT(strlen("abc"), 3);
+    _TEST_UINT(strlen("ab\0c"), 2);
+}
+
+// A pointer reaches each function, and a call in parentheses any macro's.
+static void Test_StringCalls(void)
+{
+    char buf[SIZE];
+    size_t (*length)(const char *) = strlen;
+    void *(*copy)(void *restrict, const void *restrict, size_t) = memcpy;
+
+    _TEST_TRUE(copy(buf, "zy", 3) == buf);
+    _TEST_STR(buf, "zy");
+    _TEST_UINT(length("abcd"), 4);
+
+    _TEST_TRUE((memcpy)(buf, "ab", 3) == buf);
+    _TEST_STR(buf, "ab");
+    _TEST_TRUE((memmove)(buf + 1, buf, 2) == buf + 1);
+    _TEST_MEM(buf, "aab", 3);
+    _TEST_STR((strcpy)(buf, "abc"), "abc");
+    _TEST_STR((strncpy)(buf, "xy", 2), "xyc");
+    _TEST_STR((strcat)(buf, "d"), "xycd");
+    _TEST_STR((strncat)(buf, "efg", 1), "xycde");
+    _TEST_INT((memcmp)("a", "a", 1), 0);
+    _TEST_INT((strcmp)("a", "a"), 0);
+    _TEST_INT((strcoll)("a", "a"), 0);
+    _TEST_INT((strncmp)("ab", "ac", 1), 0);
+    _TEST_UINT((strxfrm)(NULL, "", 0), 0);
+    _TEST_INT(offset(buf, (memchr)(buf, 'c', 5)), 2);
+    _TEST_INT(offset(buf, (strchr)(buf, 'd')), 3);
+    _TEST_UINT((strcspn)(buf, "e"), 4);
+    _TEST_INT(offset(buf, (strpbrk)(buf, "ey")), 1);
+    _TEST_INT(offset(buf, (strrchr)(buf, 'x')), 0);
+    _TEST_UINT((strspn)(buf, "yx"), 2);
+    _TEST_INT(offset(buf, (strstr)(buf, "de")), 3);
+    _TEST_INT(offset(buf, (strtok)(buf, "c")), 0);
+    _TEST_STR(buf, "xy");
+    _TEST_TRUE((memset)(buf, 'q', 1) == buf);
+    _TEST_STR(buf, "qy");
+    _TEST_STR((strerror)(0), "Success");
+    _TEST_UINT((strlen)("abcd"), 4);
+}
+
+int main(void)
+{
+    Test_StringCopying();
+    Test_StringConcatenation();
+    Test_StringComparison();
+    Test_StringSearch();
+    Test_StringMiscellaneous();
+    Test_StringCalls();
+    return _Test_Status();
 }
