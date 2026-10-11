@@ -1489,6 +1489,7 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                 Gen_x86_64_EmitBitfieldLoad(bits);
                 Gen_x86_64_EmitPop(ASM_X86_64_REG_RCX);
                 Gen_x86_64_EmitOpAssign(node->an_op, node->an_type, node->an_line);
+                Gen_x86_64_EmitNarrow(node->an_type);
                 Gen_x86_64_EmitBitfieldStore(bits);
             } else {
                 Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
@@ -1507,13 +1508,16 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
                 Gen_x86_64_EmitBitfieldLoad(bits);
                 Gen_x86_64_EmitPush();
                 Asm_x86_64_EmitAddImm(node->an_step, ASM_X86_64_REG_RAX);
+                Gen_x86_64_EmitNarrow(node->an_type);
                 Gen_x86_64_EmitBitfieldStore(bits);
                 Gen_x86_64_EmitPop(ASM_X86_64_REG_RAX);
             } else {
                 Gen_x86_64_EmitLoadFrom(ASM_X86_64_REG_RDI, 0, ASM_X86_64_REG_RAX, node->an_type);
                 Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
-                Asm_x86_64_EmitAddImm(node->an_step, ASM_X86_64_REG_RCX);
-                Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RDI, 0, width);
+                Asm_x86_64_EmitAddImm(node->an_step, ASM_X86_64_REG_RAX);
+                Gen_x86_64_EmitNarrow(node->an_type);
+                Asm_x86_64_EmitMovStore(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RDI, 0, width);
+                Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
             }
         } break;
         case AST_NODE_KIND_COND: {
