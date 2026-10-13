@@ -26,8 +26,14 @@
 // Module header.
 #include <string.h>
 
+// The loops every function here stands on.
+#include <_str.h>
+
 // The texts strerror gives.
 #include <_err.h>
+
+// Check the type _str counts in against the header's.
+typedef char _String_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
 
 // Where strtok's next search starts.
 char *_String_Next;
@@ -40,7 +46,7 @@ char *_String_FormatUnknown(int errnum)
 {
     char *ptr = _String_Unknown + _STRING_ERROR_SIZE - 1;
     unsigned int value = errnum < 0 ? 0U - (unsigned int) errnum : (unsigned int) errnum;
-    size_t len = strlen(_ERR_STRING_UNKNOWN);
+    size_t len = _Str_GetLength(_ERR_STRING_UNKNOWN);
 
     *ptr = '\0';
     do {
@@ -53,144 +59,77 @@ char *_String_FormatUnknown(int errnum)
         *ptr = '-';
     }
     ptr -= len;
-    memcpy(ptr, _ERR_STRING_UNKNOWN, len);
+    _Str_CopyBytes(ptr, _ERR_STRING_UNKNOWN, len);
     return ptr;
 }
 
 // Copy n bytes from str2 to str1, which must not overlap.
 void *memcpy(void *restrict str1, const void *restrict str2, size_t n)
 {
-    unsigned char *to = str1;
-    const unsigned char *from = str2;
-
-    for (size_t i = 0; i < n; i++) {
-        to[i] = from[i];
-    }
-    return str1;
+    return _Str_CopyBytes(str1, str2, n);
 }
 
 // Copy n bytes from str2 to str1, which may overlap.
 void *memmove(void *str1, const void *str2, size_t n)
 {
-    unsigned char *to = str1;
-    const unsigned char *from = str2;
-
-    if (to < from) {
-        for (size_t i = 0; i < n; i++) {
-            to[i] = from[i];
-        }
-    } else {
-        for (size_t i = n; i > 0; i--) {
-            to[i - 1] = from[i - 1];
-        }
-    }
-    return str1;
+    return _Str_MoveBytes(str1, str2, n);
 }
 
 // Copy the string str2 to str1.
 char *strcpy(char *restrict str1, const char *restrict str2)
 {
-    size_t i = 0;
-
-    while (str2[i] != '\0') {
-        str1[i] = str2[i];
-        i++;
-    }
-    str1[i] = '\0';
-    return str1;
+    return _Str_CopyString(str1, str2);
 }
 
 // Copy at most n characters of the string str2 to str1, padded to n with nulls.
 char *strncpy(char *restrict str1, const char *restrict str2, size_t n)
 {
-    size_t i = 0;
-
-    while (i < n && str2[i] != '\0') {
-        str1[i] = str2[i];
-        i++;
-    }
-    while (i < n) {
-        str1[i] = '\0';
-        i++;
-    }
-    return str1;
+    return _Str_CopyChars(str1, str2, n);
 }
 
 // Append the string str2 to str1.
 char *strcat(char *restrict str1, const char *restrict str2)
 {
-    strcpy(str1 + strlen(str1), str2);
-    return str1;
+    return _Str_AppendString(str1, str2);
 }
 
 // Append at most n characters of the string str2 to str1, and a null character.
 char *strncat(char *restrict str1, const char *restrict str2, size_t n)
 {
-    char *end = str1 + strlen(str1);
-    size_t i = 0;
-
-    while (i < n && str2[i] != '\0') {
-        end[i] = str2[i];
-        i++;
-    }
-    end[i] = '\0';
-    return str1;
+    return _Str_AppendChars(str1, str2, n);
 }
 
 // Compare n bytes of str1 and str2 as unsigned chars.
 int memcmp(const void *str1, const void *str2, size_t n)
 {
-    const unsigned char *left = str1;
-    const unsigned char *right = str2;
-
-    for (size_t i = 0; i < n; i++) {
-        if (left[i] != right[i]) {
-            return left[i] - right[i];
-        }
-    }
-    return 0;
+    return _Str_CompareBytes(str1, str2, n);
 }
 
 // Compare the strings str1 and str2 as unsigned chars.
 int strcmp(const char *str1, const char *str2)
 {
-    const unsigned char *left = (const unsigned char *) str1;
-    const unsigned char *right = (const unsigned char *) str2;
-
-    while (*left != '\0' && *left == *right) {
-        left++;
-        right++;
-    }
-    return *left - *right;
+    return _Str_CompareStrings(str1, str2);
 }
 
 // Compare the strings str1 and str2 in the locale's collation order.
 int strcoll(const char *str1, const char *str2)
 {
-    return strcmp(str1, str2);
+    return _Str_CompareStrings(str1, str2);
 }
 
 // Compare at most n characters of the strings str1 and str2 as unsigned chars.
 int strncmp(const char *str1, const char *str2, size_t n)
 {
-    const unsigned char *left = (const unsigned char *) str1;
-    const unsigned char *right = (const unsigned char *) str2;
-
-    for (size_t i = 0; i < n; i++) {
-        if (left[i] != right[i] || left[i] == '\0') {
-            return left[i] - right[i];
-        }
-    }
-    return 0;
+    return _Str_CompareChars(str1, str2, n);
 }
 
 // Transform the string str2 into str1, which strcmp orders as strcoll would.
 size_t strxfrm(char *restrict str1, const char *restrict str2, size_t n)
 {
-    size_t len = strlen(str2);
+    size_t len = _Str_GetLength(str2);
 
     if (len < n) {
-        memcpy(str1, str2, len + 1);
+        _Str_CopyBytes(str1, str2, len + 1);
     }
     return len;
 }
@@ -198,124 +137,55 @@ size_t strxfrm(char *restrict str1, const char *restrict str2, size_t n)
 // Find the first byte ch in n bytes of str.
 void *memchr(const void *str, int ch, size_t n)
 {
-    const unsigned char *ptr = str;
-
-    for (size_t i = 0; i < n; i++) {
-        if (ptr[i] == (unsigned char) ch) {
-            return (void *) (ptr + i);
-        }
-    }
-    return NULL;
+    return _Str_FindByte(str, ch, n);
 }
 
 // Find the first character ch in the string str, its null character included.
 char *strchr(const char *str, int ch)
 {
-    const char *ptr = str;
-
-    while (*ptr != (char) ch) {
-        if (*ptr == '\0') {
-            return NULL;
-        }
-        ptr++;
-    }
-    return (char *) ptr;
+    return _Str_FindChar(str, ch);
 }
 
 // Count the characters at the start of the string str1 that are not in str2.
 size_t strcspn(const char *str1, const char *str2)
 {
-    size_t len = 0;
-
-    while (str1[len] != '\0' && strchr(str2, str1[len]) == NULL) {
-        len++;
-    }
-    return len;
+    return _Str_CountUnlisted(str1, str2);
 }
 
 // Find the first character of the string str1 that is in str2.
 char *strpbrk(const char *str1, const char *str2)
 {
-    const char *ptr = str1 + strcspn(str1, str2);
-
-    if (*ptr == '\0') {
-        return NULL;
-    }
-    return (char *) ptr;
+    return _Str_FindListed(str1, str2);
 }
 
 // Find the last character ch in the string str, its null character included.
 char *strrchr(const char *str, int ch)
 {
-    const char *found = NULL;
-    const char *ptr = str;
-
-    do {
-        if (*ptr == (char) ch) {
-            found = ptr;
-        }
-    } while (*ptr++ != '\0');
-    return (char *) found;
+    return _Str_FindLastChar(str, ch);
 }
 
 // Count the characters at the start of the string str1 that are in str2.
 size_t strspn(const char *str1, const char *str2)
 {
-    size_t len = 0;
-
-    while (str1[len] != '\0' && strchr(str2, str1[len]) != NULL) {
-        len++;
-    }
-    return len;
+    return _Str_CountListed(str1, str2);
 }
 
 // Find the first occurrence of the string str2 in str1.
 char *strstr(const char *str1, const char *str2)
 {
-    size_t len = strlen(str2);
-
-    for (const char *ptr = str1; ; ptr++) {
-        if (strncmp(ptr, str2, len) == 0) {
-            return (char *) ptr;
-        }
-        if (*ptr == '\0') {
-            return NULL;
-        }
-    }
+    return _Str_FindString(str1, str2);
 }
 
 // Split the string str1 into tokens between characters of str2, one per call.
 char *strtok(char *restrict str1, const char *restrict str2)
 {
-    char *start = str1 != NULL ? str1 : _String_Next;
-    char *end;
-
-    if (start == NULL) {
-        return NULL;
-    }
-    start += strspn(start, str2);
-    if (*start == '\0') {
-        _String_Next = start;
-        return NULL;
-    }
-    end = start + strcspn(start, str2);
-    if (*end != '\0') {
-        *end = '\0';
-        end++;
-    }
-    _String_Next = end;
-    return start;
+    return _Str_SplitToken(str1, str2, &_String_Next);
 }
 
 // Set n bytes of str to the byte ch.
 void *memset(void *str, int ch, size_t n)
 {
-    unsigned char *to = str;
-
-    for (size_t i = 0; i < n; i++) {
-        to[i] = (unsigned char) ch;
-    }
-    return str;
+    return _Str_FillBytes(str, ch, n);
 }
 
 // Name the error number errnum.
@@ -332,10 +202,5 @@ char *strerror(int errnum)
 // Count the characters of the string str before its null character.
 size_t strlen(const char *str)
 {
-    size_t len = 0;
-
-    while (str[len] != '\0') {
-        len++;
-    }
-    return len;
+    return _Str_GetLength(str);
 }
