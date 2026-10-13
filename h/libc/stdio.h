@@ -110,6 +110,20 @@
 // The fewest digits a power of two has.
 #define _STDIO_POWER_MIN 1
 
+// The width of an input directive that gives none.
+#define _STDIO_SCAN_WIDTH_NONE 0
+
+// An input directive's length modifier: none, hh, h, l, ll, j, z, t or L.
+#define _STDIO_SCAN_LENGTH_NONE    0
+#define _STDIO_SCAN_LENGTH_CHAR    1
+#define _STDIO_SCAN_LENGTH_SHORT   2
+#define _STDIO_SCAN_LENGTH_LONG    3
+#define _STDIO_SCAN_LENGTH_LLONG   4
+#define _STDIO_SCAN_LENGTH_INTMAX  5
+#define _STDIO_SCAN_LENGTH_SIZE    6
+#define _STDIO_SCAN_LENGTH_PTRDIFF 7
+#define _STDIO_SCAN_LENGTH_LDOUBLE 8
+
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
 
@@ -186,6 +200,28 @@ enum _Stdio_Real {
     _STDIO_REAL_NAN
 };
 
+// What an input directive does with what it converts.
+typedef enum _Stdio_Assign _Stdio_Assign;
+enum _Stdio_Assign {
+    _STDIO_ASSIGN_STORE,
+    _STDIO_ASSIGN_SUPPRESS
+};
+
+// The characters a scanset takes: those it lists, or all the others.
+typedef enum _Stdio_Accept _Stdio_Accept;
+enum _Stdio_Accept {
+    _STDIO_ACCEPT_LISTED,
+    _STDIO_ACCEPT_UNLISTED
+};
+
+// What stopped formatted input: nothing, no input or input that does not fit.
+typedef enum _Stdio_Failure _Stdio_Failure;
+enum _Stdio_Failure {
+    _STDIO_FAILURE_NONE,
+    _STDIO_FAILURE_INPUT,
+    _STDIO_FAILURE_MATCHING
+};
+
 // A stream: its descriptor, its buffer, what it may do and the stream after it.
 typedef struct _Stdio_File _Stdio_File;
 struct _Stdio_File {
@@ -220,6 +256,16 @@ struct _Stdio_Numeral {
     char sn_digit[_STDIO_REAL_DIGITS]; // the digits, the greatest first
     size_t sn_len;                     // how many there are, 0 for zero
     int sn_exp;                        // the first's power of ten, 0 for zero
+};
+
+// Where formatted input comes from: a stream, or else a string.
+typedef struct _Stdio_Source _Stdio_Source;
+struct _Stdio_Source {
+    _Stdio_File *so_stream;    // the stream, or NULL for a string
+    const char *so_str;        // the string, where there is no stream
+    size_t so_count;           // the characters read so far
+    int so_stored;             // the assignments made so far
+    _Stdio_Failure so_failure; // what stopped the input, if anything has
 };
 
 // (S7.19.1) Introduction
@@ -326,6 +372,32 @@ void   _Stdio_EmitWideChar(_Stdio_Sink *sink, int flags, int width, _Stdio_Wchar
 void   _Stdio_EmitWideString(_Stdio_Sink *sink, int flags, int width, int precision, const _Stdio_WcharType *wstr);
 int    _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
 
+// Scan matching
+size_t _Stdio_MatchScanHead(const char *format, _Stdio_Assign *assign, int *width, int *length);
+_Bool  _Stdio_MatchScanSpace(const char *format, size_t *len);
+_Bool  _Stdio_MatchScanOrdinary(const char *format, size_t *len);
+_Bool  _Stdio_MatchScanPercent(const char *format, size_t *len);
+_Bool  _Stdio_MatchScanChar(const char *format, _Stdio_VaList *list, size_t *len, int *width, char **dest);
+_Bool  _Stdio_MatchScanString(const char *format, _Stdio_VaList *list, size_t *len, int *width, char **dest);
+_Bool  _Stdio_MatchScanSet(const char *format, _Stdio_VaList *list, size_t *len, int *width, char **dest, const char **set, size_t *count, _Stdio_Accept *accept);
+_Bool  _Stdio_MatchScanCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest);
+
+// Formatted input
+int   _Stdio_PeekSource(_Stdio_Source *source);
+void  _Stdio_AdvanceSource(_Stdio_Source *source);
+int   _Stdio_EndSource(_Stdio_Source *source);
+_Bool _Stdio_IsInSet(const char *set, size_t count, int ch);
+
+// Scanning
+void _Stdio_ScanSpace(_Stdio_Source *source);
+void _Stdio_ScanOrdinary(_Stdio_Source *source, const char *text, size_t len);
+void _Stdio_ScanPercent(_Stdio_Source *source);
+void _Stdio_ScanChar(_Stdio_Source *source, int width, char *dest);
+void _Stdio_ScanString(_Stdio_Source *source, int width, char *dest);
+void _Stdio_ScanSet(_Stdio_Source *source, int width, char *dest, const char *set, size_t count, _Stdio_Accept accept);
+void _Stdio_ScanCount(_Stdio_Source *source, int length, void *dest);
+int  _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList args);
+
 // Positioning
 long _Stdio_CountReadAhead(FILE *stream);
 int  _Stdio_SeekStream(FILE *stream, long offset, int whence);
@@ -351,13 +423,19 @@ int   setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size);
 
 // (S7.19.6) Formatted input/output functions
 int fprintf(FILE *restrict stream, const char *restrict format, ...);
+int fscanf(FILE *restrict stream, const char *restrict format, ...);
 int printf(const char *restrict format, ...);
+int scanf(const char *restrict format, ...);
 int snprintf(char *restrict str, size_t n, const char *restrict format, ...);
 int sprintf(char *restrict str, const char *restrict format, ...);
+int sscanf(const char *restrict str, const char *restrict format, ...);
 int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList arg);
+int vfscanf(FILE *restrict stream, const char *restrict format, _Stdio_VaList arg);
 int vprintf(const char *restrict format, _Stdio_VaList arg);
+int vscanf(const char *restrict format, _Stdio_VaList arg);
 int vsnprintf(char *restrict str, size_t n, const char *restrict format, _Stdio_VaList arg);
 int vsprintf(char *restrict str, const char *restrict format, _Stdio_VaList arg);
+int vsscanf(const char *restrict str, const char *restrict format, _Stdio_VaList arg);
 
 // (S7.19.7) Character input/output functions
 int   fgetc(FILE *stream);

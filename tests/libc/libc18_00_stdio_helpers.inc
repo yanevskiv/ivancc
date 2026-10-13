@@ -113,3 +113,18 @@ static bool prints(const char *want, const char *format, ...)
     lost += ! _TEST_INT(n, (int) strlen(want));
     return lost == 0;
 }
+
+// (S7.19.6.7p3) A format should assign a count of items, the first a string.
+static bool scans(const char *input, const char *format, int count, const char *want)
+{
+    int lost = 0;
+    char got[HOLD];
+
+    memset(got, FILL, sizeof(got));
+    lost += ! _TEST_INT(sscanf(input, format, got), count);
+    if (count == 1) {
+        got[sizeof(got) - 1] = '\0';
+        lost += ! _TEST_STR(got, want);
+    }
+    return lost == 0;
+}

@@ -65,6 +65,9 @@
 // The character a number's fraction begins after.
 #include <locale.h>
 
+// The white space an input directive skips.
+#include <ctype.h>
+
 // A temporary name: where it is, and the characters and length of its end.
 #define _STDIO_TEMP_PREFIX  "/tmp/tmp."
 #define _STDIO_TEMP_LETTERS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -1647,6 +1650,415 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
     return _Stdio_EndSink(sink);
 }
 
+// Match an input directive's percent sign, asterisk, width and length.
+size_t _Stdio_MatchScanHead(const char *format, _Stdio_Assign *assign, int *width, int *length)
+{
+    int digit;
+    size_t from;
+    size_t i = 0;
+
+    if (format[i] != '%') {
+        return 0;
+    }
+    i++;
+
+    // Phase: match the asterisk
+    *assign = _STDIO_ASSIGN_STORE;
+    if (format[i] == '*') {
+        *assign = _STDIO_ASSIGN_SUPPRESS;
+        i++;
+    }
+
+    // Phase: match the width
+    *width = _STDIO_SCAN_WIDTH_NONE;
+    for (from = i; format[i] >= '0' && format[i] <= '9'; i++) {
+        digit = format[i] - '0';
+        *width = *width > (INT_MAX - digit) / _STDIO_COUNT_BASE ? INT_MAX : *width * _STDIO_COUNT_BASE + digit;
+    }
+    if (i > from && *width == 0) {
+        return 0;
+    }
+
+    // Phase: match the length
+    *length = _STDIO_SCAN_LENGTH_NONE;
+    if (format[i] == 'h' && format[i + 1] == 'h') {
+        *length = _STDIO_SCAN_LENGTH_CHAR;
+        i += 2;
+    } else if (format[i] == 'h') {
+        *length = _STDIO_SCAN_LENGTH_SHORT;
+        i++;
+    } else if (format[i] == 'l' && format[i + 1] == 'l') {
+        *length = _STDIO_SCAN_LENGTH_LLONG;
+        i += 2;
+    } else if (format[i] == 'l') {
+        *length = _STDIO_SCAN_LENGTH_LONG;
+        i++;
+    } else if (format[i] == 'j') {
+        *length = _STDIO_SCAN_LENGTH_INTMAX;
+        i++;
+    } else if (format[i] == 'z') {
+        *length = _STDIO_SCAN_LENGTH_SIZE;
+        i++;
+    } else if (format[i] == 't') {
+        *length = _STDIO_SCAN_LENGTH_PTRDIFF;
+        i++;
+    } else if (format[i] == 'L') {
+        *length = _STDIO_SCAN_LENGTH_LDOUBLE;
+        i++;
+    }
+    return i;
+}
+
+// Match a directive of white space, however much.
+_Bool _Stdio_MatchScanSpace(const char *format, size_t *len)
+{
+    size_t i = 0;
+
+    while (isspace((unsigned char) format[i])) {
+        i++;
+    }
+    *len = i;
+    return i > 0;
+}
+
+// Match a directive of ordinary characters, up to white space or a directive.
+_Bool _Stdio_MatchScanOrdinary(const char *format, size_t *len)
+{
+    size_t i = 0;
+
+    while (format[i] != '\0' && format[i] != '%' && ! isspace((unsigned char) format[i])) {
+        i++;
+    }
+    *len = i;
+    return i > 0;
+}
+
+// Match a %% directive, which is those two characters and no more.
+_Bool _Stdio_MatchScanPercent(const char *format, size_t *len)
+{
+    if (format[0] != '%' || format[1] != '%') {
+        return 0;
+    }
+    *len = 2;
+    return 1;
+}
+
+// Match a %c directive with where it stores, null if it stores nothing.
+_Bool _Stdio_MatchScanChar(const char *format, _Stdio_VaList *list, size_t *len, int *width, char **dest)
+{
+    int length;
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _STDIO_SCAN_LENGTH_NONE || format[at] != 'c') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, char *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %s directive with where it stores, null if it stores nothing.
+_Bool _Stdio_MatchScanString(const char *format, _Stdio_VaList *list, size_t *len, int *width, char **dest)
+{
+    int length;
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _STDIO_SCAN_LENGTH_NONE || format[at] != 's') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, char *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %[ directive with its scanset and where it stores, null if nowhere.
+_Bool _Stdio_MatchScanSet(const char *format, _Stdio_VaList *list, size_t *len, int *width, char **dest, const char **set, size_t *count, _Stdio_Accept *accept)
+{
+    int length;
+    size_t end;
+    size_t from;
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _STDIO_SCAN_LENGTH_NONE || format[at] != '[') {
+        return 0;
+    }
+
+    // Phase: match the scanset, a right bracket first being one of it
+    *accept = _STDIO_ACCEPT_LISTED;
+    from = at + 1;
+    if (format[from] == '^') {
+        *accept = _STDIO_ACCEPT_UNLISTED;
+        from++;
+    }
+    end = from;
+    if (format[end] == ']') {
+        end++;
+    }
+    while (format[end] != '\0' && format[end] != ']') {
+        end++;
+    }
+    if (format[end] != ']') {
+        return 0;
+    }
+    *set = format + from;
+    *count = end - from;
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, char *) : NULL;
+    *len = end + 1;
+    return 1;
+}
+
+// Match a %n directive with its length and where it stores.
+_Bool _Stdio_MatchScanCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest)
+{
+    int width;
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, &width, length);
+
+    if (at == 0 || *length == _STDIO_SCAN_LENGTH_LDOUBLE || format[at] != 'n') {
+        return 0;
+    }
+    if (assign != _STDIO_ASSIGN_STORE || width != _STDIO_SCAN_WIDTH_NONE) {
+        return 0;
+    }
+    *dest = va_arg(*list, void *);
+    *len = at + 1;
+    return 1;
+}
+
+// Peek at the source's next character, left unread, or EOF if there is none.
+int _Stdio_PeekSource(_Stdio_Source *source)
+{
+    char ch;
+    FILE *stream = source->so_stream;
+
+    if (stream == NULL) {
+        ch = source->so_str[source->so_count];
+        return ch != '\0' ? (unsigned char) ch : EOF;
+    }
+    if (stream->sf_flags & _STDIO_BACK) {
+        return stream->sf_back;
+    }
+    if (stream->sf_head == stream->sf_tail) {
+        stream->sf_head = 0;
+        stream->sf_tail = _Stdio_ReadDescriptor(stream, stream->sf_buf, stream->sf_size);
+    }
+    return stream->sf_head < stream->sf_tail ? stream->sf_buf[stream->sf_head] : EOF;
+}
+
+// Advance the source past the character peeked at, which counts as read.
+void _Stdio_AdvanceSource(_Stdio_Source *source)
+{
+    FILE *stream = source->so_stream;
+
+    if (stream != NULL && (stream->sf_flags & _STDIO_BACK)) {
+        stream->sf_flags &= ~_STDIO_BACK;
+    } else if (stream != NULL) {
+        stream->sf_head++;
+    }
+    source->so_count++;
+}
+
+// End the source's input, and return its assignments, or EOF if it had none.
+int _Stdio_EndSource(_Stdio_Source *source)
+{
+    if (source->so_failure == _STDIO_FAILURE_INPUT && source->so_stored == 0) {
+        return EOF;
+    }
+    return source->so_stored;
+}
+
+// Return whether ch is in a scanset's count characters, a-z being a range.
+_Bool _Stdio_IsInSet(const char *set, size_t count, int ch)
+{
+    const unsigned char *list = (const unsigned char *) set;
+
+    for (size_t i = 0; i < count; i++) {
+        if (i > 0 && i + 1 < count && list[i] == '-' && list[i - 1] <= list[i + 1]) {
+            if (ch >= list[i - 1] && ch < list[i + 1]) {
+                return 1;
+            }
+        } else if (ch == list[i]) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Scan the white space the source is at, none being enough.
+void _Stdio_ScanSpace(_Stdio_Source *source)
+{
+    while (isspace(_Stdio_PeekSource(source))) {
+        _Stdio_AdvanceSource(source);
+    }
+}
+
+// Scan len characters that should be text's, stopping at one that is not.
+void _Stdio_ScanOrdinary(_Stdio_Source *source, const char *text, size_t len)
+{
+    int ch;
+
+    for (size_t i = 0; i < len; i++) {
+        ch = _Stdio_PeekSource(source);
+        if (ch != (unsigned char) text[i]) {
+            source->so_failure = ch == EOF ? _STDIO_FAILURE_INPUT : _STDIO_FAILURE_MATCHING;
+            return;
+        }
+        _Stdio_AdvanceSource(source);
+    }
+}
+
+// Scan a percent sign, after any white space.
+void _Stdio_ScanPercent(_Stdio_Source *source)
+{
+    _Stdio_ScanSpace(source);
+    _Stdio_ScanOrdinary(source, "%", 1);
+}
+
+// Scan width characters into dest, one if no width, with no null after them.
+void _Stdio_ScanChar(_Stdio_Source *source, int width, char *dest)
+{
+    int ch;
+    size_t count = width == _STDIO_SCAN_WIDTH_NONE ? 1 : (size_t) width;
+
+    for (size_t i = 0; i < count; i++) {
+        ch = _Stdio_PeekSource(source);
+        if (ch == EOF) {
+            source->so_failure = _STDIO_FAILURE_INPUT;
+            return;
+        }
+        if (dest != NULL) {
+            dest[i] = (char) ch;
+        }
+        _Stdio_AdvanceSource(source);
+    }
+    if (dest != NULL) {
+        source->so_stored++;
+    }
+}
+
+// Scan a word, after any white space, into dest as a string, width its bound.
+void _Stdio_ScanString(_Stdio_Source *source, int width, char *dest)
+{
+    int ch;
+    size_t len = 0;
+    size_t max = width == _STDIO_SCAN_WIDTH_NONE ? SIZE_MAX : (size_t) width;
+
+    _Stdio_ScanSpace(source);
+    while (len < max && (ch = _Stdio_PeekSource(source)) != EOF && ! isspace(ch)) {
+        if (dest != NULL) {
+            dest[len] = (char) ch;
+        }
+        _Stdio_AdvanceSource(source);
+        len++;
+    }
+    if (len == 0) {
+        source->so_failure = _STDIO_FAILURE_INPUT;
+        return;
+    }
+    if (dest != NULL) {
+        dest[len] = '\0';
+        source->so_stored++;
+    }
+}
+
+// Scan the characters a scanset takes into dest as a string, width its bound.
+void _Stdio_ScanSet(_Stdio_Source *source, int width, char *dest, const char *set, size_t count, _Stdio_Accept accept)
+{
+    int ch = 0;
+    size_t len = 0;
+    size_t max = width == _STDIO_SCAN_WIDTH_NONE ? SIZE_MAX : (size_t) width;
+
+    while (len < max && (ch = _Stdio_PeekSource(source)) != EOF && _Stdio_IsInSet(set, count, ch) == (accept == _STDIO_ACCEPT_LISTED)) {
+        if (dest != NULL) {
+            dest[len] = (char) ch;
+        }
+        _Stdio_AdvanceSource(source);
+        len++;
+    }
+    if (len == 0) {
+        source->so_failure = ch == EOF ? _STDIO_FAILURE_INPUT : _STDIO_FAILURE_MATCHING;
+        return;
+    }
+    if (dest != NULL) {
+        dest[len] = '\0';
+        source->so_stored++;
+    }
+}
+
+// Scan nothing: store the characters read so far at dest, as a length's type.
+void _Stdio_ScanCount(_Stdio_Source *source, int length, void *dest)
+{
+    size_t count = source->so_count;
+
+    switch (length) {
+        case _STDIO_SCAN_LENGTH_CHAR: {
+            *(signed char *) dest = (signed char) count;
+        } break;
+        case _STDIO_SCAN_LENGTH_SHORT: {
+            *(short *) dest = (short) count;
+        } break;
+        case _STDIO_SCAN_LENGTH_LONG: {
+            *(long *) dest = (long) count;
+        } break;
+        case _STDIO_SCAN_LENGTH_LLONG: {
+            *(long long *) dest = (long long) count;
+        } break;
+        case _STDIO_SCAN_LENGTH_INTMAX: {
+            *(intmax_t *) dest = (intmax_t) count;
+        } break;
+        case _STDIO_SCAN_LENGTH_SIZE: {
+            *(size_t *) dest = count;
+        } break;
+        case _STDIO_SCAN_LENGTH_PTRDIFF: {
+            *(ptrdiff_t *) dest = (ptrdiff_t) count;
+        } break;
+        default: {
+            *(int *) dest = (int) count;
+        } break;
+    }
+}
+
+// Scan the source as the format says, each directive storing at its argument.
+int _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList args)
+{
+    int width;
+    char *str;
+    int length;
+    size_t len;
+    void *dest;
+    size_t count;
+    va_list list;
+    const char *set;
+    _Stdio_Accept accept;
+
+    va_copy(list, args);
+    for (size_t i = 0; format[i] != '\0' && source->so_failure == _STDIO_FAILURE_NONE; i += len) {
+        if (_Stdio_MatchScanSpace(format + i, &len)) {
+            _Stdio_ScanSpace(source);
+        } else if (_Stdio_MatchScanOrdinary(format + i, &len)) {
+            _Stdio_ScanOrdinary(source, format + i, len);
+        } else if (_Stdio_MatchScanPercent(format + i, &len)) {
+            _Stdio_ScanPercent(source);
+        } else if (_Stdio_MatchScanChar(format + i, &list, &len, &width, &str)) {
+            _Stdio_ScanChar(source, width, str);
+        } else if (_Stdio_MatchScanString(format + i, &list, &len, &width, &str)) {
+            _Stdio_ScanString(source, width, str);
+        } else if (_Stdio_MatchScanSet(format + i, &list, &len, &width, &str, &set, &count, &accept)) {
+            _Stdio_ScanSet(source, width, str, set, count, accept);
+        } else if (_Stdio_MatchScanCount(format + i, &list, &len, &length, &dest)) {
+            _Stdio_ScanCount(source, length, dest);
+        } else {
+            len = 0;
+            source->so_failure = _STDIO_FAILURE_MATCHING;
+        }
+    }
+    va_end(list);
+    return _Stdio_EndSource(source);
+}
+
 // Count the bytes the stream took from its file and has yet to give out.
 long _Stdio_CountReadAhead(FILE *stream)
 {
@@ -1892,6 +2304,18 @@ int fprintf(FILE *restrict stream, const char *restrict format, ...)
     return result;
 }
 
+// Read the stream as the format says, storing at the arguments.
+int fscanf(FILE *restrict stream, const char *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vfscanf(stream, format, args);
+    va_end(args);
+    return result;
+}
+
 // Write the arguments to standard output as the format says.
 int printf(const char *restrict format, ...)
 {
@@ -1900,6 +2324,18 @@ int printf(const char *restrict format, ...)
 
     va_start(args, format);
     result = vfprintf(stdout, format, args);
+    va_end(args);
+    return result;
+}
+
+// Read standard input as the format says, storing at the arguments.
+int scanf(const char *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vfscanf(stdin, format, args);
     va_end(args);
     return result;
 }
@@ -1928,6 +2364,18 @@ int sprintf(char *restrict str, const char *restrict format, ...)
     return result;
 }
 
+// Read the string str as the format says, storing at the arguments.
+int sscanf(const char *restrict str, const char *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vsscanf(str, format, args);
+    va_end(args);
+    return result;
+}
+
 // Write the list's arguments to the stream as the format says.
 int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList arg)
 {
@@ -1944,10 +2392,29 @@ int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList a
     return _Stdio_ReclaimBuffer(stream) == 0 ? result : EOF;
 }
 
+// Read the stream as the format says, storing at the list's arguments.
+int vfscanf(FILE *restrict stream, const char *restrict format, _Stdio_VaList arg)
+{
+    _Stdio_Source source = {
+        .so_stream = stream
+    };
+
+    if (_Stdio_PrepareInput(stream) != 0) {
+        return EOF;
+    }
+    return _Stdio_ScanFormat(&source, format, arg);
+}
+
 // Write the list's arguments to standard output as the format says.
 int vprintf(const char *restrict format, _Stdio_VaList arg)
 {
     return vfprintf(stdout, format, arg);
+}
+
+// Read standard input as the format says, storing at the list's arguments.
+int vscanf(const char *restrict format, _Stdio_VaList arg)
+{
+    return vfscanf(stdin, format, arg);
 }
 
 // Write the list's arguments into str's n characters as the format says.
@@ -1965,6 +2432,16 @@ int vsnprintf(char *restrict str, size_t n, const char *restrict format, _Stdio_
 int vsprintf(char *restrict str, const char *restrict format, _Stdio_VaList arg)
 {
     return vsnprintf(str, SIZE_MAX, format, arg);
+}
+
+// Read the string str as the format says, storing at the list's arguments.
+int vsscanf(const char *restrict str, const char *restrict format, _Stdio_VaList arg)
+{
+    _Stdio_Source source = {
+        .so_str = str
+    };
+
+    return _Stdio_ScanFormat(&source, format, arg);
 }
 
 // Read the stream's next character, as an unsigned char, or EOF at its end.
