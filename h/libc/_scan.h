@@ -39,6 +39,9 @@
 // The most bytes a character has in any locale.
 #define _SCAN_BYTES_MAX 16
 
+// The greatest character a number's item may hold.
+#define _SCAN_ASCII_MAX 0x7F
+
 // The base a width is written in.
 #define _SCAN_COUNT_BASE 10
 
@@ -88,6 +91,21 @@ typedef unsigned long _Scan_UintmaxType;
 
 // A wide character.
 typedef int _Scan_WcharType;
+
+// The characters a format and its source are.
+typedef enum _Scan_Text _Scan_Text;
+enum _Scan_Text {
+    _SCAN_TEXT_NARROW, // bytes, as scanf's are
+    _SCAN_TEXT_WIDE    // wide characters, as wscanf's are
+};
+
+// What a wide stream's source has read ahead of the characters taken.
+typedef enum _Scan_Ahead _Scan_Ahead;
+enum _Scan_Ahead {
+    _SCAN_AHEAD_NONE, // nothing
+    _SCAN_AHEAD_CHAR, // a wide character, pushed back if it is not taken
+    _SCAN_AHEAD_END   // the stream's end, or bytes that are no character
+};
 
 // A directive's length modifier.
 typedef enum _Scan_Length _Scan_Length;
@@ -162,8 +180,11 @@ enum _Scan_Failure {
 // Where formatted input comes from: a stream, or else a string.
 typedef struct _Scan_Source _Scan_Source;
 struct _Scan_Source {
+    _Scan_Text ss_text;       // the characters it and its format are
     _File_Stream *ss_stream;  // the stream, or _SCAN_NULL for a string
-    const char *ss_str;       // the string, where there is no stream
+    const void *ss_str;       // the string of its text, if no stream
+    _Scan_Ahead ss_ahead;     // what was read ahead of a wide stream
+    _Scan_WcharType ss_wc;    // the wide character read ahead, if one was
     unsigned long ss_count;   // the characters read so far
     int ss_stored;            // the assignments made so far
     _Scan_Failure ss_failure; // what stopped the input, if anything has
@@ -192,7 +213,8 @@ struct _Scan_Directive {
     _Scan_Sign sd_sign;     // whether an integer is signed
     int sd_base;            // an integer's base
     void *sd_dest;          // where it stores, or _SCAN_NULL for nowhere
-    const char *sd_set;     // a scanset's characters, in the format
+    const void *sd_set;     // the format a scanset's characters are in
+    unsigned long sd_from;  // where in it they begin
     unsigned long sd_count; // how many they are
     _Scan_Accept sd_accept; // whether the scanset takes them or the others
 };
@@ -206,7 +228,7 @@ struct _Scan_Item {
     unsigned long si_room; // the characters the directive's width still allows
 };
 
-// Where a directive's characters go, wide ones decoded a byte at a time.
+// Where a directive's characters go, converted if the source's are not such.
 typedef struct _Scan_Target _Scan_Target;
 struct _Scan_Target {
     _Scan_Chars st_chars;          // the characters it stores as
@@ -220,11 +242,12 @@ struct _Scan_Target {
 extern const _Scan_Rule _Scan_Rules[_SCAN_RULES];
 
 // Characters
-_Bool _Scan_IsSpace(int ch);
+int   _Scan_GetChar(const void *format, _Scan_Text text, unsigned long index);
+_Bool _Scan_IsSpace(int ch, _Scan_Text text);
 _Bool _Scan_IsDigit(int ch);
 _Bool _Scan_IsHexDigit(int ch);
-_Bool _Scan_IsInSet(const char *set, unsigned long count, int ch);
-_Bool _Scan_IsTaken(const _Scan_Directive *dir, int ch);
+_Bool _Scan_IsInSet(const _Scan_Directive *dir, _Scan_Text text, int ch);
+_Bool _Scan_IsTaken(const _Scan_Directive *dir, _Scan_Text text, int ch);
 
 // Converting
 int           _Scan_ToLower(int ch);
@@ -239,12 +262,12 @@ void _Scan_FailSource(_Scan_Source *source, int ch);
 int  _Scan_EndSource(_Scan_Source *source);
 
 // Matching
-unsigned long     _Scan_MatchSpace(const char *format);
-unsigned long     _Scan_MatchText(const char *format);
-unsigned long     _Scan_MatchHead(const char *format, _Scan_Assign *assign, _Scan_Directive *dir);
-unsigned long     _Scan_MatchSet(const char *format, _Scan_Directive *dir);
-const _Scan_Rule *_Scan_FindRule(char letter, _Scan_Length length);
-unsigned long     _Scan_MatchDirective(const char *format, _Scan_VaList *list, _Scan_Directive *dir);
+unsigned long     _Scan_MatchSpace(const void *format, _Scan_Text text, unsigned long index);
+unsigned long     _Scan_MatchText(const void *format, _Scan_Text text, unsigned long index);
+unsigned long     _Scan_MatchHead(const void *format, _Scan_Text text, unsigned long index, _Scan_Assign *assign, _Scan_Directive *dir);
+unsigned long     _Scan_MatchSet(const void *format, _Scan_Text text, unsigned long index, _Scan_Directive *dir);
+const _Scan_Rule *_Scan_FindRule(int letter, _Scan_Length length);
+unsigned long     _Scan_MatchDirective(const void *format, _Scan_Text text, unsigned long index, _Scan_VaList *list, _Scan_Directive *dir);
 
 // Items
 unsigned long _Scan_TakeDigits(_Scan_Source *source, int width, int base, char *item);
@@ -255,17 +278,18 @@ void          _Scan_TakeReal(_Scan_Source *source, int width, _Scan_Item *item);
 
 // Target
 void _Scan_BeginTarget(_Scan_Target *target, const _Scan_Directive *dir);
-void _Scan_PutByte(_Scan_Source *source, _Scan_Target *target, int ch);
+void _Scan_PutChar(_Scan_Source *source, _Scan_Target *target, int ch);
 void _Scan_EndTarget(_Scan_Source *source, _Scan_Target *target, _Scan_Kind kind);
 
 // Formatted input
 void _Scan_SkipSpace(_Scan_Source *source);
-void _Scan_ReadText(_Scan_Source *source, const char *text, unsigned long len);
+void _Scan_ReadText(_Scan_Source *source, const void *format, unsigned long index, unsigned long len);
+void _Scan_ReadPercent(_Scan_Source *source);
 void _Scan_ReadChars(_Scan_Source *source, const _Scan_Directive *dir);
 void _Scan_ReadInteger(_Scan_Source *source, const _Scan_Directive *dir);
 void _Scan_ReadPointer(_Scan_Source *source, const _Scan_Directive *dir);
 void _Scan_ReadReal(_Scan_Source *source, const _Scan_Directive *dir);
 void _Scan_ReadDirective(_Scan_Source *source, const _Scan_Directive *dir);
-int  _Scan_ReadFormat(_Scan_Source *source, const char *format, _Scan_VaList args);
+int  _Scan_ReadFormat(_Scan_Source *source, const void *format, _Scan_VaList args);
 
 #endif // _SCAN_H

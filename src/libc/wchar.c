@@ -35,6 +35,9 @@
 // The engine the wprintf family formats by.
 #include <_print.h>
 
+// The engine the wscanf family reads by.
+#include <_scan.h>
+
 // The arguments a format's directives take.
 #include <stdarg.h>
 
@@ -161,6 +164,18 @@ int fwprintf(FILE *restrict stream, const wchar_t *restrict format, ...)
     return result;
 }
 
+// Read the stream as the wide format says, storing at the arguments.
+int fwscanf(FILE *restrict stream, const wchar_t *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vfwscanf(stream, format, args);
+    va_end(args);
+    return result;
+}
+
 // Write the arguments into str's n wide characters as the wide format says.
 int swprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, ...)
 {
@@ -169,6 +184,18 @@ int swprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, ..
 
     va_start(args, format);
     result = vswprintf(str, n, format, args);
+    va_end(args);
+    return result;
+}
+
+// Read the wide string str as the wide format says, storing at the arguments.
+int swscanf(const wchar_t *restrict str, const wchar_t *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vswscanf(str, format, args);
     va_end(args);
     return result;
 }
@@ -191,6 +218,21 @@ int vfwprintf(FILE *restrict stream, const wchar_t *restrict format, _Wchar_VaLi
     return _File_ReclaimBuffer(stream) == 0 ? result : EOF;
 }
 
+// Read the stream as the wide format says, storing at the list's arguments.
+int vfwscanf(FILE *restrict stream, const wchar_t *restrict format, _Wchar_VaList arg)
+{
+    _Scan_Source source = {
+        .ss_text   = _SCAN_TEXT_WIDE,
+        .ss_stream = stream
+    };
+
+    _File_OrientStream(stream, _FILE_ORIENT_WIDE);
+    if (_File_PrepareInput(stream) != 0) {
+        return EOF;
+    }
+    return _Scan_ReadFormat(&source, format, arg);
+}
+
 // Write the list's arguments into str's n wide characters, or fail to fit.
 int vswprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, _Wchar_VaList arg)
 {
@@ -203,10 +245,27 @@ int vswprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, _
     return _Print_WriteFormat(&sink, format, arg);
 }
 
+// Read wide string str by the wide format, storing at the list's arguments.
+int vswscanf(const wchar_t *restrict str, const wchar_t *restrict format, _Wchar_VaList arg)
+{
+    _Scan_Source source = {
+        .ss_text = _SCAN_TEXT_WIDE,
+        .ss_str  = str
+    };
+
+    return _Scan_ReadFormat(&source, format, arg);
+}
+
 // Write the list's arguments to standard output as the wide format says.
 int vwprintf(const wchar_t *restrict format, _Wchar_VaList arg)
 {
     return vfwprintf(stdout, format, arg);
+}
+
+// Read standard input by the wide format, storing at the list's arguments.
+int vwscanf(const wchar_t *restrict format, _Wchar_VaList arg)
+{
+    return vfwscanf(stdin, format, arg);
 }
 
 // Write the arguments to standard output as the wide format says.
@@ -217,6 +276,18 @@ int wprintf(const wchar_t *restrict format, ...)
 
     va_start(args, format);
     result = vfwprintf(stdout, format, args);
+    va_end(args);
+    return result;
+}
+
+// Read standard input as the wide format says, storing at the arguments.
+int wscanf(const wchar_t *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vfwscanf(stdin, format, args);
     va_end(args);
     return result;
 }

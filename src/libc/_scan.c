@@ -38,6 +38,9 @@
 // The character some bytes are, and the most bytes one has.
 #include <_utf8.h>
 
+// The wide characters a stream's bytes are.
+#include <_wfile.h>
+
 // The array an input item of any length grows in.
 #include <_mem.h>
 
@@ -74,9 +77,21 @@ const _Scan_Rule _Scan_Rules[_SCAN_RULES] = {
     {'%', _SCAN_LENGTHS_NONE,    _SCAN_KIND_PERCENT, _SCAN_CHARS_NARROW, _SCAN_SPACE_SKIP, _SCAN_SIGN_SIGNED,   _SCAN_BASE_PREFIX}
 };
 
-// Check whether ch is white space in the "C" locale, which no end of input is.
-_Bool _Scan_IsSpace(int ch)
+// Get character index of a format, a wide string or a narrow one.
+int _Scan_GetChar(const void *format, _Scan_Text text, unsigned long index)
 {
+    if (text == _SCAN_TEXT_WIDE) {
+        return ((const _Scan_WcharType *) format)[index];
+    }
+    return ((const unsigned char *) format)[index];
+}
+
+// Check whether ch is white space of a text, which no end of input is.
+_Bool _Scan_IsSpace(int ch, _Scan_Text text)
+{
+    if (text == _SCAN_TEXT_WIDE && ch > _SCAN_ASCII_MAX) {
+        return _Utf8_Enabled && _Utf8_IsInClass((unsigned int) ch, _UTF8_CLASS_SPACE);
+    }
     return ch == ' ' || (ch >= '\t' && ch <= '\r');
 }
 
@@ -92,29 +107,34 @@ _Bool _Scan_IsHexDigit(int ch)
     return _Scan_IsDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F');
 }
 
-// Check whether ch is in a scanset's count characters, a-z being a range.
-_Bool _Scan_IsInSet(const char *set, unsigned long count, int ch)
+// Check whether ch is among a scanset's characters, a-z being a range.
+_Bool _Scan_IsInSet(const _Scan_Directive *dir, _Scan_Text text, int ch)
 {
+    int low;
+    int high;
+    int listed;
     unsigned long i;
-    const unsigned char *list = (const unsigned char *) set;
 
-    for (i = 0; i < count; i++) {
-        if (i > 0 && i + 1 < count && list[i] == '-' && list[i - 1] <= list[i + 1]) {
-            if (ch >= list[i - 1] && ch < list[i + 1]) {
+    for (i = 0; i < dir->sd_count; i++) {
+        listed = _Scan_GetChar(dir->sd_set, text, dir->sd_from + i);
+        low = i > 0 ? _Scan_GetChar(dir->sd_set, text, dir->sd_from + i - 1) : 0;
+        high = i + 1 < dir->sd_count ? _Scan_GetChar(dir->sd_set, text, dir->sd_from + i + 1) : 0;
+        if (i > 0 && i + 1 < dir->sd_count && listed == '-' && low <= high) {
+            if (ch >= low && ch < high) {
                 break;
             }
-        } else if (ch == list[i]) {
+        } else if (ch == listed) {
             break;
         }
     }
-    return i < count;
+    return i < dir->sd_count;
 }
 
 // Check whether a directive of characters takes ch: %c any, %s none of space.
-_Bool _Scan_IsTaken(const _Scan_Directive *dir, int ch)
+_Bool _Scan_IsTaken(const _Scan_Directive *dir, _Scan_Text text, int ch)
 {
-    _Bool space = _Scan_IsSpace(ch);
-    _Bool listed = _Scan_IsInSet(dir->sd_set, dir->sd_count, ch);
+    _Bool space = _Scan_IsSpace(ch, text);
+    _Bool listed = _Scan_IsInSet(dir, text, ch);
 
     if (dir->sd_kind == _SCAN_KIND_STRING) {
         return ! space;
@@ -180,21 +200,34 @@ _Bool _Scan_ToReal(const char *str, _Scan_Length length, void *dest)
 // Peek at the source's next character, left unread, or _FILE_END for none.
 int _Scan_PeekSource(_Scan_Source *source)
 {
-    char ch;
+    int ch;
 
-    if (source->ss_stream != _SCAN_NULL) {
+    // Phase: peek at a stream, a wide one's character read and held
+    if (source->ss_stream != _SCAN_NULL && source->ss_text == _SCAN_TEXT_NARROW) {
         return _File_PeekChar(source->ss_stream);
     }
-    ch = source->ss_str[source->ss_count];
-    return ch != '\0' ? (unsigned char) ch : _FILE_END;
+    if (source->ss_stream != _SCAN_NULL && source->ss_ahead == _SCAN_AHEAD_NONE) {
+        source->ss_ahead = _SCAN_AHEAD_END;
+        if (_Wfile_ReadChar(source->ss_stream, &source->ss_wc) == _WFILE_STATUS_GOOD) {
+            source->ss_ahead = _SCAN_AHEAD_CHAR;
+        }
+    }
+    if (source->ss_stream != _SCAN_NULL) {
+        return source->ss_ahead == _SCAN_AHEAD_CHAR ? source->ss_wc : _FILE_END;
+    }
+
+    // Phase: peek at a string, which its null ends
+    ch = _Scan_GetChar(source->ss_str, source->ss_text, source->ss_count);
+    return ch != '\0' ? ch : _FILE_END;
 }
 
 // Advance the source past the character peeked at, which counts as read.
 void _Scan_AdvanceSource(_Scan_Source *source)
 {
-    if (source->ss_stream != _SCAN_NULL) {
+    if (source->ss_stream != _SCAN_NULL && source->ss_text == _SCAN_TEXT_NARROW) {
         _File_SkipChar(source->ss_stream);
     }
+    source->ss_ahead = _SCAN_AHEAD_NONE;
     source->ss_count++;
 }
 
@@ -207,6 +240,10 @@ void _Scan_FailSource(_Scan_Source *source, int ch)
 // End the source's input, and return its assignments, or _FILE_END for none.
 int _Scan_EndSource(_Scan_Source *source)
 {
+    if (source->ss_ahead == _SCAN_AHEAD_CHAR) {
+        _Wfile_UngetChar(source->ss_stream, (unsigned int) source->ss_wc);
+        source->ss_ahead = _SCAN_AHEAD_NONE;
+    }
     if (source->ss_failure == _SCAN_FAILURE_INPUT && source->ss_stored == 0) {
         return _FILE_END;
     }
@@ -214,50 +251,52 @@ int _Scan_EndSource(_Scan_Source *source)
 }
 
 // Match a directive of white space, and return its length, 0 for none.
-unsigned long _Scan_MatchSpace(const char *format)
+unsigned long _Scan_MatchSpace(const void *format, _Scan_Text text, unsigned long index)
 {
-    unsigned long i = 0;
+    unsigned long i = index;
 
-    while (_Scan_IsSpace((unsigned char) format[i])) {
+    while (_Scan_IsSpace(_Scan_GetChar(format, text, i), text)) {
         i++;
     }
-    return i;
+    return i - index;
 }
 
 // Match the ordinary characters up to white space or a directive.
-unsigned long _Scan_MatchText(const char *format)
+unsigned long _Scan_MatchText(const void *format, _Scan_Text text, unsigned long index)
 {
-    unsigned long i = 0;
+    int ch;
+    unsigned long i = index;
 
-    while (format[i] != '\0' && format[i] != '%' && ! _Scan_IsSpace((unsigned char) format[i])) {
+    while ((ch = _Scan_GetChar(format, text, i)) != '\0' && ch != '%' && ! _Scan_IsSpace(ch, text)) {
         i++;
     }
-    return i;
+    return i - index;
 }
 
 // Match a directive's percent sign, asterisk, width and length.
-unsigned long _Scan_MatchHead(const char *format, _Scan_Assign *assign, _Scan_Directive *dir)
+unsigned long _Scan_MatchHead(const void *format, _Scan_Text text, unsigned long index, _Scan_Assign *assign, _Scan_Directive *dir)
 {
+    int ch;
     int digit;
     unsigned long from;
-    unsigned long i = 0;
+    unsigned long i = index;
 
-    if (format[i] != '%') {
+    if (_Scan_GetChar(format, text, i) != '%') {
         return 0;
     }
     i++;
 
     // Phase: match the asterisk
     *assign = _SCAN_ASSIGN_STORE;
-    if (format[i] == '*') {
+    if (_Scan_GetChar(format, text, i) == '*') {
         *assign = _SCAN_ASSIGN_SUPPRESS;
         i++;
     }
 
     // Phase: match the width, which may not be zero
     dir->sd_width = _SCAN_WIDTH_NONE;
-    for (from = i; format[i] >= '0' && format[i] <= '9'; i++) {
-        digit = format[i] - '0';
+    for (from = i; _Scan_IsDigit(ch = _Scan_GetChar(format, text, i)); i++) {
+        digit = ch - '0';
         dir->sd_width = dir->sd_width > (_SCAN_INT_MAX - digit) / _SCAN_COUNT_BASE ? _SCAN_INT_MAX : dir->sd_width * _SCAN_COUNT_BASE + digit;
     }
     if (i > from && dir->sd_width == 0) {
@@ -266,62 +305,64 @@ unsigned long _Scan_MatchHead(const char *format, _Scan_Assign *assign, _Scan_Di
 
     // Phase: match the length
     dir->sd_length = _SCAN_LENGTH_NONE;
-    if (format[i] == 'h' && format[i + 1] == 'h') {
+    if (ch == 'h' && _Scan_GetChar(format, text, i + 1) == 'h') {
         dir->sd_length = _SCAN_LENGTH_CHAR;
         i += 2;
-    } else if (format[i] == 'h') {
+    } else if (ch == 'h') {
         dir->sd_length = _SCAN_LENGTH_SHORT;
         i++;
-    } else if (format[i] == 'l' && format[i + 1] == 'l') {
+    } else if (ch == 'l' && _Scan_GetChar(format, text, i + 1) == 'l') {
         dir->sd_length = _SCAN_LENGTH_LLONG;
         i += 2;
-    } else if (format[i] == 'l') {
+    } else if (ch == 'l') {
         dir->sd_length = _SCAN_LENGTH_LONG;
         i++;
-    } else if (format[i] == 'j') {
+    } else if (ch == 'j') {
         dir->sd_length = _SCAN_LENGTH_INTMAX;
         i++;
-    } else if (format[i] == 'z') {
+    } else if (ch == 'z') {
         dir->sd_length = _SCAN_LENGTH_SIZE;
         i++;
-    } else if (format[i] == 't') {
+    } else if (ch == 't') {
         dir->sd_length = _SCAN_LENGTH_PTRDIFF;
         i++;
-    } else if (format[i] == 'L') {
+    } else if (ch == 'L') {
         dir->sd_length = _SCAN_LENGTH_LDOUBLE;
         i++;
     }
-    return i;
+    return i - index;
 }
 
 // Match a scanset after its left bracket, a right one first being one of it.
-unsigned long _Scan_MatchSet(const char *format, _Scan_Directive *dir)
+unsigned long _Scan_MatchSet(const void *format, _Scan_Text text, unsigned long index, _Scan_Directive *dir)
 {
+    int ch;
     unsigned long end;
-    unsigned long from = 0;
+    unsigned long from = index;
 
     dir->sd_accept = _SCAN_ACCEPT_LISTED;
-    if (format[from] == '^') {
+    if (_Scan_GetChar(format, text, from) == '^') {
         dir->sd_accept = _SCAN_ACCEPT_UNLISTED;
         from++;
     }
     end = from;
-    if (format[end] == ']') {
+    if (_Scan_GetChar(format, text, end) == ']') {
         end++;
     }
-    while (format[end] != '\0' && format[end] != ']') {
+    while ((ch = _Scan_GetChar(format, text, end)) != '\0' && ch != ']') {
         end++;
     }
-    if (format[end] != ']') {
+    if (ch != ']') {
         return 0;
     }
-    dir->sd_set = format + from;
+    dir->sd_set = format;
+    dir->sd_from = from;
     dir->sd_count = end - from;
-    return end + 1;
+    return end + 1 - index;
 }
 
 // Find the conversion a letter names with a length, or null if none does.
-const _Scan_Rule *_Scan_FindRule(char letter, _Scan_Length length)
+const _Scan_Rule *_Scan_FindRule(int letter, _Scan_Length length)
 {
     for (unsigned long i = 0; i < _SCAN_RULES; i++) {
         if (_Scan_Rules[i].sr_letter == letter && (_Scan_Rules[i].sr_lengths & (1 << length))) {
@@ -332,18 +373,18 @@ const _Scan_Rule *_Scan_FindRule(char letter, _Scan_Length length)
 }
 
 // Match a directive with where it stores, and return its length, 0 for none.
-unsigned long _Scan_MatchDirective(const char *format, _Scan_VaList *list, _Scan_Directive *dir)
+unsigned long _Scan_MatchDirective(const void *format, _Scan_Text text, unsigned long index, _Scan_VaList *list, _Scan_Directive *dir)
 {
     _Scan_Assign assign;
     unsigned long set = 0;
     const _Scan_Rule *rule;
-    unsigned long at = _Scan_MatchHead(format, &assign, dir);
+    unsigned long at = _Scan_MatchHead(format, text, index, &assign, dir);
 
     // Phase: find its conversion, before any argument is taken
     if (at == 0) {
         return 0;
     }
-    rule = _Scan_FindRule(format[at], dir->sd_length);
+    rule = _Scan_FindRule(_Scan_GetChar(format, text, index + at), dir->sd_length);
     if (rule == _SCAN_NULL) {
         return 0;
     }
@@ -353,6 +394,7 @@ unsigned long _Scan_MatchDirective(const char *format, _Scan_VaList *list, _Scan
     dir->sd_sign = rule->sr_sign;
     dir->sd_base = rule->sr_base;
     dir->sd_set = _SCAN_NULL;
+    dir->sd_from = 0;
     dir->sd_count = 0;
     dir->sd_accept = _SCAN_ACCEPT_LISTED;
     dir->sd_dest = _SCAN_NULL;
@@ -365,7 +407,7 @@ unsigned long _Scan_MatchDirective(const char *format, _Scan_VaList *list, _Scan
         return 0;
     }
     if (dir->sd_kind == _SCAN_KIND_SET) {
-        set = _Scan_MatchSet(format + at + 1, dir);
+        set = _Scan_MatchSet(format, text, index + at + 1, dir);
         if (set == 0) {
             return 0;
         }
@@ -478,7 +520,7 @@ unsigned long _Scan_TakeChars(_Scan_Source *source, _Scan_Item *item, const char
 
     while (count < max && item->si_room > 0) {
         ch = _Scan_PeekSource(source);
-        if (ch == _FILE_END || ch == '\0' || _Str_FindChar(set, _Scan_ToLower(ch)) == _SCAN_NULL) {
+        if (ch <= '\0' || ch > _SCAN_ASCII_MAX || _Str_FindChar(set, _Scan_ToLower(ch)) == _SCAN_NULL) {
             break;
         }
 
@@ -577,17 +619,41 @@ void _Scan_BeginTarget(_Scan_Target *target, const _Scan_Directive *dir)
     target->st_count = 0;
 }
 
-// Put the byte ch, storing a wide character once its last byte is put.
-void _Scan_PutByte(_Scan_Source *source, _Scan_Target *target, int ch)
+// Put the source's character ch, as bytes or as a wide character once whole.
+void _Scan_PutChar(_Scan_Source *source, _Scan_Target *target, int ch)
 {
+    int len;
     _Scan_WcharType wc;
+    char buf[_SCAN_BYTES_MAX];
 
-    if (target->st_chars == _SCAN_CHARS_NARROW && target->st_str != _SCAN_NULL) {
-        *target->st_str++ = (char) ch;
-    }
-    if (target->st_chars == _SCAN_CHARS_NARROW) {
+    // Phase: store a character that is what the directive stores, as it is
+    if (source->ss_text == _SCAN_TEXT_NARROW && target->st_chars == _SCAN_CHARS_NARROW) {
+        if (target->st_str != _SCAN_NULL) {
+            *target->st_str++ = (char) ch;
+        }
         return;
     }
+    if (source->ss_text == _SCAN_TEXT_WIDE && target->st_chars == _SCAN_CHARS_WIDE) {
+        if (target->st_wstr != _SCAN_NULL) {
+            *target->st_wstr++ = ch;
+        }
+        return;
+    }
+
+    // Phase: store the bytes of a wide character
+    if (source->ss_text == _SCAN_TEXT_WIDE) {
+        len = _Utf8_EncodeChar(ch, buf);
+        if (len < 0) {
+            _Err_Errno = _SYS_EILSEQ;
+            source->ss_failure = _SCAN_FAILURE_INPUT;
+        } else if (target->st_str != _SCAN_NULL) {
+            _Str_CopyBytes(target->st_str, buf, (unsigned long) len);
+            target->st_str += len;
+        }
+        return;
+    }
+
+    // Phase: store a wide character once its last byte is put
     target->st_byte[target->st_count++] = (char) ch;
     if (_Utf8_DecodeChar(target->st_byte, target->st_count, &wc) >= 0) {
         if (target->st_wstr != _SCAN_NULL) {
@@ -627,24 +693,36 @@ void _Scan_EndTarget(_Scan_Source *source, _Scan_Target *target, _Scan_Kind kind
 // Skip the white space the source is at, none being enough.
 void _Scan_SkipSpace(_Scan_Source *source)
 {
-    while (_Scan_IsSpace(_Scan_PeekSource(source))) {
+    while (_Scan_IsSpace(_Scan_PeekSource(source), source->ss_text)) {
         _Scan_AdvanceSource(source);
     }
 }
 
-// Read len characters that should be text's, stopping at one that is not.
-void _Scan_ReadText(_Scan_Source *source, const char *text, unsigned long len)
+// Read len characters that should be the format's at index, or fail at one.
+void _Scan_ReadText(_Scan_Source *source, const void *format, unsigned long index, unsigned long len)
 {
     int ch;
 
     for (unsigned long i = 0; i < len; i++) {
         ch = _Scan_PeekSource(source);
-        if (ch != (unsigned char) text[i]) {
+        if (ch != _Scan_GetChar(format, source->ss_text, index + i)) {
             _Scan_FailSource(source, ch);
             return;
         }
         _Scan_AdvanceSource(source);
     }
+}
+
+// Read a percent sign, which is all that %% takes.
+void _Scan_ReadPercent(_Scan_Source *source)
+{
+    int ch = _Scan_PeekSource(source);
+
+    if (ch != '%') {
+        _Scan_FailSource(source, ch);
+        return;
+    }
+    _Scan_AdvanceSource(source);
 }
 
 // Read the characters %c, %s or %[ takes, narrow or wide, width its bound.
@@ -656,7 +734,7 @@ void _Scan_ReadChars(_Scan_Source *source, const _Scan_Directive *dir)
     unsigned long least = 1;
     unsigned long max = dir->sd_kind == _SCAN_KIND_CHARS ? 1 : _SCAN_SIZE_MAX;
 
-    // Phase: settle how many bytes it may take, and how many it must
+    // Phase: settle how many characters it may take, and how many it must
     if (dir->sd_width != _SCAN_WIDTH_NONE) {
         max = (unsigned long) dir->sd_width;
     }
@@ -666,8 +744,8 @@ void _Scan_ReadChars(_Scan_Source *source, const _Scan_Directive *dir)
 
     // Phase: read them to where it stores
     _Scan_BeginTarget(&target, dir);
-    while (len < max && source->ss_failure == _SCAN_FAILURE_NONE && (ch = _Scan_PeekSource(source)) != _FILE_END && _Scan_IsTaken(dir, ch)) {
-        _Scan_PutByte(source, &target, ch);
+    while (len < max && source->ss_failure == _SCAN_FAILURE_NONE && (ch = _Scan_PeekSource(source)) != _FILE_END && _Scan_IsTaken(dir, source->ss_text, ch)) {
+        _Scan_PutChar(source, &target, ch);
         _Scan_AdvanceSource(source);
         len++;
     }
@@ -750,7 +828,7 @@ void _Scan_ReadDirective(_Scan_Source *source, const _Scan_Directive *dir)
     }
     switch (dir->sd_kind) {
         case _SCAN_KIND_PERCENT: {
-            _Scan_ReadText(source, "%", 1);
+            _Scan_ReadPercent(source);
         } break;
         case _SCAN_KIND_CHARS:
         case _SCAN_KIND_STRING:
@@ -773,19 +851,20 @@ void _Scan_ReadDirective(_Scan_Source *source, const _Scan_Directive *dir)
 }
 
 // Read the source as the format says, each directive storing at its argument.
-int _Scan_ReadFormat(_Scan_Source *source, const char *format, _Scan_VaList args)
+int _Scan_ReadFormat(_Scan_Source *source, const void *format, _Scan_VaList args)
 {
     unsigned long len;
     _Scan_VaList list;
     _Scan_Directive dir;
+    _Scan_Text text = source->ss_text;
 
     __builtin_va_copy(list, args);
-    for (unsigned long i = 0; format[i] != '\0' && source->ss_failure == _SCAN_FAILURE_NONE; i += len) {
-        if ((len = _Scan_MatchSpace(format + i)) > 0) {
+    for (unsigned long i = 0; _Scan_GetChar(format, text, i) != '\0' && source->ss_failure == _SCAN_FAILURE_NONE; i += len) {
+        if ((len = _Scan_MatchSpace(format, text, i)) > 0) {
             _Scan_SkipSpace(source);
-        } else if ((len = _Scan_MatchText(format + i)) > 0) {
-            _Scan_ReadText(source, format + i, len);
-        } else if ((len = _Scan_MatchDirective(format + i, &list, &dir)) > 0) {
+        } else if ((len = _Scan_MatchText(format, text, i)) > 0) {
+            _Scan_ReadText(source, format, i, len);
+        } else if ((len = _Scan_MatchDirective(format, text, i, &list, &dir)) > 0) {
             _Scan_ReadDirective(source, &dir);
         } else {
             source->ss_failure = _SCAN_FAILURE_MATCHING;

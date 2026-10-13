@@ -89,11 +89,17 @@ size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state);
 
 // (S7.24.2) Formatted wide character input/output functions
 int fwprintf(_File_Stream *restrict stream, const wchar_t *restrict format, ...);
+int fwscanf(_File_Stream *restrict stream, const wchar_t *restrict format, ...);
 int swprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, ...);
+int swscanf(const wchar_t *restrict str, const wchar_t *restrict format, ...);
 int vfwprintf(_File_Stream *restrict stream, const wchar_t *restrict format, _Wchar_VaList arg);
+int vfwscanf(_File_Stream *restrict stream, const wchar_t *restrict format, _Wchar_VaList arg);
 int vswprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, _Wchar_VaList arg);
+int vswscanf(const wchar_t *restrict str, const wchar_t *restrict format, _Wchar_VaList arg);
 int vwprintf(const wchar_t *restrict format, _Wchar_VaList arg);
+int vwscanf(const wchar_t *restrict format, _Wchar_VaList arg);
 int wprintf(const wchar_t *restrict format, ...);
+int wscanf(const wchar_t *restrict format, ...);
 
 // (S7.24.3) Wide character input/output functions
 wint_t   fgetwc(_File_Stream *stream);
