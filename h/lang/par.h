@@ -151,15 +151,15 @@ struct Par_FNum {
 // The specifiers and qualifiers one declaration wrote.
 typedef struct Par_Specs Par_Specs;
 struct Par_Specs {
-    Par_Spec    ps_specs;    // the type specifier keywords seen
-    Ast_Qual    ps_qual;     // the qualifier keywords seen
-    Ast_Type   *ps_type;     // the type a struct, union, enum or typedef name named
-    Ast_Storage ps_storage;  // the storage class seen, NONE for `auto` and `register`
-    int32_t     ps_nstorage; // the storage-class keywords seen
-    bool        ps_register; // the storage class seen was `register`
-    bool        ps_inline;   // `inline` was seen
-    bool        ps_aligned;  // `_Alignas` was seen
-    int32_t     ps_align;    // the strictest alignment asked for, or 0
+    Par_Spec    ps_specs;      // the type specifier keywords seen
+    Ast_Qual    ps_qual;       // the qualifier keywords seen
+    Ast_Type   *ps_type;       // the type a tag or a typedef name named
+    Ast_Storage ps_storage;    // the storage class seen, NONE for `auto`
+    int32_t     ps_nstorage;   // the storage-class keywords seen
+    bool        ps_register;   // the storage class seen was `register`
+    bool        ps_inline;     // `inline` was seen
+    bool        ps_is_aligned; // `_Alignas` was seen
+    int32_t     ps_align;      // the strictest alignment asked for, or 0
 };
 
 // A parameter list as the grammar collects it.
@@ -246,7 +246,7 @@ char    *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t 
 void        Par_ClearSpecs(Par_Specs *specs);
 Par_Specs   Par_AlignSpec(const Ast_Node *expr, Ast_Line line);
 Par_Specs   Par_AlignSpecType(Ast_Type *type, Ast_Line line);
-void        Par_RefuseAlign(bool aligned, Ast_Line line);
+void        Par_RefuseAlign(bool is_aligned, Ast_Line line);
 void        Par_CheckAlign(int32_t align, const Ast_Type *type, int32_t max, Ast_Line line);
 void        Par_AlignVar(Ast_Var *var, Ast_Line line);
 Par_Specs   Par_StorageSpec(Ast_Storage storage);

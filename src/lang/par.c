@@ -44,7 +44,7 @@ static int32_t   Par_OpenLen;
 static Ast_Type   *Par_DeclType;
 static Ast_Storage Par_DeclStorage;
 static bool        Par_DeclInline;
-static bool        Par_DeclAligned;
+static bool        Par_DeclIsAligned;
 static int32_t     Par_DeclAlign;
 static char      *Par_DeclName;
 static Ast_Line    Par_DeclLine;
@@ -65,13 +65,13 @@ static Ast_Type *Par_VaList;
 // Record the specifier one declaration's declarators share.
 void Par_SetDeclSpec(const Par_Specs *specs, Par_StorageUse use, Ast_Line line)
 {
-    Par_DeclStorage = Par_SpecsStorage(specs, use, line);
-    Par_DeclInline  = specs->ps_inline;
-    Par_DeclAligned = specs->ps_aligned;
-    Par_DeclAlign   = specs->ps_align;
-    Par_DeclType    = Par_SpecsType(specs, line);
+    Par_DeclStorage   = Par_SpecsStorage(specs, use, line);
+    Par_DeclInline    = specs->ps_inline;
+    Par_DeclIsAligned = specs->ps_is_aligned;
+    Par_DeclAlign     = specs->ps_align;
+    Par_DeclType      = Par_SpecsType(specs, line);
     if (use != PAR_STORAGE_ANY || specs->ps_register || Par_DeclStorage == AST_STORAGE_TYPEDEF) {
-        Par_RefuseAlign(specs->ps_aligned, line);
+        Par_RefuseAlign(specs->ps_is_aligned, line);
     }
 }
 
@@ -637,15 +637,15 @@ char *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *ou
 // Empty a specifier set.
 void Par_ClearSpecs(Par_Specs *specs)
 {
-    specs->ps_specs    = 0;
-    specs->ps_qual     = 0;
-    specs->ps_type     = NULL;
-    specs->ps_storage  = AST_STORAGE_NONE;
-    specs->ps_nstorage = 0;
-    specs->ps_register = false;
-    specs->ps_inline   = false;
-    specs->ps_aligned  = false;
-    specs->ps_align    = 0;
+    specs->ps_specs      = 0;
+    specs->ps_qual       = 0;
+    specs->ps_type       = NULL;
+    specs->ps_storage    = AST_STORAGE_NONE;
+    specs->ps_nstorage   = 0;
+    specs->ps_register   = false;
+    specs->ps_inline     = false;
+    specs->ps_is_aligned = false;
+    specs->ps_align      = 0;
 }
 
 // [C11/S6.7.5p3] Return the specifier set an alignment makes of a constant.
@@ -661,8 +661,8 @@ Par_Specs Par_AlignSpec(const Ast_Node *expr, Ast_Line line)
     bool power = (val & (val - 1)) == 0;
 
     Err_AssertAt(line, ranged && power, ERR_PAR_ALIGNAS_NOT_VALID);
-    specs.ps_aligned = true;
-    specs.ps_align   = (int32_t) val;
+    specs.ps_is_aligned = true;
+    specs.ps_align      = (int32_t) val;
     return specs;
 }
 
@@ -673,9 +673,9 @@ Par_Specs Par_AlignSpecType(Ast_Type *type, Ast_Line line)
 }
 
 // [C11/S6.7.5p2] Refuse an alignment where a declaration may carry none.
-void Par_RefuseAlign(bool aligned, Ast_Line line)
+void Par_RefuseAlign(bool is_aligned, Ast_Line line)
 {
-    Err_AssertAt(line, ! aligned, ERR_PAR_ALIGNAS_NOT_ALLOWED);
+    Err_AssertAt(line, ! is_aligned, ERR_PAR_ALIGNAS_NOT_ALLOWED);
 }
 
 // [C11/S6.7.5p4] Refuse an alignment weaker than its type's, or past max.
@@ -740,7 +740,7 @@ void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line)
     }
     into->ps_qual   |= one->ps_qual;
     into->ps_inline |= one->ps_inline;
-    into->ps_aligned |= one->ps_aligned;
+    into->ps_is_aligned |= one->ps_is_aligned;
     if (one->ps_align > into->ps_align) {
         into->ps_align = one->ps_align;
     }
@@ -898,7 +898,7 @@ Ast_Member *Par_MakeMembers(const Par_Specs *specs, Par_Decl *decls, Ast_Line li
         tail = tail->am_next;
         Par_NeedFixedSize(tail->am_type, decl->pc_line);
         if (decl->pc_bits) {
-            Par_RefuseAlign(specs->ps_aligned, decl->pc_line);
+            Par_RefuseAlign(specs->ps_is_aligned, decl->pc_line);
         }
         Par_CheckAlign(specs->ps_align, tail->am_type, PAR_ALIGN_MAX_AUTO, decl->pc_line);
         tail->am_align = specs->ps_align;
@@ -1544,7 +1544,7 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line)
     Ast_Func *fn = calloc(1, sizeof(Ast_Func));
 
     Err_AssertAt(line, ! Ast_FindGlobal(name), ERR_PAR_OBJECT_AS_FUNCTION, name);
-    Par_RefuseAlign(Par_DeclAligned, line);
+    Par_RefuseAlign(Par_DeclIsAligned, line);
     fn->af_name   = (char *) name;
     fn->af_type   = type;
     fn->af_static = Par_DeclStorage == AST_STORAGE_STATIC;

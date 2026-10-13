@@ -239,14 +239,14 @@ param_dims
 /* The type a member declaration or a type name opens with. */
 decl_spec
     : spec_seq
-        { Par_SpecsStorage(&$1, PAR_STORAGE_FORBIDDEN, @1); Par_RefuseAlign($1.ps_aligned, @1);
+        { Par_SpecsStorage(&$1, PAR_STORAGE_FORBIDDEN, @1); Par_RefuseAlign($1.ps_is_aligned, @1);
           $$ = Par_SpecsType(&$1, @1); }
     ;
 
 /* The type a parameter opens with. */
 param_spec
     : spec_seq
-        { Par_SpecsStorage(&$1, PAR_STORAGE_REGISTER, @1); Par_RefuseAlign($1.ps_aligned, @1);
+        { Par_SpecsStorage(&$1, PAR_STORAGE_REGISTER, @1); Par_RefuseAlign($1.ps_is_aligned, @1);
           $$ = Par_SpecsType(&$1, @1); }
     ;
 
