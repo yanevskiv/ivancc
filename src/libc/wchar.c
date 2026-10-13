@@ -44,12 +44,24 @@
 // EOF, which btowc takes and wctob gives.
 #include <stdio.h>
 
+// The conversion wcstod and its two stand on.
+#include <_fp.h>
+
+// The integer conversions wcstol and its family share.
+#include <inttypes.h>
+
+// The ranges the checks hold long and long long to.
+#include <limits.h>
+
 // Check the types _wstr counts and works in against the header's.
 typedef char _Wchar_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
 typedef char _Wchar_CheckWide[sizeof(int) == sizeof(wchar_t) && (wchar_t) -1 < 0 ? 1 : -1];
 
 // Check that a conversion state holds the bytes of the longest character.
 typedef char _Wchar_CheckState[_WCHAR_STATE_BYTES == _UTF8_MAX ? 1 : -1];
+
+// Check that long and long long are intmax_t, as wcstol and its family take.
+typedef char _Wchar_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
 
 // The state each restartable function converts in when it is given none.
 mbstate_t _Wchar_MbrlenState;
@@ -114,6 +126,66 @@ size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state)
         state->count = 0;
     }
     return (size_t) len;
+}
+
+// Convert the start of the wide string nptr to a double.
+double wcstod(const wchar_t *restrict nptr, wchar_t **restrict endptr)
+{
+    size_t end;
+    double value = _Fp_ToDouble(nptr, _FP_TEXT_WIDE, &end);
+
+    if (endptr != NULL) {
+        *endptr = (wchar_t *) nptr + end;
+    }
+    return value;
+}
+
+// Convert the start of the wide string nptr to a float.
+float wcstof(const wchar_t *restrict nptr, wchar_t **restrict endptr)
+{
+    size_t end;
+    float value = _Fp_ToFloat(nptr, _FP_TEXT_WIDE, &end);
+
+    if (endptr != NULL) {
+        *endptr = (wchar_t *) nptr + end;
+    }
+    return value;
+}
+
+// Convert the start of the wide string nptr to a long double.
+long double wcstold(const wchar_t *restrict nptr, wchar_t **restrict endptr)
+{
+    size_t end;
+    long double value = _Fp_ToLongDouble(nptr, _FP_TEXT_WIDE, &end);
+
+    if (endptr != NULL) {
+        *endptr = (wchar_t *) nptr + end;
+    }
+    return value;
+}
+
+// Convert the start of the wide string nptr to a long in base.
+long wcstol(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base)
+{
+    return wcstoimax(nptr, endptr, base);
+}
+
+// Convert the start of the wide string nptr to a long long in base.
+long long wcstoll(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base)
+{
+    return wcstoimax(nptr, endptr, base);
+}
+
+// Convert the start of the wide string nptr to an unsigned long in base.
+unsigned long wcstoul(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base)
+{
+    return wcstoumax(nptr, endptr, base);
+}
+
+// Convert the start of the wide string nptr to an unsigned long long in base.
+unsigned long long wcstoull(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base)
+{
+    return wcstoumax(nptr, endptr, base);
 }
 
 // Copy the wide string str2 to str1.

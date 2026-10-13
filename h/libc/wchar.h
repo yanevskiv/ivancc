@@ -77,6 +77,15 @@ extern mbstate_t _Wchar_WcsrtombsState;
 size_t _Wchar_DecodeChar(wchar_t *pwc, const char *str, size_t n, mbstate_t *state);
 size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state);
 
+// (S7.24.4.1) Wide string numeric conversion functions
+double             wcstod(const wchar_t *restrict nptr, wchar_t **restrict endptr);
+float              wcstof(const wchar_t *restrict nptr, wchar_t **restrict endptr);
+long double        wcstold(const wchar_t *restrict nptr, wchar_t **restrict endptr);
+long               wcstol(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base);
+long long          wcstoll(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base);
+unsigned long      wcstoul(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base);
+unsigned long long wcstoull(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base);
+
 // (S7.24.4.2) Wide string copying functions
 wchar_t *wcscpy(wchar_t *restrict str1, const wchar_t *restrict str2);
 wchar_t *wcsncpy(wchar_t *restrict str1, const wchar_t *restrict str2, size_t n);
