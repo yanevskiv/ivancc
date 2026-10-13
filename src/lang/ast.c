@@ -382,6 +382,14 @@ Ast_Member *Ast_NamedMembers(Ast_Member *members)
     return head.am_next;
 }
 
+// [C11 S6.7.5p6] Return the address multiple a member sits on.
+int32_t Ast_MemberAlign(const Ast_Member *member)
+{
+    const Ast_Type *type = member->am_type;
+
+    return member->am_align > type->at_align ? member->am_align : type->at_align;
+}
+
 // Lay out an aggregate's members and size it.
 void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
 {
@@ -394,9 +402,9 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
             Err_AssertAt(member->am_line, type->at_kind != AST_TYPE_KIND_UNION, ERR_AST_FLEXIBLE_IN_UNION);
             Err_AssertAt(member->am_line, ! member->am_next, ERR_AST_FLEXIBLE_NOT_LAST, member->am_name);
             Err_AssertAt(member->am_line, member != members, ERR_AST_FLEXIBLE_ALONE);
-            member->am_offset = Ast_AlignTo(bits, member->am_type->at_align * AST_BITS_PER_BYTE) / AST_BITS_PER_BYTE;
-            if (member->am_type->at_align > align) {
-                align = member->am_type->at_align;
+            member->am_offset = Ast_AlignTo(bits, Ast_MemberAlign(member) * AST_BITS_PER_BYTE) / AST_BITS_PER_BYTE;
+            if (Ast_MemberAlign(member) > align) {
+                align = Ast_MemberAlign(member);
             }
             continue;
         }
@@ -404,8 +412,8 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
         for (Ast_Member *seen = members; seen != member; seen = seen->am_next) {
             Err_AssertAt(member->am_line, ! member->am_name || ! Str_Equals(seen->am_name, member->am_name), ERR_AST_MEMBER_DUPLICATE, member->am_name);
         }
-        if (member->am_type->at_align > align) {
-            align = member->am_type->at_align;
+        if (Ast_MemberAlign(member) > align) {
+            align = Ast_MemberAlign(member);
         }
         if (type->at_kind == AST_TYPE_KIND_UNION) {
             member->am_offset = 0;
@@ -418,7 +426,7 @@ void Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line)
             bits = Ast_PlaceBitfield(member, bits);
             continue;
         }
-        bits = Ast_AlignTo(bits, member->am_type->at_align * AST_BITS_PER_BYTE);
+        bits = Ast_AlignTo(bits, Ast_MemberAlign(member) * AST_BITS_PER_BYTE);
         member->am_offset = bits / AST_BITS_PER_BYTE;
         bits += member->am_type->at_size * AST_BITS_PER_BYTE;
     }

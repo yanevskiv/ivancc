@@ -44,7 +44,9 @@ static int32_t   Par_OpenLen;
 static Ast_Type   *Par_DeclType;
 static Ast_Storage Par_DeclStorage;
 static bool        Par_DeclInline;
-static char       *Par_DeclName;
+static bool        Par_DeclAligned;
+static int32_t     Par_DeclAlign;
+static char      *Par_DeclName;
 static Ast_Line    Par_DeclLine;
 
 // The type the top-level declarator just read works out to.
@@ -65,7 +67,12 @@ void Par_SetDeclSpec(const Par_Specs *specs, Par_StorageUse use, Ast_Line line)
 {
     Par_DeclStorage = Par_SpecsStorage(specs, use, line);
     Par_DeclInline  = specs->ps_inline;
+    Par_DeclAligned = specs->ps_aligned;
+    Par_DeclAlign   = specs->ps_align;
     Par_DeclType    = Par_SpecsType(specs, line);
+    if (use != PAR_STORAGE_ANY || specs->ps_register || Par_DeclStorage == AST_STORAGE_TYPEDEF) {
+        Par_RefuseAlign(specs->ps_aligned, line);
+    }
 }
 
 // Start an enumerator list over.
@@ -637,6 +644,59 @@ void Par_ClearSpecs(Par_Specs *specs)
     specs->ps_nstorage = 0;
     specs->ps_register = false;
     specs->ps_inline   = false;
+    specs->ps_aligned  = false;
+    specs->ps_align    = 0;
+}
+
+// [C11 S6.7.5p3] Return the specifier set an alignment makes of a constant.
+Par_Specs Par_AlignSpec(const Ast_Node *expr, Ast_Line line)
+{
+    int64_t val;
+    Par_Specs specs;
+
+    Par_ClearSpecs(&specs);
+    Err_AssertAt(line, Sem_Fold(expr, &val), ERR_PAR_ALIGNAS_NOT_CONSTANT);
+
+    bool ranged = val >= 0 && val <= PAR_ALIGN_MAX_STATIC;
+    bool power = (val & (val - 1)) == 0;
+
+    Err_AssertAt(line, ranged && power, ERR_PAR_ALIGNAS_NOT_VALID);
+    specs.ps_aligned = true;
+    specs.ps_align   = (int32_t) val;
+    return specs;
+}
+
+// [C11 S6.7.5p5] Return the specifier set an alignment makes of a type.
+Par_Specs Par_AlignSpecType(Ast_Type *type, Ast_Line line)
+{
+    return Par_AlignSpec(Par_AlignOfType(type, line), line);
+}
+
+// [C11 S6.7.5p2] Refuse an alignment where a declaration may carry none.
+void Par_RefuseAlign(bool aligned, Ast_Line line)
+{
+    Err_AssertAt(line, ! aligned, ERR_PAR_ALIGNAS_NOT_ALLOWED);
+}
+
+// [C11 S6.7.5p4] Refuse an alignment weaker than its type's, or past max.
+void Par_CheckAlign(int32_t align, const Ast_Type *type, int32_t max, Ast_Line line)
+{
+    if (align == 0) {
+        return;
+    }
+    Err_AssertAt(line, align >= type->at_align, ERR_PAR_ALIGNAS_TOO_WEAK);
+    Err_AssertAt(line, align <= max, ERR_PAR_ALIGNAS_NOT_SUPPORTED);
+}
+
+// [C11 S6.7.5p6] Give a variable the alignment its declaration asked for.
+void Par_AlignVar(Ast_Var *var, Ast_Line line)
+{
+    int32_t max = var->av_global ? PAR_ALIGN_MAX_STATIC : PAR_ALIGN_MAX_AUTO;
+
+    Par_CheckAlign(Par_DeclAlign, var->av_type, max, line);
+    if (Par_DeclAlign > var->av_align) {
+        var->av_align = Par_DeclAlign;
+    }
 }
 
 // Return the specifier set one storage-class keyword makes.
@@ -680,6 +740,10 @@ void Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line)
     }
     into->ps_qual   |= one->ps_qual;
     into->ps_inline |= one->ps_inline;
+    into->ps_aligned |= one->ps_aligned;
+    if (one->ps_align > into->ps_align) {
+        into->ps_align = one->ps_align;
+    }
 }
 
 // Return the storage class a declaration's specifiers name.
@@ -821,16 +885,23 @@ void Par_AddBitfield(Ast_Member *member, Ast_Node *width, Ast_Line line)
 }
 
 // Turn one member declaration's declarators into members of the shared type.
-Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls)
+Ast_Member *Par_MakeMembers(const Par_Specs *specs, Par_Decl *decls, Ast_Line line)
 {
     Ast_Member head = {0};
     Ast_Member *tail = &head;
+    Ast_Type *type = Par_SpecsType(specs, line);
 
+    Par_SpecsStorage(specs, PAR_STORAGE_FORBIDDEN, line);
     for (Par_Decl *decl = decls; decl; decl = decl->pc_next) {
         Err_AssertAt(decl->pc_line, decl->pc_name || decl->pc_bits, ERR_PAR_MEMBER_NOT_NAMED);
         tail->am_next = Ast_NewMember(decl->pc_name, Par_ApplyDecl(type, decl), decl->pc_line);
         tail = tail->am_next;
         Par_NeedFixedSize(tail->am_type, decl->pc_line);
+        if (decl->pc_bits) {
+            Par_RefuseAlign(specs->ps_aligned, decl->pc_line);
+        }
+        Par_CheckAlign(specs->ps_align, tail->am_type, PAR_ALIGN_MAX_AUTO, decl->pc_line);
+        tail->am_align = specs->ps_align;
         if (decl->pc_head && decl->pc_head->pd_kind == PAR_DERIV_ARRAY && decl->pc_head->pd_empty) {
             tail->am_flexible = true;
         }
@@ -1312,6 +1383,7 @@ void Par_AddDeclaredType(const char *name, Ast_Type *type, Ast_Node *init, Ast_L
     if (Ast_IsUnsized(var->av_type)) {
         var->av_type = type;
     }
+    Par_AlignVar(var, line);
     if (! init) {
         return;
     }
@@ -1404,6 +1476,9 @@ Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line)
     Ast_Node *size = Par_SizeExpr(type, line);
     Ast_Node *stmt = Par_DefineLocal(decl, var, init, line);
 
+    if (var) {
+        Par_AlignVar(var, line);
+    }
     if (Ast_IsVm(type)) {
         Ast_OpenVmScope();
     }
@@ -1469,6 +1544,7 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line)
     Ast_Func *fn = calloc(1, sizeof(Ast_Func));
 
     Err_AssertAt(line, ! Ast_FindGlobal(name), ERR_PAR_OBJECT_AS_FUNCTION, name);
+    Par_RefuseAlign(Par_DeclAligned, line);
     fn->af_name   = (char *) name;
     fn->af_type   = type;
     fn->af_static = Par_DeclStorage == AST_STORAGE_STATIC;

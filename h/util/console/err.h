@@ -171,6 +171,11 @@ enum Err_Code {
     ERR_PAR_EXTERN_INITIALIZED,            // can't initialize a block-scope `extern`
     ERR_PAR_SIZEOF_NOT_COMPLETE,           // can't take the `sizeof` of an incomplete type
     ERR_PAR_ALIGNOF_NOT_COMPLETE,          // can't take the `_Alignof` of an incomplete type
+    ERR_PAR_ALIGNAS_NOT_CONSTANT,          // can't give `_Alignas` anything but an integer constant expression
+    ERR_PAR_ALIGNAS_NOT_VALID,             // can't give `_Alignas` anything but zero or a power of two up to 4096
+    ERR_PAR_ALIGNAS_TOO_WEAK,              // can't align an object or member below what its type requires
+    ERR_PAR_ALIGNAS_NOT_ALLOWED,           // can't align a typedef, bit-field, function, parameter, `register` object or type name
+    ERR_PAR_ALIGNAS_NOT_SUPPORTED,         // can't align a local or a member above 16
     ERR_PAR_OFFSETOF_NOT_AGGREGATE,        // can't take the offset of a member of something that is not a struct or union
     ERR_PAR_OFFSETOF_NOT_COMPLETE,         // can't take the offset of a member of an incomplete struct or union
     ERR_PAR_OFFSETOF_NO_MEMBER,            // can't take the offset of a member the struct does not have

@@ -70,7 +70,7 @@ void yyerror(const char *s);
 %token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END BUILTIN_VA_COPY
 %token BUILTIN_OFFSETOF
 %token STATIC_ASSERT
-%token ALIGNOF
+%token ALIGNOF ALIGNAS
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
@@ -239,13 +239,15 @@ param_dims
 /* The type a member declaration or a type name opens with. */
 decl_spec
     : spec_seq
-        { Par_SpecsStorage(&$1, PAR_STORAGE_FORBIDDEN, @1); $$ = Par_SpecsType(&$1, @1); }
+        { Par_SpecsStorage(&$1, PAR_STORAGE_FORBIDDEN, @1); Par_RefuseAlign($1.ps_aligned, @1);
+          $$ = Par_SpecsType(&$1, @1); }
     ;
 
 /* The type a parameter opens with. */
 param_spec
     : spec_seq
-        { Par_SpecsStorage(&$1, PAR_STORAGE_REGISTER, @1); $$ = Par_SpecsType(&$1, @1); }
+        { Par_SpecsStorage(&$1, PAR_STORAGE_REGISTER, @1); Par_RefuseAlign($1.ps_aligned, @1);
+          $$ = Par_SpecsType(&$1, @1); }
     ;
 
 /* The specifiers and qualifiers a declaration opens with. */
@@ -254,7 +256,7 @@ spec_seq
     | spec_seq spec        { $$ = $1; Par_TakeSpec(&$$, &$2, @2); }
     ;
 
-/* One type specifier or qualifier. */
+/* One type specifier, qualifier, storage class or alignment. */
 spec
     : INT                  { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_INT; }
     | CHAR                 { Par_ClearSpecs(&$$); $$.ps_specs = PAR_SPEC_CHAR; }
@@ -274,6 +276,8 @@ spec
     | AUTO                 { $$ = Par_StorageSpec(AST_STORAGE_NONE); }
     | REGISTER             { $$ = Par_StorageSpec(AST_STORAGE_NONE); $$.ps_register = true; }
     | INLINE               { Par_ClearSpecs(&$$); $$.ps_inline = true; }
+    | ALIGNAS LPAREN type_name RPAREN  { $$ = Par_AlignSpecType($3, @1); }
+    | ALIGNAS LPAREN expr RPAREN       { $$ = Par_AlignSpec($3, @1); }
     ;
 
 /* A type written without a name, as a cast or a sizeof takes. */
@@ -402,7 +406,7 @@ members
 
 /* One member declaration. */
 member_decl
-    : decl_spec member_declarators SEMI  { $$ = Par_MakeMembers($1, $2); }
+    : spec_seq member_declarators SEMI   { $$ = Par_MakeMembers(&$1, $2, @1); }
     | static_assert                      { $$ = NULL; }
     ;
 

@@ -750,6 +750,41 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "invalid application of '_Alignof' to an incomplete type"
     },
 
+    // Args: none
+    [ERR_PAR_ALIGNAS_NOT_CONSTANT] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ALIGNAS_NOT_CONSTANT",
+        .ee_format = "the alignment '_Alignas' asks for is not an integer constant expression"
+    },
+
+    // Args: none
+    [ERR_PAR_ALIGNAS_NOT_VALID] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ALIGNAS_NOT_VALID",
+        .ee_format = "the alignment '_Alignas' asks for is not zero or a power of two up to 4096"
+    },
+
+    // Args: none
+    [ERR_PAR_ALIGNAS_TOO_WEAK] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ALIGNAS_TOO_WEAK",
+        .ee_format = "'_Alignas' asks for a weaker alignment than the type requires"
+    },
+
+    // Args: none
+    [ERR_PAR_ALIGNAS_NOT_ALLOWED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ALIGNAS_NOT_ALLOWED",
+        .ee_format = "'_Alignas' can't go on a typedef, a bit-field, a function, a parameter, a 'register' object or a type name"
+    },
+
+    // Args: none
+    [ERR_PAR_ALIGNAS_NOT_SUPPORTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ALIGNAS_NOT_SUPPORTED",
+        .ee_format = "an alignment above 16 is supported on an object of static storage only"
+    },
+
     // Args: [member]
     [ERR_PAR_OFFSETOF_NOT_AGGREGATE] = {
         .ee_level  = ERR_LEVEL_FATAL,

@@ -721,24 +721,26 @@ int32_t Gen_x86_64_SlotSize(const Ast_Type *type)
     return Ast_AlignTo(type->at_size, GEN_X86_64_WORD_SIZE);
 }
 
-// Return the address multiple an object of type sits on, by the SysV ABI.
-int32_t Gen_x86_64_ObjectAlign(const Ast_Type *type)
+// [SysV S3.1.2] Return the address multiple a variable sits on.
+int32_t Gen_x86_64_ObjectAlign(const Ast_Var *var)
 {
+    const Ast_Type *type = var->av_type;
+    int32_t align = var->av_align > type->at_align ? var->av_align : type->at_align;
     bool array = type->at_kind == AST_TYPE_KIND_ARRAY && type->at_size >= GEN_X86_64_SYSV_ARRAY_SIZE;
 
-    if (array && type->at_align < GEN_X86_64_SYSV_ARRAY_ALIGN) {
+    if (array && align < GEN_X86_64_SYSV_ARRAY_ALIGN) {
         return GEN_X86_64_SYSV_ARRAY_ALIGN;
     }
-    return type->at_align;
+    return align;
 }
 
 // Return the address multiple a local's frame slot sits on.
-int32_t Gen_x86_64_SlotAlign(const Ast_Type *type)
+int32_t Gen_x86_64_SlotAlign(const Ast_Var *var)
 {
-    if (Ast_IsVla(type)) {
+    if (Ast_IsVla(var->av_type)) {
         return GEN_X86_64_WORD_SIZE;
     }
-    return Gen_x86_64_ObjectAlign(type);
+    return Gen_x86_64_ObjectAlign(var);
 }
 
 // Return the operand width in bits used to load or store a value of type.
@@ -1948,7 +1950,7 @@ void Gen_x86_64_AssignLvarOffsets(Ast_Func *func)
 
     for (Ast_Var *var = func->af_locals; var; var = var->av_next) {
         offset += Gen_x86_64_SlotSize(var->av_type);
-        offset = Ast_AlignTo(offset, Gen_x86_64_SlotAlign(var->av_type));
+        offset = Ast_AlignTo(offset, Gen_x86_64_SlotAlign(var));
         var->av_offset = -offset;
     }
     Gen_x86_64_AssignTemps(func->af_body, &offset);
@@ -2077,8 +2079,8 @@ void Gen_x86_64_EmitGlobal(Ast_Var *var)
     if (var->av_storage != AST_STORAGE_STATIC) {
         Asm_x86_64_EmitGlobl("%s", var->av_symbol);
     }
-    if (Gen_x86_64_ObjectAlign(var->av_type) > AST_TYPE_ALIGN_CHAR) {
-        Asm_x86_64_EmitAlign((size_t) Gen_x86_64_ObjectAlign(var->av_type));
+    if (Gen_x86_64_ObjectAlign(var) > AST_TYPE_ALIGN_CHAR) {
+        Asm_x86_64_EmitAlign((size_t) Gen_x86_64_ObjectAlign(var));
     }
     Asm_x86_64_EmitLabel("%s", var->av_symbol);
     Gen_x86_64_EmitImage(bytes, size, addrs, naddrs);

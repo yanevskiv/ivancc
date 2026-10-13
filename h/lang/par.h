@@ -33,6 +33,10 @@
 // Bits in the value a literal is read into.
 #define PAR_VALUE_BITS 64
 
+// [C11 S6.2.8p3] The strictest alignment `_Alignas` may ask for.
+#define PAR_ALIGN_MAX_AUTO   16   // on a local or a member
+#define PAR_ALIGN_MAX_STATIC 4096 // on an object of static storage
+
 // Name of the array that holds a function's own name.
 #define PAR_FUNC_NAME "__func__"
 
@@ -154,6 +158,8 @@ struct Par_Specs {
     int32_t     ps_nstorage; // the storage-class keywords seen
     bool        ps_register; // the storage class seen was `register`
     bool        ps_inline;   // `inline` was seen
+    bool        ps_aligned;  // `_Alignas` was seen
+    int32_t     ps_align;    // the strictest alignment asked for, or 0
 };
 
 // A parameter list as the grammar collects it.
@@ -238,6 +244,11 @@ char    *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t 
 
 // Types
 void        Par_ClearSpecs(Par_Specs *specs);
+Par_Specs   Par_AlignSpec(const Ast_Node *expr, Ast_Line line);
+Par_Specs   Par_AlignSpecType(Ast_Type *type, Ast_Line line);
+void        Par_RefuseAlign(bool aligned, Ast_Line line);
+void        Par_CheckAlign(int32_t align, const Ast_Type *type, int32_t max, Ast_Line line);
+void        Par_AlignVar(Ast_Var *var, Ast_Line line);
 Par_Specs   Par_StorageSpec(Ast_Storage storage);
 Par_Spec    Par_AddSpec(Par_Spec specs, Par_Spec spec, Ast_Line line);
 void        Par_TakeSpec(Par_Specs *into, const Par_Specs *one, Ast_Line line);
@@ -251,7 +262,7 @@ Ast_Node   *Par_VaCopy(Ast_Node *dst, Ast_Node *src, Ast_Line line);
 // Aggregates
 Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail);
 void        Par_AddBitfield(Ast_Member *member, Ast_Node *width, Ast_Line line);
-Ast_Member *Par_MakeMembers(Ast_Type *type, Par_Decl *decls);
+Ast_Member *Par_MakeMembers(const Par_Specs *specs, Par_Decl *decls, Ast_Line line);
 void        Par_CheckTagKind(const Ast_Type *type, Ast_TypeKind kind, const char *tag, Ast_Line line);
 Ast_Type   *Par_BeginAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line);
 Ast_Type   *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line line);

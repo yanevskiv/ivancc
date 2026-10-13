@@ -95,6 +95,7 @@ BEXP    [pP][+-]?{DIGIT}+
 "__builtin_offsetof"    return BUILTIN_OFFSETOF;
 "_Static_assert"        return STATIC_ASSERT;
 "_Alignof"              return ALIGNOF;
+"_Alignas"              return ALIGNAS;
 
 {ALPHA}{ALNUM}*         { yylval.name = Str_Clone(yytext);
                           return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }

@@ -252,6 +252,7 @@ struct Ast_Member {
     bool        am_flexible; // true for a trailing `d[]`
     int32_t     am_bits;     // width of a bitfield, or 0
     int32_t     am_bitoff;   // bits into am_offset where a bitfield starts
+    int32_t     am_align;    // alignment `_Alignas` asked for, or 0
 };
 
 // An interned string literal.
@@ -276,6 +277,7 @@ struct Ast_Var {
     Ast_Storage  av_storage;    // storage class the declaration asked for
     Ast_Node    *av_init;       // initializer of a global, or NULL
     Ast_Type    *av_vmtype;     // a variably modified parameter's declared type
+    int32_t      av_align;      // alignment `_Alignas` asked for, or 0
 };
 
 // A struct, union or enum tag.
@@ -423,6 +425,7 @@ Ast_Type   *Ast_NewAggregate(Ast_TypeKind kind, const char *tag);
 Ast_Member *Ast_NewMember(const char *name, Ast_Type *type, Ast_Line line);
 int32_t     Ast_PlaceBitfield(Ast_Member *member, int32_t bits);
 Ast_Member *Ast_NamedMembers(Ast_Member *members);
+int32_t     Ast_MemberAlign(const Ast_Member *member);
 void        Ast_LayoutAggregate(Ast_Type *type, Ast_Member *members, Ast_Line line);
 Ast_Member *Ast_FindMember(const Ast_Type *type, const char *name);
 bool        Ast_IsCompatible(const Ast_Type *a, const Ast_Type *b);
