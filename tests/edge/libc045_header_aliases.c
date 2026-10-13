@@ -13,13 +13,13 @@
 #include <wchar.h>
 #include <_utf8.h>
 
-_Static_assert(sizeof(_Inttypes_WcharType) == sizeof(wchar_t), "_Inttypes_WcharType is as wide as wchar_t");
-_Static_assert(((_Inttypes_WcharType) -1 < 0) == ((wchar_t) -1 < 0), "_Inttypes_WcharType is signed as wchar_t");
-_Static_assert(sizeof(_Locale_SizeType) == sizeof(size_t), "_Locale_SizeType is as wide as size_t");
-_Static_assert((_Locale_SizeType) -1 == (size_t) -1, "_Locale_SizeType is unsigned as size_t");
-_Static_assert(sizeof(_Stdio_VaList) == sizeof(va_list), "_Stdio_VaList is va_list");
-_Static_assert(sizeof(_Wchar_VaList) == sizeof(va_list), "_Wchar_VaList is va_list");
-_Static_assert(_WCHAR_STATE_BYTES == _UTF8_MAX, "mbstate_t holds the longest character's bytes");
+_Static_assert(sizeof(_Inttypes_WcharType) == sizeof(wchar_t), "_Inttypes_WcharType should be as wide as wchar_t");
+_Static_assert(((_Inttypes_WcharType) -1 < 0) == ((wchar_t) -1 < 0), "_Inttypes_WcharType should be signed as wchar_t");
+_Static_assert(sizeof(_Locale_SizeType) == sizeof(size_t), "_Locale_SizeType should be as wide as size_t");
+_Static_assert((_Locale_SizeType) -1 == (size_t) -1, "_Locale_SizeType should be unsigned as size_t");
+_Static_assert(sizeof(_Stdio_VaList) == sizeof(va_list), "_Stdio_VaList should be va_list");
+_Static_assert(sizeof(_Wchar_VaList) == sizeof(va_list), "_Wchar_VaList should be va_list");
+_Static_assert(_WCHAR_STATE_BYTES == _UTF8_MAX, "mbstate_t should hold the longest character's bytes");
 
 int main(void)
 {

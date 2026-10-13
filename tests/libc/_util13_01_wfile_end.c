@@ -12,9 +12,9 @@
 // A stream's end should be WEOF and EOF, and it take back a whole character.
 static void Test_WfileEnd(void)
 {
-    _Static_assert(_WFILE_END == WEOF, "_WFILE_END is WEOF");
-    _Static_assert(_FILE_END == EOF, "_FILE_END is EOF");
-    _Static_assert(_FILE_BACKS >= _UTF8_MAX, "a stream takes back the longest character's bytes");
+    _Static_assert(_WFILE_END == WEOF, "_WFILE_END should be WEOF");
+    _Static_assert(_FILE_END == EOF, "_FILE_END should be EOF");
+    _Static_assert(_FILE_BACKS >= _UTF8_MAX, "a stream should take back the longest character's bytes");
 }
 
 int main(void)

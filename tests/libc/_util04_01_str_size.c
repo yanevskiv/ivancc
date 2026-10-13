@@ -9,8 +9,8 @@
 // A size_t should be the unsigned long _str counts in.
 static void Test_StrSize(void)
 {
-    _Static_assert(sizeof(unsigned long) == sizeof(size_t), "_str counts in a size_t");
-    _Static_assert((size_t) -1 > 0, "_str counts in an unsigned type");
+    _Static_assert(sizeof(unsigned long) == sizeof(size_t), "_str should count in a size_t");
+    _Static_assert((size_t) -1 > 0, "_str should count in an unsigned type");
 }
 
 int main(void)
