@@ -1930,6 +1930,73 @@ _Bool _Stdio_MatchScanReal(const char *format, _Stdio_VaList *list, size_t *len,
     return 1;
 }
 
+// Match a %lc directive with where it stores, null if it stores nothing.
+_Bool _Stdio_MatchScanWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *width, _Stdio_WcharType **dest)
+{
+    int length;
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _STDIO_SCAN_LENGTH_LONG || format[at] != 'c') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, _Stdio_WcharType *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %ls directive with where it stores, null if it stores nothing.
+_Bool _Stdio_MatchScanWideString(const char *format, _Stdio_VaList *list, size_t *len, int *width, _Stdio_WcharType **dest)
+{
+    int length;
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _STDIO_SCAN_LENGTH_LONG || format[at] != 's') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, _Stdio_WcharType *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %l[ directive with its scanset and where it stores, null if nowhere.
+_Bool _Stdio_MatchScanWideSet(const char *format, _Stdio_VaList *list, size_t *len, int *width, _Stdio_WcharType **dest, const char **set, size_t *count, _Stdio_Accept *accept)
+{
+    int length;
+    size_t end;
+    size_t from;
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _STDIO_SCAN_LENGTH_LONG || format[at] != '[') {
+        return 0;
+    }
+
+    // Phase: match the scanset, a right bracket first being one of it
+    *accept = _STDIO_ACCEPT_LISTED;
+    from = at + 1;
+    if (format[from] == '^') {
+        *accept = _STDIO_ACCEPT_UNLISTED;
+        from++;
+    }
+    end = from;
+    if (format[end] == ']') {
+        end++;
+    }
+    while (format[end] != '\0' && format[end] != ']') {
+        end++;
+    }
+    if (format[end] != ']') {
+        return 0;
+    }
+    *set = format + from;
+    *count = end - from;
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, _Stdio_WcharType *) : NULL;
+    *len = end + 1;
+    return 1;
+}
+
 // Peek at the source's next character, left unread, or EOF if there is none.
 int _Stdio_PeekSource(_Stdio_Source *source)
 {
@@ -2209,6 +2276,32 @@ _Bool _Stdio_ConvertReal(const char *str, int length, void *dest)
     return 1;
 }
 
+// Decode ch as a character's next byte, storing the character if ch ends it.
+void _Stdio_DecodeByte(_Stdio_Source *source, _Stdio_Wide *wide, int ch)
+{
+    _Stdio_WcharType wc;
+
+    wide->sw_byte[wide->sw_count++] = (char) ch;
+    if (mbtowc(&wc, wide->sw_byte, wide->sw_count) >= 0) {
+        if (wide->sw_dest != NULL) {
+            *wide->sw_dest++ = wc;
+        }
+        wide->sw_count = 0;
+    } else if (wide->sw_count >= MB_CUR_MAX) {
+        source->so_failure = _STDIO_FAILURE_INPUT;
+    }
+}
+
+// End a directive's wide characters, and return whether every one was whole.
+_Bool _Stdio_EndWide(_Stdio_Source *source, const _Stdio_Wide *wide)
+{
+    if (source->so_failure == _STDIO_FAILURE_NONE && wide->sw_count > 0) {
+        source->so_failure = _STDIO_FAILURE_INPUT;
+        errno = EILSEQ;
+    }
+    return source->so_failure == _STDIO_FAILURE_NONE;
+}
+
 // Scan the white space the source is at, none being enough.
 void _Stdio_ScanSpace(_Stdio_Source *source)
 {
@@ -2423,6 +2516,80 @@ void _Stdio_ScanReal(_Stdio_Source *source, int width, int length, void *dest)
     free(item.si_text);
 }
 
+// Scan width bytes, one if no width, into dest as wide characters, no null.
+void _Stdio_ScanWideChar(_Stdio_Source *source, int width, _Stdio_WcharType *dest)
+{
+    int ch;
+    _Stdio_Wide wide;
+    size_t count = width == _STDIO_SCAN_WIDTH_NONE ? 1 : (size_t) width;
+
+    wide.sw_dest = dest;
+    wide.sw_count = 0;
+    for (size_t i = 0; i < count && source->so_failure == _STDIO_FAILURE_NONE; i++) {
+        ch = _Stdio_PeekSource(source);
+        if (ch == EOF) {
+            source->so_failure = _STDIO_FAILURE_INPUT;
+            return;
+        }
+        _Stdio_DecodeByte(source, &wide, ch);
+        _Stdio_AdvanceSource(source);
+    }
+    if (_Stdio_EndWide(source, &wide) && dest != NULL) {
+        source->so_stored++;
+    }
+}
+
+// Scan a word, after any white space, into dest as a wide string, width bytes.
+void _Stdio_ScanWideString(_Stdio_Source *source, int width, _Stdio_WcharType *dest)
+{
+    int ch;
+    _Stdio_Wide wide;
+    size_t len = 0;
+    size_t max = width == _STDIO_SCAN_WIDTH_NONE ? SIZE_MAX : (size_t) width;
+
+    wide.sw_dest = dest;
+    wide.sw_count = 0;
+    _Stdio_ScanSpace(source);
+    while (len < max && source->so_failure == _STDIO_FAILURE_NONE && (ch = _Stdio_PeekSource(source)) != EOF && ! isspace(ch)) {
+        _Stdio_DecodeByte(source, &wide, ch);
+        _Stdio_AdvanceSource(source);
+        len++;
+    }
+    if (len == 0) {
+        source->so_failure = _STDIO_FAILURE_INPUT;
+        return;
+    }
+    if (_Stdio_EndWide(source, &wide) && dest != NULL) {
+        *wide.sw_dest = 0;
+        source->so_stored++;
+    }
+}
+
+// Scan the bytes a scanset takes into dest as a wide string, width bytes.
+void _Stdio_ScanWideSet(_Stdio_Source *source, int width, _Stdio_WcharType *dest, const char *set, size_t count, _Stdio_Accept accept)
+{
+    int ch = 0;
+    _Stdio_Wide wide;
+    size_t len = 0;
+    size_t max = width == _STDIO_SCAN_WIDTH_NONE ? SIZE_MAX : (size_t) width;
+
+    wide.sw_dest = dest;
+    wide.sw_count = 0;
+    while (len < max && source->so_failure == _STDIO_FAILURE_NONE && (ch = _Stdio_PeekSource(source)) != EOF && _Stdio_IsInSet(set, count, ch) == (accept == _STDIO_ACCEPT_LISTED)) {
+        _Stdio_DecodeByte(source, &wide, ch);
+        _Stdio_AdvanceSource(source);
+        len++;
+    }
+    if (len == 0) {
+        source->so_failure = ch == EOF ? _STDIO_FAILURE_INPUT : _STDIO_FAILURE_MATCHING;
+        return;
+    }
+    if (_Stdio_EndWide(source, &wide) && dest != NULL) {
+        *wide.sw_dest = 0;
+        source->so_stored++;
+    }
+}
+
 // Scan the source as the format says, each directive storing at its argument.
 int _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList args)
 {
@@ -2435,6 +2602,7 @@ int _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList a
     va_list list;
     const char *set;
     _Stdio_Accept accept;
+    _Stdio_WcharType *wstr;
 
     va_copy(list, args);
     for (size_t i = 0; format[i] != '\0' && source->so_failure == _STDIO_FAILURE_NONE; i += len) {
@@ -2466,6 +2634,12 @@ int _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList a
             _Stdio_ScanPointer(source, width, dest);
         } else if (_Stdio_MatchScanReal(format + i, &list, &len, &width, &length, &dest)) {
             _Stdio_ScanReal(source, width, length, dest);
+        } else if (_Stdio_MatchScanWideChar(format + i, &list, &len, &width, &wstr)) {
+            _Stdio_ScanWideChar(source, width, wstr);
+        } else if (_Stdio_MatchScanWideString(format + i, &list, &len, &width, &wstr)) {
+            _Stdio_ScanWideString(source, width, wstr);
+        } else if (_Stdio_MatchScanWideSet(format + i, &list, &len, &width, &wstr, &set, &count, &accept)) {
+            _Stdio_ScanWideSet(source, width, wstr, set, count, accept);
         } else {
             len = 0;
             source->so_failure = _STDIO_FAILURE_MATCHING;

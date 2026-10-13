@@ -151,6 +151,9 @@
 #define _STDIO_SCAN_NAN      "nan"
 #define _STDIO_SCAN_NCHARS   "0123456789abcdefghijklmnopqrstuvwxyz_"
 
+// The most bytes of an input character not yet whole, which is MB_LEN_MAX.
+#define _STDIO_SCAN_BYTES 16
+
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
 
@@ -304,6 +307,14 @@ struct _Stdio_Item {
     size_t si_room; // the characters the directive's width still allows
 };
 
+// The wide characters an input directive stores, decoded a byte at a time.
+typedef struct _Stdio_Wide _Stdio_Wide;
+struct _Stdio_Wide {
+    _Stdio_WcharType *sw_dest;       // where the next one goes, or NULL
+    char sw_byte[_STDIO_SCAN_BYTES]; // the bytes of a character not yet whole
+    size_t sw_count;                 // how many such bytes there are
+};
+
 // (S7.19.1) Introduction
 typedef struct _Stdio_File FILE;
 
@@ -424,6 +435,9 @@ _Bool  _Stdio_MatchScanUnsigned(const char *format, _Stdio_VaList *list, size_t 
 _Bool  _Stdio_MatchScanHex(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
 _Bool  _Stdio_MatchScanPointer(const char *format, _Stdio_VaList *list, size_t *len, int *width, void **dest);
 _Bool  _Stdio_MatchScanReal(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
+_Bool  _Stdio_MatchScanWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *width, _Stdio_WcharType **dest);
+_Bool  _Stdio_MatchScanWideString(const char *format, _Stdio_VaList *list, size_t *len, int *width, _Stdio_WcharType **dest);
+_Bool  _Stdio_MatchScanWideSet(const char *format, _Stdio_VaList *list, size_t *len, int *width, _Stdio_WcharType **dest, const char **set, size_t *count, _Stdio_Accept *accept);
 
 // Formatted input
 int    _Stdio_PeekSource(_Stdio_Source *source);
@@ -436,6 +450,8 @@ size_t _Stdio_TakeChars(_Stdio_Source *source, _Stdio_Item *item, const char *se
 size_t _Stdio_TakeWord(_Stdio_Source *source, _Stdio_Item *item, const char *word);
 void   _Stdio_ReadReal(_Stdio_Source *source, int width, _Stdio_Item *item);
 _Bool  _Stdio_ConvertReal(const char *str, int length, void *dest);
+void   _Stdio_DecodeByte(_Stdio_Source *source, _Stdio_Wide *wide, int ch);
+_Bool  _Stdio_EndWide(_Stdio_Source *source, const _Stdio_Wide *wide);
 
 // Scanning
 void _Stdio_ScanSpace(_Stdio_Source *source);
@@ -452,6 +468,9 @@ void _Stdio_ScanUnsigned(_Stdio_Source *source, int width, int length, void *des
 void _Stdio_ScanHex(_Stdio_Source *source, int width, int length, void *dest);
 void _Stdio_ScanPointer(_Stdio_Source *source, int width, void *dest);
 void _Stdio_ScanReal(_Stdio_Source *source, int width, int length, void *dest);
+void _Stdio_ScanWideChar(_Stdio_Source *source, int width, _Stdio_WcharType *dest);
+void _Stdio_ScanWideString(_Stdio_Source *source, int width, _Stdio_WcharType *dest);
+void _Stdio_ScanWideSet(_Stdio_Source *source, int width, _Stdio_WcharType *dest, const char *set, size_t count, _Stdio_Accept accept);
 int  _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList args);
 
 // Positioning

@@ -183,3 +183,23 @@ static bool scans_long_double(const char *input, const char *format, int count, 
     lost += ! _TEST_FLOAT(got, count == 1 ? want : NONE);
     return lost == 0;
 }
+
+// (S7.19.6.7p3) A format should assign a count of items, the first len wide
+// characters, with nothing stored after them.
+static bool scans_wide(const char *input, const char *format, int count, const wchar_t *want, size_t len)
+{
+    int lost = 0;
+    wchar_t got[HOLD];
+
+    for (size_t i = 0; i < HOLD; i++) {
+        got[i] = FILL;
+    }
+    lost += ! _TEST_INT(sscanf(input, format, got), count);
+    if (count == 1) {
+        lost += ! _TEST_MEM(got, want, len * sizeof(wchar_t));
+        lost += ! _TEST_INT(got[len], FILL);
+    } else {
+        lost += ! _TEST_INT(got[0], FILL);
+    }
+    return lost == 0;
+}
