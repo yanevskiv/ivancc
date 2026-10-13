@@ -29,69 +29,6 @@
 // The streams, their buffers and the files under them.
 #include <_file.h>
 
-// A directive's flags: -, +, a space, # and 0.
-#define _STDIO_FLAG_LEFT  0x1
-#define _STDIO_FLAG_SIGN  0x2
-#define _STDIO_FLAG_SPACE 0x4
-#define _STDIO_FLAG_ALT   0x8
-#define _STDIO_FLAG_ZERO  0x10
-
-// The base a width or a precision is written in.
-#define _STDIO_COUNT_BASE 10
-
-// The precision of a directive that gives none.
-#define _STDIO_PRECISION_NONE (-1)
-
-// The width or precision a directive leaves to an argument.
-#define _STDIO_COUNT_ARGUMENT (-2)
-
-// A directive's length modifier: none, hh, h, l, ll, j, z, t or L.
-#define _STDIO_LENGTH_NONE    0
-#define _STDIO_LENGTH_CHAR    1
-#define _STDIO_LENGTH_SHORT   2
-#define _STDIO_LENGTH_LONG    3
-#define _STDIO_LENGTH_LLONG   4
-#define _STDIO_LENGTH_INTMAX  5
-#define _STDIO_LENGTH_SIZE    6
-#define _STDIO_LENGTH_PTRDIFF 7
-#define _STDIO_LENGTH_LDOUBLE 8
-
-// The characters a field's padding is given by at a time.
-#define _STDIO_PAD_CHUNK 32
-
-// The bases an integer is written in, and the digits of the largest.
-#define _STDIO_BASE_OCTAL   8
-#define _STDIO_BASE_DECIMAL 10
-#define _STDIO_BASE_HEX     16
-#define _STDIO_DIGITS_LOWER "0123456789abcdef"
-#define _STDIO_DIGITS_UPPER "0123456789ABCDEF"
-
-// The most digits an integer has, in octal.
-#define _STDIO_DIGITS_MAX 22
-
-// An integer conversion's precision if it gives none.
-#define _STDIO_INTEGER_PRECISION 1
-
-// The most digits a floating value has, a long double's 11514, and a few.
-#define _STDIO_REAL_DIGITS 11520
-
-// A floating conversion's precision if it gives none, and %g's if it gives 0.
-#define _STDIO_REAL_PRECISION 6
-#define _STDIO_REAL_LEAST     1
-
-// The least exponent %g writes without one.
-#define _STDIO_GENERAL_MIN (-4)
-
-// The fewest digits an exponent has.
-#define _STDIO_EXPONENT_MIN 2
-
-// The bits of a hex digit, and the hex digits of a mantissa, its first too.
-#define _STDIO_HEX_BITS   4
-#define _STDIO_HEX_DIGITS 16
-
-// The fewest digits a power of two has.
-#define _STDIO_POWER_MIN 1
-
 // The width of an input directive that gives none.
 #define _STDIO_SCAN_WIDTH_NONE 0
 
@@ -175,13 +112,8 @@
 // The argument list, which stdio.h may not name.
 typedef __builtin_va_list _Stdio_VaList;
 
-// The widest integers, which stdio.h may not name.
-typedef long          _Stdio_IntmaxType;
-typedef unsigned long _Stdio_UintmaxType;
-
-// A wide character, and one as an argument, which stdio.h may not name.
-typedef int          _Stdio_WcharType;
-typedef unsigned int _Stdio_WintType;
+// A wide character, which stdio.h may not name.
+typedef int _Stdio_WcharType;
 
 #ifndef __SIZE_T__
 #define __SIZE_T__
@@ -192,28 +124,6 @@ typedef unsigned long size_t;
 typedef _File_Stream FILE;
 
 typedef long fpos_t;
-
-// The letters a conversion writes in.
-typedef enum _Stdio_Case _Stdio_Case;
-enum _Stdio_Case {
-    _STDIO_CASE_LOWER, // lowercase, as %x and %e write
-    _STDIO_CASE_UPPER  // capitals, as %X and %E write
-};
-
-// The sign of a number to write.
-typedef enum _Stdio_Sign _Stdio_Sign;
-enum _Stdio_Sign {
-    _STDIO_SIGN_PLUS, // zero or more
-    _STDIO_SIGN_MINUS // less than zero, or a set sign bit
-};
-
-// What a floating value is.
-typedef enum _Stdio_Real _Stdio_Real;
-enum _Stdio_Real {
-    _STDIO_REAL_FINITE,   // a number, zero and the subnormals among them
-    _STDIO_REAL_INFINITE, // an infinity
-    _STDIO_REAL_NAN       // not a number
-};
 
 // What an input directive does with what it converts.
 typedef enum _Stdio_Assign _Stdio_Assign;
@@ -235,26 +145,6 @@ enum _Stdio_Failure {
     _STDIO_FAILURE_NONE,    // nothing has
     _STDIO_FAILURE_INPUT,   // the input ended, could not be read or decoded
     _STDIO_FAILURE_MATCHING // the input is not what a directive takes
-};
-
-// Where formatted output goes: a stream, or else a string of a size.
-typedef struct _Stdio_Sink _Stdio_Sink;
-struct _Stdio_Sink {
-    _File_Stream *ss_stream; // the stream, or NULL for a string
-    char *ss_str;            // the string, where there is no stream
-    size_t ss_size;          // the string's size, its null counted
-    size_t ss_count;         // the characters given so far, kept or not
-    _Bool ss_failed;         // a write failed, or the count overflowed
-};
-
-// A floating value's decimal digits, no zero first or last.
-typedef struct _Stdio_Numeral _Stdio_Numeral;
-struct _Stdio_Numeral {
-    _Stdio_Real sn_kind;               // finite, an infinity or a NaN
-    _Stdio_Sign sn_sign;               // _STDIO_SIGN_MINUS for a set sign bit
-    char sn_digit[_STDIO_REAL_DIGITS]; // the digits, the greatest first
-    size_t sn_len;                     // how many there are, 0 for zero
-    int sn_exp;                        // the first's power of ten, 0 for zero
 };
 
 // Where formatted input comes from: a stream, or else a string.
@@ -283,62 +173,6 @@ struct _Stdio_Wide {
     char sw_byte[_STDIO_SCAN_BYTES]; // the bytes of a character not yet whole
     size_t sw_count;                 // how many such bytes there are
 };
-
-// Print matching
-size_t             _Stdio_MatchPrintHead(const char *format, int *flags, int *width, int *precision, int *length);
-void               _Stdio_TakeHead(_Stdio_VaList *list, int *flags, int *width, int *precision);
-_Stdio_UintmaxType _Stdio_TakeUnsigned(_Stdio_VaList *list, int length);
-_Bool              _Stdio_MatchPrintText(const char *format, size_t *len);
-_Bool              _Stdio_MatchPrintPercent(const char *format, _Stdio_VaList *list, size_t *len);
-_Bool              _Stdio_MatchPrintChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch);
-_Bool              _Stdio_MatchPrintString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str);
-_Bool              _Stdio_MatchPrintDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_IntmaxType *value);
-_Bool              _Stdio_MatchPrintUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value);
-_Bool              _Stdio_MatchPrintOctal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value);
-_Bool              _Stdio_MatchPrintHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Stdio_Case *letters);
-_Bool              _Stdio_MatchPrintPointer(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const void **ptr);
-_Bool              _Stdio_MatchPrintCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest);
-_Bool              _Stdio_MatchPrintFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
-_Bool              _Stdio_MatchPrintExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
-_Bool              _Stdio_MatchPrintGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
-_Bool              _Stdio_MatchPrintHexReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, double *value, _Stdio_Case *letters);
-_Bool              _Stdio_MatchPrintHexLongReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
-_Bool              _Stdio_MatchPrintWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, _Stdio_WcharType *wc);
-_Bool              _Stdio_MatchPrintWideString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const _Stdio_WcharType **wstr);
-
-// Formatted output
-size_t      _Stdio_WriteDigits(char *end, _Stdio_UintmaxType value, int base, const char *digits);
-void        _Stdio_StoreCount(void *dest, int length, size_t count);
-_Stdio_Real _Stdio_UnpackReal(long double value, _Stdio_Sign *sign, unsigned long long *mant, int *exp);
-void        _Stdio_WriteNumeral(long double value, _Stdio_Numeral *num);
-void        _Stdio_RoundNumeral(_Stdio_Numeral *num, long keep);
-int         _Stdio_EndSink(_Stdio_Sink *sink);
-
-// Emitting
-void   _Stdio_EmitText(_Stdio_Sink *sink, const char *data, size_t len);
-void   _Stdio_EmitPad(_Stdio_Sink *sink, int ch, size_t len);
-void   _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data, size_t len);
-size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign, const char *prefix, size_t len);
-void   _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_Sign sign, const char *prefix, const char *digits, size_t len);
-void   _Stdio_EmitSpan(_Stdio_Sink *sink, const _Stdio_Numeral *num, long high, size_t count);
-void   _Stdio_EmitNumeral(_Stdio_Sink *sink, int flags, int width, const _Stdio_Numeral *num, size_t frac, const char *mark);
-void   _Stdio_EmitSpecial(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign, _Stdio_Real kind, _Stdio_Case letters);
-void   _Stdio_EmitMantissa(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_Sign sign, unsigned long long mant, int exp, _Stdio_Case letters);
-void   _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch);
-void   _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, const char *str);
-void   _Stdio_EmitDecimal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_IntmaxType value);
-void   _Stdio_EmitUnsigned(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value);
-void   _Stdio_EmitOctal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value);
-void   _Stdio_EmitHex(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value, _Stdio_Case letters);
-void   _Stdio_EmitPointer(_Stdio_Sink *sink, int flags, int width, int precision, const void *ptr);
-void   _Stdio_EmitFixed(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
-void   _Stdio_EmitExponential(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
-void   _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
-void   _Stdio_EmitHexReal(_Stdio_Sink *sink, int flags, int width, int precision, double value, _Stdio_Case letters);
-void   _Stdio_EmitHexLongReal(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
-void   _Stdio_EmitWideChar(_Stdio_Sink *sink, int flags, int width, _Stdio_WcharType wc);
-void   _Stdio_EmitWideString(_Stdio_Sink *sink, int flags, int width, int precision, const _Stdio_WcharType *wstr);
-int    _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
 
 // Scan matching
 size_t _Stdio_MatchScanHead(const char *format, _Stdio_Assign *assign, int *width, int *length);
