@@ -33,7 +33,7 @@
 #include <_print.h>
 
 // The engine that converts an input format's directives.
-#include <_fmt.h>
+#include <_scan.h>
 
 // The error a failed open, read, write or close reports.
 #include <errno.h>
@@ -44,7 +44,7 @@
 // The buffer a closed stream gives back.
 #include <stdlib.h>
 
-// The largest int puts returns, and the limits _fmt's are checked against.
+// The largest int puts returns, and the limits the engines' are held to.
 #include <limits.h>
 
 // The largest size fread and fwrite move, and the integers %jd and %p name.
@@ -53,7 +53,7 @@
 // The arguments a format converts.
 #include <stdarg.h>
 
-// The difference of two pointers and a wide character, checked against _fmt's.
+// The difference of two pointers, and a wide character, checked too.
 #include <stddef.h>
 
 // The digits and the exponents of a double and a long double, checked too.
@@ -70,24 +70,19 @@ typedef char _Stdio_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
 // Check the header's own argument list against stdarg.h's.
 typedef char _Stdio_CheckVaList[sizeof(_Stdio_VaList) == sizeof(va_list) ? 1 : -1];
 
-// Check _fmt's argument list, which may not include stdarg.h, against it.
-typedef char _Stdio_CheckFmtVaList[sizeof(_Fmt_VaList) == sizeof(va_list) ? 1 : -1];
+// Check _scan's argument list, which may not include stdarg.h, against it.
+typedef char _Stdio_CheckScanVaList[sizeof(_Scan_VaList) == sizeof(va_list) ? 1 : -1];
 
-// Check _fmt's widest integers against stdint.h's.
-typedef char _Stdio_CheckIntmax[sizeof(_Fmt_IntmaxType) == sizeof(intmax_t) && (_Fmt_IntmaxType) -1 < 0 ? 1 : -1];
-typedef char _Stdio_CheckUintmax[sizeof(_Fmt_UintmaxType) == sizeof(uintmax_t) && (_Fmt_UintmaxType) -1 > 0 ? 1 : -1];
+// Check _scan's widest integer against stdint.h's, and a pointer's against it.
+typedef char _Stdio_CheckScanUintmax[sizeof(_Scan_UintmaxType) == sizeof(uintmax_t) && (_Scan_UintmaxType) -1 > 0 ? 1 : -1];
 typedef char _Stdio_CheckUintptr[sizeof(unsigned long) == sizeof(uintptr_t) ? 1 : -1];
 
-// Check _fmt's wide character against stddef.h's, and an argument's.
-typedef char _Stdio_CheckWchar[sizeof(_Fmt_WcharType) == sizeof(wchar_t) && ((_Fmt_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
-typedef char _Stdio_CheckWint[sizeof(_Fmt_WintType) == sizeof(wchar_t) && sizeof(_Fmt_WintType) >= sizeof(int) ? 1 : -1];
+// Check _scan's wide character against stddef.h's, and its limits.
+typedef char _Stdio_CheckScanWchar[sizeof(_Scan_WcharType) == sizeof(wchar_t) && ((_Scan_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
+typedef char _Stdio_CheckScanInt[_SCAN_INT_MAX == INT_MAX && _SCAN_SIZE_MAX == SIZE_MAX ? 1 : -1];
+typedef char _Stdio_CheckScanBytes[_SCAN_BYTES_MAX == MB_LEN_MAX ? 1 : -1];
 
-// Check _fmt's limits against limits.h's, stdint.h's and float.h's.
-typedef char _Stdio_CheckInt[_FMT_INT_MAX == INT_MAX && _FMT_INT_MIN == INT_MIN && _FMT_SIZE_MAX == SIZE_MAX ? 1 : -1];
-typedef char _Stdio_CheckBytes[_FMT_BYTES_MAX == MB_LEN_MAX ? 1 : -1];
-typedef char _Stdio_CheckReal[_FMT_LDOUBLE_MANT == LDBL_MANT_DIG && _FMT_LDOUBLE_EXP == LDBL_MAX_EXP && _FMT_DOUBLE_MIN == DBL_MIN_EXP ? 1 : -1];
-
-// Check _print's argument list, integers and wide character as _fmt's are.
+// Check _print's argument list, integers and wide character against the same.
 typedef char _Stdio_CheckPrintVaList[sizeof(_Print_VaList) == sizeof(va_list) ? 1 : -1];
 typedef char _Stdio_CheckPrintIntmax[sizeof(_Print_IntmaxType) == sizeof(intmax_t) && (_Print_IntmaxType) -1 < 0 ? 1 : -1];
 typedef char _Stdio_CheckPrintUintmax[sizeof(_Print_UintmaxType) == sizeof(uintmax_t) && (_Print_UintmaxType) -1 > 0 ? 1 : -1];
@@ -375,14 +370,14 @@ int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList a
 // Read the stream as the format says, storing at the list's arguments.
 int vfscanf(FILE *restrict stream, const char *restrict format, _Stdio_VaList arg)
 {
-    _Fmt_Source source = {
-        .fo_stream = stream
+    _Scan_Source source = {
+        .ss_stream = stream
     };
 
     if (_File_PrepareInput(stream) != 0) {
         return EOF;
     }
-    return _Fmt_ScanFormat(&source, format, arg);
+    return _Scan_ReadFormat(&source, format, arg);
 }
 
 // Write the list's arguments to standard output as the format says.
@@ -417,11 +412,11 @@ int vsprintf(char *restrict str, const char *restrict format, _Stdio_VaList arg)
 // Read the string str as the format says, storing at the list's arguments.
 int vsscanf(const char *restrict str, const char *restrict format, _Stdio_VaList arg)
 {
-    _Fmt_Source source = {
-        .fo_str = str
+    _Scan_Source source = {
+        .ss_str = str
     };
 
-    return _Fmt_ScanFormat(&source, format, arg);
+    return _Scan_ReadFormat(&source, format, arg);
 }
 
 // Read the stream's next character, as an unsigned char, or EOF at its end.
