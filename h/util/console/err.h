@@ -22,12 +22,26 @@
 
 // Standard headers.
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 // Project headers.
 #include "util/console/log.h"
+
+// The number of a file's first line.
+#define ERR_SOURCE_FIRST 1
+
+// The columns a source line's number is printed in.
+#define ERR_SOURCE_WIDTH 5
+
+// No line of context beside the line a diagnostic names.
+#define ERR_SOURCE_NONE 0
+
+// The lines shown before and after the line a diagnostic names.
+#define ERR_SOURCE_BEFORE ERR_SOURCE_NONE
+#define ERR_SOURCE_AFTER  ERR_SOURCE_NONE
 
 // Raise an error unless a condition holds.
 #define Err_Assert(cond, ...)                     \
@@ -351,6 +365,7 @@ struct Err_Entry {
 void  Err_Raise(Err_Code code, ...);
 void  Err_RaiseAt(uint32_t line, Err_Code code, ...);
 void  Err_WarnAt(uint32_t line, Err_Code code, ...);
+void  Err_ShowSource(uint32_t line, uint32_t before, uint32_t after);
 void  Err_ShowVa(Log_Severity severity, uint32_t line, Err_Code code, va_list ap);
 char *Err_FormatVa(Err_Code code, va_list ap);
 

@@ -1887,12 +1887,48 @@ void Err_WarnAt(uint32_t line, Err_Code code, ...)
     va_end(ap);
 }
 
+// Print the source line a diagnostic names, with the lines around it.
+void Err_ShowSource(uint32_t line, uint32_t before, uint32_t after)
+{
+    int ch;
+    bool fresh = true;
+    uint32_t at = ERR_SOURCE_FIRST;
+    uint32_t source = ERR_SOURCE_FIRST;
+    const char *path = Log_LocateLine(line, &source);
+    FILE *file = path ? fopen(path, "r") : NULL;
+    uint32_t first = before < source ? source - before : ERR_SOURCE_FIRST;
+    uint32_t last = after <= UINT32_MAX - source ? source + after : UINT32_MAX;
+
+    if (! file) {
+        return;
+    }
+    while (at <= last && (ch = fgetc(file)) != EOF) {
+        if (at >= first && fresh) {
+            fprintf(stderr, "%*u | ", ERR_SOURCE_WIDTH, at);
+        }
+        if (at >= first) {
+            fputc(ch, stderr);
+        }
+        fresh = ch == '\n';
+        if (fresh && at < UINT32_MAX) {
+            at++;
+        } else if (fresh) {
+            break;
+        }
+    }
+    if (! fresh && at >= first) {
+        fputc('\n', stderr);
+    }
+    fclose(file);
+}
+
 // Print one diagnostic from an argument list.
 void Err_ShowVa(Log_Severity severity, uint32_t line, Err_Code code, va_list ap)
 {
     char *text = Err_FormatVa(code, ap);
 
     Log_Show(severity, line, "%s", text);
+    Err_ShowSource(line, ERR_SOURCE_BEFORE, ERR_SOURCE_AFTER);
     free(text);
 }
 

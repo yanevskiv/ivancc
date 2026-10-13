@@ -47,8 +47,9 @@ enum Log_Severity {
 };
 
 // Setup
-void Log_SetProgramName(const char *name);
-void Log_SetLineLocator(Log_LineLocator locator);
+void        Log_SetProgramName(const char *name);
+void        Log_SetLineLocator(Log_LineLocator locator);
+const char *Log_LocateLine(uint32_t line, uint32_t *source);
 
 // Messages
 void Log_ShowError(const char *fmt, ...);

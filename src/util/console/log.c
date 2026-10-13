@@ -48,6 +48,15 @@ void Log_SetLineLocator(Log_LineLocator locator)
     Log_CurLineLocator = locator;
 }
 
+// Locate the file and source line of a line, or NULL when it has none.
+const char *Log_LocateLine(uint32_t line, uint32_t *source)
+{
+    if (line == LOG_LINE_NONE || ! Log_CurLineLocator) {
+        return NULL;
+    }
+    return Log_CurLineLocator(line, source);
+}
+
 // Print an error and exit.
 void Log_ShowError(const char *fmt, ...)
 {
