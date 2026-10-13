@@ -110,7 +110,7 @@ static void Test_Utf8ClassesNone(void)
     for (class = _UTF8_CLASS_ALNUM; class <= _UTF8_CLASS_XDIGIT; class++) {
         _TEST_TRUE(! _Utf8_IsInClass(0xD800, (_Utf8_Class) class));
         _TEST_TRUE(! _Utf8_IsInClass(0x110000, (_Utf8_Class) class));
-        _TEST_TRUE(! _Utf8_IsInClass(_UTF8_CODE_MAX, (_Utf8_Class) class));
+        _TEST_TRUE(! _Utf8_IsInClass(0x7FFFFFFF, (_Utf8_Class) class));
         _TEST_TRUE(! _Utf8_IsInClass(0xFFFFFFFFU, (_Utf8_Class) class));
     }
 }

@@ -29,9 +29,9 @@
 // The ranges of each class and the shifts of each case mapping.
 #include <_utf8_table.h>
 
-// The longest sequence and the largest code it encodes, glibc's 31 bits.
-#define _UTF8_MAX      6
-#define _UTF8_CODE_MAX 0x7FFFFFFFU
+// The longest sequence and the largest code it encodes, Unicode's last.
+#define _UTF8_MAX      4
+#define _UTF8_CODE_MAX 0x10FFFFU
 
 // The largest code one byte encodes, all of "C"'s encoding, and its bytes.
 #define _UTF8_ASCII_MAX 0x7FU
@@ -41,8 +41,10 @@
 #define _UTF8_TAG_FIRST 0xE0000
 #define _UTF8_TAG_LAST  0xE007F
 
-// The least lead byte of a longer sequence, past the overlong 0xC0 and 0xC1.
+// The least lead byte of a longer sequence, past the overlong 0xC0 and 0xC1,
+// and the greatest, which leads the last code's sequence.
 #define _UTF8_LEAD_MIN 0xC2U
+#define _UTF8_LEAD_MAX 0xF4U
 
 // The ones of every lead byte, shifted right by its sequence's length.
 #define _UTF8_LEAD_ONES 0xFF00U

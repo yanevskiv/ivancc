@@ -18,11 +18,13 @@ static void Test_Utf8LeadLength(void)
     _TEST_INT(_Utf8_GetLeadLength(0xE0), 3);
     _TEST_INT(_Utf8_GetLeadLength(0xEF), 3);
     _TEST_INT(_Utf8_GetLeadLength(0xF0), 4);
-    _TEST_INT(_Utf8_GetLeadLength(0xF7), 4);
-    _TEST_INT(_Utf8_GetLeadLength(0xF8), 5);
-    _TEST_INT(_Utf8_GetLeadLength(0xFB), 5);
-    _TEST_INT(_Utf8_GetLeadLength(0xFC), 6);
-    _TEST_INT(_Utf8_GetLeadLength(0xFD), 6);
+    _TEST_INT(_Utf8_GetLeadLength(0xF4), 4);
+    _TEST_INT(_Utf8_GetLeadLength(0xF5), 0);
+    _TEST_INT(_Utf8_GetLeadLength(0xF7), 0);
+    _TEST_INT(_Utf8_GetLeadLength(0xF8), 0);
+    _TEST_INT(_Utf8_GetLeadLength(0xFB), 0);
+    _TEST_INT(_Utf8_GetLeadLength(0xFC), 0);
+    _TEST_INT(_Utf8_GetLeadLength(0xFD), 0);
     _TEST_INT(_Utf8_GetLeadLength(0xFE), 0);
     _TEST_INT(_Utf8_GetLeadLength(0xFF), 0);
 }

@@ -27,7 +27,7 @@
 #define _WCHAR_H
 
 // The bytes a conversion state holds, those of the longest character.
-#define _WCHAR_STATE_BYTES 6
+#define _WCHAR_STATE_BYTES 4
 
 // What a conversion gives for a character that is invalid or cut short.
 #define _WCHAR_INVALID    ((size_t) -1)

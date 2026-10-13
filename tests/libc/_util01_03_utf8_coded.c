@@ -45,12 +45,8 @@ static void Test_Utf8Coded(void)
     _TEST_TRUE(coded(0xFFFF, "\xEF\xBF\xBF", 3));
     _TEST_TRUE(coded(0x10000, "\xF0\x90\x80\x80", 4));
     _TEST_TRUE(coded(0x1F600, "\xF0\x9F\x98\x80", 4));
+    _TEST_TRUE(coded(0x100000, "\xF4\x80\x80\x80", 4));
     _TEST_TRUE(coded(0x10FFFF, "\xF4\x8F\xBF\xBF", 4));
-    _TEST_TRUE(coded(0x1FFFFF, "\xF7\xBF\xBF\xBF", 4));
-    _TEST_TRUE(coded(0x200000, "\xF8\x88\x80\x80\x80", 5));
-    _TEST_TRUE(coded(0x3FFFFFF, "\xFB\xBF\xBF\xBF\xBF", 5));
-    _TEST_TRUE(coded(0x4000000, "\xFC\x84\x80\x80\x80\x80", 6));
-    _TEST_TRUE(coded(0x7FFFFFFF, "\xFD\xBF\xBF\xBF\xBF\xBF", 6));
 }
 
 int main(void)

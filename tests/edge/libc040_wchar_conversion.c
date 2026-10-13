@@ -1,12 +1,12 @@
 // (Test) Status: 0
 // (Test) Output:
 // | C -1 -1 0 2 2 2
-// | UTF-8 -2 -2 5 200000 4 6 2 2
+// | UTF-8 -2 -2 -1 0 -1 6 2 2
 // Non-standard: in "C" a byte past ASCII should be no character and a tag
 // character no bytes; in UTF-8 an overlong or surrogate sequence should be
-// refused at its last byte alone, a sequence of five bytes be a character,
-// and a code past Unicode's have bytes; a string conversion that fails
-// should leave *src at the character it failed on.
+// refused at its last byte alone, and a sequence of five bytes and a code
+// past Unicode's last be refused, which glibc takes; a string conversion
+// that fails should leave *src at the character it failed on.
 // Liberty: (S7.24.6p3) the encoding is the locale's, and (S7.24.6.4) what
 // *src holds after an encoding error is not said.
 

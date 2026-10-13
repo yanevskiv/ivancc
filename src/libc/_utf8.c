@@ -37,13 +37,13 @@ int _Utf8_GetLeadLength(unsigned int lead)
     if (lead <= _UTF8_ASCII_MAX) {
         return 1;
     }
-    if (lead < _UTF8_LEAD_MIN) {
+    if (lead < _UTF8_LEAD_MIN || lead > _UTF8_LEAD_MAX) {
         return 0;
     }
     while (lead << len & _UTF8_TAIL_MARK) {
         len++;
     }
-    return len <= _UTF8_MAX ? len : 0;
+    return len;
 }
 
 // Get the length of the shortest sequence that encodes code, or 0 for none.

@@ -24,8 +24,12 @@ static void Test_Utf8Refused(void)
     _TEST_TRUE(refused("\xE0\x9F\xBF", 3, _UTF8_INVALID));
     _TEST_TRUE(refused("\xF0\x80\x80\x80", 4, _UTF8_INVALID));
     _TEST_TRUE(refused("\xF0\x8F\xBF\xBF", 4, _UTF8_INVALID));
-    _TEST_TRUE(refused("\xF8\x87\xBF\xBF\xBF", 5, _UTF8_INVALID));
-    _TEST_TRUE(refused("\xFC\x83\xBF\xBF\xBF\xBF", 6, _UTF8_INVALID));
+    _TEST_TRUE(refused("\xF4\x90\x80\x80", 4, _UTF8_INVALID));
+    _TEST_TRUE(refused("\xF5\x80\x80\x80", 4, _UTF8_INVALID));
+    _TEST_TRUE(refused("\xF7\xBF\xBF\xBF", 4, _UTF8_INVALID));
+    _TEST_TRUE(refused("\xF5", 1, _UTF8_INVALID));
+    _TEST_TRUE(refused("\xF8\x88\x80\x80\x80", 5, _UTF8_INVALID));
+    _TEST_TRUE(refused("\xFC\x84\x80\x80\x80\x80", 6, _UTF8_INVALID));
     _TEST_TRUE(refused("\xED\xA0\x80", 3, _UTF8_INVALID));
     _TEST_TRUE(refused("\xED\xBF\xBF", 3, _UTF8_INVALID));
 }

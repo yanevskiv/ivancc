@@ -22,13 +22,17 @@ static _Bool uncoded(unsigned int code)
     return lost == 0;
 }
 
-// A surrogate and a code past 31 bits should have no sequence.
+// A surrogate and a code past Unicode's last should have no sequence.
 static void Test_Utf8Uncoded(void)
 {
     _TEST_TRUE(uncoded(0xD800));
     _TEST_TRUE(uncoded(0xDBFF));
     _TEST_TRUE(uncoded(0xDC00));
     _TEST_TRUE(uncoded(0xDFFF));
+    _TEST_TRUE(uncoded(0x110000));
+    _TEST_TRUE(uncoded(0x1FFFFF));
+    _TEST_TRUE(uncoded(0x200000));
+    _TEST_TRUE(uncoded(0x7FFFFFFF));
     _TEST_TRUE(uncoded(0x80000000U));
     _TEST_TRUE(uncoded(0xFFFFFFFFU));
 }
