@@ -63,7 +63,7 @@ intmax_t strtoimax(const char *restrict nptr, char **restrict endptr, int base)
     _Int_Sign sign;
     _Int_Range range;
     unsigned long end;
-    uintmax_t value = _Int_ConvertNumber(nptr, _INT_TEXT_NARROW, &end, base, &sign, &range);
+    uintmax_t value = _Int_ToNumber(nptr, _INT_TEXT_NARROW, &end, base, &sign, &range);
 
     if (endptr != NULL) {
         *endptr = (char *) nptr + end;
@@ -77,7 +77,7 @@ uintmax_t strtoumax(const char *restrict nptr, char **restrict endptr, int base)
     _Int_Sign sign;
     _Int_Range range;
     unsigned long end;
-    uintmax_t value = _Int_ConvertNumber(nptr, _INT_TEXT_NARROW, &end, base, &sign, &range);
+    uintmax_t value = _Int_ToNumber(nptr, _INT_TEXT_NARROW, &end, base, &sign, &range);
 
     if (endptr != NULL) {
         *endptr = (char *) nptr + end;
@@ -91,7 +91,7 @@ intmax_t wcstoimax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharType
     _Int_Sign sign;
     _Int_Range range;
     unsigned long end;
-    uintmax_t value = _Int_ConvertNumber(nptr, _INT_TEXT_WIDE, &end, base, &sign, &range);
+    uintmax_t value = _Int_ToNumber(nptr, _INT_TEXT_WIDE, &end, base, &sign, &range);
 
     if (endptr != NULL) {
         *endptr = (_Inttypes_WcharType *) nptr + end;
@@ -105,7 +105,7 @@ uintmax_t wcstoumax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharTyp
     _Int_Sign sign;
     _Int_Range range;
     unsigned long end;
-    uintmax_t value = _Int_ConvertNumber(nptr, _INT_TEXT_WIDE, &end, base, &sign, &range);
+    uintmax_t value = _Int_ToNumber(nptr, _INT_TEXT_WIDE, &end, base, &sign, &range);
 
     if (endptr != NULL) {
         *endptr = (_Inttypes_WcharType *) nptr + end;

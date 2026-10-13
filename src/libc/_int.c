@@ -49,7 +49,7 @@ _Bool _Int_IsSpace(int ch)
 }
 
 // Convert the digit ch to its value, or _INT_BASE_MAX for none.
-int _Int_ConvertDigit(int ch)
+int _Int_ToDigit(int ch)
 {
     if (ch >= '0' && ch <= '9') {
         return ch - '0';
@@ -64,7 +64,7 @@ int _Int_ConvertDigit(int ch)
 }
 
 // Convert the number at the start of str to its magnitude, ending at *end.
-unsigned long _Int_ConvertNumber(const void *str, _Int_Text text, unsigned long *end, int base, _Int_Sign *sign, _Int_Range *range)
+unsigned long _Int_ToNumber(const void *str, _Int_Text text, unsigned long *end, int base, _Int_Sign *sign, _Int_Range *range)
 {
     unsigned long i = 0;
     unsigned long start;
@@ -90,14 +90,14 @@ unsigned long _Int_ConvertNumber(const void *str, _Int_Text text, unsigned long 
     if ((base == 0 || base == _INT_BASE_HEX)
         && _Int_ReadChar(str, text, i) == '0'
         && (_Int_ReadChar(str, text, i + 1) == 'x' || _Int_ReadChar(str, text, i + 1) == 'X')
-        && _Int_ConvertDigit(_Int_ReadChar(str, text, i + 2)) < _INT_BASE_HEX) {
+        && _Int_ToDigit(_Int_ReadChar(str, text, i + 2)) < _INT_BASE_HEX) {
         base = _INT_BASE_HEX;
         i += 2;
     } else if (base == 0) {
         base = _Int_ReadChar(str, text, i) == '0' ? _INT_BASE_OCTAL : _INT_BASE_DECIMAL;
     }
     start = i;
-    while ((digit = _Int_ConvertDigit(_Int_ReadChar(str, text, i))) < base) {
+    while ((digit = _Int_ToDigit(_Int_ReadChar(str, text, i))) < base) {
         if (value > (_INT_VALUE_MAX - (unsigned long) digit) / (unsigned long) base) {
             *range = _INT_RANGE_OUTSIDE;
         } else {

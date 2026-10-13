@@ -85,13 +85,13 @@ _Bool _Fp_IsAlnum(int ch)
 }
 
 // Convert ch to lowercase if it is an uppercase letter of the "C" locale.
-int _Fp_ConvertLower(int ch)
+int _Fp_ToLower(int ch)
 {
     return ch >= 'A' && ch <= 'Z' ? ch - 'A' + 'a' : ch;
 }
 
 // Convert the hex digit ch to its value, or _FP_HEX_LIMIT for none.
-int _Fp_ConvertHexDigit(int ch)
+int _Fp_ToHexDigit(int ch)
 {
     if (ch >= '0' && ch <= '9') {
         return ch - '0';
@@ -113,7 +113,7 @@ unsigned long _Fp_MatchWord(const void *str, _Fp_Text text, unsigned long index,
 
     for (i = 0; word[i] != '\0'; i++) {
         ch = _Fp_ReadChar(str, text, index + i);
-        if (_Fp_ConvertLower(ch) != word[i]) {
+        if (_Fp_ToLower(ch) != word[i]) {
             return 0;
         }
     }
@@ -129,7 +129,7 @@ unsigned long _Fp_ReadExponent(const void *str, _Fp_Text text, unsigned long ind
     int ch = _Fp_ReadChar(str, text, index);
 
     *exp = 0;
-    if (_Fp_ConvertLower(ch) != letter) {
+    if (_Fp_ToLower(ch) != letter) {
         return index;
     }
     ch = _Fp_ReadChar(str, text, i);
@@ -160,13 +160,13 @@ unsigned long long _Fp_ReadPayload(const void *str, _Fp_Text text, unsigned long
 
     if (_Fp_ReadChar(str, text, index) == '0') {
         base = 8;
-        if (_Fp_ConvertLower(_Fp_ReadChar(str, text, index + 1)) == 'x' && _Fp_ConvertHexDigit(_Fp_ReadChar(str, text, index + 2)) < _FP_HEX_LIMIT) {
+        if (_Fp_ToLower(_Fp_ReadChar(str, text, index + 1)) == 'x' && _Fp_ToHexDigit(_Fp_ReadChar(str, text, index + 2)) < _FP_HEX_LIMIT) {
             base = _FP_HEX_LIMIT;
             index += 2;
         }
     }
     for (; index < stop; index++) {
-        digit = _Fp_ConvertHexDigit(_Fp_ReadChar(str, text, index));
+        digit = _Fp_ToHexDigit(_Fp_ReadChar(str, text, index));
         if (digit >= base) {
             return 0;
         }
@@ -242,7 +242,7 @@ unsigned long _Fp_ScanDecimal(const void *str, _Fp_Text text, unsigned long inde
 }
 
 // Convert a scanned decimal exactly to 64 bits and what lies below them.
-void _Fp_ConvertDecimal(const void *str, _Fp_Text text, int point, const _Fp_Decimal *dec, _Fp_Unrounded *value)
+void _Fp_ToUnrounded(const void *str, _Fp_Text text, int point, const _Fp_Decimal *dec, _Fp_Unrounded *value)
 {
     _Bigint_Number num;
     _Bigint_Number den;
@@ -329,7 +329,7 @@ unsigned long _Fp_ReadHex(const void *str, _Fp_Text text, unsigned long index, i
             fraction = 1;
             continue;
         }
-        digit = _Fp_ConvertHexDigit(ch);
+        digit = _Fp_ToHexDigit(ch);
         if (digit == _FP_HEX_LIMIT) {
             break;
         }
@@ -440,7 +440,7 @@ void _Fp_RoundReal(const _Fp_Unrounded *value, const _Fp_Format *fmt, _Fp_Real *
 }
 
 // Convert the number at the start of str to fmt's fields, and give its end.
-unsigned long _Fp_ConvertReal(const void *str, _Fp_Text text, const _Fp_Format *fmt, _Fp_Real *real)
+unsigned long _Fp_ToReal(const void *str, _Fp_Text text, const _Fp_Format *fmt, _Fp_Real *real)
 {
     _Fp_Unrounded value;
     _Fp_Decimal dec;
@@ -472,8 +472,8 @@ unsigned long _Fp_ConvertReal(const void *str, _Fp_Text text, const _Fp_Format *
     }
     ch = _Fp_ReadChar(str, text, i + 1);
     if (_Fp_ReadChar(str, text, i) == '0' && (ch == 'x' || ch == 'X')
-        && (_Fp_ConvertHexDigit(_Fp_ReadChar(str, text, i + 2)) < _FP_HEX_LIMIT
-            || (_Fp_ReadChar(str, text, i + 2) == point && _Fp_ConvertHexDigit(_Fp_ReadChar(str, text, i + 3)) < _FP_HEX_LIMIT))) {
+        && (_Fp_ToHexDigit(_Fp_ReadChar(str, text, i + 2)) < _FP_HEX_LIMIT
+            || (_Fp_ReadChar(str, text, i + 2) == point && _Fp_ToHexDigit(_Fp_ReadChar(str, text, i + 3)) < _FP_HEX_LIMIT))) {
         end = _Fp_ReadHex(str, text, i + 2, point, &value);
     } else {
         end = _Fp_ScanDecimal(str, text, i, point, &dec);
@@ -483,7 +483,7 @@ unsigned long _Fp_ConvertReal(const void *str, _Fp_Text text, const _Fp_Format *
             real->fr_mant = 0;
             return 0;
         }
-        _Fp_ConvertDecimal(str, text, point, &dec, &value);
+        _Fp_ToUnrounded(str, text, point, &dec, &value);
     }
     _Fp_RoundReal(&value, fmt, real);
     return end;
@@ -491,13 +491,13 @@ unsigned long _Fp_ConvertReal(const void *str, _Fp_Text text, const _Fp_Format *
 
 
 // Convert the number at the start of str to a float, and give its end.
-float _Fp_ConvertFloat(const void *str, _Fp_Text text, unsigned long *end)
+float _Fp_ToFloat(const void *str, _Fp_Text text, unsigned long *end)
 {
     _Fp_Real real;
     float value;
     unsigned int bits;
 
-    *end = _Fp_ConvertReal(str, text, &_Fp_FloatFormat, &real);
+    *end = _Fp_ToReal(str, text, &_Fp_FloatFormat, &real);
     bits = real.fr_exp << (_FP_FLOAT_MANT - 1) | (unsigned int) real.fr_mant;
     if (real.fr_negative) {
         bits |= _FP_FLOAT_SIGN;
@@ -507,13 +507,13 @@ float _Fp_ConvertFloat(const void *str, _Fp_Text text, unsigned long *end)
 }
 
 // Convert the number at the start of str to a double, and give its end.
-double _Fp_ConvertDouble(const void *str, _Fp_Text text, unsigned long *end)
+double _Fp_ToDouble(const void *str, _Fp_Text text, unsigned long *end)
 {
     _Fp_Real real;
     double value;
     unsigned long long bits;
 
-    *end = _Fp_ConvertReal(str, text, &_Fp_DoubleFormat, &real);
+    *end = _Fp_ToReal(str, text, &_Fp_DoubleFormat, &real);
     bits = (unsigned long long) real.fr_exp << (_FP_DOUBLE_MANT - 1) | real.fr_mant;
     if (real.fr_negative) {
         bits |= _FP_DOUBLE_SIGN;
@@ -523,13 +523,13 @@ double _Fp_ConvertDouble(const void *str, _Fp_Text text, unsigned long *end)
 }
 
 // Convert the number at the start of str to a long double, and give its end.
-long double _Fp_ConvertLongDouble(const void *str, _Fp_Text text, unsigned long *end)
+long double _Fp_ToLongDouble(const void *str, _Fp_Text text, unsigned long *end)
 {
     _Fp_Real real;
     unsigned short top;
     long double value = 0;
 
-    *end = _Fp_ConvertReal(str, text, &_Fp_LongDoubleFormat, &real);
+    *end = _Fp_ToReal(str, text, &_Fp_LongDoubleFormat, &real);
     top = (unsigned short) real.fr_exp;
     if (real.fr_negative) {
         top |= _FP_LDOUBLE_SIGN;

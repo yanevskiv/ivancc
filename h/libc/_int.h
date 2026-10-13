@@ -71,8 +71,8 @@ enum _Int_Range {
 // Conversion
 int           _Int_ReadChar(const void *str, _Int_Text text, unsigned long index);
 _Bool         _Int_IsSpace(int ch);
-int           _Int_ConvertDigit(int ch);
-unsigned long _Int_ConvertNumber(const void *str, _Int_Text text, unsigned long *end, int base, _Int_Sign *sign, _Int_Range *range);
+int           _Int_ToDigit(int ch);
+unsigned long _Int_ToNumber(const void *str, _Int_Text text, unsigned long *end, int base, _Int_Sign *sign, _Int_Range *range);
 long          _Int_MakeSigned(unsigned long value, _Int_Sign sign, _Int_Range range);
 unsigned long _Int_MakeUnsigned(unsigned long value, _Int_Sign sign, _Int_Range range);
 

@@ -134,20 +134,20 @@ extern const _Fp_Format _Fp_LongDoubleFormat;
 int                _Fp_ReadChar(const void *str, _Fp_Text text, unsigned long index);
 _Bool              _Fp_IsSpace(int ch);
 _Bool              _Fp_IsAlnum(int ch);
-int                _Fp_ConvertLower(int ch);
-int                _Fp_ConvertHexDigit(int ch);
+int                _Fp_ToLower(int ch);
+int                _Fp_ToHexDigit(int ch);
 unsigned long      _Fp_MatchWord(const void *str, _Fp_Text text, unsigned long index, const char *word);
 unsigned long      _Fp_ReadExponent(const void *str, _Fp_Text text, unsigned long index, int letter, long *exp);
 unsigned long long _Fp_ReadPayload(const void *str, _Fp_Text text, unsigned long index, unsigned long stop);
 unsigned long      _Fp_ReadNotANumber(const void *str, _Fp_Text text, unsigned long index, unsigned long long *payload);
 unsigned long      _Fp_ScanDecimal(const void *str, _Fp_Text text, unsigned long index, int point, _Fp_Decimal *dec);
-void               _Fp_ConvertDecimal(const void *str, _Fp_Text text, int point, const _Fp_Decimal *dec, _Fp_Unrounded *value);
+void               _Fp_ToUnrounded(const void *str, _Fp_Text text, int point, const _Fp_Decimal *dec, _Fp_Unrounded *value);
 unsigned long      _Fp_ReadHex(const void *str, _Fp_Text text, unsigned long index, int point, _Fp_Unrounded *value);
 void               _Fp_DropBits(_Fp_Unrounded *value, long bits);
 void               _Fp_RoundReal(const _Fp_Unrounded *value, const _Fp_Format *fmt, _Fp_Real *real);
-unsigned long      _Fp_ConvertReal(const void *str, _Fp_Text text, const _Fp_Format *fmt, _Fp_Real *real);
-float              _Fp_ConvertFloat(const void *str, _Fp_Text text, unsigned long *end);
-double             _Fp_ConvertDouble(const void *str, _Fp_Text text, unsigned long *end);
-long double        _Fp_ConvertLongDouble(const void *str, _Fp_Text text, unsigned long *end);
+unsigned long      _Fp_ToReal(const void *str, _Fp_Text text, const _Fp_Format *fmt, _Fp_Real *real);
+float              _Fp_ToFloat(const void *str, _Fp_Text text, unsigned long *end);
+double             _Fp_ToDouble(const void *str, _Fp_Text text, unsigned long *end);
+long double        _Fp_ToLongDouble(const void *str, _Fp_Text text, unsigned long *end);
 
 #endif // _FP_H
