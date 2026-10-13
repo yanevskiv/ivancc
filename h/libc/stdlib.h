@@ -70,14 +70,6 @@
 #define _STDLIB_RAND_QUO 127773
 #define _STDLIB_RAND_REM 2836
 
-// The alignment of the memory malloc gives, any object's, as glibc's,
-// and the smallest block, a header and that much memory.
-#define _STDLIB_ALIGN     16
-#define _STDLIB_BLOCK_MIN 32
-
-// The least the heap grows by, so that few allocations move the break.
-#define _STDLIB_GROW 0x10000
-
 // The functions a block of atexit's holds, C99's least (S7.20.4.2p2).
 #define _STDLIB_EXITS 32
 
@@ -156,13 +148,6 @@ struct _Stdlib_Decimal {
     _Bool sd_sticky;
 };
 
-// A block of the heap: its size with this header, and while free the next free block.
-typedef struct _Stdlib_Block _Stdlib_Block;
-struct _Stdlib_Block {
-    size_t sb_size;
-    _Stdlib_Block *sb_next;
-};
-
 // A block of the functions atexit registered, and the block before it.
 typedef struct _Stdlib_Exits _Stdlib_Exits;
 struct _Stdlib_Exits {
@@ -198,9 +183,6 @@ extern int _Stdlib_RandFront;
 extern int _Stdlib_RandRear;
 extern _Bool _Stdlib_RandSeeded;
 
-// The free blocks, in address order.
-extern _Stdlib_Block *_Stdlib_FreeList;
-
 // The first block of atexit's, and the newest.
 extern _Stdlib_Exits _Stdlib_ExitBase;
 extern _Stdlib_Exits *_Stdlib_ExitTop;
@@ -219,15 +201,6 @@ size_t             _Stdlib_ReadHex(const void *str, _Stdlib_Text text, size_t in
 void               _Stdlib_DropBits(_Stdlib_Unrounded *value, long bits);
 void               _Stdlib_RoundReal(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real);
 size_t             _Stdlib_ConvertReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *fmt, _Stdlib_Real *real);
-
-// Heap
-size_t          _Stdlib_ComputeBlockSize(size_t size);
-_Stdlib_Block **_Stdlib_FindFreeBlock(size_t size);
-_Stdlib_Block **_Stdlib_FindNextBlock(const _Stdlib_Block *block);
-void           *_Stdlib_TakeBlock(_Stdlib_Block **link, size_t size);
-void            _Stdlib_TrimBlock(_Stdlib_Block *block, size_t size);
-void            _Stdlib_ReleaseBlock(_Stdlib_Block *block);
-int             _Stdlib_GrowHeap(size_t size);
 
 // Exit
 void (*_Stdlib_PopExit(void))(void);

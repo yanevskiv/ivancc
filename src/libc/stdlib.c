@@ -26,13 +26,16 @@
 // Module header.
 #include <stdlib.h>
 
-// The error the memory functions report.
+// The error a number out of range reports.
 #include <errno.h>
 
-// Clearing and copying memory.
+// Copying memory.
 #include <string.h>
 
-// The break the heap grows by, the signal mask abort clears and the exit.
+// The heap malloc and its family allocate from.
+#include <_mem.h>
+
+// The signal mask abort clears and the exit.
 #include <_sys.h>
 
 // The environment getenv searches, and the hook exit flushes the streams by.
@@ -62,8 +65,8 @@
 // The encoding the multibyte functions follow, and its coding.
 #include <_utf8.h>
 
-// Check that a block's header keeps the memory after it aligned.
-typedef char _Stdlib_CheckBlock[sizeof(_Stdlib_Block) == _STDLIB_ALIGN && _STDLIB_BLOCK_MIN == 2 * _STDLIB_ALIGN ? 1 : -1];
+// Check the type _mem counts in against the header's.
+typedef char _Stdlib_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
 
 // Check that long and long long are intmax_t, as strtol and its family take.
 typedef char _Stdlib_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
@@ -97,9 +100,6 @@ unsigned int _Stdlib_RandState[_STDLIB_RAND_WORDS];
 int _Stdlib_RandFront;
 int _Stdlib_RandRear;
 _Bool _Stdlib_RandSeeded;
-
-// The free blocks, in address order.
-_Stdlib_Block *_Stdlib_FreeList;
 
 // The first block of atexit's, C99's 32 without malloc, and the newest.
 _Stdlib_Exits _Stdlib_ExitBase;
@@ -519,117 +519,6 @@ size_t _Stdlib_ConvertReal(const void *str, _Stdlib_Text text, const _Stdlib_For
     return end;
 }
 
-// Compute the block size for size bytes, or 0 past PTRDIFF_MAX, as glibc's.
-size_t _Stdlib_ComputeBlockSize(size_t size)
-{
-    size_t header = sizeof(_Stdlib_Block);
-    size_t block;
-
-    if (size > ((size_t) -1 >> 1) - header - _STDLIB_ALIGN) {
-        return 0;
-    }
-    block = (size + header + _STDLIB_ALIGN - 1) / _STDLIB_ALIGN * _STDLIB_ALIGN;
-    return block < _STDLIB_BLOCK_MIN ? _STDLIB_BLOCK_MIN : block;
-}
-
-// Find the link to the first free block of at least size bytes, or NULL.
-_Stdlib_Block **_Stdlib_FindFreeBlock(size_t size)
-{
-    _Stdlib_Block **link = &_Stdlib_FreeList;
-
-    while (*link && (*link)->sb_size < size) {
-        link = &(*link)->sb_next;
-    }
-    return *link ? link : NULL;
-}
-
-// Find the link to the free block that starts where block ends, or NULL.
-_Stdlib_Block **_Stdlib_FindNextBlock(const _Stdlib_Block *block)
-{
-    const char *end = (const char *) block + block->sb_size;
-    _Stdlib_Block **link = &_Stdlib_FreeList;
-
-    while (*link && (const char *) *link < end) {
-        link = &(*link)->sb_next;
-    }
-    return *link && (const char *) *link == end ? link : NULL;
-}
-
-// Take size bytes of the free block at link, and leave the rest of it free.
-void *_Stdlib_TakeBlock(_Stdlib_Block **link, size_t size)
-{
-    _Stdlib_Block *block = *link;
-
-    if (block->sb_size - size < _STDLIB_BLOCK_MIN) {
-        *link = block->sb_next;
-    } else {
-        _Stdlib_Block *rest = (_Stdlib_Block *) ((char *) block + size);
-        rest->sb_size = block->sb_size - size;
-        rest->sb_next = block->sb_next;
-        block->sb_size = size;
-        *link = rest;
-    }
-    return block + 1;
-}
-
-// Trim a block in use to size bytes, freeing what it holds past them.
-void _Stdlib_TrimBlock(_Stdlib_Block *block, size_t size)
-{
-    _Stdlib_Block *rest = (_Stdlib_Block *) ((char *) block + size);
-
-    if (block->sb_size - size >= _STDLIB_BLOCK_MIN) {
-        rest->sb_size = block->sb_size - size;
-        block->sb_size = size;
-        _Stdlib_ReleaseBlock(rest);
-    }
-}
-
-// Release a block, in address order and merged with its free neighbours.
-void _Stdlib_ReleaseBlock(_Stdlib_Block *block)
-{
-    _Stdlib_Block **link = &_Stdlib_FreeList;
-    _Stdlib_Block *prev = NULL;
-    _Stdlib_Block *next;
-
-    while (*link && *link < block) {
-        prev = *link;
-        link = &(*link)->sb_next;
-    }
-    next = *link;
-    if (next && (char *) block + block->sb_size == (char *) next) {
-        block->sb_size += next->sb_size;
-        next = next->sb_next;
-    }
-    block->sb_next = next;
-    if (prev && (char *) prev + prev->sb_size == (char *) block) {
-        prev->sb_size += block->sb_size;
-        prev->sb_next = next;
-    } else {
-        *link = block;
-    }
-}
-
-// Grow the heap by at least size bytes, moving the break, or return 0.
-int _Stdlib_GrowHeap(size_t size)
-{
-    char *start = _Sys_InvokeBrk(NULL);
-    _Stdlib_Block *block;
-    char *end;
-
-    start += (_STDLIB_ALIGN - (unsigned long) start % _STDLIB_ALIGN) % _STDLIB_ALIGN;
-    if (size < _STDLIB_GROW) {
-        size = _STDLIB_GROW;
-    }
-    end = start + size;
-    if (_Sys_InvokeBrk(end) != end) {
-        return 0;
-    }
-    block = (_Stdlib_Block *) start;
-    block->sb_size = size;
-    _Stdlib_ReleaseBlock(block);
-    return 1;
-}
-
 // Pop the function atexit registered last, or return NULL when none is left.
 void (*_Stdlib_PopExit(void))(void)
 {
@@ -978,78 +867,25 @@ void srand(unsigned int seed)
 // Allocate nmemb objects of size bytes, all bits zero.
 void *calloc(size_t nmemb, size_t size)
 {
-    void *ptr;
-
-    if (size != 0 && nmemb > (size_t) -1 / size) {
-        errno = _SYS_ENOMEM;
-        return NULL;
-    }
-    ptr = malloc(nmemb * size);
-    if (ptr) {
-        memset(ptr, 0, nmemb * size);
-    }
-    return ptr;
+    return _Mem_AllocateObjects(nmemb, size);
 }
 
 // Free the memory at ptr, which malloc, calloc or realloc gave.
 void free(void *ptr)
 {
-    if (ptr) {
-        _Stdlib_ReleaseBlock((_Stdlib_Block *) ptr - 1);
-    }
+    _Mem_FreeMemory(ptr);
 }
 
 // Allocate size bytes, or return NULL with errno ENOMEM, as glibc does.
 void *malloc(size_t size)
 {
-    size_t need = _Stdlib_ComputeBlockSize(size);
-    _Stdlib_Block **link = need ? _Stdlib_FindFreeBlock(need) : NULL;
-
-    if (! link && need && _Stdlib_GrowHeap(need)) {
-        link = _Stdlib_FindFreeBlock(need);
-    }
-    if (! link) {
-        errno = _SYS_ENOMEM;
-        return NULL;
-    }
-    return _Stdlib_TakeBlock(link, need);
+    return _Mem_AllocateMemory(size);
 }
 
 // Resize the memory at ptr to size bytes; a size of 0 frees it, as glibc's.
 void *realloc(void *ptr, size_t size)
 {
-    size_t need = _Stdlib_ComputeBlockSize(size);
-    _Stdlib_Block *block;
-    _Stdlib_Block **link;
-    void *moved;
-
-    if (! ptr) {
-        return malloc(size);
-    }
-    if (size == 0) {
-        free(ptr);
-        return NULL;
-    }
-    if (need == 0) {
-        errno = _SYS_ENOMEM;
-        return NULL;
-    }
-    block = (_Stdlib_Block *) ptr - 1;
-    link = need > block->sb_size ? _Stdlib_FindNextBlock(block) : NULL;
-    if (link && block->sb_size + (*link)->sb_size >= need) {
-        block->sb_size += (*link)->sb_size;
-        *link = (*link)->sb_next;
-    }
-    if (need <= block->sb_size) {
-        _Stdlib_TrimBlock(block, need);
-        return ptr;
-    }
-    moved = malloc(size);
-    if (moved) {
-        memcpy(moved, ptr, block->sb_size - sizeof(_Stdlib_Block));
-        free(ptr);
-    }
-    return moved;
+    return _Mem_ResizeMemory(ptr, size);
 }
 
 // End the program by SIGABRT past a returning handler or a block, as glibc's.
