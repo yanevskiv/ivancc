@@ -26,27 +26,6 @@
 #ifndef _STDIO_H
 #define _STDIO_H
 
-// What a stream may do, and what has happened to it.
-#define _STDIO_READ    0x1
-#define _STDIO_WRITE   0x2
-#define _STDIO_ERROR   0x4
-#define _STDIO_OWNBUF  0x8
-#define _STDIO_SETUP   0x10
-#define _STDIO_EOF     0x20
-#define _STDIO_BACK    0x40
-#define _STDIO_OWNFILE 0x80
-
-// What a stream did last.
-#define _STDIO_IDLE    0
-#define _STDIO_READING 1
-#define _STDIO_WRITING 2
-
-// The buffering a stream's first use picks: by line on a terminal, else full.
-#define _STDIO_AUTO (-1)
-
-// The descriptor of a stream with no file.
-#define _STDIO_NOFILE (-1)
-
 // A directive's flags: -, +, a space, # and 0.
 #define _STDIO_FLAG_LEFT  0x1
 #define _STDIO_FLAG_SIGN  0x2
@@ -186,9 +165,9 @@
 #define TMP_MAX 10000
 
 // The standard streams, by the names a program gives them.
-#define stderr (&_Stdio_Stderr)
-#define stdin  (&_Stdio_Stdin)
-#define stdout (&_Stdio_Stdout)
+#define stderr (&_File_Stderr)
+#define stdin  (&_File_Stdin)
+#define stdout (&_File_Stdout)
 
 // The argument list, which stdio.h may not name.
 typedef __builtin_va_list _Stdio_VaList;
@@ -252,30 +231,33 @@ enum _Stdio_Failure {
     _STDIO_FAILURE_MATCHING
 };
 
-// A stream: its descriptor, its buffer, what it may do and the stream after it.
-typedef struct _Stdio_File _Stdio_File;
-struct _Stdio_File {
-    int sf_fd;             // the file's descriptor, or _STDIO_NOFILE
-    int sf_flags;          // _STDIO_READ, _STDIO_WRITE and what happened
-    int sf_state;          // _STDIO_IDLE, _STDIO_READING, _STDIO_WRITING
-    int sf_mode;           // _IOFBF, _IOLBF, _IONBF or _STDIO_AUTO
-    unsigned char *sf_buf; // the buffer, the stream's own or setvbuf's
-    size_t sf_size;        // the buffer's size
-    size_t sf_head;        // the bytes of the buffer already read
-    size_t sf_tail;        // the bytes the buffer holds, read or to write
-    unsigned char sf_byte; // an unbuffered stream's buffer
-    unsigned char sf_back; // the character ungetc pushed back
-    _Stdio_File *sf_next;  // the next of the open streams
+// A stream, as _file.h defines it, which this header may not include.
+#ifndef __FILE_STREAM__
+#define __FILE_STREAM__
+typedef struct _File_Stream _File_Stream;
+struct _File_Stream {
+    int fs_fd;             // the file's descriptor, or _FILE_NOFILE
+    int fs_flags;          // _FILE_READ, _FILE_WRITE and what happened
+    int fs_state;          // _FILE_IDLE, _FILE_READING, _FILE_WRITING
+    int fs_mode;           // _FILE_FULL, _FILE_LINE, _FILE_NONE or _FILE_AUTO
+    unsigned char *fs_buf; // the buffer, the stream's own or one it was given
+    unsigned long fs_size; // the buffer's size
+    unsigned long fs_head; // the bytes of the buffer already read
+    unsigned long fs_tail; // the bytes the buffer holds, read or to write
+    unsigned char fs_byte; // an unbuffered stream's buffer
+    unsigned char fs_back; // the character pushed back
+    _File_Stream *fs_next; // the next of the open streams
 };
+#endif
 
 // Where formatted output goes: a stream, or else a string of a size.
 typedef struct _Stdio_Sink _Stdio_Sink;
 struct _Stdio_Sink {
-    _Stdio_File *ss_stream; // the stream, or NULL for a string
-    char *ss_str;           // the string, where there is no stream
-    size_t ss_size;         // the string's size, its null counted
-    size_t ss_count;        // the characters given so far, kept or not
-    _Bool ss_failed;        // a write failed, or the count overflowed
+    _File_Stream *ss_stream; // the stream, or NULL for a string
+    char *ss_str;            // the string, where there is no stream
+    size_t ss_size;          // the string's size, its null counted
+    size_t ss_count;         // the characters given so far, kept or not
+    _Bool ss_failed;         // a write failed, or the count overflowed
 };
 
 // A floating value's decimal digits, no zero first or last.
@@ -291,7 +273,7 @@ struct _Stdio_Numeral {
 // Where formatted input comes from: a stream, or else a string.
 typedef struct _Stdio_Source _Stdio_Source;
 struct _Stdio_Source {
-    _Stdio_File *so_stream;    // the stream, or NULL for a string
+    _File_Stream *so_stream;   // the stream, or NULL for a string
     const char *so_str;        // the string, where there is no stream
     size_t so_count;           // the characters read so far
     int so_stored;             // the assignments made so far
@@ -316,52 +298,12 @@ struct _Stdio_Wide {
 };
 
 // (S7.19.1) Introduction
-typedef struct _Stdio_File FILE;
+typedef struct _File_Stream FILE;
 
-// The standard streams.
-extern FILE _Stdio_Stdin;
-extern FILE _Stdio_Stdout;
-extern FILE _Stdio_Stderr;
-
-// The open streams, newest first.
-extern FILE *_Stdio_Streams;
-
-// The number of the temporary name made last, once a seed has begun them.
-extern unsigned long _Stdio_TempNumber;
-extern _Bool _Stdio_TempSeeded;
-
-// The name tmpnam returns when it is given no array.
-extern char _Stdio_TempBuffer[L_tmpnam];
-
-// Opening
-FILE *_Stdio_MakeStream(void);
-_Bool _Stdio_IsMode(const char *mode);
-int   _Stdio_ConvertMode(const char *mode);
-void  _Stdio_AttachDescriptor(FILE *stream, int fd, int flags);
-int   _Stdio_OpenFile(FILE *stream, const char *filename, const char *mode);
-int   _Stdio_ResetStream(FILE *stream);
-void  _Stdio_FreeStream(FILE *stream);
-
-// Buffering
-void  _Stdio_SetupBuffer(FILE *stream);
-_Bool _Stdio_IsTerminal(int fd);
-int   _Stdio_LendBuffer(FILE *stream, unsigned char *buf, size_t size);
-int   _Stdio_ReclaimBuffer(FILE *stream);
-
-// Input
-int    _Stdio_PrepareInput(FILE *stream);
-size_t _Stdio_GetBytes(FILE *stream, void *data, size_t len);
-size_t _Stdio_ReadBuffer(FILE *stream, unsigned char *data, size_t len);
-size_t _Stdio_ReadDescriptor(FILE *stream, unsigned char *data, size_t len);
-char  *_Stdio_GetLine(FILE *stream, char *str, size_t max);
-
-// Output
-int    _Stdio_PrepareOutput(FILE *stream);
-size_t _Stdio_PutBytes(FILE *stream, const void *data, size_t len);
-int    _Stdio_WriteDescriptor(FILE *stream, const unsigned char *data, size_t len);
-int    _Stdio_FlushBuffer(FILE *stream);
-int    _Stdio_FlushStreams(void);
-void   _Stdio_FlushLines(void);
+// The standard streams, which _file.c defines.
+extern FILE _File_Stdin;
+extern FILE _File_Stdout;
+extern FILE _File_Stderr;
 
 // Print matching
 size_t             _Stdio_MatchPrintHead(const char *format, int *flags, int *width, int *precision, int *length);
@@ -472,15 +414,6 @@ void _Stdio_ScanWideChar(_Stdio_Source *source, int width, _Stdio_WcharType *des
 void _Stdio_ScanWideString(_Stdio_Source *source, int width, _Stdio_WcharType *dest);
 void _Stdio_ScanWideSet(_Stdio_Source *source, int width, _Stdio_WcharType *dest, const char *set, size_t count, _Stdio_Accept accept);
 int  _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList args);
-
-// Positioning
-long _Stdio_CountReadAhead(FILE *stream);
-int  _Stdio_SeekStream(FILE *stream, long offset, int whence);
-void _Stdio_DiscardReadAhead(FILE *stream);
-
-// Temporary names
-unsigned long _Stdio_MakeTempSeed(void);
-void          _Stdio_WriteTempName(char *str);
 
 // (S7.19.4) Operations on files
 int   remove(const char *filename);

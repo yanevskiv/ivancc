@@ -26,10 +26,10 @@
 // Module header.
 #include <stdio.h>
 
-// The hook exit flushes the streams by.
-#include <_crt.h>
+// The streams, their buffers and the files under them.
+#include <_file.h>
 
-// The files' calls, the terminal's settings and the standard descriptors.
+// The files' calls and the origins a stream seeks from.
 #include <_sys.h>
 
 // The texts a null string or pointer, an infinity and a NaN are written as.
@@ -68,22 +68,13 @@
 // The white space an input directive skips.
 #include <ctype.h>
 
-// A temporary name: where it is, and the characters and length of its end.
-#define _STDIO_TEMP_PREFIX  "/tmp/tmp."
-#define _STDIO_TEMP_LETTERS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-#define _STDIO_TEMP_RADIX   62
-#define _STDIO_TEMP_DIGITS  8
-
-// How many temporary names there are, and a step that shares no factor with it.
-#define _STDIO_TEMP_NAMES 218340105584896UL
-#define _STDIO_TEMP_STEP  134941606358707UL
-
 // Check the header's origins against lseek's.
 typedef char _Stdio_CheckSeek[SEEK_SET == _SYS_SEEK_SET && SEEK_CUR == _SYS_SEEK_CUR && SEEK_END == _SYS_SEEK_END ? 1 : -1];
 
-// Check that a temporary name's characters are its radix and it fits L_tmpnam.
-typedef char _Stdio_CheckTempRadix[sizeof(_STDIO_TEMP_LETTERS) - 1 == _STDIO_TEMP_RADIX ? 1 : -1];
-typedef char _Stdio_CheckTempName[sizeof(_STDIO_TEMP_PREFIX) + _STDIO_TEMP_DIGITS <= L_tmpnam ? 1 : -1];
+// Check the header's macros against _file's, which may not include it.
+typedef char _Stdio_CheckBuffering[_IOFBF == _FILE_FULL && _IOLBF == _FILE_LINE && _IONBF == _FILE_NONE ? 1 : -1];
+typedef char _Stdio_CheckLimits[EOF == _FILE_END && BUFSIZ == _FILE_BUFFER && L_tmpnam == _FILE_TEMP_SIZE ? 1 : -1];
+typedef char _Stdio_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
 
 // Check the header's own argument list against stdarg.h's.
 typedef char _Stdio_CheckVaList[sizeof(_Stdio_VaList) == sizeof(va_list) ? 1 : -1];
@@ -109,416 +100,6 @@ typedef char _Stdio_CheckMantissa[LDBL_MANT_DIG == sizeof(unsigned long long) * 
 // Check that a mantissa is its hex digits, a double's fitting under the first.
 typedef char _Stdio_CheckHex[LDBL_MANT_DIG == _STDIO_HEX_BITS * _STDIO_HEX_DIGITS ? 1 : -1];
 typedef char _Stdio_CheckDouble[DBL_MANT_DIG - 1 <= _STDIO_HEX_BITS * (_STDIO_HEX_DIGITS - 1) ? 1 : -1];
-
-// Standard input, read-only, its buffering picked at its first use.
-FILE _Stdio_Stdin = {
-    .sf_fd    = _SYS_STDIN_FILENO,
-    .sf_flags = _STDIO_READ,
-    .sf_mode  = _STDIO_AUTO,
-    .sf_next  = &_Stdio_Stdout
-};
-
-// Standard output, write-only, its buffering picked at its first use.
-FILE _Stdio_Stdout = {
-    .sf_fd    = _SYS_STDOUT_FILENO,
-    .sf_flags = _STDIO_WRITE,
-    .sf_mode  = _STDIO_AUTO,
-    .sf_next  = &_Stdio_Stderr
-};
-
-// Standard error, write-only and unbuffered as glibc's, not fully (S7.19.3p7).
-FILE _Stdio_Stderr = {
-    .sf_fd    = _SYS_STDERR_FILENO,
-    .sf_flags = _STDIO_WRITE,
-    .sf_mode  = _IONBF
-};
-
-// The open streams, the standard ones at first.
-FILE *_Stdio_Streams = &_Stdio_Stdin;
-
-// The number of the temporary name made last, once a seed has begun them.
-unsigned long _Stdio_TempNumber;
-_Bool _Stdio_TempSeeded;
-
-// The name tmpnam returns when it is given no array.
-char _Stdio_TempBuffer[L_tmpnam];
-
-// Make a stream with no file, first among the open ones.
-FILE *_Stdio_MakeStream(void)
-{
-    FILE *stream = calloc(1, sizeof(FILE));
-
-    if (stream != NULL) {
-        stream->sf_fd = _STDIO_NOFILE;
-        stream->sf_flags = _STDIO_OWNFILE;
-        stream->sf_mode = _STDIO_AUTO;
-        stream->sf_next = _Stdio_Streams;
-        _Stdio_Streams = stream;
-    }
-    return stream;
-}
-
-// Return whether mode is one of the fifteen fopen takes.
-_Bool _Stdio_IsMode(const char *mode)
-{
-    const char *rest = mode + 1;
-
-    if (mode[0] != 'r' && mode[0] != 'w' && mode[0] != 'a') {
-        return 0;
-    }
-    return rest[0] == '\0' || strcmp(rest, "b") == 0 || strcmp(rest, "+") == 0 || strcmp(rest, "b+") == 0 || strcmp(rest, "+b") == 0;
-}
-
-// Convert fopen's mode into the flags open takes.
-int _Stdio_ConvertMode(const char *mode)
-{
-    int flags = mode[0] == 'r' ? _SYS_O_RDONLY : _SYS_O_WRONLY | _SYS_O_CREAT;
-
-    if (strchr(mode, '+') != NULL) {
-        flags = (flags & ~_SYS_O_ACCMODE) | _SYS_O_RDWR;
-    }
-    if (mode[0] == 'w') {
-        flags |= _SYS_O_TRUNC;
-    }
-    if (mode[0] == 'a') {
-        flags |= _SYS_O_APPEND;
-    }
-    return flags;
-}
-
-// Attach the descriptor fd to the stream, to read or write as its flags say.
-void _Stdio_AttachDescriptor(FILE *stream, int fd, int flags)
-{
-    stream->sf_fd = fd;
-    if ((flags & _SYS_O_ACCMODE) != _SYS_O_WRONLY) {
-        stream->sf_flags |= _STDIO_READ;
-    }
-    if ((flags & _SYS_O_ACCMODE) != _SYS_O_RDONLY) {
-        stream->sf_flags |= _STDIO_WRITE;
-    }
-}
-
-// Open the file filename for the stream, to read or write as the mode says.
-int _Stdio_OpenFile(FILE *stream, const char *filename, const char *mode)
-{
-    long fd;
-    int flags;
-
-    if (! _Stdio_IsMode(mode)) {
-        errno = _SYS_EINVAL;
-        return EOF;
-    }
-    flags = _Stdio_ConvertMode(mode);
-    fd = _Sys_InvokeOpen(filename, flags, _SYS_DEFFILEMODE);
-    if (fd < 0) {
-        errno = (int) -fd;
-        return EOF;
-    }
-    _Stdio_AttachDescriptor(stream, (int) fd, flags);
-    return 0;
-}
-
-// Reset the stream: flush it and take its buffer, indicators and access.
-int _Stdio_ResetStream(FILE *stream)
-{
-    int result = _Stdio_FlushBuffer(stream);
-
-    if (stream->sf_flags & _STDIO_OWNBUF) {
-        free(stream->sf_buf);
-    }
-    stream->sf_flags &= _STDIO_OWNFILE;
-    stream->sf_state = _STDIO_IDLE;
-    stream->sf_mode = _STDIO_AUTO;
-    stream->sf_buf = NULL;
-    stream->sf_size = 0;
-    stream->sf_head = 0;
-    stream->sf_tail = 0;
-    return result;
-}
-
-// Free the stream if fopen made it, and take it off the open ones.
-void _Stdio_FreeStream(FILE *stream)
-{
-    FILE **iter = &_Stdio_Streams;
-
-    while (*iter != NULL && *iter != stream) {
-        iter = &(*iter)->sf_next;
-    }
-    if (*iter == stream) {
-        *iter = stream->sf_next;
-    }
-    stream->sf_fd = _STDIO_NOFILE;
-    stream->sf_next = NULL;
-    if (stream->sf_flags & _STDIO_OWNFILE) {
-        free(stream);
-    }
-}
-
-// Set up the stream's buffering and buffer at first use, none without memory.
-void _Stdio_SetupBuffer(FILE *stream)
-{
-    size_t size = stream->sf_size != 0 ? stream->sf_size : BUFSIZ;
-
-    if (stream->sf_flags & _STDIO_SETUP) {
-        return;
-    }
-    if (stream->sf_mode == _STDIO_AUTO) {
-        stream->sf_mode = _Stdio_IsTerminal(stream->sf_fd) ? _IOLBF : _IOFBF;
-    }
-    if (stream->sf_mode != _IONBF && stream->sf_buf == NULL) {
-        stream->sf_buf = malloc(size);
-        stream->sf_size = size;
-        stream->sf_flags |= _STDIO_OWNBUF;
-        if (stream->sf_buf == NULL) {
-            stream->sf_mode = _IONBF;
-            stream->sf_flags &= ~_STDIO_OWNBUF;
-        }
-    }
-    if (stream->sf_mode == _IONBF) {
-        stream->sf_buf = &stream->sf_byte;
-        stream->sf_size = 1;
-    }
-    stream->sf_flags |= _STDIO_SETUP;
-}
-
-// Return whether the descriptor fd is a terminal, which answers TCGETS.
-_Bool _Stdio_IsTerminal(int fd)
-{
-    _Sys_Termios term;
-
-    return _Sys_InvokeIoctl(fd, _SYS_TCGETS, &term) == 0;
-}
-
-// Lend an unbuffered stream buf for a call, the stream readied for output.
-int _Stdio_LendBuffer(FILE *stream, unsigned char *buf, size_t size)
-{
-    if (_Stdio_PrepareOutput(stream) != 0) {
-        return EOF;
-    }
-    if (stream->sf_mode == _IONBF) {
-        stream->sf_buf = buf;
-        stream->sf_size = size;
-    }
-    return 0;
-}
-
-// Reclaim a lent buffer: write what it holds, and give the stream its byte.
-int _Stdio_ReclaimBuffer(FILE *stream)
-{
-    int result = 0;
-
-    if (stream->sf_mode == _IONBF && stream->sf_state == _STDIO_WRITING) {
-        result = _Stdio_FlushBuffer(stream);
-        stream->sf_buf = &stream->sf_byte;
-        stream->sf_size = 1;
-    }
-    return result;
-}
-
-// Prepare the stream for input, or set its error indicator if it is write-only.
-int _Stdio_PrepareInput(FILE *stream)
-{
-    if (! (stream->sf_flags & _STDIO_READ)) {
-        stream->sf_flags |= _STDIO_ERROR;
-        errno = _SYS_EBADF;
-        return EOF;
-    }
-    if (_Stdio_FlushBuffer(stream) != 0) {
-        return EOF;
-    }
-    _Stdio_SetupBuffer(stream);
-    stream->sf_state = _STDIO_READING;
-    return 0;
-}
-
-// Get up to len bytes from the stream into data, and return how many came.
-size_t _Stdio_GetBytes(FILE *stream, void *data, size_t len)
-{
-    size_t done = 0;
-    unsigned char *bytes = data;
-
-    if (_Stdio_PrepareInput(stream) != 0) {
-        return 0;
-    }
-    if (len > 0 && (stream->sf_flags & _STDIO_BACK)) {
-        stream->sf_flags &= ~_STDIO_BACK;
-        bytes[done++] = stream->sf_back;
-    }
-    while (done < len) {
-        size_t part = len - done;
-
-        if (stream->sf_head == stream->sf_tail && part >= stream->sf_size) {
-            part = _Stdio_ReadDescriptor(stream, bytes + done, part);
-        } else {
-            part = _Stdio_ReadBuffer(stream, bytes + done, part);
-        }
-        if (part == 0) {
-            return done;
-        }
-        done += part;
-    }
-    return done;
-}
-
-// Read up to len bytes of the stream's buffer into data, refilled if empty.
-size_t _Stdio_ReadBuffer(FILE *stream, unsigned char *data, size_t len)
-{
-    if (stream->sf_head == stream->sf_tail) {
-        stream->sf_head = 0;
-        stream->sf_tail = _Stdio_ReadDescriptor(stream, stream->sf_buf, stream->sf_size);
-    }
-    if (len > stream->sf_tail - stream->sf_head) {
-        len = stream->sf_tail - stream->sf_head;
-    }
-    memcpy(data, stream->sf_buf + stream->sf_head, len);
-    stream->sf_head += len;
-    return len;
-}
-
-// Read up to len bytes from the stream's descriptor, none once at its end.
-size_t _Stdio_ReadDescriptor(FILE *stream, unsigned char *data, size_t len)
-{
-    long done;
-
-    if (stream->sf_flags & _STDIO_EOF) {
-        return 0;
-    }
-    if (stream->sf_mode != _IOFBF) {
-        _Stdio_FlushLines();
-    }
-    done = _Sys_InvokeRead(stream->sf_fd, data, len);
-    if (done < 0) {
-        errno = (int) -done;
-        stream->sf_flags |= _STDIO_ERROR;
-        return 0;
-    }
-    if (done == 0) {
-        stream->sf_flags |= _STDIO_EOF;
-    }
-    return (size_t) done;
-}
-
-// Get a line of at most max characters, its new-line among them, into str.
-char *_Stdio_GetLine(FILE *stream, char *str, size_t max)
-{
-    int ch = 0;
-    size_t len = 0;
-
-    while (len < max && ch != '\n' && (ch = fgetc(stream)) != EOF) {
-        str[len++] = (char) ch;
-    }
-    if (ch == EOF && (len == 0 || ! (stream->sf_flags & _STDIO_EOF))) {
-        return NULL;
-    }
-    str[len] = '\0';
-    return str;
-}
-
-// Prepare the stream for output, or set its error indicator if it is read-only.
-int _Stdio_PrepareOutput(FILE *stream)
-{
-    if (! (stream->sf_flags & _STDIO_WRITE)) {
-        stream->sf_flags |= _STDIO_ERROR;
-        errno = _SYS_EBADF;
-        return EOF;
-    }
-    if (stream->sf_state == _STDIO_READING) {
-        _Stdio_DiscardReadAhead(stream);
-        stream->sf_flags &= ~_STDIO_BACK;
-        stream->sf_head = 0;
-        stream->sf_tail = 0;
-    }
-    _Stdio_SetupBuffer(stream);
-    stream->sf_state = _STDIO_WRITING;
-    return 0;
-}
-
-// Put len bytes of data in the stream's buffer, and return how many it took.
-size_t _Stdio_PutBytes(FILE *stream, const void *data, size_t len)
-{
-    size_t done = 0;
-    const unsigned char *bytes = data;
-
-    if (_Stdio_PrepareOutput(stream) != 0) {
-        return 0;
-    }
-    _Crt_FlushStreams = _Stdio_FlushStreams;
-    while (done < len) {
-        size_t part = len - done;
-
-        if (stream->sf_tail == 0 && part >= stream->sf_size) {
-            return _Stdio_WriteDescriptor(stream, bytes + done, part) == 0 ? len : done;
-        }
-        if (part > stream->sf_size - stream->sf_tail) {
-            part = stream->sf_size - stream->sf_tail;
-        }
-        memcpy(stream->sf_buf + stream->sf_tail, bytes + done, part);
-        stream->sf_tail += part;
-        done += part;
-        if (stream->sf_tail == stream->sf_size && _Stdio_FlushBuffer(stream) != 0) {
-            return done - part;
-        }
-    }
-    if (stream->sf_mode == _IOLBF && memchr(data, '\n', len) != NULL && _Stdio_FlushBuffer(stream) != 0) {
-        return 0;
-    }
-    return len;
-}
-
-// Write len bytes of data to the stream's descriptor, however many writes.
-int _Stdio_WriteDescriptor(FILE *stream, const unsigned char *data, size_t len)
-{
-    while (len > 0) {
-        long done = _Sys_InvokeWrite(stream->sf_fd, data, len);
-
-        if (done <= 0) {
-            errno = done < 0 ? (int) -done : _SYS_EIO;
-            stream->sf_flags |= _STDIO_ERROR;
-            return EOF;
-        }
-        data += done;
-        len -= (size_t) done;
-    }
-    return 0;
-}
-
-// Flush what waits in the stream's buffer, dropping it if the write fails.
-int _Stdio_FlushBuffer(FILE *stream)
-{
-    size_t len = stream->sf_tail;
-
-    if (stream->sf_state != _STDIO_WRITING || len == 0) {
-        return 0;
-    }
-    stream->sf_tail = 0;
-    return _Stdio_WriteDescriptor(stream, stream->sf_buf, len);
-}
-
-// Flush every open stream, and return EOF if any failed.
-int _Stdio_FlushStreams(void)
-{
-    FILE *stream;
-    int result = 0;
-
-    for (stream = _Stdio_Streams; stream != NULL; stream = stream->sf_next) {
-        if (_Stdio_FlushBuffer(stream) != 0) {
-            result = EOF;
-        }
-    }
-    return result;
-}
-
-// Flush every line-buffered stream, as a read from the host calls for.
-void _Stdio_FlushLines(void)
-{
-    FILE *stream;
-
-    for (stream = _Stdio_Streams; stream != NULL; stream = stream->sf_next) {
-        if (stream->sf_mode == _IOLBF) {
-            _Stdio_FlushBuffer(stream);
-        }
-    }
-}
 
 // Match a directive's percent sign, flags, width, precision and length.
 size_t _Stdio_MatchPrintHead(const char *format, int *flags, int *width, int *precision, int *length)
@@ -1149,7 +730,7 @@ void _Stdio_EmitText(_Stdio_Sink *sink, const char *data, size_t len)
         return;
     }
     if (sink->ss_stream != NULL) {
-        sink->ss_failed = _Stdio_PutBytes(sink->ss_stream, data, len) != len;
+        sink->ss_failed = _File_PutBytes(sink->ss_stream, data, len) != len;
     } else if (sink->ss_count + 1 < sink->ss_size) {
         room = sink->ss_size - 1 - sink->ss_count;
         memcpy(sink->ss_str + sink->ss_count, data, len < room ? len : room);
@@ -2007,14 +1588,14 @@ int _Stdio_PeekSource(_Stdio_Source *source)
         ch = source->so_str[source->so_count];
         return ch != '\0' ? (unsigned char) ch : EOF;
     }
-    if (stream->sf_flags & _STDIO_BACK) {
-        return stream->sf_back;
+    if (stream->fs_flags & _FILE_BACK) {
+        return stream->fs_back;
     }
-    if (stream->sf_head == stream->sf_tail) {
-        stream->sf_head = 0;
-        stream->sf_tail = _Stdio_ReadDescriptor(stream, stream->sf_buf, stream->sf_size);
+    if (stream->fs_head == stream->fs_tail) {
+        stream->fs_head = 0;
+        stream->fs_tail = _File_ReadDescriptor(stream, stream->fs_buf, stream->fs_size);
     }
-    return stream->sf_head < stream->sf_tail ? stream->sf_buf[stream->sf_head] : EOF;
+    return stream->fs_head < stream->fs_tail ? stream->fs_buf[stream->fs_head] : EOF;
 }
 
 // Advance the source past the character peeked at, which counts as read.
@@ -2022,10 +1603,10 @@ void _Stdio_AdvanceSource(_Stdio_Source *source)
 {
     FILE *stream = source->so_stream;
 
-    if (stream != NULL && (stream->sf_flags & _STDIO_BACK)) {
-        stream->sf_flags &= ~_STDIO_BACK;
+    if (stream != NULL && (stream->fs_flags & _FILE_BACK)) {
+        stream->fs_flags &= ~_FILE_BACK;
     } else if (stream != NULL) {
-        stream->sf_head++;
+        stream->fs_head++;
     }
     source->so_count++;
 }
@@ -2649,80 +2230,6 @@ int _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList a
     return _Stdio_EndSource(source);
 }
 
-// Count the bytes the stream took from its file and has yet to give out.
-long _Stdio_CountReadAhead(FILE *stream)
-{
-    long ahead = 0;
-
-    if (stream->sf_state == _STDIO_READING) {
-        ahead = (long) (stream->sf_tail - stream->sf_head);
-    }
-    if (stream->sf_flags & _STDIO_BACK) {
-        ahead++;
-    }
-    return ahead;
-}
-
-// Seek the stream to offset from the origin whence, and empty its buffer.
-int _Stdio_SeekStream(FILE *stream, long offset, int whence)
-{
-    long pos;
-
-    if (_Stdio_FlushBuffer(stream) != 0) {
-        return EOF;
-    }
-    if (whence == _SYS_SEEK_CUR) {
-        offset -= _Stdio_CountReadAhead(stream);
-    }
-    pos = _Sys_InvokeLseek(stream->sf_fd, offset, whence);
-    if (pos < 0) {
-        errno = (int) -pos;
-        return EOF;
-    }
-    stream->sf_flags &= ~_STDIO_BACK;
-    stream->sf_head = 0;
-    stream->sf_tail = 0;
-    return 0;
-}
-
-// Discard what the stream read ahead, moving its file back over it.
-void _Stdio_DiscardReadAhead(FILE *stream)
-{
-    if (_Stdio_CountReadAhead(stream) > 0) {
-        _Stdio_SeekStream(stream, 0, _SYS_SEEK_CUR);
-    }
-}
-
-// Make a number that differs from run to run, by the clock and the stack.
-unsigned long _Stdio_MakeTempSeed(void)
-{
-    _Sys_Timespec now = {0, 0};
-
-    _Sys_InvokeClockGettime(_SYS_CLOCK_REALTIME, &now);
-    return (unsigned long) now.tv_sec ^ (unsigned long) now.tv_nsec ^ (unsigned long) &now;
-}
-
-// Write the next temporary name, one no call before wrote, into str.
-void _Stdio_WriteTempName(char *str)
-{
-    int k;
-    unsigned long number;
-    size_t len = sizeof(_STDIO_TEMP_PREFIX) - 1;
-
-    if (! _Stdio_TempSeeded) {
-        _Stdio_TempNumber = _Stdio_MakeTempSeed() % _STDIO_TEMP_NAMES;
-        _Stdio_TempSeeded = 1;
-    }
-    _Stdio_TempNumber = (_Stdio_TempNumber + _STDIO_TEMP_STEP) % _STDIO_TEMP_NAMES;
-    number = _Stdio_TempNumber;
-    memcpy(str, _STDIO_TEMP_PREFIX, len);
-    for (k = 0; k < _STDIO_TEMP_DIGITS; k++) {
-        str[len++] = _STDIO_TEMP_LETTERS[number % _STDIO_TEMP_RADIX];
-        number /= _STDIO_TEMP_RADIX;
-    }
-    str[len] = '\0';
-}
-
 // Remove the file filename, or the empty directory of that name.
 int remove(const char *filename)
 {
@@ -2756,23 +2263,23 @@ FILE *tmpfile(void)
     int tries;
     char name[L_tmpnam];
     long fd = -_SYS_EEXIST;
-    FILE *stream = _Stdio_MakeStream();
+    FILE *stream = _File_MakeStream();
     int flags = _SYS_O_RDWR | _SYS_O_CREAT | _SYS_O_EXCL;
 
     if (stream == NULL) {
         return NULL;
     }
     for (tries = 0; tries < TMP_MAX && fd == -_SYS_EEXIST; tries++) {
-        _Stdio_WriteTempName(name);
+        _File_WriteTempName(name);
         fd = _Sys_InvokeOpen(name, flags, _SYS_S_IRUSR | _SYS_S_IWUSR);
     }
     if (fd < 0) {
         errno = (int) -fd;
-        _Stdio_FreeStream(stream);
+        _File_FreeStream(stream);
         return NULL;
     }
     _Sys_InvokeUnlink(name);
-    _Stdio_AttachDescriptor(stream, (int) fd, flags);
+    _File_AttachDescriptor(stream, (int) fd, flags);
     return stream;
 }
 
@@ -2783,10 +2290,10 @@ char *tmpnam(char *str)
     _Sys_Stat info;
 
     if (str == NULL) {
-        str = _Stdio_TempBuffer;
+        str = _File_TempBuffer;
     }
     for (tries = 0; tries < TMP_MAX; tries++) {
-        _Stdio_WriteTempName(str);
+        _File_WriteTempName(str);
         if (_Sys_InvokeLstat(str, &info) == -_SYS_ENOENT) {
             return str;
         }
@@ -2797,14 +2304,14 @@ char *tmpnam(char *str)
 // Flush the stream, close its file and end the stream.
 int fclose(FILE *stream)
 {
-    int result = _Stdio_ResetStream(stream);
-    long status = _Sys_InvokeClose(stream->sf_fd);
+    int result = _File_ResetStream(stream);
+    long status = _Sys_InvokeClose(stream->fs_fd);
 
     if (status < 0) {
         errno = (int) -status;
         result = EOF;
     }
-    _Stdio_FreeStream(stream);
+    _File_FreeStream(stream);
     return result;
 }
 
@@ -2812,19 +2319,19 @@ int fclose(FILE *stream)
 int fflush(FILE *stream)
 {
     if (stream == NULL) {
-        return _Stdio_FlushStreams();
+        return _File_FlushStreams();
     }
-    _Stdio_DiscardReadAhead(stream);
-    return _Stdio_FlushBuffer(stream);
+    _File_DiscardReadAhead(stream);
+    return _File_FlushBuffer(stream);
 }
 
 // Open the file filename as the mode says, and return a stream for it.
 FILE *fopen(const char *restrict filename, const char *restrict mode)
 {
-    FILE *stream = _Stdio_MakeStream();
+    FILE *stream = _File_MakeStream();
 
-    if (stream != NULL && _Stdio_OpenFile(stream, filename, mode) != 0) {
-        _Stdio_FreeStream(stream);
+    if (stream != NULL && _File_OpenFile(stream, filename, mode) != 0) {
+        _File_FreeStream(stream);
         return NULL;
     }
     return stream;
@@ -2833,21 +2340,21 @@ FILE *fopen(const char *restrict filename, const char *restrict mode)
 // Open the file filename as the mode says for the stream, on its descriptor.
 FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *restrict stream)
 {
-    int fd = stream->sf_fd;
+    int fd = stream->fs_fd;
 
     if (filename == NULL) {
         errno = _SYS_EINVAL;
         return NULL;
     }
-    _Stdio_ResetStream(stream);
-    if (_Stdio_OpenFile(stream, filename, mode) != 0) {
+    _File_ResetStream(stream);
+    if (_File_OpenFile(stream, filename, mode) != 0) {
         _Sys_InvokeClose(fd);
-        _Stdio_FreeStream(stream);
+        _File_FreeStream(stream);
         return NULL;
     }
-    if (_Sys_InvokeDup2(stream->sf_fd, fd) == fd) {
-        _Sys_InvokeClose(stream->sf_fd);
-        stream->sf_fd = fd;
+    if (_Sys_InvokeDup2(stream->fs_fd, fd) == fd) {
+        _Sys_InvokeClose(stream->fs_fd);
+        stream->fs_fd = fd;
     } else {
         _Sys_InvokeClose(fd);
     }
@@ -2866,19 +2373,19 @@ int setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size)
     if (mode != _IOFBF && mode != _IOLBF && mode != _IONBF) {
         return EOF;
     }
-    if ((buf != NULL && size == 0) || _Stdio_FlushBuffer(stream) != 0) {
+    if ((buf != NULL && size == 0) || _File_FlushBuffer(stream) != 0) {
         return EOF;
     }
-    if (stream->sf_flags & _STDIO_OWNBUF) {
-        free(stream->sf_buf);
+    if (stream->fs_flags & _FILE_OWNBUF) {
+        free(stream->fs_buf);
     }
-    stream->sf_flags &= ~(_STDIO_OWNBUF | _STDIO_SETUP);
-    stream->sf_mode = mode;
-    stream->sf_buf = mode != _IONBF ? (unsigned char *) buf : NULL;
-    stream->sf_size = size;
-    stream->sf_head = 0;
-    stream->sf_tail = 0;
-    stream->sf_state = _STDIO_IDLE;
+    stream->fs_flags &= ~(_FILE_OWNBUF | _FILE_SETUP);
+    stream->fs_mode = mode;
+    stream->fs_buf = mode != _IONBF ? (unsigned char *) buf : NULL;
+    stream->fs_size = size;
+    stream->fs_head = 0;
+    stream->fs_tail = 0;
+    stream->fs_state = _FILE_IDLE;
     return 0;
 }
 
@@ -2975,11 +2482,11 @@ int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList a
         .ss_stream = stream
     };
 
-    if (_Stdio_LendBuffer(stream, lent, sizeof(lent)) != 0) {
+    if (_File_LendBuffer(stream, lent, sizeof(lent)) != 0) {
         return EOF;
     }
     result = _Stdio_EmitFormat(&sink, format, arg);
-    return _Stdio_ReclaimBuffer(stream) == 0 ? result : EOF;
+    return _File_ReclaimBuffer(stream) == 0 ? result : EOF;
 }
 
 // Read the stream as the format says, storing at the list's arguments.
@@ -2989,7 +2496,7 @@ int vfscanf(FILE *restrict stream, const char *restrict format, _Stdio_VaList ar
         .so_stream = stream
     };
 
-    if (_Stdio_PrepareInput(stream) != 0) {
+    if (_File_PrepareInput(stream) != 0) {
         return EOF;
     }
     return _Stdio_ScanFormat(&source, format, arg);
@@ -3037,15 +2544,13 @@ int vsscanf(const char *restrict str, const char *restrict format, _Stdio_VaList
 // Read the stream's next character, as an unsigned char, or EOF at its end.
 int fgetc(FILE *stream)
 {
-    unsigned char byte;
-
-    return _Stdio_GetBytes(stream, &byte, 1) == 1 ? byte : EOF;
+    return _File_GetChar(stream);
 }
 
 // Read a line of at most n - 1 characters, its new-line kept, into str.
 char *fgets(char *restrict str, int n, FILE *restrict stream)
 {
-    return n > 0 ? _Stdio_GetLine(stream, str, (size_t) n - 1) : NULL;
+    return n > 0 ? _File_GetLine(stream, str, (size_t) n - 1) : NULL;
 }
 
 // Write the character ch, as an unsigned char, to the stream.
@@ -3053,7 +2558,7 @@ int fputc(int ch, FILE *stream)
 {
     unsigned char byte = (unsigned char) ch;
 
-    return _Stdio_PutBytes(stream, &byte, 1) == 1 ? byte : EOF;
+    return _File_PutBytes(stream, &byte, 1) == 1 ? byte : EOF;
 }
 
 // Write the string str to the stream, and return 1 as glibc's does.
@@ -3061,7 +2566,7 @@ int fputs(const char *restrict str, FILE *restrict stream)
 {
     size_t len = strlen(str);
 
-    return _Stdio_PutBytes(stream, str, len) == len ? 1 : EOF;
+    return _File_PutBytes(stream, str, len) == len ? 1 : EOF;
 }
 
 // Read the stream's next character, as fgetc does.
@@ -3081,7 +2586,7 @@ char *gets(char *str)
 {
     size_t len;
 
-    if (_Stdio_GetLine(stdin, str, SIZE_MAX) == NULL) {
+    if (_File_GetLine(stdin, str, SIZE_MAX) == NULL) {
         return NULL;
     }
     len = strlen(str);
@@ -3108,7 +2613,7 @@ int puts(const char *str)
 {
     size_t len = strlen(str);
 
-    if (_Stdio_PutBytes(stdout, str, len) != len || _Stdio_PutBytes(stdout, "\n", 1) != 1) {
+    if (_File_PutBytes(stdout, str, len) != len || _File_PutBytes(stdout, "\n", 1) != 1) {
         return EOF;
     }
     return len < INT_MAX ? (int) len + 1 : INT_MAX;
@@ -3117,13 +2622,13 @@ int puts(const char *str)
 // Push the character ch back for the stream's next read, one at a time.
 int ungetc(int ch, FILE *stream)
 {
-    if (ch == EOF || (stream->sf_flags & _STDIO_BACK) || _Stdio_PrepareInput(stream) != 0) {
+    if (ch == EOF || (stream->fs_flags & _FILE_BACK) || _File_PrepareInput(stream) != 0) {
         return EOF;
     }
-    stream->sf_back = (unsigned char) ch;
-    stream->sf_flags |= _STDIO_BACK;
-    stream->sf_flags &= ~_STDIO_EOF;
-    return stream->sf_back;
+    stream->fs_back = (unsigned char) ch;
+    stream->fs_flags |= _FILE_BACK;
+    stream->fs_flags &= ~_FILE_EOF;
+    return stream->fs_back;
 }
 
 // Read nmemb elements of size bytes into ptr, and return how many came whole.
@@ -3135,7 +2640,7 @@ size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict strea
     if (nmemb > SIZE_MAX / size) {
         nmemb = SIZE_MAX / size;
     }
-    return _Stdio_GetBytes(stream, ptr, size * nmemb) / size;
+    return _File_GetBytes(stream, ptr, size * nmemb) / size;
 }
 
 // Write nmemb elements of size bytes from ptr, and return how many went.
@@ -3147,7 +2652,7 @@ size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restric
     if (nmemb > SIZE_MAX / size) {
         nmemb = SIZE_MAX / size;
     }
-    return _Stdio_PutBytes(stream, ptr, size * nmemb) / size;
+    return _File_PutBytes(stream, ptr, size * nmemb) / size;
 }
 
 // Store the stream's position in pos.
@@ -3169,10 +2674,10 @@ int fseek(FILE *stream, long offset, int whence)
         errno = _SYS_EINVAL;
         return EOF;
     }
-    if (_Stdio_SeekStream(stream, offset, whence) != 0) {
+    if (_File_SeekStream(stream, offset, whence) != 0) {
         return EOF;
     }
-    stream->sf_flags &= ~_STDIO_EOF;
+    stream->fs_flags &= ~_FILE_EOF;
     return 0;
 }
 
@@ -3187,40 +2692,40 @@ long ftell(FILE *stream)
 {
     long pos;
 
-    if (_Stdio_FlushBuffer(stream) != 0) {
+    if (_File_FlushBuffer(stream) != 0) {
         return EOF;
     }
-    pos = _Sys_InvokeLseek(stream->sf_fd, 0, _SYS_SEEK_CUR);
+    pos = _Sys_InvokeLseek(stream->fs_fd, 0, _SYS_SEEK_CUR);
     if (pos < 0) {
         errno = (int) -pos;
         return EOF;
     }
-    return pos - _Stdio_CountReadAhead(stream);
+    return pos - _File_CountReadAhead(stream);
 }
 
 // Move the stream to the start of its file, and clear its indicators.
 void rewind(FILE *stream)
 {
     fseek(stream, 0, SEEK_SET);
-    stream->sf_flags &= ~_STDIO_ERROR;
+    stream->fs_flags &= ~_FILE_ERROR;
 }
 
 // Clear the stream's end-of-file and error indicators.
 void clearerr(FILE *stream)
 {
-    stream->sf_flags &= ~(_STDIO_EOF | _STDIO_ERROR);
+    stream->fs_flags &= ~(_FILE_EOF | _FILE_ERROR);
 }
 
 // Return nonzero if the stream's end-of-file indicator is set.
 int feof(FILE *stream)
 {
-    return (stream->sf_flags & _STDIO_EOF) != 0;
+    return (stream->fs_flags & _FILE_EOF) != 0;
 }
 
 // Return nonzero if the stream's error indicator is set.
 int ferror(FILE *stream)
 {
-    return (stream->sf_flags & _STDIO_ERROR) != 0;
+    return (stream->fs_flags & _FILE_ERROR) != 0;
 }
 
 // Write errno's text and a new-line to standard error, after str if it has any.
@@ -3229,12 +2734,12 @@ void perror(const char *str)
     const char *text = strerror(errno);
     unsigned char lent[BUFSIZ];
 
-    _Stdio_LendBuffer(stderr, lent, sizeof(lent));
+    _File_LendBuffer(stderr, lent, sizeof(lent));
     if (str != NULL && str[0] != '\0') {
         fputs(str, stderr);
         fputs(": ", stderr);
     }
     fputs(text, stderr);
     fputs("\n", stderr);
-    _Stdio_ReclaimBuffer(stderr);
+    _File_ReclaimBuffer(stderr);
 }
