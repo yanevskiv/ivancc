@@ -29,6 +29,10 @@
 // The bytes a conversion state holds, those of the longest character.
 #define _WCHAR_STATE_BYTES 6
 
+// What a conversion gives for a character that is invalid or cut short.
+#define _WCHAR_INVALID    ((size_t) -1)
+#define _WCHAR_INCOMPLETE ((size_t) -2)
+
 // (S7.24.1) Introduction
 #define NULL ((void *) 0)
 
@@ -62,6 +66,17 @@ typedef struct {
 
 struct tm;
 
+// The state each restartable function converts in when it is given none.
+extern mbstate_t _Wchar_MbrlenState;
+extern mbstate_t _Wchar_MbrtowcState;
+extern mbstate_t _Wchar_WcrtombState;
+extern mbstate_t _Wchar_MbsrtowcsState;
+extern mbstate_t _Wchar_WcsrtombsState;
+
+// Restartable conversions
+size_t _Wchar_DecodeChar(wchar_t *pwc, const char *str, size_t n, mbstate_t *state);
+size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state);
+
 // (S7.24.4.2) Wide string copying functions
 wchar_t *wcscpy(wchar_t *restrict str1, const wchar_t *restrict str2);
 wchar_t *wcsncpy(wchar_t *restrict str1, const wchar_t *restrict str2, size_t n);
@@ -92,5 +107,21 @@ wchar_t *wmemchr(const wchar_t *str, wchar_t wc, size_t n);
 // (S7.24.4.6) Miscellaneous functions
 size_t   wcslen(const wchar_t *str);
 wchar_t *wmemset(wchar_t *str, wchar_t wc, size_t n);
+
+// (S7.24.6.1) Single-byte/wide character conversion functions
+wint_t btowc(int ch);
+int    wctob(wint_t wc);
+
+// (S7.24.6.2) Conversion state functions
+int mbsinit(const mbstate_t *ps);
+
+// (S7.24.6.3) Restartable multibyte/wide character conversion functions
+size_t mbrlen(const char *restrict str, size_t n, mbstate_t *restrict ps);
+size_t mbrtowc(wchar_t *restrict pwc, const char *restrict str, size_t n, mbstate_t *restrict ps);
+size_t wcrtomb(char *restrict str, wchar_t wc, mbstate_t *restrict ps);
+
+// (S7.24.6.4) Restartable multibyte/wide string conversion functions
+size_t mbsrtowcs(wchar_t *restrict dst, const char **restrict src, size_t len, mbstate_t *restrict ps);
+size_t wcsrtombs(char *restrict dst, const wchar_t **restrict src, size_t len, mbstate_t *restrict ps);
 
 #endif // _WCHAR_H
