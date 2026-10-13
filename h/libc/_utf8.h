@@ -30,8 +30,13 @@
 #define _UTF8_MAX      6
 #define _UTF8_CODE_MAX 0x7FFFFFFFU
 
-// The largest code one byte encodes.
+// The largest code one byte encodes, all of "C"'s encoding, and its bytes.
 #define _UTF8_ASCII_MAX 0x7FU
+#define _UTF8_ASCII_LEN 1
+
+// The tag characters "C"'s encoding drops, as glibc's.
+#define _UTF8_TAG_FIRST 0xE0000
+#define _UTF8_TAG_LAST  0xE007F
 
 // The least lead byte of a longer sequence, past the overlong 0xC0 and 0xC1.
 #define _UTF8_LEAD_MIN 0xC2U
@@ -61,5 +66,10 @@ int _Utf8_GetLeadLength(unsigned int lead);
 int _Utf8_GetCodeLength(unsigned int code);
 int _Utf8_DecodeSequence(const unsigned char *str, unsigned long n, unsigned int *code);
 int _Utf8_EncodeCode(unsigned int code, unsigned char *str);
+
+// Characters
+unsigned long _Utf8_GetCharMax(void);
+int           _Utf8_DecodeChar(const char *str, unsigned long n, int *wc);
+int           _Utf8_EncodeChar(int wc, char *str);
 
 #endif // _UTF8_H

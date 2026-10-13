@@ -114,3 +114,52 @@ int _Utf8_EncodeCode(unsigned int code, unsigned char *str)
     str[0] = (unsigned char) (_UTF8_LEAD_ONES >> len | code);
     return len;
 }
+
+// Get the bytes of the longest character in LC_CTYPE's encoding.
+unsigned long _Utf8_GetCharMax(void)
+{
+    return _Utf8_Enabled ? _UTF8_MAX : _UTF8_ASCII_LEN;
+}
+
+// Decode the character in the n bytes at str into *wc, and give its length.
+int _Utf8_DecodeChar(const char *str, unsigned long n, int *wc)
+{
+    int len;
+    unsigned int code;
+    const unsigned char *ptr = (const unsigned char *) str;
+
+    if (_Utf8_Enabled) {
+        len = _Utf8_DecodeSequence(ptr, n, &code);
+        if (len > 0) {
+            *wc = (int) code;
+        }
+        return len;
+    }
+    if (n == 0) {
+        return _UTF8_INCOMPLETE;
+    }
+    if (*ptr > _UTF8_ASCII_MAX) {
+        return _UTF8_INVALID;
+    }
+    *wc = *ptr;
+    return _UTF8_ASCII_LEN;
+}
+
+// Encode wc at str in LC_CTYPE's encoding, and give its length.
+int _Utf8_EncodeChar(int wc, char *str)
+{
+    if (wc < 0) {
+        return _UTF8_INVALID;
+    }
+    if (_Utf8_Enabled) {
+        return _Utf8_EncodeCode((unsigned int) wc, (unsigned char *) str);
+    }
+    if (wc >= _UTF8_TAG_FIRST && wc <= _UTF8_TAG_LAST) {
+        return 0;
+    }
+    if ((unsigned int) wc > _UTF8_ASCII_MAX) {
+        return _UTF8_INVALID;
+    }
+    *str = (char) wc;
+    return _UTF8_ASCII_LEN;
+}

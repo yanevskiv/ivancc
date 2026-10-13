@@ -79,14 +79,6 @@
 // The bytes of the merge buffer qsort keeps on the stack, as glibc's.
 #define _STDLIB_SORT_STACK 1024
 
-// The largest character of "C"'s encoding, ASCII as glibc's, and its bytes.
-#define _STDLIB_ASCII_MAX 0x7F
-#define _STDLIB_ASCII_LEN 1
-
-// The tag characters "C"'s encoding drops, as glibc's.
-#define _STDLIB_TAG_FIRST 0xE0000
-#define _STDLIB_TAG_LAST  0xE007F
-
 // (S7.20) General utilities
 #define NULL ((void *) 0)
 
@@ -217,8 +209,6 @@ void   _Stdlib_SortElements(char *base, size_t nmemb, size_t size, int (*compar)
 
 // Multibyte
 size_t _Stdlib_GetMbCurMax(void);
-int    _Stdlib_DecodeChar(const char *str, size_t n, wchar_t *wc);
-int    _Stdlib_EncodeChar(wchar_t wc, char *str);
 
 // (S7.20.1) Numeric conversion functions
 double             atof(const char *nptr);

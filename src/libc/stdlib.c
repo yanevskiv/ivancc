@@ -68,6 +68,9 @@
 // Check the type _mem counts in against the header's.
 typedef char _Stdlib_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
 
+// Check the type _utf8 holds a wide character in against the header's.
+typedef char _Stdlib_CheckWchar[sizeof(int) == sizeof(wchar_t) && (wchar_t) -1 < 0 ? 1 : -1];
+
 // Check that long and long long are intmax_t, as strtol and its family take.
 typedef char _Stdlib_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
 
@@ -677,50 +680,7 @@ void _Stdlib_SortElements(char *base, size_t nmemb, size_t size, int (*compar)(c
 // Get the bytes of the longest character in LC_CTYPE's encoding.
 size_t _Stdlib_GetMbCurMax(void)
 {
-    return _Utf8_Enabled ? _UTF8_MAX : _STDLIB_ASCII_LEN;
-}
-
-// Decode the character in the n bytes at str into *wc, and give its length.
-int _Stdlib_DecodeChar(const char *str, size_t n, wchar_t *wc)
-{
-    int len;
-    unsigned int code;
-    const unsigned char *ptr = (const unsigned char *) str;
-
-    if (_Utf8_Enabled) {
-        len = _Utf8_DecodeSequence(ptr, n, &code);
-        if (len > 0) {
-            *wc = (wchar_t) code;
-        }
-        return len;
-    }
-    if (n == 0) {
-        return _UTF8_INCOMPLETE;
-    }
-    if (*ptr > _STDLIB_ASCII_MAX) {
-        return _UTF8_INVALID;
-    }
-    *wc = *ptr;
-    return _STDLIB_ASCII_LEN;
-}
-
-// Encode wc at str in LC_CTYPE's encoding, and give its length.
-int _Stdlib_EncodeChar(wchar_t wc, char *str)
-{
-    if (wc < 0) {
-        return _UTF8_INVALID;
-    }
-    if (_Utf8_Enabled) {
-        return _Utf8_EncodeCode((unsigned int) wc, (unsigned char *) str);
-    }
-    if (wc >= _STDLIB_TAG_FIRST && wc <= _STDLIB_TAG_LAST) {
-        return 0;
-    }
-    if (wc > _STDLIB_ASCII_MAX) {
-        return _UTF8_INVALID;
-    }
-    *str = (char) wc;
-    return _STDLIB_ASCII_LEN;
+    return _Utf8_GetCharMax();
 }
 
 // Convert the start of the string nptr to a double, as strtod does.
@@ -1072,7 +1032,7 @@ int mbtowc(wchar_t *restrict pwc, const char *restrict str, size_t n)
     if (str == NULL) {
         return 0;
     }
-    len = _Stdlib_DecodeChar(str, n, &wc);
+    len = _Utf8_DecodeChar(str, n, &wc);
     if (len < 0) {
         if (len == _UTF8_INVALID) {
             errno = EILSEQ;
@@ -1093,7 +1053,7 @@ int wctomb(char *str, wchar_t wc)
     if (str == NULL) {
         return 0;
     }
-    len = _Stdlib_EncodeChar(wc, str);
+    len = _Utf8_EncodeChar(wc, str);
     if (len < 0) {
         errno = EILSEQ;
         return -1;
@@ -1109,7 +1069,7 @@ size_t mbstowcs(wchar_t *restrict pwcs, const char *restrict str, size_t n)
     size_t count = 0;
 
     while (pwcs == NULL || count < n) {
-        len = _Stdlib_DecodeChar(str, _UTF8_MAX, &wc);
+        len = _Utf8_DecodeChar(str, _UTF8_MAX, &wc);
         if (len < 0) {
             errno = EILSEQ;
             return (size_t) -1;
@@ -1137,7 +1097,7 @@ size_t wcstombs(char *restrict str, const wchar_t *restrict pwcs, size_t n)
         if (str != NULL && count == n) {
             break;
         }
-        len = _Stdlib_EncodeChar(*pwcs, buf);
+        len = _Utf8_EncodeChar(*pwcs, buf);
         if (len < 0) {
             errno = EILSEQ;
             return (size_t) -1;
