@@ -180,14 +180,14 @@
 #define _ERR_ASSERT_EXPR    "' failed.\n"
 
 // The texts printf gives for a null string and a null pointer, as glibc's does.
-#define _ERR_FMT_NULL "(null)"
-#define _ERR_FMT_NIL  "(nil)"
+#define _ERR_PRINT_NULL "(null)"
+#define _ERR_PRINT_NIL  "(nil)"
 
 // The texts printf gives for an infinity and a NaN, and those in capitals.
-#define _ERR_FMT_INF       "inf"
-#define _ERR_FMT_NAN       "nan"
-#define _ERR_FMT_INF_UPPER "INF"
-#define _ERR_FMT_NAN_UPPER "NAN"
+#define _ERR_PRINT_INF       "inf"
+#define _ERR_PRINT_NAN       "nan"
+#define _ERR_PRINT_INF_UPPER "INF"
+#define _ERR_PRINT_NAN_UPPER "NAN"
 
 // The text a failed check's report puts after each of its parts.
 #define _ERR_TEST_FILE     ":"

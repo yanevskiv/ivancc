@@ -890,8 +890,8 @@ void _Fmt_EmitNumeral(_Fmt_Sink *sink, int flags, int width, const _Fmt_Numeral 
 void _Fmt_EmitSpecial(_Fmt_Sink *sink, int flags, int width, _Fmt_Sign sign, _Fmt_Real kind, _Fmt_Case letters)
 {
     unsigned long rest;
-    const char *inf = letters == _FMT_CASE_UPPER ? _ERR_FMT_INF_UPPER : _ERR_FMT_INF;
-    const char *nan = letters == _FMT_CASE_UPPER ? _ERR_FMT_NAN_UPPER : _ERR_FMT_NAN;
+    const char *inf = letters == _FMT_CASE_UPPER ? _ERR_PRINT_INF_UPPER : _ERR_PRINT_INF;
+    const char *nan = letters == _FMT_CASE_UPPER ? _ERR_PRINT_NAN_UPPER : _ERR_PRINT_NAN;
     const char *text = kind == _FMT_REAL_NAN ? nan : inf;
 
     flags &= ~_FMT_FLAG_ZERO;
@@ -967,7 +967,7 @@ void _Fmt_EmitString(_Fmt_Sink *sink, int flags, int width, int precision, const
     unsigned long len;
 
     if (str == _FMT_NULL) {
-        str = precision == _FMT_PRECISION_NONE || precision >= (int) sizeof(_ERR_FMT_NULL) - 1 ? _ERR_FMT_NULL : "";
+        str = precision == _FMT_PRECISION_NONE || precision >= (int) sizeof(_ERR_PRINT_NULL) - 1 ? _ERR_PRINT_NULL : "";
     }
     if (precision == _FMT_PRECISION_NONE) {
         len = _Str_GetLength(str);
@@ -1035,7 +1035,7 @@ void _Fmt_EmitPointer(_Fmt_Sink *sink, int flags, int width, int precision, cons
     unsigned long len = _Fmt_WriteDigits(text + sizeof(text), (unsigned long) ptr, _FMT_BASE_HEX, _FMT_DIGITS_LOWER);
 
     if (ptr == _FMT_NULL) {
-        _Fmt_EmitField(sink, flags, width, _ERR_FMT_NIL, sizeof(_ERR_FMT_NIL) - 1);
+        _Fmt_EmitField(sink, flags, width, _ERR_PRINT_NIL, sizeof(_ERR_PRINT_NIL) - 1);
         return;
     }
     _Fmt_EmitInteger(sink, flags, width, precision, _FMT_SIGN_PLUS, "0x", text + sizeof(text) - len, len);

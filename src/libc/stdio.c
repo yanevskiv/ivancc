@@ -29,7 +29,10 @@
 // The files' calls and the origins a stream seeks from.
 #include <_sys.h>
 
-// The engines that convert a format's directives, output's and input's.
+// The engine that converts an output format's directives.
+#include <_print.h>
+
+// The engine that converts an input format's directives.
 #include <_fmt.h>
 
 // The error a failed open, read, write or close reports.
@@ -84,19 +87,31 @@ typedef char _Stdio_CheckInt[_FMT_INT_MAX == INT_MAX && _FMT_INT_MIN == INT_MIN 
 typedef char _Stdio_CheckBytes[_FMT_BYTES_MAX == MB_LEN_MAX ? 1 : -1];
 typedef char _Stdio_CheckReal[_FMT_LDOUBLE_MANT == LDBL_MANT_DIG && _FMT_LDOUBLE_EXP == LDBL_MAX_EXP && _FMT_DOUBLE_MIN == DBL_MIN_EXP ? 1 : -1];
 
+// Check _print's argument list, integers and wide character as _fmt's are.
+typedef char _Stdio_CheckPrintVaList[sizeof(_Print_VaList) == sizeof(va_list) ? 1 : -1];
+typedef char _Stdio_CheckPrintIntmax[sizeof(_Print_IntmaxType) == sizeof(intmax_t) && (_Print_IntmaxType) -1 < 0 ? 1 : -1];
+typedef char _Stdio_CheckPrintUintmax[sizeof(_Print_UintmaxType) == sizeof(uintmax_t) && (_Print_UintmaxType) -1 > 0 ? 1 : -1];
+typedef char _Stdio_CheckPrintWchar[sizeof(_Print_WcharType) == sizeof(wchar_t) && ((_Print_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
+typedef char _Stdio_CheckPrintWint[sizeof(_Print_WintType) == sizeof(wchar_t) && sizeof(_Print_WintType) >= sizeof(int) ? 1 : -1];
+
+// Check _print's limits against limits.h's, stdint.h's and float.h's.
+typedef char _Stdio_CheckPrintInt[_PRINT_INT_MAX == INT_MAX && _PRINT_INT_MIN == INT_MIN && _PRINT_SIZE_MAX == SIZE_MAX ? 1 : -1];
+typedef char _Stdio_CheckPrintBytes[_PRINT_BYTES_MAX == MB_LEN_MAX ? 1 : -1];
+typedef char _Stdio_CheckPrintReal[_PRINT_LDOUBLE_MANT == LDBL_MANT_DIG && _PRINT_LDOUBLE_EXP == LDBL_MAX_EXP && _PRINT_DOUBLE_MIN == DBL_MIN_EXP ? 1 : -1];
+
 // Check that a size and a pointer difference are one width, each %z and %t.
 typedef char _Stdio_CheckPtrdiff[sizeof(size_t) == sizeof(ptrdiff_t) && sizeof(long) == sizeof(ptrdiff_t) ? 1 : -1];
 
 // Check that an integer's digits in octal, three bits each, fit their array.
-typedef char _Stdio_CheckDigits[sizeof(uintmax_t) * CHAR_BIT <= _FMT_DIGITS_MAX * 3 ? 1 : -1];
+typedef char _Stdio_CheckDigits[sizeof(uintmax_t) * CHAR_BIT <= _PRINT_DIGITS_MAX * 3 ? 1 : -1];
 
 // Check that a long double's digits fill a word under a field of its exponent.
 typedef char _Stdio_CheckLongDouble[sizeof(long double) >= sizeof(unsigned long long) + sizeof(unsigned short) ? 1 : -1];
 typedef char _Stdio_CheckMantissa[LDBL_MANT_DIG == sizeof(unsigned long long) * CHAR_BIT ? 1 : -1];
 
 // Check that a mantissa is its hex digits, a double's fitting under the first.
-typedef char _Stdio_CheckHex[LDBL_MANT_DIG == _FMT_HEX_BITS * _FMT_HEX_DIGITS ? 1 : -1];
-typedef char _Stdio_CheckDouble[DBL_MANT_DIG - 1 <= _FMT_HEX_BITS * (_FMT_HEX_DIGITS - 1) ? 1 : -1];
+typedef char _Stdio_CheckHex[LDBL_MANT_DIG == _PRINT_HEX_BITS * _PRINT_HEX_DIGITS ? 1 : -1];
+typedef char _Stdio_CheckDouble[DBL_MANT_DIG - 1 <= _PRINT_HEX_BITS * (_PRINT_HEX_DIGITS - 1) ? 1 : -1];
 
 // Remove the file filename, or the empty directory of that name.
 int remove(const char *filename)
@@ -346,14 +361,14 @@ int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList a
 {
     int result;
     unsigned char lent[BUFSIZ];
-    _Fmt_Sink sink = {
-        .fs_stream = stream
+    _Print_Sink sink = {
+        .ps_stream = stream
     };
 
     if (_File_LendBuffer(stream, lent, sizeof(lent)) != 0) {
         return EOF;
     }
-    result = _Fmt_EmitFormat(&sink, format, arg);
+    result = _Print_WriteFormat(&sink, format, arg);
     return _File_ReclaimBuffer(stream) == 0 ? result : EOF;
 }
 
@@ -385,12 +400,12 @@ int vscanf(const char *restrict format, _Stdio_VaList arg)
 // Write the list's arguments into str's n characters as the format says.
 int vsnprintf(char *restrict str, size_t n, const char *restrict format, _Stdio_VaList arg)
 {
-    _Fmt_Sink sink = {
-        .fs_str  = str,
-        .fs_size = n
+    _Print_Sink sink = {
+        .ps_str  = str,
+        .ps_size = n
     };
 
-    return _Fmt_EmitFormat(&sink, format, arg);
+    return _Print_WriteFormat(&sink, format, arg);
 }
 
 // Write the list's arguments into str, however long, as the format says.
