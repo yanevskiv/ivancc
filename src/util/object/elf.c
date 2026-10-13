@@ -496,7 +496,7 @@ uint8_t *Elf_ReadBytes(const char *path, size_t *len)
 
     uint8_t *buf = malloc((size_t) size);
 
-    if (fread(buf, 1, (size_t) size, file) != (size_t) size) {
+    if (! buf || fread(buf, 1, (size_t) size, file) != (size_t) size) {
         free(buf);
         fclose(file);
         return NULL;

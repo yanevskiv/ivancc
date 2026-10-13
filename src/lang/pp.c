@@ -173,7 +173,7 @@ char *Pp_FileGetContents(const char *path, size_t *len)
 
     char *buf = malloc((size_t) size + 1);
 
-    if (fread(buf, 1, (size_t) size, file) != (size_t) size) {
+    if (! buf || fread(buf, 1, (size_t) size, file) != (size_t) size) {
         free(buf);
         fclose(file);
         return NULL;

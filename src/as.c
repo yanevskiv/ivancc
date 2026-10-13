@@ -48,7 +48,7 @@ char *As_ReadSource(const char *path)
 
     char *text = malloc((size_t) size + 1);
 
-    if (fread(text, 1, (size_t) size, file) != (size_t) size) {
+    if (! text || fread(text, 1, (size_t) size, file) != (size_t) size) {
         free(text);
         fclose(file);
         return NULL;
