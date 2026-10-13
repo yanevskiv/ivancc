@@ -33,6 +33,3 @@
 typedef char _Errno_CheckEdom[EDOM == _SYS_EDOM ? 1 : -1];
 typedef char _Errno_CheckEilseq[EILSEQ == _SYS_EILSEQ ? 1 : -1];
 typedef char _Errno_CheckErange[ERANGE == _SYS_ERANGE ? 1 : -1];
-
-// The error number of the last failed call.
-int errno;

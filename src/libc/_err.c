@@ -165,6 +165,9 @@ const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT] = {
     [_SYS_EHWPOISON]       = _ERR_ERRNO_EHWPOISON
 };
 
+// The error number of the last failed call, which <errno.h> names errno.
+int _Err_Errno;
+
 // Find strerror's text for the error number errnum, null for an unknown.
 const char *_Err_FindErrnoText(int errnum)
 {

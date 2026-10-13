@@ -30,7 +30,9 @@
 #define EDOM   33
 #define EILSEQ 84
 #define ERANGE 34
+#define errno  _Err_Errno
 
-extern int errno;
+// The error number of the last failed call, which _err.c defines.
+extern int _Err_Errno;
 
 #endif // _ERRNO_H

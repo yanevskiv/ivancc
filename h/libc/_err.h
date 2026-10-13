@@ -207,6 +207,9 @@
 // strerror's texts by error number, null for the numbers Linux leaves out.
 extern const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT];
 
+// The error number of the last failed call, which <errno.h> names errno.
+extern int _Err_Errno;
+
 // Error numbers
 const char *_Err_FindErrnoText(int errnum);
 
