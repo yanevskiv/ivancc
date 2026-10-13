@@ -76,8 +76,6 @@
 #define _FILE_TEMP_SIZE 20
 
 // A stream: its descriptor, its buffer, what it may do and the stream after it.
-#ifndef __FILE_STREAM__
-#define __FILE_STREAM__
 typedef struct _File_Stream _File_Stream;
 struct _File_Stream {
     int fs_fd;             // the file's descriptor, or _FILE_NOFILE
@@ -92,7 +90,6 @@ struct _File_Stream {
     unsigned char fs_back; // the character pushed back
     _File_Stream *fs_next; // the next of the open streams
 };
-#endif
 
 // The standard streams.
 extern _File_Stream _File_Stdin;

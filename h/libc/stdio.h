@@ -26,6 +26,9 @@
 #ifndef _STDIO_H
 #define _STDIO_H
 
+// The streams, their buffers and the files under them.
+#include <_file.h>
+
 // A directive's flags: -, +, a space, # and 0.
 #define _STDIO_FLAG_LEFT  0x1
 #define _STDIO_FLAG_SIGN  0x2
@@ -185,6 +188,9 @@ typedef unsigned int _Stdio_WintType;
 typedef unsigned long size_t;
 #endif
 
+// (S7.19.1) Introduction
+typedef _File_Stream FILE;
+
 typedef long fpos_t;
 
 // The letters a conversion writes in.
@@ -230,25 +236,6 @@ enum _Stdio_Failure {
     _STDIO_FAILURE_INPUT,   // the input ended, could not be read or decoded
     _STDIO_FAILURE_MATCHING // the input is not what a directive takes
 };
-
-// A stream, as _file.h defines it, which this header may not include.
-#ifndef __FILE_STREAM__
-#define __FILE_STREAM__
-typedef struct _File_Stream _File_Stream;
-struct _File_Stream {
-    int fs_fd;             // the file's descriptor, or _FILE_NOFILE
-    int fs_flags;          // _FILE_READ, _FILE_WRITE and what happened
-    int fs_state;          // _FILE_IDLE, _FILE_READING, _FILE_WRITING
-    int fs_mode;           // _FILE_FULL, _FILE_LINE, _FILE_NONE or _FILE_AUTO
-    unsigned char *fs_buf; // the buffer, the stream's own or one it was given
-    unsigned long fs_size; // the buffer's size
-    unsigned long fs_head; // the bytes of the buffer already read
-    unsigned long fs_tail; // the bytes the buffer holds, read or to write
-    unsigned char fs_byte; // an unbuffered stream's buffer
-    unsigned char fs_back; // the character pushed back
-    _File_Stream *fs_next; // the next of the open streams
-};
-#endif
 
 // Where formatted output goes: a stream, or else a string of a size.
 typedef struct _Stdio_Sink _Stdio_Sink;
@@ -296,14 +283,6 @@ struct _Stdio_Wide {
     char sw_byte[_STDIO_SCAN_BYTES]; // the bytes of a character not yet whole
     size_t sw_count;                 // how many such bytes there are
 };
-
-// (S7.19.1) Introduction
-typedef struct _File_Stream FILE;
-
-// The standard streams, which _file.c defines.
-extern FILE _File_Stdin;
-extern FILE _File_Stdout;
-extern FILE _File_Stderr;
 
 // Print matching
 size_t             _Stdio_MatchPrintHead(const char *format, int *flags, int *width, int *precision, int *length);

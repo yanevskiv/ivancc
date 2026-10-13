@@ -26,9 +26,6 @@
 // Module header.
 #include <stdio.h>
 
-// The streams, their buffers and the files under them.
-#include <_file.h>
-
 // The files' calls and the origins a stream seeks from.
 #include <_sys.h>
 
