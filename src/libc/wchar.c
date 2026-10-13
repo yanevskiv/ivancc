@@ -53,6 +53,12 @@
 // The ranges the checks hold long and long long to.
 #include <limits.h>
 
+// strftime, which formats each conversion of wcsftime's.
+#include <time.h>
+
+// mbstowcs, which gives wcsftime what strftime wrote as wide characters.
+#include <stdlib.h>
+
 // Check the types _wstr counts and works in against the header's.
 typedef char _Wchar_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
 typedef char _Wchar_CheckWide[sizeof(int) == sizeof(wchar_t) && (wchar_t) -1 < 0 ? 1 : -1];
@@ -317,6 +323,50 @@ size_t wcslen(const wchar_t *str)
 wchar_t *wmemset(wchar_t *str, wchar_t wc, size_t n)
 {
     return _Wstr_FillArray(str, wc, n);
+}
+
+// Format the time timeptr holds by the wide format, as strftime does by its.
+size_t wcsftime(wchar_t *restrict str, size_t maxsize, const wchar_t *restrict format, const struct tm *restrict timeptr)
+{
+    size_t i;
+    size_t used;
+    size_t len = 0;
+    char narrow[_WCHAR_FORMAT_SIZE];
+    char text[_WCHAR_FIELD_SIZE];
+    wchar_t wide[_WCHAR_FIELD_SIZE];
+
+    if (maxsize == 0) {
+        return 0;
+    }
+    while (*format != L'\0') {
+        // Phase: take a character as it is, or one conversion in bytes
+        i = 0;
+        wide[0] = *format;
+        used = 1;
+        if (*format == L'%') {
+            narrow[i++] = (char) *format++;
+            if (*format == L'E' || *format == L'O') {
+                narrow[i++] = (char) *format++;
+            }
+            if (*format != L'\0' && (wint_t) *format <= _UTF8_ASCII_MAX) {
+                narrow[i++] = (char) *format++;
+            }
+            narrow[i] = '\0';
+            used = strftime(text, sizeof(text), narrow, timeptr);
+            used = mbstowcs(wide, text, used);
+        } else {
+            format++;
+        }
+
+        // Phase: add it, if a null character still fits after it
+        if (used >= maxsize - len) {
+            return 0;
+        }
+        _Wstr_CopyArray(str + len, wide, used);
+        len += used;
+    }
+    str[len] = L'\0';
+    return len;
 }
 
 // Give the wide character the one byte ch is, or WEOF if it is none.

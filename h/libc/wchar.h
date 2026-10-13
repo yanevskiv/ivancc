@@ -33,6 +33,10 @@
 #define _WCHAR_INVALID    ((size_t) -1)
 #define _WCHAR_INCOMPLETE ((size_t) -2)
 
+// The sizes of one conversion of wcsftime's format and of what it writes.
+#define _WCHAR_FORMAT_SIZE 4
+#define _WCHAR_FIELD_SIZE  64
+
 // (S7.24.1) Introduction
 #define NULL ((void *) 0)
 
@@ -116,6 +120,9 @@ wchar_t *wmemchr(const wchar_t *str, wchar_t wc, size_t n);
 // (S7.24.4.6) Miscellaneous functions
 size_t   wcslen(const wchar_t *str);
 wchar_t *wmemset(wchar_t *str, wchar_t wc, size_t n);
+
+// (S7.24.5) Wide character time conversion functions
+size_t wcsftime(wchar_t *restrict str, size_t maxsize, const wchar_t *restrict format, const struct tm *restrict timeptr);
 
 // (S7.24.6.1) Single-byte/wide character conversion functions
 wint_t btowc(int ch);
