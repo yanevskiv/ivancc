@@ -1904,7 +1904,7 @@ void Err_ShowSource(uint32_t line, uint32_t before, uint32_t after)
     }
     while (at <= last && (ch = fgetc(file)) != EOF) {
         if (at >= first && fresh) {
-            fprintf(stderr, "%*u | ", ERR_SOURCE_WIDTH, at);
+            fprintf(stderr, "%c%*u | ", at == source ? ERR_SOURCE_MARK : ERR_SOURCE_BLANK, ERR_SOURCE_WIDTH, at);
         }
         if (at >= first) {
             fputc(ch, stderr);

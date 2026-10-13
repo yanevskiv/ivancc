@@ -34,7 +34,11 @@
 #define ERR_SOURCE_FIRST 1
 
 // The columns a source line's number is printed in.
-#define ERR_SOURCE_WIDTH 5
+#define ERR_SOURCE_WIDTH 4
+
+// What leads the line a diagnostic names, and the lines around it.
+#define ERR_SOURCE_MARK  '>'
+#define ERR_SOURCE_BLANK ' '
 
 // The lines shown before and after the line a diagnostic names.
 #define ERR_SOURCE_BEFORE 2
