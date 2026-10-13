@@ -94,12 +94,12 @@ stage_run_ok()
 
 # Run the program with the test's arguments and input in a known environment, and record its status, output and error.
 # Run it in its pipeline's empty directory, so the files it makes go with it.
-# Keep sh's own report of a death by signal out of all three.
+# Keep sh's and timeout's own reports of a death by signal out of all three.
 stage_run()
 {
     set -f
-    sh -c 'err=$1; dir=$2; shift 2; cd "$dir" && exec "$@" 2>"$err"' sh "${RUN}/error" "${RUN}/cwd" \
-        timeout "$TIMEOUT" env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") <"${TMP}/input" >"${RUN}/output" 2>/dev/null
+    timeout "$TIMEOUT" sh -c 'err=$1; dir=$2; shift 2; cd "$dir" && exec "$@" 2>"$err"' sh "${RUN}/error" "${RUN}/cwd" \
+        env -i "$TEST_ENV" "$@" $(cat "${TMP}/arguments") <"${TMP}/input" >"${RUN}/output" 2>/dev/null
     echo $? > "${RUN}/status"
     set +f
 }
