@@ -70,6 +70,7 @@ void yyerror(const char *s);
 %token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END BUILTIN_VA_COPY
 %token BUILTIN_OFFSETOF
 %token STATIC_ASSERT
+%token ALIGNOF
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
@@ -670,6 +671,8 @@ unary
     | SIZEOF unary         { $$ = Ast_NewUnary(AST_NODE_KIND_SIZEOF, $2, @1); }
     | SIZEOF LPAREN type_name RPAREN
         { $$ = Par_SizeOfType($3, @1); }
+    | ALIGNOF LPAREN type_name RPAREN
+        { $$ = Par_AlignOfType($3, @1); }
     ;
 
 /* A postfix operator applied to an expression. */

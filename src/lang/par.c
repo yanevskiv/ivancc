@@ -1613,6 +1613,16 @@ Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
     return size ? Ast_NewBinary(AST_NODE_KIND_COMMA, size, bytes, line) : bytes;
 }
 
+// [C11 S6.5.3.4p3] Make the constant a type's alignment is.
+Ast_Node *Par_AlignOfType(Ast_Type *type, Ast_Line line)
+{
+    Ast_Node *num = Ast_NewNum(type->at_align, line);
+
+    Err_AssertAt(line, type->at_complete, ERR_PAR_ALIGNOF_NOT_COMPLETE);
+    num->an_type = &Ast_TypeULong;
+    return num;
+}
+
 // Append a member or an index to the steps __builtin_offsetof walks.
 Ast_Node *Par_AddOffsetStep(Ast_Node *head, char *name, Ast_Node *index, Ast_Line line)
 {

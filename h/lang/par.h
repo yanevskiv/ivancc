@@ -302,6 +302,7 @@ void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_Designator(char *name, Ast_Line line);
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line);
 Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line);
+Ast_Node *Par_AlignOfType(Ast_Type *type, Ast_Line line);
 Ast_Node *Par_AddOffsetStep(Ast_Node *head, char *name, Ast_Node *index, Ast_Line line);
 Ast_Node *Par_OffsetOf(Ast_Type *type, Ast_Node *steps, Ast_Line line);
 

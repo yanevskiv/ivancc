@@ -170,6 +170,7 @@ enum Err_Code {
     ERR_PAR_OBJECT_LINKAGE,                // can't declare an object `static` and then without it
     ERR_PAR_EXTERN_INITIALIZED,            // can't initialize a block-scope `extern`
     ERR_PAR_SIZEOF_NOT_COMPLETE,           // can't take the `sizeof` of an incomplete type
+    ERR_PAR_ALIGNOF_NOT_COMPLETE,          // can't take the `_Alignof` of an incomplete type
     ERR_PAR_OFFSETOF_NOT_AGGREGATE,        // can't take the offset of a member of something that is not a struct or union
     ERR_PAR_OFFSETOF_NOT_COMPLETE,         // can't take the offset of a member of an incomplete struct or union
     ERR_PAR_OFFSETOF_NO_MEMBER,            // can't take the offset of a member the struct does not have

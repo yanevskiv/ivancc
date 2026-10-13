@@ -743,6 +743,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "invalid application of 'sizeof' to an incomplete type"
     },
 
+    // Args: none
+    [ERR_PAR_ALIGNOF_NOT_COMPLETE] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_ALIGNOF_NOT_COMPLETE",
+        .ee_format = "invalid application of '_Alignof' to an incomplete type"
+    },
+
     // Args: [member]
     [ERR_PAR_OFFSETOF_NOT_AGGREGATE] = {
         .ee_level  = ERR_LEVEL_FATAL,
