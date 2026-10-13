@@ -371,6 +371,7 @@ struct Ast_Func {
     Ast_Node *af_body;       // function body (AST_NODE_KIND_BLOCK)
     Ast_Type *af_type;       // the FUNC type it was declared or defined with
     bool      af_static;     // true when the function is local to this file
+    bool      af_external;   // true when a declaration makes it external
     Ast_Var  *af_locals;     // every local, including parameters
     int32_t   af_stack_size; // frame size
 };

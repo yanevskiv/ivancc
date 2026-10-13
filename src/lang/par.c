@@ -43,6 +43,7 @@ static int32_t   Par_OpenLen;
 // The type and storage class one declaration's declarators share.
 static Ast_Type   *Par_DeclType;
 static Ast_Storage Par_DeclStorage;
+static bool        Par_DeclInline;
 static char       *Par_DeclName;
 static Ast_Line    Par_DeclLine;
 
@@ -63,6 +64,7 @@ static Ast_Type *Par_VaList;
 void Par_SetDeclSpec(const Par_Specs *specs, Par_StorageUse use, Ast_Line line)
 {
     Par_DeclStorage = Par_SpecsStorage(specs, use, line);
+    Par_DeclInline  = specs->ps_inline;
     Par_DeclType    = Par_SpecsType(specs, line);
 }
 
@@ -1441,6 +1443,7 @@ void Par_AddFunction(Ast_Func *fn, Ast_Line line)
         Ast_Type *type = fn->af_type;
         Err_AssertAt(line, Ast_IsCompatible(seen->af_type, type), ERR_PAR_FUNCTION_CONFLICTING_TYPES, fn->af_name);
         Err_AssertAt(line, ! seen->af_body || ! fn->af_body, ERR_PAR_FUNCTION_REDEFINED, fn->af_name);
+        seen->af_external = seen->af_external || fn->af_external;
         if (fn->af_body) {
             Ast_TypeProto proto = type->at_proto == AST_TYPE_PROTO ? AST_TYPE_PROTO : seen->af_type->at_proto;
             seen->af_body   = fn->af_body;
@@ -1469,6 +1472,7 @@ void Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line)
     fn->af_name   = (char *) name;
     fn->af_type   = type;
     fn->af_static = Par_DeclStorage == AST_STORAGE_STATIC;
+    fn->af_external = ! Par_InFunction && (! Par_DeclInline || Par_DeclStorage == AST_STORAGE_EXTERN);
     Par_AddFunction(fn, line);
 }
 
@@ -1501,10 +1505,10 @@ void Par_BeginExternal(Par_Decl *decl, Ast_Line line)
 
     Par_CurStatic   = Par_DeclStorage == AST_STORAGE_STATIC;
     Par_CurFuncName = decl->pc_name;
-    Par_InFunction  = true;
     Par_CurFuncVar  = NULL;
 
     Par_DeclarePrototype(decl->pc_name, type, line);
+    Par_InFunction  = true;
 
     Ast_BeginScope();
     for (Ast_Var *param = type->at_params; param; param = param->av_param_next) {

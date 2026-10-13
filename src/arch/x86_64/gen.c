@@ -2084,7 +2084,7 @@ void Gen_x86_64_EmitGlobals(void)
 void Gen_x86_64_EmitFunctions(Ast_Func *prog)
 {
     for (Ast_Func *func = prog; func; func = func->af_next) {
-        if (! func->af_body) {
+        if (! func->af_body || (! func->af_static && ! func->af_external)) {
             continue;
         }
         Gen_x86_64_AssignLvarOffsets(func);
