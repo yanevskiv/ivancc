@@ -153,6 +153,10 @@ typedef __builtin_va_list _Stdio_VaList;
 typedef long          _Stdio_IntmaxType;
 typedef unsigned long _Stdio_UintmaxType;
 
+// A wide character, and one as an argument, which stdio.h may not name.
+typedef int          _Stdio_WcharType;
+typedef unsigned int _Stdio_WintType;
+
 #ifndef __SIZE_T__
 #define __SIZE_T__
 typedef unsigned long size_t;
@@ -285,6 +289,8 @@ _Bool              _Stdio_ParseExponential(const char *format, _Stdio_VaList *li
 _Bool              _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
 _Bool              _Stdio_ParseHexReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, double *value, _Stdio_Case *letters);
 _Bool              _Stdio_ParseHexLongReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
+_Bool              _Stdio_ParseWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, _Stdio_WcharType *wc);
+_Bool              _Stdio_ParseWideString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const _Stdio_WcharType **wstr);
 
 // Formatted output
 size_t      _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits);
@@ -316,6 +322,8 @@ void   _Stdio_EmitExponential(_Stdio_Sink *sink, int flags, int width, int preci
 void   _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
 void   _Stdio_EmitHexReal(_Stdio_Sink *sink, int flags, int width, int precision, double value, _Stdio_Case letters);
 void   _Stdio_EmitHexLongReal(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
+void   _Stdio_EmitWideChar(_Stdio_Sink *sink, int flags, int width, _Stdio_WcharType wc);
+void   _Stdio_EmitWideString(_Stdio_Sink *sink, int flags, int width, int precision, const _Stdio_WcharType *wstr);
 int    _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
 
 // Positioning

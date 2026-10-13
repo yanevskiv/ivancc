@@ -44,10 +44,10 @@
 // Copying to and from a buffer, finding its new-lines and matching a mode.
 #include <string.h>
 
-// The streams fopen allocates and the buffers they do.
+// The streams fopen allocates, their buffers and a wide character's bytes.
 #include <stdlib.h>
 
-// The largest int puts returns and a width or a precision holds.
+// The largest int puts returns and a width holds, and a character's most bytes.
 #include <limits.h>
 
 // The largest size fread and fwrite move, and the integers %jd and %p name.
@@ -56,7 +56,7 @@
 // The arguments a format converts.
 #include <stdarg.h>
 
-// The difference of two pointers, which %td takes.
+// The difference of two pointers, which %td takes, and a wide character.
 #include <stddef.h>
 
 // The digits and the exponents of a double and a long double.
@@ -88,6 +88,10 @@ typedef char _Stdio_CheckVaList[sizeof(_Stdio_VaList) == sizeof(va_list) ? 1 : -
 // Check the header's own widest integers against stdint.h's.
 typedef char _Stdio_CheckIntmax[sizeof(_Stdio_IntmaxType) == sizeof(intmax_t) && (_Stdio_IntmaxType) -1 < 0 ? 1 : -1];
 typedef char _Stdio_CheckUintmax[sizeof(_Stdio_UintmaxType) == sizeof(uintmax_t) && (_Stdio_UintmaxType) -1 > 0 ? 1 : -1];
+
+// Check the header's own wide character against stddef.h's, and an argument's.
+typedef char _Stdio_CheckWchar[sizeof(_Stdio_WcharType) == sizeof(wchar_t) && ((_Stdio_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
+typedef char _Stdio_CheckWint[sizeof(_Stdio_WintType) == sizeof(wchar_t) && sizeof(_Stdio_WintType) >= sizeof(int) ? 1 : -1];
 
 // Check that a size and a pointer difference are one width, each %z and %t.
 typedef char _Stdio_CheckPtrdiff[sizeof(size_t) == sizeof(ptrdiff_t) ? 1 : -1];
@@ -909,6 +913,37 @@ _Bool _Stdio_ParseHexLongReal(const char *format, _Stdio_VaList *list, size_t *l
     return 1;
 }
 
+// Parse a %lc directive with its argument, a wide character.
+_Bool _Stdio_ParseWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, _Stdio_WcharType *wc)
+{
+    int length;
+    int precision;
+    size_t at = _Stdio_ParseHead(format, flags, width, &precision, &length);
+
+    if (at == 0 || length != _STDIO_LENGTH_LONG || format[at] != 'c') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, &precision);
+    *wc = (wchar_t) va_arg(*list, _Stdio_WintType);
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %ls directive with its argument, a wide string.
+_Bool _Stdio_ParseWideString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const _Stdio_WcharType **wstr)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || length != _STDIO_LENGTH_LONG || format[at] != 's') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *wstr = va_arg(*list, const wchar_t *);
+    *len = at + 1;
+    return 1;
+}
+
 // Write a value's digits in a base to end at end, none for zero.
 size_t _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits)
 {
@@ -1495,6 +1530,57 @@ void _Stdio_EmitHexLongReal(_Stdio_Sink *sink, int flags, int width, int precisi
     _Stdio_EmitMantissa(sink, flags, width, precision, sign, mant, exp, letters);
 }
 
+// Give the sink a wide character as %lc converts it, a wide string of it alone.
+void _Stdio_EmitWideChar(_Stdio_Sink *sink, int flags, int width, _Stdio_WcharType wc)
+{
+    _Stdio_WcharType pair[2] = {wc, L'\0'};
+
+    _Stdio_EmitWideString(sink, flags, width, _STDIO_PRECISION_NONE, pair);
+}
+
+// Give the sink a wide string as %ls converts it, in the locale's bytes.
+void _Stdio_EmitWideString(_Stdio_Sink *sink, int flags, int width, int precision, const _Stdio_WcharType *wstr)
+{
+    int n;
+    size_t i;
+    size_t pad;
+    size_t len = 0;
+    size_t count = 0;
+    char bytes[MB_LEN_MAX];
+    size_t max = precision == _STDIO_PRECISION_NONE ? SIZE_MAX : (size_t) precision;
+
+    if (wstr == NULL) {
+        _Stdio_EmitString(sink, flags, width, precision, NULL);
+        return;
+    }
+
+    // Phase: count the characters whose bytes the precision holds
+    for (; len < max && wstr[count] != L'\0'; count++) {
+        n = wctomb(bytes, wstr[count]);
+        if (n < 0) {
+            sink->ss_failed = 1;
+            return;
+        }
+        if ((size_t) n > max - len) {
+            break;
+        }
+        len += (size_t) n;
+    }
+
+    // Phase: write them in the width
+    pad = (size_t) width > len ? (size_t) width - len : 0;
+    if (! (flags & _STDIO_FLAG_LEFT)) {
+        _Stdio_EmitPad(sink, ' ', pad);
+    }
+    for (i = 0; i < count; i++) {
+        n = wctomb(bytes, wstr[i]);
+        _Stdio_Emit(sink, bytes, (size_t) n);
+    }
+    if (flags & _STDIO_FLAG_LEFT) {
+        _Stdio_EmitPad(sink, ' ', pad);
+    }
+}
+
 // Give the sink the format's text, each directive converting its arguments.
 int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
 {
@@ -1511,8 +1597,10 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
     const void *ptr;
     long double fval;
     _Stdio_Case letters;
+    _Stdio_WcharType wc;
     _Stdio_IntmaxType sval;
     _Stdio_UintmaxType uval;
+    const _Stdio_WcharType *wstr;
 
     va_copy(list, args);
     for (size_t i = 0; format[i] != '\0'; i += len) {
@@ -1546,6 +1634,10 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
             _Stdio_EmitHexReal(sink, flags, width, precision, dval, letters);
         } else if (_Stdio_ParseHexLongReal(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
             _Stdio_EmitHexLongReal(sink, flags, width, precision, fval, letters);
+        } else if (_Stdio_ParseWideChar(format + i, &list, &len, &flags, &width, &wc)) {
+            _Stdio_EmitWideChar(sink, flags, width, wc);
+        } else if (_Stdio_ParseWideString(format + i, &list, &len, &flags, &width, &precision, &wstr)) {
+            _Stdio_EmitWideString(sink, flags, width, precision, wstr);
         } else {
             len = 1;
             _Stdio_Emit(sink, format + i, len);

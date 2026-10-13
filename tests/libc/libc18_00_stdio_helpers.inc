@@ -34,6 +34,7 @@
 #define FILL   '#'
 #define LONGER "a line longer than the buffer it passes through\n"
 #define DIGITS "0123456789abcdefghijklmnopqrstuvwxyz"
+#define UTF8   "C.UTF-8"
 
 // Bytes a text stream might change, which a binary one must not.
 static const unsigned char bytes[BYTES] = {0, UCHAR_MAX, '\n', '\r', '\n', CTRL_Z, 'a', 0};

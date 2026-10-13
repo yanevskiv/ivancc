@@ -6,6 +6,7 @@
 // | [%lk] 5
 // | [%!|%Z|%] 9
 // | [%k|7] 6
+// | [%C|%S|7] 9
 // Non-standard: printf should write a directive of no conversion as text.
 // Liberty: (S7.19.6.1p9) an invalid conversion is undefined behaviour.
 
@@ -19,5 +20,6 @@ int main(void)
     printf(" %d\n", printf("[%lk]"));
     printf(" %d\n", printf("[%!|%Z|%]"));
     printf(" %d\n", printf("[%k|%d]", 7));
+    printf(" %d\n", printf("[%C|%S|%d]", 7));
     return 0;
 }
