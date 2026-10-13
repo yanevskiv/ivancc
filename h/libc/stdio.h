@@ -90,11 +90,6 @@
 // An integer conversion's precision if it gives none.
 #define _STDIO_INTEGER_PRECISION 1
 
-// What a floating value is.
-#define _STDIO_REAL_FINITE   0
-#define _STDIO_REAL_INFINITE 1
-#define _STDIO_REAL_NAN      2
-
 // The most digits a floating value has, a long double's 11514, and a few.
 #define _STDIO_REAL_DIGITS 11520
 
@@ -107,6 +102,13 @@
 
 // The fewest digits an exponent has.
 #define _STDIO_EXPONENT_MIN 2
+
+// The bits of a hex digit, and the hex digits of a mantissa, its first too.
+#define _STDIO_HEX_BITS   4
+#define _STDIO_HEX_DIGITS 16
+
+// The fewest digits a power of two has.
+#define _STDIO_POWER_MIN 1
 
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
@@ -172,6 +174,14 @@ enum _Stdio_Sign {
     _STDIO_SIGN_MINUS
 };
 
+// What a floating value is.
+typedef enum _Stdio_Real _Stdio_Real;
+enum _Stdio_Real {
+    _STDIO_REAL_FINITE,
+    _STDIO_REAL_INFINITE,
+    _STDIO_REAL_NAN
+};
+
 // A stream: its descriptor, its buffer, what it may do and the stream after it.
 typedef struct _Stdio_File _Stdio_File;
 struct _Stdio_File {
@@ -201,7 +211,7 @@ struct _Stdio_Sink {
 // A floating value's decimal digits, no zero first or last.
 typedef struct _Stdio_Numeral _Stdio_Numeral;
 struct _Stdio_Numeral {
-    int sn_kind;                       // _STDIO_REAL_FINITE and the rest
+    _Stdio_Real sn_kind;               // finite, an infinity or a NaN
     _Stdio_Sign sn_sign;               // _STDIO_SIGN_MINUS for a set sign bit
     char sn_digit[_STDIO_REAL_DIGITS]; // the digits, the greatest first
     size_t sn_len;                     // how many there are, 0 for zero
@@ -273,13 +283,16 @@ _Bool              _Stdio_ParseCount(const char *format, _Stdio_VaList *list, si
 _Bool              _Stdio_ParseFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
 _Bool              _Stdio_ParseExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
 _Bool              _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
+_Bool              _Stdio_ParseHexReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, double *value, _Stdio_Case *letters);
+_Bool              _Stdio_ParseHexLongReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
 
 // Formatted output
-size_t _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits);
-void   _Stdio_StoreCount(void *dest, int length, size_t count);
-void   _Stdio_Exact(long double value, _Stdio_Numeral *num);
-void   _Stdio_Round(_Stdio_Numeral *num, long keep);
-int    _Stdio_End(_Stdio_Sink *sink);
+size_t      _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits);
+void        _Stdio_StoreCount(void *dest, int length, size_t count);
+_Stdio_Real _Stdio_Unpack(long double value, _Stdio_Sign *sign, unsigned long long *mant, int *exp);
+void        _Stdio_Exact(long double value, _Stdio_Numeral *num);
+void        _Stdio_Round(_Stdio_Numeral *num, long keep);
+int         _Stdio_End(_Stdio_Sink *sink);
 
 // Emitting
 void   _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len);
@@ -289,7 +302,8 @@ size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign
 void   _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_Sign sign, const char *prefix, const char *digits, size_t len);
 void   _Stdio_EmitSpan(_Stdio_Sink *sink, const _Stdio_Numeral *num, long high, size_t count);
 void   _Stdio_EmitNumeral(_Stdio_Sink *sink, int flags, int width, const _Stdio_Numeral *num, size_t frac, const char *mark);
-void   _Stdio_EmitSpecial(_Stdio_Sink *sink, int flags, int width, const _Stdio_Numeral *num, _Stdio_Case letters);
+void   _Stdio_EmitSpecial(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign, _Stdio_Real kind, _Stdio_Case letters);
+void   _Stdio_EmitMantissa(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_Sign sign, unsigned long long mant, int exp, _Stdio_Case letters);
 void   _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch);
 void   _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, const char *str);
 void   _Stdio_EmitDecimal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_IntmaxType value);
@@ -300,6 +314,8 @@ void   _Stdio_EmitPointer(_Stdio_Sink *sink, int flags, int width, int precision
 void   _Stdio_EmitFixed(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
 void   _Stdio_EmitExponential(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
 void   _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
+void   _Stdio_EmitHexReal(_Stdio_Sink *sink, int flags, int width, int precision, double value, _Stdio_Case letters);
+void   _Stdio_EmitHexLongReal(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters);
 int    _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
 
 // Positioning
