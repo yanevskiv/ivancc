@@ -470,8 +470,8 @@ unsigned long _Fp_ToReal(const void *str, _Fp_Text text, const _Fp_Format *fmt, 
         real->fr_mant |= 1ULL << (fmt->ff_mant - 2) | (payload & ~0ULL >> (_FP_MANT_BITS + 1 - fmt->ff_mant));
         return end;
     }
-    ch = _Fp_ReadChar(str, text, i + 1);
-    if (_Fp_ReadChar(str, text, i) == '0' && (ch == 'x' || ch == 'X')
+    ch = _Fp_ReadChar(str, text, i) == '0' ? _Fp_ReadChar(str, text, i + 1) : 0;
+    if ((ch == 'x' || ch == 'X')
         && (_Fp_ToHexDigit(_Fp_ReadChar(str, text, i + 2)) < _FP_HEX_LIMIT
             || (_Fp_ReadChar(str, text, i + 2) == point && _Fp_ToHexDigit(_Fp_ReadChar(str, text, i + 3)) < _FP_HEX_LIMIT))) {
         end = _Fp_ReadHex(str, text, i + 2, point, &value);
