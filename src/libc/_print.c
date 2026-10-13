@@ -529,52 +529,32 @@ void _Print_StoreCount(void *dest, _Print_Length length, unsigned long count)
     }
 }
 
-// Write len characters of data in a width.
-void _Print_WriteField(_Print_Sink *sink, int flags, int width, const char *data, unsigned long len)
+// Begin a field with a sign and what leads its parts, of which it has none.
+void _Print_BeginField(_Print_Field *field, _Print_Sign sign, const char *prefix)
 {
-    unsigned long pad = (unsigned long) width > len ? (unsigned long) width - len : 0;
-
-    if (! (flags & _PRINT_FLAG_LEFT)) {
-        _Print_PutPad(sink, ' ', pad);
-    }
-    _Print_PutText(sink, data, len);
-    if (flags & _PRINT_FLAG_LEFT) {
-        _Print_PutPad(sink, ' ', pad);
-    }
+    field->pf_sign = sign;
+    field->pf_prefix = prefix;
+    field->pf_count = 0;
 }
 
-// Write what leads a number, and return the spaces to follow it.
-unsigned long _Print_WriteLead(_Print_Sink *sink, int flags, int width, _Print_Sign sign, const char *prefix, unsigned long len)
+// Add len characters of text to the field, which keeps the pointer.
+void _Print_AddText(_Print_Field *field, const char *text, unsigned long len)
 {
-    unsigned long pad;
-    unsigned long lead;
-    const char *text = "";
-
-    if (sign == _PRINT_SIGN_MINUS) {
-        text = "-";
-    } else if (flags & _PRINT_FLAG_SIGN) {
-        text = "+";
-    } else if (flags & _PRINT_FLAG_SPACE) {
-        text = " ";
-    }
-    if (flags & _PRINT_FLAG_LEFT) {
-        flags &= ~_PRINT_FLAG_ZERO;
-    }
-    lead = _Str_GetLength(text) + _Str_GetLength(prefix);
-    pad = (unsigned long) width > lead + len ? (unsigned long) width - lead - len : 0;
-    if (! (flags & (_PRINT_FLAG_LEFT | _PRINT_FLAG_ZERO))) {
-        _Print_PutPad(sink, ' ', pad);
-    }
-    _Print_PutText(sink, text, _Str_GetLength(text));
-    _Print_PutText(sink, prefix, _Str_GetLength(prefix));
-    if (flags & _PRINT_FLAG_ZERO) {
-        _Print_PutPad(sink, '0', pad);
-    }
-    return flags & _PRINT_FLAG_LEFT ? pad : 0;
+    field->pf_part[field->pf_count].pp_text = text;
+    field->pf_part[field->pf_count].pp_len = len;
+    field->pf_count++;
 }
 
-// Write count digits of num from the one worth 10^high, zeros for none.
-void _Print_WriteSpan(_Print_Sink *sink, const _Print_Numeral *num, long high, unsigned long count)
+// Add count zeros to the field.
+void _Print_AddZeros(_Print_Field *field, unsigned long count)
+{
+    field->pf_part[field->pf_count].pp_text = _PRINT_NULL;
+    field->pf_part[field->pf_count].pp_len = count;
+    field->pf_count++;
+}
+
+// Add count digits of num from the one worth 10^high, zeros for none.
+void _Print_AddSpan(_Print_Field *field, const _Print_Numeral *num, long high, unsigned long count)
 {
     unsigned long real;
     unsigned long lead = high > num->pn_exp ? (unsigned long) (high - num->pn_exp) : 0;
@@ -588,15 +568,73 @@ void _Print_WriteSpan(_Print_Sink *sink, const _Print_Numeral *num, long high, u
     if (real > count) {
         real = count;
     }
-    _Print_PutPad(sink, '0', lead);
-    _Print_PutText(sink, num->pn_digit + skip, real);
-    _Print_PutPad(sink, '0', count - real);
+    _Print_AddZeros(field, lead);
+    _Print_AddText(field, num->pn_digit + skip, real);
+    _Print_AddZeros(field, count - real);
+}
+
+// Write a field in a width: padding, sign, prefix, zeros, parts and padding.
+void _Print_WriteField(_Print_Sink *sink, int flags, int width, const _Print_Field *field)
+{
+    unsigned long i;
+    unsigned long pad;
+    unsigned long len;
+    const char *sign = "";
+    const _Print_Part *part;
+
+    // Phase: pick the sign, and measure what the padding is around
+    if (field->pf_sign == _PRINT_SIGN_MINUS) {
+        sign = "-";
+    } else if (flags & _PRINT_FLAG_SIGN) {
+        sign = "+";
+    } else if (flags & _PRINT_FLAG_SPACE) {
+        sign = " ";
+    }
+    if (flags & _PRINT_FLAG_LEFT) {
+        flags &= ~_PRINT_FLAG_ZERO;
+    }
+    len = _Str_GetLength(sign) + _Str_GetLength(field->pf_prefix);
+    for (i = 0; i < field->pf_count; i++) {
+        len += field->pf_part[i].pp_len;
+    }
+    pad = (unsigned long) width > len ? (unsigned long) width - len : 0;
+
+    // Phase: write it, its padding spaces on a side or zeros within
+    if (! (flags & (_PRINT_FLAG_LEFT | _PRINT_FLAG_ZERO))) {
+        _Print_PutPad(sink, ' ', pad);
+    }
+    _Print_PutText(sink, sign, _Str_GetLength(sign));
+    _Print_PutText(sink, field->pf_prefix, _Str_GetLength(field->pf_prefix));
+    if (flags & _PRINT_FLAG_ZERO) {
+        _Print_PutPad(sink, '0', pad);
+    }
+    for (i = 0; i < field->pf_count; i++) {
+        part = &field->pf_part[i];
+        if (part->pp_text != _PRINT_NULL) {
+            _Print_PutText(sink, part->pp_text, part->pp_len);
+        } else {
+            _Print_PutPad(sink, '0', part->pp_len);
+        }
+    }
+    if (flags & _PRINT_FLAG_LEFT) {
+        _Print_PutPad(sink, ' ', pad);
+    }
+}
+
+// Write len characters of data in a width, which no flag but - changes.
+void _Print_WriteText(_Print_Sink *sink, int flags, int width, const char *data, unsigned long len)
+{
+    _Print_Field field;
+
+    _Print_BeginField(&field, _PRINT_SIGN_PLUS, "");
+    _Print_AddText(&field, data, len);
+    _Print_WriteField(sink, flags & _PRINT_FLAG_LEFT, width, &field);
 }
 
 // Write a rounded numeral in a width, frac digits after its point.
 void _Print_WriteNumeral(_Print_Sink *sink, int flags, int width, const _Print_Numeral *num, unsigned long frac, const char *mark)
 {
-    unsigned long rest;
+    _Print_Field field;
     char point = _PRINT_POINT;
     char text[_PRINT_DIGITS_MAX];
     _Bool powered = mark[0] != '\0';
@@ -606,32 +644,31 @@ void _Print_WriteNumeral(_Print_Sink *sink, int flags, int width, const _Print_N
     _Print_UintmaxType power = (_Print_UintmaxType) (num->pn_exp < 0 ? -num->pn_exp : num->pn_exp);
     unsigned long count = _Print_ToDigits(text + sizeof(text), power, _PRINT_BASE_DECIMAL, _PRINT_DIGITS_LOWER);
     unsigned long zeros = count < _PRINT_EXPONENT_MIN ? _PRINT_EXPONENT_MIN - count : 0;
-    unsigned long tail = powered ? _Str_GetLength(mark) + 1 + zeros + count : 0;
 
-    rest = _Print_WriteLead(sink, flags, width, num->pn_sign, "", whole + dot + frac + tail);
-    _Print_WriteSpan(sink, num, high, whole);
-    _Print_PutText(sink, &point, dot);
-    _Print_WriteSpan(sink, num, high - (long) whole, frac);
+    _Print_BeginField(&field, num->pn_sign, "");
+    _Print_AddSpan(&field, num, high, whole);
+    _Print_AddText(&field, &point, dot);
+    _Print_AddSpan(&field, num, high - (long) whole, frac);
     if (powered) {
-        _Print_PutText(sink, mark, _Str_GetLength(mark));
-        _Print_PutText(sink, num->pn_exp < 0 ? "-" : "+", 1);
-        _Print_PutPad(sink, '0', zeros);
-        _Print_PutText(sink, text + sizeof(text) - count, count);
+        _Print_AddText(&field, mark, _Str_GetLength(mark));
+        _Print_AddText(&field, num->pn_exp < 0 ? "-" : "+", 1);
+        _Print_AddZeros(&field, zeros);
+        _Print_AddText(&field, text + sizeof(text) - count, count);
     }
-    _Print_PutPad(sink, ' ', rest);
+    _Print_WriteField(sink, flags, width, &field);
 }
 
 // Write an infinity or a NaN in a width, a sign and a text, no zeros.
 void _Print_WriteSpecial(_Print_Sink *sink, const _Print_Directive *dir, _Print_Sign sign, _Print_Real kind)
 {
-    unsigned long rest;
+    _Print_Field field;
     const char *inf = dir->pd_case == _PRINT_CASE_UPPER ? _ERR_PRINT_INF_UPPER : _ERR_PRINT_INF;
     const char *nan = dir->pd_case == _PRINT_CASE_UPPER ? _ERR_PRINT_NAN_UPPER : _ERR_PRINT_NAN;
     const char *text = kind == _PRINT_REAL_NAN ? nan : inf;
 
-    rest = _Print_WriteLead(sink, dir->pd_flags & ~_PRINT_FLAG_ZERO, dir->pd_width, sign, "", _Str_GetLength(text));
-    _Print_PutText(sink, text, _Str_GetLength(text));
-    _Print_PutPad(sink, ' ', rest);
+    _Print_BeginField(&field, sign, "");
+    _Print_AddText(&field, text, _Str_GetLength(text));
+    _Print_WriteField(sink, dir->pd_flags & ~_PRINT_FLAG_ZERO, dir->pd_width, &field);
 }
 
 // Write a mantissa in hex, its top four bits first, by a power of two.
@@ -639,7 +676,7 @@ void _Print_WriteMantissa(_Print_Sink *sink, const _Print_Directive *dir, _Print
 {
     unsigned long dot;
     unsigned long kept;
-    unsigned long rest;
+    _Print_Field field;
     unsigned long zeros;
     unsigned long count;
     unsigned long long unit;
@@ -677,16 +714,16 @@ void _Print_WriteMantissa(_Print_Sink *sink, const _Print_Directive *dir, _Print
     count = _Print_ToDigits(text + sizeof(text), (_Print_UintmaxType) (exp < 0 ? -exp : exp), _PRINT_BASE_DECIMAL, _PRINT_DIGITS_LOWER);
     zeros = count < _PRINT_POWER_MIN ? _PRINT_POWER_MIN - count : 0;
     kept = precision < last ? (unsigned long) precision : (unsigned long) last;
-    rest = _Print_WriteLead(sink, dir->pd_flags, dir->pd_width, sign, upper ? _PRINT_PREFIX_UPPER : _PRINT_PREFIX_LOWER, 1 + dot + (unsigned long) precision + 2 + zeros + count);
-    _Print_PutText(sink, digits, 1);
-    _Print_PutText(sink, &point, dot);
-    _Print_PutText(sink, digits + 1, kept);
-    _Print_PutPad(sink, '0', (unsigned long) precision - kept);
-    _Print_PutText(sink, upper ? "P" : "p", 1);
-    _Print_PutText(sink, exp < 0 ? "-" : "+", 1);
-    _Print_PutPad(sink, '0', zeros);
-    _Print_PutText(sink, text + sizeof(text) - count, count);
-    _Print_PutPad(sink, ' ', rest);
+    _Print_BeginField(&field, sign, upper ? _PRINT_PREFIX_UPPER : _PRINT_PREFIX_LOWER);
+    _Print_AddText(&field, digits, 1);
+    _Print_AddText(&field, &point, dot);
+    _Print_AddText(&field, digits + 1, kept);
+    _Print_AddZeros(&field, (unsigned long) precision - kept);
+    _Print_AddText(&field, upper ? "P" : "p", 1);
+    _Print_AddText(&field, exp < 0 ? "-" : "+", 1);
+    _Print_AddZeros(&field, zeros);
+    _Print_AddText(&field, text + sizeof(text) - count, count);
+    _Print_WriteField(sink, dir->pd_flags, dir->pd_width, &field);
 }
 
 // Write a string as %s converts it, a null one as glibc does.
@@ -706,13 +743,13 @@ void _Print_WriteString(_Print_Sink *sink, const _Print_Directive *dir)
         end = _Str_FindByte(str, '\0', (unsigned long) precision);
         len = end != _PRINT_NULL ? (unsigned long) (end - str) : (unsigned long) precision;
     }
-    _Print_WriteField(sink, dir->pd_flags, dir->pd_width, str, len);
+    _Print_WriteText(sink, dir->pd_flags, dir->pd_width, str, len);
 }
 
 // Write an integer in its base, its precision the fewest digits.
 void _Print_WriteInteger(_Print_Sink *sink, const _Print_Directive *dir)
 {
-    unsigned long rest;
+    _Print_Field field;
     unsigned long zeros;
     const char *prefix = "";
     int flags = dir->pd_flags;
@@ -738,10 +775,10 @@ void _Print_WriteInteger(_Print_Sink *sink, const _Print_Directive *dir)
     }
 
     // Phase: write it in the width
-    rest = _Print_WriteLead(sink, flags, dir->pd_width, dir->pd_sign, prefix, zeros + len);
-    _Print_PutPad(sink, '0', zeros);
-    _Print_PutText(sink, text + sizeof(text) - len, len);
-    _Print_PutPad(sink, ' ', rest);
+    _Print_BeginField(&field, dir->pd_sign, prefix);
+    _Print_AddZeros(&field, zeros);
+    _Print_AddText(&field, text + sizeof(text) - len, len);
+    _Print_WriteField(sink, flags, dir->pd_width, &field);
 }
 
 // Write a floating value in decimal, as %f, %e or %g converts it.
@@ -867,7 +904,7 @@ void _Print_WriteDirective(_Print_Sink *sink, const _Print_Directive *dir)
         } break;
         case _PRINT_KIND_CHAR: {
             char ch = (char) dir->pd_uval;
-            _Print_WriteField(sink, dir->pd_flags, dir->pd_width, &ch, 1);
+            _Print_WriteText(sink, dir->pd_flags, dir->pd_width, &ch, 1);
         } break;
         case _PRINT_KIND_STRING: {
             _Print_WriteString(sink, dir);
@@ -877,7 +914,7 @@ void _Print_WriteDirective(_Print_Sink *sink, const _Print_Directive *dir)
         } break;
         case _PRINT_KIND_POINTER: {
             if (dir->pd_uval == 0) {
-                _Print_WriteField(sink, dir->pd_flags, dir->pd_width, _ERR_PRINT_NIL, sizeof(_ERR_PRINT_NIL) - 1);
+                _Print_WriteText(sink, dir->pd_flags, dir->pd_width, _ERR_PRINT_NIL, sizeof(_ERR_PRINT_NIL) - 1);
             } else {
                 _Print_WriteInteger(sink, dir);
             }

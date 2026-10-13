@@ -77,6 +77,9 @@
 // The characters a field's padding is given by at a time.
 #define _PRINT_PAD_CHUNK 32
 
+// The most parts a field has, a floating value with an exponent's eleven.
+#define _PRINT_PARTS 12
+
 // The bases an integer is written in, none for another conversion.
 #define _PRINT_BASE_NONE    0
 #define _PRINT_BASE_OCTAL   8
@@ -260,6 +263,22 @@ struct _Print_Numeral {
     int pn_exp;                        // the first's power of ten, 0 for zero
 };
 
+// A part of a field: some characters, or else so many zeros.
+typedef struct _Print_Part _Print_Part;
+struct _Print_Part {
+    const char *pp_text;  // the characters, or _PRINT_NULL for zeros
+    unsigned long pp_len; // how many characters or zeros there are
+};
+
+// A field before its padding: a sign, a prefix and the parts after them.
+typedef struct _Print_Field _Print_Field;
+struct _Print_Field {
+    _Print_Sign pf_sign;               // the sign of what it holds
+    const char *pf_prefix;             // what leads its parts, 0x or nothing
+    _Print_Part pf_part[_PRINT_PARTS]; // the parts, in the order written
+    unsigned long pf_count;            // how many parts there are
+};
+
 // The conversions, a letter that means two things by its length being two.
 extern const _Print_Rule _Print_Rules[_PRINT_RULES];
 
@@ -286,12 +305,15 @@ void _Print_RoundNumeral(_Print_Numeral *num, long keep);
 void _Print_StoreCount(void *dest, _Print_Length length, unsigned long count);
 
 // Fields
-void          _Print_WriteField(_Print_Sink *sink, int flags, int width, const char *data, unsigned long len);
-unsigned long _Print_WriteLead(_Print_Sink *sink, int flags, int width, _Print_Sign sign, const char *prefix, unsigned long len);
-void          _Print_WriteSpan(_Print_Sink *sink, const _Print_Numeral *num, long high, unsigned long count);
-void          _Print_WriteNumeral(_Print_Sink *sink, int flags, int width, const _Print_Numeral *num, unsigned long frac, const char *mark);
-void          _Print_WriteSpecial(_Print_Sink *sink, const _Print_Directive *dir, _Print_Sign sign, _Print_Real kind);
-void          _Print_WriteMantissa(_Print_Sink *sink, const _Print_Directive *dir, _Print_Sign sign, unsigned long long mant, int exp);
+void _Print_BeginField(_Print_Field *field, _Print_Sign sign, const char *prefix);
+void _Print_AddText(_Print_Field *field, const char *text, unsigned long len);
+void _Print_AddZeros(_Print_Field *field, unsigned long count);
+void _Print_AddSpan(_Print_Field *field, const _Print_Numeral *num, long high, unsigned long count);
+void _Print_WriteField(_Print_Sink *sink, int flags, int width, const _Print_Field *field);
+void _Print_WriteText(_Print_Sink *sink, int flags, int width, const char *data, unsigned long len);
+void _Print_WriteNumeral(_Print_Sink *sink, int flags, int width, const _Print_Numeral *num, unsigned long frac, const char *mark);
+void _Print_WriteSpecial(_Print_Sink *sink, const _Print_Directive *dir, _Print_Sign sign, _Print_Real kind);
+void _Print_WriteMantissa(_Print_Sink *sink, const _Print_Directive *dir, _Print_Sign sign, unsigned long long mant, int exp);
 
 // Formatted output
 void _Print_WriteString(_Print_Sink *sink, const _Print_Directive *dir);
