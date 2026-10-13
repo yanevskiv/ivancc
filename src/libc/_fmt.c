@@ -1607,31 +1607,19 @@ _Bool _Fmt_MatchScanWideSet(const char *format, _Fmt_VaList *list, unsigned long
 int _Fmt_PeekSource(_Fmt_Source *source)
 {
     char ch;
-    _File_Stream *stream = source->fo_stream;
 
-    if (stream == _FMT_NULL) {
-        ch = source->fo_str[source->fo_count];
-        return ch != '\0' ? (unsigned char) ch : _FILE_END;
+    if (source->fo_stream != _FMT_NULL) {
+        return _File_PeekChar(source->fo_stream);
     }
-    if (stream->fs_flags & _FILE_BACK) {
-        return stream->fs_back;
-    }
-    if (stream->fs_head == stream->fs_tail) {
-        stream->fs_head = 0;
-        stream->fs_tail = _File_ReadDescriptor(stream, stream->fs_buf, stream->fs_size);
-    }
-    return stream->fs_head < stream->fs_tail ? stream->fs_buf[stream->fs_head] : _FILE_END;
+    ch = source->fo_str[source->fo_count];
+    return ch != '\0' ? (unsigned char) ch : _FILE_END;
 }
 
 // Advance the source past the character peeked at, which counts as read.
 void _Fmt_AdvanceSource(_Fmt_Source *source)
 {
-    _File_Stream *stream = source->fo_stream;
-
-    if (stream != _FMT_NULL && (stream->fs_flags & _FILE_BACK)) {
-        stream->fs_flags &= ~_FILE_BACK;
-    } else if (stream != _FMT_NULL) {
-        stream->fs_head++;
+    if (source->fo_stream != _FMT_NULL) {
+        _File_SkipChar(source->fo_stream);
     }
     source->fo_count++;
 }

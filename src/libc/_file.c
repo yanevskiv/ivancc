@@ -342,6 +342,29 @@ int _File_GetChar(_File_Stream *stream)
     return _File_GetBytes(stream, &byte, 1) == 1 ? byte : _FILE_END;
 }
 
+// Peek at the stream's next character, left unread, or _FILE_END for none.
+int _File_PeekChar(_File_Stream *stream)
+{
+    if (stream->fs_flags & _FILE_BACK) {
+        return stream->fs_back;
+    }
+    if (stream->fs_head == stream->fs_tail) {
+        stream->fs_head = 0;
+        stream->fs_tail = _File_ReadDescriptor(stream, stream->fs_buf, stream->fs_size);
+    }
+    return stream->fs_head < stream->fs_tail ? stream->fs_buf[stream->fs_head] : _FILE_END;
+}
+
+// Skip the character peeked at, which is read then.
+void _File_SkipChar(_File_Stream *stream)
+{
+    if (stream->fs_flags & _FILE_BACK) {
+        stream->fs_flags &= ~_FILE_BACK;
+    } else {
+        stream->fs_head++;
+    }
+}
+
 // Get a line of at most max characters, its new-line among them, into str.
 char *_File_GetLine(_File_Stream *stream, char *str, unsigned long max)
 {

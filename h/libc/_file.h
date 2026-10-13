@@ -127,6 +127,8 @@ unsigned long _File_GetBytes(_File_Stream *stream, void *data, unsigned long len
 unsigned long _File_ReadBuffer(_File_Stream *stream, unsigned char *data, unsigned long len);
 unsigned long _File_ReadDescriptor(_File_Stream *stream, unsigned char *data, unsigned long len);
 int           _File_GetChar(_File_Stream *stream);
+int           _File_PeekChar(_File_Stream *stream);
+void          _File_SkipChar(_File_Stream *stream);
 char         *_File_GetLine(_File_Stream *stream, char *str, unsigned long max);
 
 // Output
