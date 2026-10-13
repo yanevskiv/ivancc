@@ -497,16 +497,10 @@ int puts(const char *str)
     return len < INT_MAX ? (int) len + 1 : INT_MAX;
 }
 
-// Push the character ch back for the stream's next read, one at a time.
+// Push the character ch back for the stream's next read.
 int ungetc(int ch, FILE *stream)
 {
-    if (ch == EOF || (stream->fs_flags & _FILE_BACK) || _File_PrepareInput(stream) != 0) {
-        return EOF;
-    }
-    stream->fs_back = (unsigned char) ch;
-    stream->fs_flags |= _FILE_BACK;
-    stream->fs_flags &= ~_FILE_EOF;
-    return stream->fs_back;
+    return _File_UngetChar(stream, ch);
 }
 
 // Read nmemb elements of size bytes into ptr, and return how many came whole.

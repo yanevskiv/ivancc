@@ -37,8 +37,15 @@
 #define _FILE_OWNBUF  0x8
 #define _FILE_SETUP   0x10
 #define _FILE_EOF     0x20
-#define _FILE_BACK    0x40
 #define _FILE_OWNFILE 0x80
+
+// The bytes a stream takes back, those of the longest character.
+#define _FILE_BACKS 4
+
+// The characters a stream is read or written in, none until its first use.
+#define _FILE_ORIENT_NONE 0
+#define _FILE_ORIENT_BYTE (-1)
+#define _FILE_ORIENT_WIDE 1
 
 // What a stream did last.
 #define _FILE_IDLE    0
@@ -78,17 +85,19 @@
 // A stream: its descriptor, its buffer, what it may do and the stream after it.
 typedef struct _File_Stream _File_Stream;
 struct _File_Stream {
-    int fs_fd;             // the file's descriptor, or _FILE_NOFILE
-    int fs_flags;          // _FILE_READ, _FILE_WRITE and what happened
-    int fs_state;          // _FILE_IDLE, _FILE_READING, _FILE_WRITING
-    int fs_mode;           // _FILE_FULL, _FILE_LINE, _FILE_NONE or _FILE_AUTO
-    unsigned char *fs_buf; // the buffer, the stream's own or one it was given
-    unsigned long fs_size; // the buffer's size
-    unsigned long fs_head; // the bytes of the buffer already read
-    unsigned long fs_tail; // the bytes the buffer holds, read or to write
-    unsigned char fs_byte; // an unbuffered stream's buffer
-    unsigned char fs_back; // the character pushed back
-    _File_Stream *fs_next; // the next of the open streams
+    int fs_fd;                          // the descriptor, or _FILE_NOFILE
+    int fs_flags;                       // what it may do, and what has happened
+    int fs_state;                       // what it did last, _FILE_IDLE at first
+    int fs_mode;                        // its buffering, _FILE_AUTO at first
+    int fs_orient;                      // its orientation, none at first
+    unsigned char *fs_buf;              // the buffer, its own or one given it
+    unsigned long fs_size;              // the buffer's size
+    unsigned long fs_head;              // the buffer's bytes already read
+    unsigned long fs_tail;              // the bytes it holds, read or to write
+    unsigned char fs_byte;              // an unbuffered stream's buffer
+    unsigned char fs_back[_FILE_BACKS]; // the bytes pushed back, the next last
+    unsigned long fs_backs;             // how many they are
+    _File_Stream *fs_next;              // the next of the open streams
 };
 
 // The standard streams.
@@ -114,6 +123,7 @@ void          _File_AttachDescriptor(_File_Stream *stream, int fd, int flags);
 int           _File_OpenFile(_File_Stream *stream, const char *filename, const char *mode);
 int           _File_ResetStream(_File_Stream *stream);
 void          _File_FreeStream(_File_Stream *stream);
+int           _File_OrientStream(_File_Stream *stream, int mode);
 
 // Buffering
 void  _File_SetupBuffer(_File_Stream *stream);
@@ -129,6 +139,7 @@ unsigned long _File_ReadDescriptor(_File_Stream *stream, unsigned char *data, un
 int           _File_GetChar(_File_Stream *stream);
 int           _File_PeekChar(_File_Stream *stream);
 void          _File_SkipChar(_File_Stream *stream);
+int           _File_UngetChar(_File_Stream *stream, int ch);
 char         *_File_GetLine(_File_Stream *stream, char *str, unsigned long max);
 
 // Output

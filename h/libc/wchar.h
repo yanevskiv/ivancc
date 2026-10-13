@@ -26,6 +26,9 @@
 #ifndef _WCHAR_H
 #define _WCHAR_H
 
+// The streams, which wchar.h may not name as stdio.h does.
+#include <_file.h>
+
 // The bytes a conversion state holds, those of the longest character.
 #define _WCHAR_STATE_BYTES 4
 
@@ -80,6 +83,18 @@ extern mbstate_t _Wchar_WcsrtombsState;
 // Restartable conversions
 size_t _Wchar_DecodeChar(wchar_t *pwc, const char *str, size_t n, mbstate_t *state);
 size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state);
+
+// (S7.24.3) Wide character input/output functions
+wint_t   fgetwc(_File_Stream *stream);
+wchar_t *fgetws(wchar_t *restrict str, int n, _File_Stream *restrict stream);
+wint_t   fputwc(wchar_t wc, _File_Stream *stream);
+int      fputws(const wchar_t *restrict str, _File_Stream *restrict stream);
+int      fwide(_File_Stream *stream, int mode);
+wint_t   getwc(_File_Stream *stream);
+wint_t   getwchar(void);
+wint_t   putwc(wchar_t wc, _File_Stream *stream);
+wint_t   putwchar(wchar_t wc);
+wint_t   ungetwc(wint_t wc, _File_Stream *stream);
 
 // (S7.24.4.1) Wide string numeric conversion functions
 double             wcstod(const wchar_t *restrict nptr, wchar_t **restrict endptr);

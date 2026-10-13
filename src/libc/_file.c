@@ -169,6 +169,8 @@ int _File_ResetStream(_File_Stream *stream)
     stream->fs_size = 0;
     stream->fs_head = 0;
     stream->fs_tail = 0;
+    stream->fs_backs = 0;
+    stream->fs_orient = _FILE_ORIENT_NONE;
     return result;
 }
 
@@ -188,6 +190,15 @@ void _File_FreeStream(_File_Stream *stream)
     if (stream->fs_flags & _FILE_OWNFILE) {
         _Mem_FreeMemory(stream);
     }
+}
+
+// Orient a stream that has no orientation as mode's sign says, and give its.
+int _File_OrientStream(_File_Stream *stream, int mode)
+{
+    if (stream->fs_orient == _FILE_ORIENT_NONE && mode != 0) {
+        stream->fs_orient = mode > 0 ? _FILE_ORIENT_WIDE : _FILE_ORIENT_BYTE;
+    }
+    return stream->fs_orient;
 }
 
 // Set up the stream's buffering and buffer at first use, none without memory.
@@ -254,6 +265,7 @@ int _File_ReclaimBuffer(_File_Stream *stream)
 // Prepare the stream for input, or set its error indicator if it is write-only.
 int _File_PrepareInput(_File_Stream *stream)
 {
+    _File_OrientStream(stream, _FILE_ORIENT_BYTE);
     if (! (stream->fs_flags & _FILE_READ)) {
         stream->fs_flags |= _FILE_ERROR;
         _Err_Errno = _SYS_EBADF;
@@ -276,9 +288,8 @@ unsigned long _File_GetBytes(_File_Stream *stream, void *data, unsigned long len
     if (_File_PrepareInput(stream) != 0) {
         return 0;
     }
-    if (len > 0 && (stream->fs_flags & _FILE_BACK)) {
-        stream->fs_flags &= ~_FILE_BACK;
-        bytes[done++] = stream->fs_back;
+    while (done < len && stream->fs_backs > 0) {
+        bytes[done++] = stream->fs_back[--stream->fs_backs];
     }
     while (done < len) {
         unsigned long part = len - done;
@@ -345,8 +356,8 @@ int _File_GetChar(_File_Stream *stream)
 // Peek at the stream's next character, left unread, or _FILE_END for none.
 int _File_PeekChar(_File_Stream *stream)
 {
-    if (stream->fs_flags & _FILE_BACK) {
-        return stream->fs_back;
+    if (stream->fs_backs > 0) {
+        return stream->fs_back[stream->fs_backs - 1];
     }
     if (stream->fs_head == stream->fs_tail) {
         stream->fs_head = 0;
@@ -358,11 +369,22 @@ int _File_PeekChar(_File_Stream *stream)
 // Skip the character peeked at, which is read then.
 void _File_SkipChar(_File_Stream *stream)
 {
-    if (stream->fs_flags & _FILE_BACK) {
-        stream->fs_flags &= ~_FILE_BACK;
+    if (stream->fs_backs > 0) {
+        stream->fs_backs--;
     } else {
         stream->fs_head++;
     }
+}
+
+// Push the character ch back for the stream's next read, or give _FILE_END.
+int _File_UngetChar(_File_Stream *stream, int ch)
+{
+    if (ch == _FILE_END || stream->fs_backs == _FILE_BACKS || _File_PrepareInput(stream) != 0) {
+        return _FILE_END;
+    }
+    stream->fs_back[stream->fs_backs++] = (unsigned char) ch;
+    stream->fs_flags &= ~_FILE_EOF;
+    return (unsigned char) ch;
 }
 
 // Get a line of at most max characters, its new-line among them, into str.
@@ -384,6 +406,7 @@ char *_File_GetLine(_File_Stream *stream, char *str, unsigned long max)
 // Prepare the stream for output, or set its error indicator if it is read-only.
 int _File_PrepareOutput(_File_Stream *stream)
 {
+    _File_OrientStream(stream, _FILE_ORIENT_BYTE);
     if (! (stream->fs_flags & _FILE_WRITE)) {
         stream->fs_flags |= _FILE_ERROR;
         _Err_Errno = _SYS_EBADF;
@@ -391,7 +414,7 @@ int _File_PrepareOutput(_File_Stream *stream)
     }
     if (stream->fs_state == _FILE_READING) {
         _File_DiscardReadAhead(stream);
-        stream->fs_flags &= ~_FILE_BACK;
+        stream->fs_backs = 0;
         stream->fs_head = 0;
         stream->fs_tail = 0;
     }
@@ -495,10 +518,7 @@ long _File_CountReadAhead(_File_Stream *stream)
     if (stream->fs_state == _FILE_READING) {
         ahead = (long) (stream->fs_tail - stream->fs_head);
     }
-    if (stream->fs_flags & _FILE_BACK) {
-        ahead++;
-    }
-    return ahead;
+    return ahead + (long) stream->fs_backs;
 }
 
 // Seek the stream to offset from the origin whence, and empty its buffer.
@@ -517,7 +537,7 @@ int _File_SeekStream(_File_Stream *stream, long offset, int whence)
         _Err_Errno = (int) -pos;
         return _FILE_END;
     }
-    stream->fs_flags &= ~_FILE_BACK;
+    stream->fs_backs = 0;
     stream->fs_head = 0;
     stream->fs_tail = 0;
     return 0;

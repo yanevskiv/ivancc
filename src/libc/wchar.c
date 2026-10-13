@@ -29,6 +29,9 @@
 // The loops the wide string functions stand on.
 #include <_wstr.h>
 
+// The wide characters of a stream.
+#include <_wfile.h>
+
 // The longest character a conversion state holds the bytes of.
 #include <_utf8.h>
 
@@ -65,6 +68,9 @@ typedef char _Wchar_CheckWide[sizeof(int) == sizeof(wchar_t) && (wchar_t) -1 < 0
 
 // Check that a conversion state holds the bytes of the longest character.
 typedef char _Wchar_CheckState[_WCHAR_STATE_BYTES == _UTF8_MAX ? 1 : -1];
+
+// Check what _wfile gives at a stream's end against the header's, and EOF.
+typedef char _Wchar_CheckEnd[_WFILE_END == WEOF && _FILE_END == EOF ? 1 : -1];
 
 // Check that long and long long are intmax_t, as wcstol and its family take.
 typedef char _Wchar_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
@@ -132,6 +138,66 @@ size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state)
         state->count = 0;
     }
     return (size_t) len;
+}
+
+// Get the stream's next wide character, or WEOF.
+wint_t fgetwc(FILE *stream)
+{
+    return _Wfile_GetChar(stream);
+}
+
+// Get a line of at most n - 1 wide characters from the stream into str.
+wchar_t *fgetws(wchar_t *restrict str, int n, FILE *restrict stream)
+{
+    return n > 0 ? _Wfile_GetLine(stream, str, (size_t) n - 1) : NULL;
+}
+
+// Put the wide character wc in the stream, and give it back, or WEOF.
+wint_t fputwc(wchar_t wc, FILE *stream)
+{
+    return _Wfile_PutChar(stream, wc);
+}
+
+// Put the wide string str in the stream, and give EOF if it fails.
+int fputws(const wchar_t *restrict str, FILE *restrict stream)
+{
+    return _Wfile_PutString(stream, str);
+}
+
+// Orient a stream that has no orientation as mode's sign says, and give its.
+int fwide(FILE *stream, int mode)
+{
+    return _File_OrientStream(stream, mode);
+}
+
+// Get the stream's next wide character, or WEOF.
+wint_t getwc(FILE *stream)
+{
+    return _Wfile_GetChar(stream);
+}
+
+// Get standard input's next wide character, or WEOF.
+wint_t getwchar(void)
+{
+    return _Wfile_GetChar(stdin);
+}
+
+// Put the wide character wc in the stream, and give it back, or WEOF.
+wint_t putwc(wchar_t wc, FILE *stream)
+{
+    return _Wfile_PutChar(stream, wc);
+}
+
+// Put the wide character wc in standard output, and give it back, or WEOF.
+wint_t putwchar(wchar_t wc)
+{
+    return _Wfile_PutChar(stdout, wc);
+}
+
+// Push the wide character wc back for the stream's next read, or give WEOF.
+wint_t ungetwc(wint_t wc, FILE *stream)
+{
+    return _Wfile_UngetChar(stream, wc);
 }
 
 // Convert the start of the wide string nptr to a double.
