@@ -93,6 +93,7 @@ BEXP    [pP][+-]?{DIGIT}+
 "__builtin_va_end"      return BUILTIN_VA_END;
 "__builtin_va_copy"     return BUILTIN_VA_COPY;
 "__builtin_offsetof"    return BUILTIN_OFFSETOF;
+"_Static_assert"        return STATIC_ASSERT;
 
 {ALPHA}{ALNUM}*         { yylval.name = Str_Clone(yytext);
                           return Ast_FindTypedef(yytext) ? TYPEDEF_NAME : IDENT; }

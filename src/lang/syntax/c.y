@@ -69,6 +69,7 @@ void yyerror(const char *s);
 %token ASM
 %token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END BUILTIN_VA_COPY
 %token BUILTIN_OFFSETOF
+%token STATIC_ASSERT
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
 %token INC DEC QUESTION COLON
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
@@ -132,6 +133,13 @@ external_decl
       external_tail
     | ASM LPAREN string RPAREN SEMI
         { Ast_AddFileAsm(Par_NewAsm($3, @1)); }
+    | static_assert
+    ;
+
+/* A static assertion, C11's, as gcc takes it under C99. */
+static_assert
+    : STATIC_ASSERT LPAREN expr COMMA string RPAREN SEMI
+        { Par_CheckStaticAssert($3, $5, @1); }
     ;
 
 /* The rest of an external declaration after its specifier. */
@@ -394,6 +402,7 @@ members
 /* One member declaration. */
 member_decl
     : decl_spec member_declarators SEMI  { $$ = Par_MakeMembers($1, $2); }
+    | static_assert                      { $$ = NULL; }
     ;
 
 /* The members one declaration names. */
@@ -488,6 +497,7 @@ stmt
     | decl SEMI            { $$ = $1; }
     | expr_comma SEMI      { $$ = Ast_NewUnary(AST_NODE_KIND_EXPR_STMT, $1, @1); }
     | SEMI                 { $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
+    | static_assert        { $$ = Ast_NewNode(AST_NODE_KIND_NOP, @1); }
     | ASM asm_quals LPAREN string RPAREN SEMI
         { $$ = Par_NewAsm($4, @1); }
     ;

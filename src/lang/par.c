@@ -1424,6 +1424,15 @@ void Par_CompleteTentatives(void)
     }
 }
 
+// Check that a static assertion's condition is a constant and holds.
+void Par_CheckStaticAssert(const Ast_Node *cond, Ast_Str text, Ast_Line line)
+{
+    int64_t val;
+
+    Err_AssertAt(line, Sem_Fold(cond, &val), ERR_PAR_STATIC_ASSERT_NOT_CONSTANT);
+    Err_AssertAt(line, val != 0, ERR_PAR_STATIC_ASSERT_FAILED, text.as_data);
+}
+
 // Append a function to the program.
 void Par_AddFunction(Ast_Func *fn, Ast_Line line)
 {

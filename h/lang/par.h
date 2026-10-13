@@ -286,6 +286,7 @@ Ast_Var  *Par_DeclareLocal(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Node *Par_DefineLocal(Par_Decl *decl, Ast_Var *var, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_AddLocal(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 void      Par_CompleteTentatives(void);
+void      Par_CheckStaticAssert(const Ast_Node *cond, Ast_Str text, Ast_Line line);
 
 // Functions
 void      Par_AddFunction(Ast_Func *fn, Ast_Line line);

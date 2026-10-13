@@ -877,6 +877,20 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
+    [ERR_PAR_STATIC_ASSERT_NOT_CONSTANT] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_STATIC_ASSERT_NOT_CONSTANT",
+        .ee_format = "expression in static assertion is not constant"
+    },
+
+    // Args: [message]
+    [ERR_PAR_STATIC_ASSERT_FAILED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_STATIC_ASSERT_FAILED",
+        .ee_format = "static assertion failed: \"%s\""
+    },
+
+    // Args: none
     [ERR_AST_FLEXIBLE_IN_UNION] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_AST_FLEXIBLE_IN_UNION",

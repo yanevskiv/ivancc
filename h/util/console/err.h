@@ -174,6 +174,8 @@ enum Err_Code {
     ERR_PAR_FUNCTION_REDEFINED,            // can't give one function two bodies
     ERR_PAR_ASM_QUALIFIER_DUPLICATE,       // can't repeat an asm qualifier
     ERR_PAR_ASM_WIDE_STRING,               // can't write an asm template as a wide string
+    ERR_PAR_STATIC_ASSERT_NOT_CONSTANT,    // can't assert statically what is known only at run time
+    ERR_PAR_STATIC_ASSERT_FAILED,          // can't compile past a static assertion that does not hold
 
     ERR_AST_FLEXIBLE_IN_UNION,             // can't have a flexible array member in a union
     ERR_AST_FLEXIBLE_NOT_LAST,             // can't have a member after a flexible array member
