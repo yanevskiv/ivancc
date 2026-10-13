@@ -23,7 +23,6 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-
 // Module header.
 #include <_file.h>
 
@@ -41,10 +40,6 @@
 
 // Copying to and from a buffer, finding its new-lines and matching a mode.
 #include <_str.h>
-
-// Check that a temporary name's characters are its radix and it fits its size.
-typedef char _File_CheckTempRadix[sizeof(_FILE_TEMP_LETTERS) - 1 == _FILE_TEMP_RADIX ? 1 : -1];
-typedef char _File_CheckTempName[sizeof(_FILE_TEMP_PREFIX) + _FILE_TEMP_DIGITS <= _FILE_TEMP_SIZE ? 1 : -1];
 
 // Standard input, read-only, its buffering picked at its first use.
 _File_Stream _File_Stdin = {

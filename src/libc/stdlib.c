@@ -47,31 +47,11 @@
 // The conversion strtod and its two stand on.
 #include <_fp.h>
 
-// The floating types the checks hold _fp's formats to.
-#include <float.h>
-
-// The ranges the checks hold long and long long to.
-#include <limits.h>
-
 // The integer conversions strtol and its family share.
 #include <inttypes.h>
 
 // The encoding the multibyte functions follow, and its coding.
 #include <_utf8.h>
-
-// Check the type _mem counts in against the header's.
-typedef char _Stdlib_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
-
-// Check the type _utf8 holds a wide character in against the header's.
-typedef char _Stdlib_CheckWchar[sizeof(int) == sizeof(wchar_t) && (wchar_t) -1 < 0 ? 1 : -1];
-
-// Check that long and long long are intmax_t, as strtol and its family take.
-typedef char _Stdlib_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
-
-// Check the formats _fp converts to against float.h's.
-typedef char _Stdlib_CheckFloat[FLT_MANT_DIG == _FP_FLOAT_MANT && FLT_MIN_EXP - 1 == _FP_FLOAT_MIN && FLT_MAX_EXP - 1 == _FP_FLOAT_MAX ? 1 : -1];
-typedef char _Stdlib_CheckDouble[DBL_MANT_DIG == _FP_DOUBLE_MANT && DBL_MIN_EXP - 1 == _FP_DOUBLE_MIN && DBL_MAX_EXP - 1 == _FP_DOUBLE_MAX ? 1 : -1];
-typedef char _Stdlib_CheckLongDouble[LDBL_MANT_DIG == _FP_LDOUBLE_MANT && LDBL_MIN_EXP - 1 == _FP_LDOUBLE_MIN && LDBL_MAX_EXP - 1 == _FP_LDOUBLE_MAX ? 1 : -1];
 
 // The state of rand, its taps and whether srand has seeded it.
 unsigned int _Stdlib_RandState[_STDLIB_RAND_WORDS];

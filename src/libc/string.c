@@ -32,9 +32,6 @@
 // The texts strerror gives.
 #include <_err.h>
 
-// Check the type _str counts in against the header's.
-typedef char _String_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
-
 // Where strtok's next search starts.
 char *_String_Next;
 

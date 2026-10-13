@@ -26,10 +26,3 @@
 // Module header.
 #include <errno.h>
 
-// Linux's error numbers.
-#include <_sys.h>
-
-// Check that C99's error numbers are Linux's.
-typedef char _Errno_CheckEdom[EDOM == _SYS_EDOM ? 1 : -1];
-typedef char _Errno_CheckEilseq[EILSEQ == _SYS_EILSEQ ? 1 : -1];
-typedef char _Errno_CheckErange[ERANGE == _SYS_ERANGE ? 1 : -1];

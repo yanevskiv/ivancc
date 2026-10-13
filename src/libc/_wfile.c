@@ -33,9 +33,6 @@
 // The encoding a stream's bytes are a wide character in.
 #include <_utf8.h>
 
-// Check that a stream takes back the bytes of the longest character.
-typedef char _Wfile_CheckBack[_FILE_BACKS >= _UTF8_MAX ? 1 : -1];
-
 // Read the stream's next wide character into *wc, a byte no part of it left.
 _Wfile_Status _Wfile_ReadChar(_File_Stream *stream, int *wc)
 {

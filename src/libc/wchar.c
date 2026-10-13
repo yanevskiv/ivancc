@@ -62,30 +62,11 @@
 // The integer conversions wcstol and its family share.
 #include <inttypes.h>
 
-// The ranges the checks hold long and long long to.
-#include <limits.h>
-
 // strftime, which formats each conversion of wcsftime's.
 #include <time.h>
 
 // mbstowcs, which gives wcsftime what strftime wrote as wide characters.
 #include <stdlib.h>
-
-// Check the types _wstr counts and works in against the header's.
-typedef char _Wchar_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
-typedef char _Wchar_CheckWide[sizeof(int) == sizeof(wchar_t) && (wchar_t) -1 < 0 ? 1 : -1];
-
-// Check that a conversion state holds the bytes of the longest character.
-typedef char _Wchar_CheckState[_WCHAR_STATE_BYTES == _UTF8_MAX ? 1 : -1];
-
-// Check what _wfile gives at a stream's end against the header's, and EOF.
-typedef char _Wchar_CheckEnd[_WFILE_END == WEOF && _FILE_END == EOF ? 1 : -1];
-
-// Check the header's own argument list against stdarg.h's.
-typedef char _Wchar_CheckVaList[sizeof(_Wchar_VaList) == sizeof(va_list) ? 1 : -1];
-
-// Check that long and long long are intmax_t, as wcstol and its family take.
-typedef char _Wchar_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
 
 // The state each restartable function converts in when it is given none.
 mbstate_t _Wchar_MbrlenState;

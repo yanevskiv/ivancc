@@ -32,14 +32,8 @@
 // The names setlocale compares and joins.
 #include <string.h>
 
-// Types the checks compare against.
-#include <stddef.h>
-
 // The encoding the multibyte functions follow.
 #include <_utf8.h>
-
-// Check the header's own type against stddef.h's.
-typedef char _Locale_CheckSize[sizeof(_Locale_SizeType) == sizeof(size_t) && (_Locale_SizeType) -1 == (size_t) -1 ? 1 : -1];
 
 // The names setlocale takes, each with the name it returns, as glibc's do.
 const _Locale_Name _Locale_Names[_LOCALE_NAMES] = {

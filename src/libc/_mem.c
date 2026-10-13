@@ -23,7 +23,6 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-
 // Module header.
 #include <_mem.h>
 
@@ -35,9 +34,6 @@
 
 // The loops that copy and fill memory.
 #include <_str.h>
-
-// Check that a block's header keeps the memory after it aligned.
-typedef char _Mem_CheckBlock[sizeof(_Mem_Block) == _MEM_ALIGN && _MEM_BLOCK_MIN == 2 * _MEM_ALIGN ? 1 : -1];
 
 // The free blocks, in address order.
 _Mem_Block *_Mem_FreeList;

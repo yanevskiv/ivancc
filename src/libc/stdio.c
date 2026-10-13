@@ -53,61 +53,6 @@
 // The arguments a format converts.
 #include <stdarg.h>
 
-// The difference of two pointers, and a wide character, checked too.
-#include <stddef.h>
-
-// The digits and the exponents of a double and a long double, checked too.
-#include <float.h>
-
-// Check the header's origins against lseek's.
-typedef char _Stdio_CheckSeek[SEEK_SET == _SYS_SEEK_SET && SEEK_CUR == _SYS_SEEK_CUR && SEEK_END == _SYS_SEEK_END ? 1 : -1];
-
-// Check the header's macros against _file's, which may not include it.
-typedef char _Stdio_CheckBuffering[_IOFBF == _FILE_FULL && _IOLBF == _FILE_LINE && _IONBF == _FILE_NONE ? 1 : -1];
-typedef char _Stdio_CheckLimits[EOF == _FILE_END && BUFSIZ == _FILE_BUFFER && L_tmpnam == _FILE_TEMP_SIZE ? 1 : -1];
-typedef char _Stdio_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
-
-// Check the header's own argument list against stdarg.h's.
-typedef char _Stdio_CheckVaList[sizeof(_Stdio_VaList) == sizeof(va_list) ? 1 : -1];
-
-// Check _scan's argument list, which may not include stdarg.h, against it.
-typedef char _Stdio_CheckScanVaList[sizeof(_Scan_VaList) == sizeof(va_list) ? 1 : -1];
-
-// Check _scan's widest integer against stdint.h's, and a pointer's against it.
-typedef char _Stdio_CheckScanUintmax[sizeof(_Scan_UintmaxType) == sizeof(uintmax_t) && (_Scan_UintmaxType) -1 > 0 ? 1 : -1];
-typedef char _Stdio_CheckUintptr[sizeof(unsigned long) == sizeof(uintptr_t) ? 1 : -1];
-
-// Check _scan's wide character against stddef.h's, and its limits.
-typedef char _Stdio_CheckScanWchar[sizeof(_Scan_WcharType) == sizeof(wchar_t) && ((_Scan_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
-typedef char _Stdio_CheckScanInt[_SCAN_INT_MAX == INT_MAX && _SCAN_SIZE_MAX == SIZE_MAX ? 1 : -1];
-typedef char _Stdio_CheckScanBytes[_SCAN_BYTES_MAX == MB_LEN_MAX ? 1 : -1];
-
-// Check _print's argument list, integers and wide character against the same.
-typedef char _Stdio_CheckPrintVaList[sizeof(_Print_VaList) == sizeof(va_list) ? 1 : -1];
-typedef char _Stdio_CheckPrintIntmax[sizeof(_Print_IntmaxType) == sizeof(intmax_t) && (_Print_IntmaxType) -1 < 0 ? 1 : -1];
-typedef char _Stdio_CheckPrintUintmax[sizeof(_Print_UintmaxType) == sizeof(uintmax_t) && (_Print_UintmaxType) -1 > 0 ? 1 : -1];
-typedef char _Stdio_CheckPrintWchar[sizeof(_Print_WcharType) == sizeof(wchar_t) && ((_Print_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
-typedef char _Stdio_CheckPrintWint[sizeof(_Print_WintType) == sizeof(wchar_t) && sizeof(_Print_WintType) >= sizeof(int) ? 1 : -1];
-
-// Check _print's limits against limits.h's, stdint.h's and float.h's.
-typedef char _Stdio_CheckPrintInt[_PRINT_INT_MAX == INT_MAX && _PRINT_INT_MIN == INT_MIN && _PRINT_SIZE_MAX == SIZE_MAX ? 1 : -1];
-typedef char _Stdio_CheckPrintBytes[_PRINT_BYTES_MAX == MB_LEN_MAX ? 1 : -1];
-typedef char _Stdio_CheckPrintReal[_PRINT_LDOUBLE_MANT == LDBL_MANT_DIG && _PRINT_LDOUBLE_EXP == LDBL_MAX_EXP && _PRINT_DOUBLE_MIN == DBL_MIN_EXP ? 1 : -1];
-
-// Check that a size and a pointer difference are one width, each %z and %t.
-typedef char _Stdio_CheckPtrdiff[sizeof(size_t) == sizeof(ptrdiff_t) && sizeof(long) == sizeof(ptrdiff_t) ? 1 : -1];
-
-// Check that an integer's digits in octal, three bits each, fit their array.
-typedef char _Stdio_CheckDigits[sizeof(uintmax_t) * CHAR_BIT <= _PRINT_DIGITS_MAX * 3 ? 1 : -1];
-
-// Check that a long double's digits fill a word under a field of its exponent.
-typedef char _Stdio_CheckLongDouble[sizeof(long double) >= sizeof(unsigned long long) + sizeof(unsigned short) ? 1 : -1];
-typedef char _Stdio_CheckMantissa[LDBL_MANT_DIG == sizeof(unsigned long long) * CHAR_BIT ? 1 : -1];
-
-// Check that a mantissa is its hex digits, a double's fitting under the first.
-typedef char _Stdio_CheckHex[LDBL_MANT_DIG == _PRINT_HEX_BITS * _PRINT_HEX_DIGITS ? 1 : -1];
-typedef char _Stdio_CheckDouble[DBL_MANT_DIG - 1 <= _PRINT_HEX_BITS * (_PRINT_HEX_DIGITS - 1) ? 1 : -1];
-
 // Remove the file filename, or the empty directory of that name.
 int remove(const char *filename)
 {

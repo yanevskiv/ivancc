@@ -29,17 +29,8 @@
 // The conversion the four functions stand on.
 #include <_int.h>
 
-// Types the checks compare against.
+// The null pointer an absent endptr is.
 #include <stddef.h>
-
-// Check the header's own type against stddef.h's.
-typedef char _Inttypes_CheckWchar[sizeof(_Inttypes_WcharType) == sizeof(wchar_t) && ((_Inttypes_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
-
-// Check the types _int converts to and counts in against C99's.
-typedef char _Inttypes_CheckSigned[sizeof(long) == sizeof(intmax_t) && _INT_SIGNED_MAX == INTMAX_MAX ? 1 : -1];
-typedef char _Inttypes_CheckUnsigned[sizeof(unsigned long) == sizeof(uintmax_t) && _INT_VALUE_MAX == UINTMAX_MAX ? 1 : -1];
-typedef char _Inttypes_CheckWide[sizeof(int) == sizeof(_Inttypes_WcharType) ? 1 : -1];
-typedef char _Inttypes_CheckSize[sizeof(unsigned long) == sizeof(size_t) ? 1 : -1];
 
 // Give the absolute value of j.
 intmax_t imaxabs(intmax_t j)

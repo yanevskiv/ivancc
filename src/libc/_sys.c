@@ -63,10 +63,10 @@
 #define _SYS_SIGSET_SIZE 8
 
 // Check that struct stat is as large as the kernel's.
-typedef char _Sys_CheckStat[sizeof(_Sys_Stat) == _SYS_STAT_SIZE ? 1 : -1];
+_Static_assert(sizeof(_Sys_Stat) == _SYS_STAT_SIZE, "_Sys_Stat is the kernel's size");
 
 // Check that struct termios is laid out as the kernel's.
-typedef char _Sys_CheckTermios[sizeof(_Sys_Termios) == _SYS_TERMIOS_SIZE ? 1 : -1];
+_Static_assert(sizeof(_Sys_Termios) == _SYS_TERMIOS_SIZE, "_Sys_Termios is the kernel's size");
 
 #ifdef __x86_64__
 // Invoke a syscall by its number, with six arguments.
