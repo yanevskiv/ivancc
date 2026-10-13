@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p8] An infinity or a NaN should begin with its text, after a sign.
+// [C99:S7.19.6.1p8] An infinity or a NaN should begin with its text, after a sign.
 static bool begins(const char *want, const char *format, double value)
 {
     char got[HOLD];
@@ -13,7 +13,7 @@ static bool begins(const char *want, const char *format, double value)
     return _TEST_MEM(got, want, strlen(want));
 }
 
-// [C99/S7.19.6.1p6] An infinity or a NaN should fill its width with spaces alone.
+// [C99:S7.19.6.1p6] An infinity or a NaN should fill its width with spaces alone.
 static bool spaced(const char *format, double value, int width, size_t blank)
 {
     int lost = 0;
@@ -25,7 +25,7 @@ static bool spaced(const char *format, double value, int width, size_t blank)
     return lost == 0;
 }
 
-// [C99/S7.19.6.1p8] An infinity should be written inf, a NaN nan, or in capitals.
+// [C99:S7.19.6.1p8] An infinity should be written inf, a NaN nan, or in capitals.
 static void Test_StdioInfinite(void)
 {
     double inf = strtod("inf", NULL);

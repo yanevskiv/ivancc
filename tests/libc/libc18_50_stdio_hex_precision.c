@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p8] %a should write a precision's hex digits after its point.
+// [C99:S7.19.6.1p8] %a should write a precision's hex digits after its point.
 static bool counted(const char *format, double value, int digits, bool point)
 {
     char *dot;
@@ -26,7 +26,7 @@ static bool counted(const char *format, double value, int digits, bool point)
     return lost == 0;
 }
 
-// [C99/S7.19.6.1p11] %a should round a value to the nearest of its precision.
+// [C99:S7.19.6.1p11] %a should round a value to the nearest of its precision.
 static bool nearest(const char *format, double value, int digits)
 {
     int k;
@@ -42,7 +42,7 @@ static bool nearest(const char *format, double value, int digits)
     return _TEST_TRUE((back < value ? value - back : back - value) <= bound);
 }
 
-// [C99/S7.19.6.1p8] %a should give back a value its precision holds all of.
+// [C99:S7.19.6.1p8] %a should give back a value its precision holds all of.
 static bool kept(const char *format, double value)
 {
     char got[HOLD];
@@ -51,7 +51,7 @@ static bool kept(const char *format, double value)
     return _TEST_TRUE(strtod(got, NULL) == value);
 }
 
-// [C99/S7.19.6.1p8] %a's precision should count its digits, a zero leave no point.
+// [C99:S7.19.6.1p8] %a's precision should count its digits, a zero leave no point.
 static void Test_StdioHexPrecision(void)
 {
     char got[HOLD];

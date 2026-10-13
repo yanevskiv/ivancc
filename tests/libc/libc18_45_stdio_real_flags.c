@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p6] A floating conversion should take a width and each flag.
+// [C99:S7.19.6.1p6] A floating conversion should take a width and each flag.
 static void Test_StdioRealFlags(void)
 {
     _TEST_TRUE(prints("  1.500000", "%10f", 1.5));

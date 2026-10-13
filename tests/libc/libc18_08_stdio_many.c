@@ -6,7 +6,7 @@
 
 #define MANY (FOPEN_MAX - 3)
 
-// [C99/S7.19.3p15] MANY files should open at once: return the first to fail.
+// [C99:S7.19.3p15] MANY files should open at once: return the first to fail.
 static int crowd(void)
 {
     int k;
@@ -51,7 +51,7 @@ static int uncrowded(void)
     return NONE;
 }
 
-// [C99/S7.19.3p15] FOPEN_MAX streams should be open at once, each its own file's.
+// [C99:S7.19.3p15] FOPEN_MAX streams should be open at once, each its own file's.
 static void Test_StdioMany(void)
 {
     _TEST_INT(crowd(), NONE);

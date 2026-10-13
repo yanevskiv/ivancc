@@ -6,7 +6,7 @@
 
 #define MIXED "a\xc3\xa9" "b\xe2\x82\xac\xf0\x9f\x98\x80"
 
-// [C99/S7.19.6.2p12] %ls and %l[ should give the wide characters mbstowcs gives.
+// [C99:S7.19.6.2p12] %ls and %l[ should give the wide characters mbstowcs gives.
 static bool decodes(const char *str)
 {
     int lost = 0;
@@ -27,7 +27,7 @@ static bool decodes(const char *str)
     return lost == 0;
 }
 
-// [C99/S7.19.6.2p12] %ls and %l[ should read the locale's multibyte characters.
+// [C99:S7.19.6.2p12] %ls and %l[ should read the locale's multibyte characters.
 static void Test_StdioScanWideMultibyte(void)
 {
     FILE *file;

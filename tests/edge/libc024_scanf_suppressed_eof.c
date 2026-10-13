@@ -9,7 +9,7 @@
 // | 1
 // | [one]
 // Non-standard: scanf should return EOF if input ends before any assignment.
-// Liberty: [C99/S7.19.6.2p16] read as glibc does, a conversion that stores counted.
+// Liberty: [C99:S7.19.6.2p16] read as glibc does, a conversion that stores counted.
 
 #include <stdio.h>
 

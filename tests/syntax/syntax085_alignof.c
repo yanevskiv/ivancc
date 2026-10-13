@@ -1,5 +1,5 @@
 // (Test) Status: 42
-// [C11/S6.5.3.4p3] _Alignof, C11's, as gcc takes it under C99. It yields a
+// [C11:S6.5.3.4p3] _Alignof, C11's, as gcc takes it under C99. It yields a
 // type's alignment requirement, a size_t and an integer constant, its operand
 // not evaluated, and for an array type the alignment of the element type.
 

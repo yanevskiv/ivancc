@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc01_00_iso646_helpers.inc"
 
-// [C99/S7.9p1] and_eq, or_eq and xor_eq should store their result and yield it.
+// [C99:S7.9p1] and_eq, or_eq and xor_eq should store their result and yield it.
 static void Test_Iso646Assignment(void)
 {
     int value = SIX;

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.2p12] %u should read a decimal integer as strtoul does in base 10.
+// [C99:S7.19.6.2p12] %u should read a decimal integer as strtoul does in base 10.
 static void Test_StdioScanUnsigned(void)
 {
     char ch = FILL;

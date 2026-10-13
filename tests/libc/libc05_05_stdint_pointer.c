@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// [C99/S7.18.1.4p1] A pointer to void should survive intptr_t and uintptr_t.
+// [C99:S7.18.1.4p1] A pointer to void should survive intptr_t and uintptr_t.
 static void Test_StdintPointer(void)
 {
     int number = 0;

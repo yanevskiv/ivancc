@@ -1,7 +1,7 @@
 // (Test) Status: 42
-// [C11/S6.7.5] _Alignas, C11's, as gcc takes it under C99. It takes a type or
+// [C11:S6.7.5] _Alignas, C11's, as gcc takes it under C99. It takes a type or
 // a constant, on an object or a member. The strictest of several wins and a
-// zero has no effect [C11/S6.7.5p6]. Above 16 goes on static storage only.
+// zero has no effect [C11:S6.7.5p6]. Above 16 goes on static storage only.
 
 enum {
     WORD  = 8,

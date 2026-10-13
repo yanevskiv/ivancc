@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// [C99/S7.23.2.3p2] mktime should bring a broken-down time's fields to those given.
+// [C99:S7.23.2.3p2] mktime should bring a broken-down time's fields to those given.
 static bool normalizes(struct tm tm, int year, int mon, int mday, int hour, int min, int sec, int wday, int yday)
 {
     int lost = 0;
@@ -28,7 +28,7 @@ static time_t back(time_t when)
     return mktime(&tm);
 }
 
-// [C99/S7.23.2.3p2] mktime should bring fields into range and set the day counts.
+// [C99:S7.23.2.3p2] mktime should bring fields into range and set the day counts.
 static void Test_TimeMktime(void)
 {
     time_t now = time(NULL);

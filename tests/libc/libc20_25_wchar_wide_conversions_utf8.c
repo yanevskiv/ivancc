@@ -6,7 +6,7 @@
 
 #define UTF8 "C.UTF-8"
 
-// [C99/S7.24.2.1p8] %s should write the wide characters a string's bytes are.
+// [C99:S7.24.2.1p8] %s should write the wide characters a string's bytes are.
 static void Test_WcharWideUtf8String(void)
 {
     int n = NONE;
@@ -25,7 +25,7 @@ static void Test_WcharWideUtf8String(void)
     _TEST_INT(n, 2);
 }
 
-// [C99/S7.24.2.1p14] Bytes that are no character should fail a conversion.
+// [C99:S7.24.2.1p14] Bytes that are no character should fail a conversion.
 static void Test_WcharWideUtf8Errors(void)
 {
     wchar_t out[SIZE];

@@ -8,7 +8,7 @@
 // | [%k|7] 6
 // | [%C|%S|7] 9
 // Non-standard: printf should write a directive of no conversion as text.
-// Liberty: [C99/S7.19.6.1p9] an invalid conversion is undefined behaviour.
+// Liberty: [C99:S7.19.6.1p9] an invalid conversion is undefined behaviour.
 
 #include <stdio.h>
 

@@ -12,7 +12,7 @@
 #undef NDEBUG
 #include <assert.h>
 
-// [C99/S7.2p1] Included again without NDEBUG, assert should evaluate once more.
+// [C99:S7.2p1] Included again without NDEBUG, assert should evaluate once more.
 static void Test_AssertEnabled(void)
 {
     count = 0;

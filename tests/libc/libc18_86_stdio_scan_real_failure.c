@@ -4,8 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.2p10] An item that is no number should be a matching failure.
-// [C99/S7.19.6.2p16] Input ending before any conversion should return EOF.
+// [C99:S7.19.6.2p10] An item that is no number should be a matching failure.
+// [C99:S7.19.6.2p16] Input ending before any conversion should return EOF.
 static void Test_StdioScanRealFailure(void)
 {
     int n = NONE;

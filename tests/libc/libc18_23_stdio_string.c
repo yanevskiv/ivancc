@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p8] %s should write a string to its null or its precision's bytes.
+// [C99:S7.19.6.1p8] %s should write a string to its null or its precision's bytes.
 static void Test_StdioString(void)
 {
     const char open[3] = {'x', 'y', 'z'};

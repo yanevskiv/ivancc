@@ -11,7 +11,7 @@
 #define BEFORE 14
 #define Y2001  978307200L
 
-// [C99/S7.23.3.3p2] gmtime should break a time down into the fields given.
+// [C99:S7.23.3.3p2] gmtime should break a time down into the fields given.
 static bool breaks(time_t when, int year, int mon, int mday, int hour, int min, int sec, int wday, int yday)
 {
     return is(gmtime(&when), year, mon, mday, hour, min, sec, wday, yday);
@@ -31,7 +31,7 @@ static int misdated(void)
     return NONE;
 }
 
-// [C99/S7.23.3.3p3] gmtime should break down any time whose year an int holds.
+// [C99:S7.23.3.3p3] gmtime should break down any time whose year an int holds.
 static void Test_TimeGmtime(void)
 {
     time_t when = 0;

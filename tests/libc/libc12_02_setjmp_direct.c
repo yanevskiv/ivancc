@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc12_00_setjmp_helpers.inc"
 
-// [C99/S7.13.1.1p3] setjmp should return 0 from a direct call, whatever buffer.
+// [C99:S7.13.1.1p3] setjmp should return 0 from a direct call, whatever buffer.
 static void Test_SetjmpDirect(void)
 {
     jmp_buf many[BUFS];

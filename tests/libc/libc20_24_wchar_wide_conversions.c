@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99/S7.24.2.1p8] %c should write its argument as btowc converts it.
+// [C99:S7.24.2.1p8] %c should write its argument as btowc converts it.
 static void Test_WcharWideConversionChar(void)
 {
     wchar_t out[SIZE];
@@ -17,7 +17,7 @@ static void Test_WcharWideConversionChar(void)
     _TEST_MEM(out, L"a\0b", WIDE(4));
 }
 
-// [C99/S7.24.2.1p8] %lc should write its argument, a wide character, as it is.
+// [C99:S7.24.2.1p8] %lc should write its argument, a wide character, as it is.
 static void Test_WcharWideConversionWideChar(void)
 {
     wchar_t out[SIZE];
@@ -29,7 +29,7 @@ static void Test_WcharWideConversionWideChar(void)
     _TEST_MEM(out, past, sizeof(past));
 }
 
-// [C99/S7.24.2.1p8] %s should write a string's characters, the precision's most.
+// [C99:S7.24.2.1p8] %s should write a string's characters, the precision's most.
 static void Test_WcharWideConversionString(void)
 {
     wchar_t out[SIZE];
@@ -47,7 +47,7 @@ static void Test_WcharWideConversionString(void)
     _TEST_MEM(out, L"xyz|", WIDE(5));
 }
 
-// [C99/S7.24.2.1p8] %ls should write a wide string's characters as they are.
+// [C99:S7.24.2.1p8] %ls should write a wide string's characters as they are.
 static void Test_WcharWideConversionWideString(void)
 {
     wchar_t out[SIZE];

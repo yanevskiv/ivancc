@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p8] %f and %F should write [-]ddd.ddd, six digits after the point.
+// [C99:S7.19.6.1p8] %f and %F should write [-]ddd.ddd, six digits after the point.
 static void Test_StdioFixed(void)
 {
     _TEST_TRUE(prints("0.000000", "%f", 0.0));

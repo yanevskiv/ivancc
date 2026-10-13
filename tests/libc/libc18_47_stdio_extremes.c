@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.12p3] A long text should have its length, its start and its end.
+// [C99:S7.19.6.12p3] A long text should have its length, its start and its end.
 static bool spans(int len, const char *first, const char *last, const char *format, ...)
 {
     int n;
@@ -22,7 +22,7 @@ static bool spans(int len, const char *first, const char *last, const char *form
     return lost == 0;
 }
 
-// [C99/S7.19.6.1p13] A value's digits past DECIMAL_DIG should be exact, as glibc's.
+// [C99:S7.19.6.1p13] A value's digits past DECIMAL_DIG should be exact, as glibc's.
 static void Test_StdioExtremes(void)
 {
     double tiny = DBL_MIN * DBL_EPSILON;

@@ -8,7 +8,7 @@
 
 static char got[LIMIT + 1];
 
-// [C99/S7.19.6.1p15] One conversion should produce 4095 characters at least.
+// [C99:S7.19.6.1p15] One conversion should produce 4095 characters at least.
 static void Test_StdioLimit(void)
 {
     _TEST_INT(snprintf(NULL, 0, "%4095s", "end"), LIMIT);

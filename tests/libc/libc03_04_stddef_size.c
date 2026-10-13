@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc03_00_stddef_helpers.inc"
 
-// [C99/S7.17p2] size_t should be unsigned and hold what sizeof yields.
+// [C99:S7.17p2] size_t should be unsigned and hold what sizeof yields.
 static void Test_StddefSize(void)
 {
     size_t size = sizeof(struct Pair);

@@ -9,7 +9,7 @@
 #define SHRUNK 10
 #define WIDER  180
 
-// [C99/S7.20.3.4p2] realloc should keep a block's bytes as it grows or shrinks.
+// [C99:S7.20.3.4p2] realloc should keep a block's bytes as it grows or shrinks.
 static void Test_StdlibRealloc(void)
 {
     unsigned char *ptr = realloc(NULL, BLOCK);

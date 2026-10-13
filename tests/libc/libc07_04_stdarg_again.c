@@ -25,7 +25,7 @@ static int again(int count, ...)
     return first == second ? first : MISMATCH;
 }
 
-// [C99/S7.15.1.4p3] va_start after va_end should walk the same arguments again.
+// [C99:S7.15.1.4p3] va_start after va_end should walk the same arguments again.
 static void Test_StdargAgain(void)
 {
     _TEST_INT(again(0), 0);

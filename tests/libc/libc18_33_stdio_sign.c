@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p6] A plus or a space flag should begin a signed conversion.
+// [C99:S7.19.6.1p6] A plus or a space flag should begin a signed conversion.
 static void Test_StdioSign(void)
 {
     _TEST_TRUE(prints("+5", "%+d", 5));

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p13] A floating conversion should round its value correctly.
+// [C99:S7.19.6.1p13] A floating conversion should round its value correctly.
 static void Test_StdioRounding(void)
 {
     _TEST_TRUE(prints("0", "%.0f", 0.5));

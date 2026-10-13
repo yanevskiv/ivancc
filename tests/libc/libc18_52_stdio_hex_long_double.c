@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p8] %La's text should begin [-]0x and give its long double back.
+// [C99:S7.19.6.1p8] %La's text should begin [-]0x and give its long double back.
 static bool back(long double value)
 {
     char *end;
@@ -20,7 +20,7 @@ static bool back(long double value)
     return lost == 0;
 }
 
-// [C99/S7.19.6.1p7] L should give %a a long double argument, and l change nothing.
+// [C99:S7.19.6.1p7] L should give %a a long double argument, and l change nothing.
 static void Test_StdioHexLongDouble(void)
 {
     char one[HOLD];

@@ -4,8 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.2p10] An asterisk should read a wide item and store nothing.
-// [C99/S7.19.6.2p16] Input ending before any conversion should return EOF.
+// [C99:S7.19.6.2p10] An asterisk should read a wide item and store nothing.
+// [C99:S7.19.6.2p16] Input ending before any conversion should return EOF.
 static void Test_StdioScanWideSuppress(void)
 {
     int n = NONE;

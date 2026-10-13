@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.4.3p2] Each of tmpfile's streams should update a file of its own.
+// [C99:S7.19.4.3p2] Each of tmpfile's streams should update a file of its own.
 static void Test_StdioTmpfile(void)
 {
     FILE *file = tmpfile();

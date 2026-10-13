@@ -4,8 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.2p12] %x should read a hexadecimal integer, 0x before it or not.
-// [C99/S7.19.6.2p14] %X should behave the same as %x.
+// [C99:S7.19.6.2p12] %x should read a hexadecimal integer, 0x before it or not.
+// [C99:S7.19.6.2p14] %X should behave the same as %x.
 static void Test_StdioScanHex(void)
 {
     char ch = FILL;

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// [C99/S7.23.2.4p3] time should give the calendar time, store it, and not go back.
+// [C99:S7.23.2.4p3] time should give the calendar time, store it, and not go back.
 static void Test_TimeNow(void)
 {
     time_t now = 0;

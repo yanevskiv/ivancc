@@ -6,7 +6,7 @@
 
 #define PAIR 2
 
-// [C99/S7.19.6.2p11] An integer should be stored as the type its length names.
+// [C99:S7.19.6.2p11] An integer should be stored as the type its length names.
 static void Test_StdioScanIntegerLengths(void)
 {
     size_t z = 0;

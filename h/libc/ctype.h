@@ -26,7 +26,7 @@
 #ifndef _CTYPE_H
 #define _CTYPE_H
 
-// [C99/S7.4.1] Character classification functions
+// [C99:S7.4.1] Character classification functions
 int isalnum(int ch);
 int isalpha(int ch);
 int isblank(int ch);
@@ -40,7 +40,7 @@ int isspace(int ch);
 int isupper(int ch);
 int isxdigit(int ch);
 
-// [C99/S7.4.2] Character case mapping functions
+// [C99:S7.4.2] Character case mapping functions
 int tolower(int ch);
 int toupper(int ch);
 

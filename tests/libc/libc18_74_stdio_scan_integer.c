@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.2p12] %i should read an integer in the base its prefix names.
+// [C99:S7.19.6.2p12] %i should read an integer in the base its prefix names.
 static void Test_StdioScanInteger(void)
 {
     char ch = FILL;

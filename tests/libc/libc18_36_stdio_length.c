@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p7] A length modifier should give an integer argument's type.
+// [C99:S7.19.6.1p7] A length modifier should give an integer argument's type.
 static void Test_StdioLength(void)
 {
     _TEST_TRUE(prints("65", "%hhd", 65));

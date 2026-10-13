@@ -6,7 +6,7 @@
 
 #define NAME "wide.tmp"
 
-// [C99/S7.24.3.1] A wide character got should be the stream's next, or WEOF.
+// [C99:S7.24.3.1] A wide character got should be the stream's next, or WEOF.
 static void Test_WcharWideInput(void)
 {
     FILE *file = holding(NAME, "abcd", 4);
@@ -36,7 +36,7 @@ static void Test_WcharWideInput(void)
     _TEST_INT(remove(NAME), 0);
 }
 
-// [C99/S7.24.3.2] fgetws should read a line, n - 1 wide characters at most.
+// [C99:S7.24.3.2] fgetws should read a line, n - 1 wide characters at most.
 static void Test_WcharWideLines(void)
 {
     wchar_t line[SIZE];
@@ -67,7 +67,7 @@ static void Test_WcharWideLines(void)
     _TEST_INT(remove(NAME), 0);
 }
 
-// [C99/S7.24.3.10] ungetwc should give a wide character to the next read, once.
+// [C99:S7.24.3.10] ungetwc should give a wide character to the next read, once.
 static void Test_WcharWidePushback(void)
 {
     wchar_t line[SIZE];

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc04_00_limits_helpers.inc"
 
-// [C99/S5.2.4.2.1p1] short should have 16 bits and int 32.
+// [C99:S5.2.4.2.1p1] short should have 16 bits and int 32.
 static void Test_LimitsInt(void)
 {
     _TEST_INT(SHRT_MIN, -32768);

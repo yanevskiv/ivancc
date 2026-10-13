@@ -10,7 +10,7 @@ static int sign(int value)
     return (value > 0) - (value < 0);
 }
 
-// [C99/S7.21.4p1] A comparison should take the sign of its first differing bytes.
+// [C99:S7.21.4p1] A comparison should take the sign of its first differing bytes.
 static void Test_StringComparison(void)
 {
     size_t len;

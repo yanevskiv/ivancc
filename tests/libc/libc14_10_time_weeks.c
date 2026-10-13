@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// [C99/S7.23.3.5p5] A year's ends should fall in an ISO 8601 week of either year.
+// [C99:S7.23.3.5p5] A year's ends should fall in an ISO 8601 week of either year.
 static void Test_TimeWeeks(void)
 {
     _TEST_TRUE(formats(1104537600 + 309, "%G-W%V-%u %g %U %W %e %I %p %j", "2004-W53-6 04 00 00  1 12 AM 001"));

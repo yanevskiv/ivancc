@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc19_00_wctype_helpers.inc"
 
-// [C99/S7.25.2.2.1p4] A class by its name should judge as its function does.
+// [C99:S7.25.2.2.1p4] A class by its name should judge as its function does.
 static long misjudged(wctype_t class, int (*classify)(wint_t))
 {
     wint_t wc;
@@ -17,7 +17,7 @@ static long misjudged(wctype_t class, int (*classify)(wint_t))
     return NONE;
 }
 
-// [C99/S7.25.2.2.2p3] Each of the twelve names should describe its class.
+// [C99:S7.25.2.2.2p3] Each of the twelve names should describe its class.
 static void Test_WctypeNames(void)
 {
     wctype_t class;
@@ -30,7 +30,7 @@ static void Test_WctypeNames(void)
     }
 }
 
-// [C99/S7.25.2.2.2p4] A name of no class should give zero.
+// [C99:S7.25.2.2.2p4] A name of no class should give zero.
 static void Test_WctypeNoName(void)
 {
     _TEST_TRUE(wctype("nonsense") == 0);
@@ -39,7 +39,7 @@ static void Test_WctypeNoName(void)
     _TEST_TRUE(wctype("") == 0);
 }
 
-// [C99/S7.25.2.2.1] A class by its name should hold of its characters alone.
+// [C99:S7.25.2.2.1] A class by its name should hold of its characters alone.
 static void Test_WctypeByName(void)
 {
     _TEST_TRUE(iswctype(L'a', wctype("alpha")));

@@ -8,7 +8,7 @@
 #define TEXT_SIZE 256
 #define LAST_1999 946684798L
 
-// [C99/S7.24.5.1p2] wcsftime should format a time in UTC as the wide text given.
+// [C99:S7.24.5.1p2] wcsftime should format a time in UTC as the wide text given.
 static bool formats(const wchar_t *format, const wchar_t *want)
 {
     int lost = 0;
@@ -25,7 +25,7 @@ static bool formats(const wchar_t *format, const wchar_t *want)
     return lost == 0;
 }
 
-// [C99/S7.24.5.1p2] wcsftime should write each conversion as strftime does.
+// [C99:S7.24.5.1p2] wcsftime should write each conversion as strftime does.
 static void Test_WcharWcsftimeConversions(void)
 {
     _TEST_TRUE(formats(L"%a|%A|%b|%B|%c|%C|%d|%D|%e|%F|%g|%G|%h|%H|%I|%j|%m", L"Fri|Friday|Dec|December|Fri Dec 31 23:59:58 1999|19|31|12/31/99|31|1999-12-31|99|1999|Dec|23|11|365|12"));
@@ -38,7 +38,7 @@ static void Test_WcharWcsftimeConversions(void)
     _TEST_TRUE(formats(L"a%%b%nc", L"a%b\nc"));
 }
 
-// [C99/S7.24.5.1p3] wcsftime should count wide characters, nothing if too many.
+// [C99:S7.24.5.1p3] wcsftime should count wide characters, nothing if too many.
 static void Test_WcharWcsftimeSizes(void)
 {
     time_t when = LAST_1999;
@@ -59,7 +59,7 @@ static void Test_WcharWcsftimeSizes(void)
     _TEST_MEM(buf, L"23:59", WIDE(6));
 }
 
-// [C99/S7.24.5.1p2] wcsftime should copy a wide character of any value as it is.
+// [C99:S7.24.5.1p2] wcsftime should copy a wide character of any value as it is.
 static void Test_WcharWcsftimeWide(void)
 {
     if (! _TEST_TRUE(setlocale(LC_ALL, UTF8) != NULL)) {

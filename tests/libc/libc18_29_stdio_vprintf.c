@@ -55,7 +55,7 @@ static int to_sized(char *str, size_t size, const char *format, ...)
     return n;
 }
 
-// [C99/S7.19.6.8p2] Each function that takes a list should convert its arguments.
+// [C99:S7.19.6.8p2] Each function that takes a list should convert its arguments.
 static void Test_StdioVprintf(void)
 {
     char got[SMALL];

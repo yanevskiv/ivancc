@@ -48,7 +48,7 @@
 // The size of the longest composite name, five of "LC_MONETARY=C.UTF-8;".
 #define _LOCALE_COMPOSITE_SIZE 128
 
-// [C99/S7.11] Localization
+// [C99:S7.11] Localization
 #define NULL ((void *) 0)
 
 #define LC_ALL      5
@@ -69,7 +69,7 @@ struct _Locale_Name {
     _Bool ln_utf8;           // UTF-8, not "C"'s ASCII
 };
 
-// [C99/S7.11] Localization
+// [C99:S7.11] Localization
 struct lconv {
     char *decimal_point;     // the decimal point of a number
     char *thousands_sep;     // what separates a number's digit groups
@@ -129,10 +129,10 @@ char            *_Locale_QueryCategory(int category);
 // Encoding
 void _Locale_ApplyCtype(void);
 
-// [C99/S7.11.1] Locale control
+// [C99:S7.11.1] Locale control
 char *setlocale(int category, const char *locale);
 
-// [C99/S7.11.2] Numeric formatting convention inquiry
+// [C99:S7.11.2] Numeric formatting convention inquiry
 struct lconv *localeconv(void);
 
 #endif // _LOCALE_H

@@ -6,7 +6,7 @@
 // | [0x1.p+0|0x0.p+0] 17
 // | [0x8.000000000000001p-3] 24
 // Non-standard: %a with no precision should write the fewest digits it needs.
-// Liberty: [C99/S7.19.6.1p8] any precision that is exact is allowed.
+// Liberty: [C99:S7.19.6.1p8] any precision that is exact is allowed.
 
 #include <stdio.h>
 #include <float.h>

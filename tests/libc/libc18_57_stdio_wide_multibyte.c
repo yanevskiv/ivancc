@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99/S7.19.6.1p8] %lc should write the bytes wctomb gives a wide character.
+// [C99:S7.19.6.1p8] %lc should write the bytes wctomb gives a wide character.
 static bool encodes(wchar_t wc)
 {
     int lost = 0;
@@ -21,7 +21,7 @@ static bool encodes(wchar_t wc)
     return lost == 0;
 }
 
-// [C99/S7.19.6.1p8] %ls should write the bytes wcstombs gives, counted by a width.
+// [C99:S7.19.6.1p8] %ls should write the bytes wcstombs gives, counted by a width.
 static bool converts(const wchar_t *wide)
 {
     int lost = 0;
@@ -43,7 +43,7 @@ static bool converts(const wchar_t *wide)
     return lost == 0;
 }
 
-// [C99/S7.19.6.1p8] %lc and %ls should write wide characters as the locale's bytes.
+// [C99:S7.19.6.1p8] %lc and %ls should write wide characters as the locale's bytes.
 static void Test_StdioWideMultibyte(void)
 {
     const wchar_t euro[] = {0x20ac, L'\0'};
