@@ -67,7 +67,9 @@ void _Bigint_MulPow5(_Bigint_Number *num, int exp)
         mul *= 5;
         exp--;
     }
-    _Bigint_MulAdd(num, mul, 0);
+    if (mul > 1) {
+        _Bigint_MulAdd(num, mul, 0);
+    }
 }
 
 // Multiply num by 2^bits.
@@ -203,4 +205,44 @@ unsigned long long _Bigint_Divide(_Bigint_Number *num, const _Bigint_Number *den
         _Bigint_ShiftRight(&part, 1);
     }
     return quot;
+}
+
+// Divide num by the word den, and return the remainder.
+unsigned int _Bigint_DivideWord(_Bigint_Number *num, unsigned int den)
+{
+    int i;
+    unsigned long long rest = 0;
+
+    for (i = num->bn_len - 1; i >= 0; i--) {
+        rest = rest << _BIGINT_WORD_BITS | num->bn_word[i];
+        num->bn_word[i] = (unsigned int) (rest / den);
+        rest %= den;
+    }
+    while (num->bn_len > 0 && num->bn_word[num->bn_len - 1] == 0) {
+        num->bn_len--;
+    }
+    return (unsigned int) rest;
+}
+
+// Keep the low bits of num, and return the ones above, which 64 bits hold.
+unsigned long long _Bigint_Split(_Bigint_Number *num, int bits)
+{
+    int i;
+    int words = bits / _BIGINT_WORD_BITS;
+    int shift = bits % _BIGINT_WORD_BITS;
+    unsigned long long high = 0;
+
+    if (words >= num->bn_len) {
+        return 0;
+    }
+    for (i = num->bn_len - 1; i > words; i--) {
+        high = high << _BIGINT_WORD_BITS | num->bn_word[i];
+    }
+    high = high << (_BIGINT_WORD_BITS - shift) | num->bn_word[words] >> shift;
+    num->bn_word[words] &= (1U << shift) - 1;
+    num->bn_len = words + 1;
+    while (num->bn_len > 0 && num->bn_word[num->bn_len - 1] == 0) {
+        num->bn_len--;
+    }
+    return high;
 }

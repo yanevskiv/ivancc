@@ -36,6 +36,10 @@
 #define _BIGINT_POW5_WORD 1220703125U
 #define _BIGINT_POW5_STEP 13
 
+// The largest power of 10 a word holds, 10^9.
+#define _BIGINT_POW10_WORD 1000000000U
+#define _BIGINT_POW10_STEP 9
+
 // An unsigned number in words, least significant first, its top word nonzero.
 typedef struct _Bigint_Number _Bigint_Number;
 struct _Bigint_Number {
@@ -53,5 +57,7 @@ int                _Bigint_Compare(const _Bigint_Number *num1, const _Bigint_Num
 void               _Bigint_Sub(_Bigint_Number *num1, const _Bigint_Number *num2);
 int                _Bigint_Bits(const _Bigint_Number *num);
 unsigned long long _Bigint_Divide(_Bigint_Number *num, const _Bigint_Number *den);
+unsigned int       _Bigint_DivideWord(_Bigint_Number *num, unsigned int den);
+unsigned long long _Bigint_Split(_Bigint_Number *num, int bits);
 
 #endif // _BIGINT_H

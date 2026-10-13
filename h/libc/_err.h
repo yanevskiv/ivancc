@@ -183,6 +183,12 @@
 #define _ERR_STDIO_NULL "(null)"
 #define _ERR_STDIO_NIL  "(nil)"
 
+// The texts printf gives for an infinity and a NaN, and those in capitals.
+#define _ERR_STDIO_INF       "inf"
+#define _ERR_STDIO_NAN       "nan"
+#define _ERR_STDIO_INF_UPPER "INF"
+#define _ERR_STDIO_NAN_UPPER "NAN"
+
 // The text a failed check's report puts after each of its parts.
 #define _ERR_TEST_FILE     ":"
 #define _ERR_TEST_LINE     ": "

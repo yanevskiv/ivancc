@@ -32,8 +32,11 @@
 // The files' calls, the terminal's settings and the standard descriptors.
 #include <_sys.h>
 
-// The texts a null string and a null pointer are written as.
+// The texts a null string or pointer, an infinity and a NaN are written as.
 #include <_err.h>
+
+// The integer a floating value's digits are those of.
+#include <_bigint.h>
 
 // The error a failed open, read, write or close reports.
 #include <errno.h>
@@ -55,6 +58,12 @@
 
 // The difference of two pointers, which %td takes.
 #include <stddef.h>
+
+// The digits and the exponents of a long double.
+#include <float.h>
+
+// The character a number's fraction begins after.
+#include <locale.h>
 
 // A temporary name: where it is, and the characters and length of its end.
 #define _STDIO_TEMP_PREFIX  "/tmp/tmp."
@@ -85,6 +94,10 @@ typedef char _Stdio_CheckPtrdiff[sizeof(size_t) == sizeof(ptrdiff_t) ? 1 : -1];
 
 // Check that an integer's digits in octal, three bits each, fit their array.
 typedef char _Stdio_CheckDigits[sizeof(uintmax_t) * CHAR_BIT <= _STDIO_DIGITS_MAX * 3 ? 1 : -1];
+
+// Check that a long double's digits fill a word under a field of its exponent.
+typedef char _Stdio_CheckLongDouble[sizeof(long double) >= sizeof(unsigned long long) + sizeof(unsigned short) ? 1 : -1];
+typedef char _Stdio_CheckMantissa[LDBL_MANT_DIG == sizeof(unsigned long long) * CHAR_BIT ? 1 : -1];
 
 // Standard input, read-only, its buffering picked at its first use.
 FILE _Stdio_Stdin = {
@@ -800,6 +813,63 @@ _Bool _Stdio_ParseCount(const char *format, _Stdio_VaList *list, size_t *len, in
     return 1;
 }
 
+// Parse a %f or %F directive with its argument.
+_Bool _Stdio_ParseFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Bool *upper)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || (format[at] != 'f' && format[at] != 'F')) {
+        return 0;
+    }
+    if (length != _STDIO_LENGTH_NONE && length != _STDIO_LENGTH_LONG && length != _STDIO_LENGTH_LDOUBLE) {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *value = length == _STDIO_LENGTH_LDOUBLE ? va_arg(*list, long double) : va_arg(*list, double);
+    *upper = format[at] == 'F';
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %e or %E directive with its argument.
+_Bool _Stdio_ParseExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Bool *upper)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || (format[at] != 'e' && format[at] != 'E')) {
+        return 0;
+    }
+    if (length != _STDIO_LENGTH_NONE && length != _STDIO_LENGTH_LONG && length != _STDIO_LENGTH_LDOUBLE) {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *value = length == _STDIO_LENGTH_LDOUBLE ? va_arg(*list, long double) : va_arg(*list, double);
+    *upper = format[at] == 'E';
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %g or %G directive with its argument.
+_Bool _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Bool *upper)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || (format[at] != 'g' && format[at] != 'G')) {
+        return 0;
+    }
+    if (length != _STDIO_LENGTH_NONE && length != _STDIO_LENGTH_LONG && length != _STDIO_LENGTH_LDOUBLE) {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *value = length == _STDIO_LENGTH_LDOUBLE ? va_arg(*list, long double) : va_arg(*list, double);
+    *upper = format[at] == 'G';
+    *len = at + 1;
+    return 1;
+}
+
 // Write a value's digits in a base to end at end, none for zero.
 size_t _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits)
 {
@@ -841,6 +911,131 @@ void _Stdio_StoreCount(void *dest, int length, size_t count)
         default: {
             *(int *) dest = (int) count;
         } break;
+    }
+}
+
+// Write a floating value's sign, what it is and its every decimal digit.
+void _Stdio_Exact(long double value, _Stdio_Numeral *num)
+{
+    int i;
+    int exp;
+    int step;
+    int below;
+    int place = 0;
+    unsigned int chunk;
+    unsigned int biased;
+    unsigned short top;
+    _Bigint_Number big;
+    unsigned long long part;
+    unsigned long long mant;
+    char run[_BIGINT_POW5_STEP];
+    unsigned int ones = (unsigned int) LDBL_MAX_EXP * 2 - 1;
+    unsigned long long lead = 1ULL << (LDBL_MANT_DIG - 1);
+    char *end = num->sn_digit + sizeof(num->sn_digit);
+    char *ptr = end;
+
+    // Phase: take the value apart
+    memcpy(&mant, &value, sizeof(mant));
+    memcpy(&top, (char *) &value + sizeof(mant), sizeof(top));
+    biased = top & ones;
+    exp = (int) (biased != 0 ? biased : 1) - (LDBL_MAX_EXP - 1) - (LDBL_MANT_DIG - 1);
+    num->sn_kind = _STDIO_REAL_FINITE;
+    num->sn_negative = top > ones;
+    num->sn_len = 0;
+    num->sn_exp = 0;
+    if (biased == ones) {
+        num->sn_kind = (mant & (lead - 1)) != 0 ? _STDIO_REAL_NAN : _STDIO_REAL_INFINITE;
+    }
+    if (biased != 0 && ! (mant & lead)) {
+        num->sn_kind = _STDIO_REAL_NAN;
+    }
+    if (num->sn_kind != _STDIO_REAL_FINITE) {
+        return;
+    }
+
+    // Phase: write the whole part's digits
+    _Bigint_Set(&big, mant);
+    if (exp > 0) {
+        _Bigint_ShiftLeft(&big, exp);
+    } else {
+        _Bigint_ShiftRight(&big, -exp);
+    }
+    while (big.bn_len > 0) {
+        chunk = _Bigint_DivideWord(&big, _BIGINT_POW10_WORD);
+        for (i = 0; i < _BIGINT_POW10_STEP; i++) {
+            ptr--;
+            ptr[0] = (char) ('0' + chunk % _STDIO_BASE_DECIMAL);
+            chunk /= _STDIO_BASE_DECIMAL;
+        }
+    }
+    while (ptr < end && ptr[0] == '0') {
+        ptr++;
+    }
+    num->sn_len = (size_t) (end - ptr);
+    num->sn_exp = num->sn_len > 0 ? (int) num->sn_len - 1 : 0;
+    memmove(num->sn_digit, ptr, num->sn_len);
+
+    // Phase: write the fraction's digits
+    below = exp < 0 ? -exp : 0;
+    _Bigint_Set(&big, mant);
+    _Bigint_Split(&big, below);
+    while (big.bn_len > 0) {
+        step = below < _BIGINT_POW5_STEP ? below : _BIGINT_POW5_STEP;
+        _Bigint_MulPow5(&big, step);
+        below -= step;
+        part = _Bigint_Split(&big, below);
+        for (i = step - 1; i >= 0; i--) {
+            run[i] = (char) ('0' + part % _STDIO_BASE_DECIMAL);
+            part /= _STDIO_BASE_DECIMAL;
+        }
+        for (i = 0; i < step; i++) {
+            place++;
+            if (num->sn_len == 0 && run[i] != '0') {
+                num->sn_exp = -place;
+            }
+            if (num->sn_len > 0 || run[i] != '0') {
+                num->sn_digit[num->sn_len++] = run[i];
+            }
+        }
+    }
+
+    // Phase: drop the zeros at the end
+    while (num->sn_len > 0 && num->sn_digit[num->sn_len - 1] == '0') {
+        num->sn_len--;
+    }
+}
+
+// Round num to its first keep digits, to nearest and a tie to even.
+void _Stdio_Round(_Stdio_Numeral *num, long keep)
+{
+    _Bool up;
+    size_t len;
+    char *digit = num->sn_digit;
+
+    if (keep >= (long) num->sn_len) {
+        return;
+    }
+    len = keep > 0 ? (size_t) keep : 0;
+    up = keep >= 0 && digit[len] >= '5';
+    if (up && digit[len] == '5' && len + 1 == num->sn_len) {
+        up = len > 0 && (digit[len - 1] - '0') % 2 != 0;
+    }
+    while (up && len > 0 && digit[len - 1] == '9') {
+        len--;
+    }
+    if (up && len == 0) {
+        digit[0] = '1';
+        len = 1;
+        num->sn_exp++;
+    } else if (up) {
+        digit[len - 1]++;
+    }
+    while (len > 0 && digit[len - 1] == '0') {
+        len--;
+    }
+    num->sn_len = len;
+    if (len == 0) {
+        num->sn_exp = 0;
     }
 }
 
@@ -953,6 +1148,68 @@ void _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, 
     _Stdio_EmitPad(sink, ' ', rest);
 }
 
+// Give the sink count digits of num from the one worth 10^high, zeros for none.
+void _Stdio_EmitSpan(_Stdio_Sink *sink, const _Stdio_Numeral *num, long high, size_t count)
+{
+    size_t real;
+    size_t lead = high > num->sn_exp ? (size_t) (high - num->sn_exp) : 0;
+    size_t skip = high < num->sn_exp ? (size_t) (num->sn_exp - high) : 0;
+
+    if (lead > count) {
+        lead = count;
+    }
+    count -= lead;
+    real = skip < num->sn_len ? num->sn_len - skip : 0;
+    if (real > count) {
+        real = count;
+    }
+    _Stdio_EmitPad(sink, '0', lead);
+    _Stdio_Emit(sink, num->sn_digit + skip, real);
+    _Stdio_EmitPad(sink, '0', count - real);
+}
+
+// Give the sink a rounded numeral in a width, frac digits after its point.
+void _Stdio_EmitNumeral(_Stdio_Sink *sink, int flags, int width, const _Stdio_Numeral *num, size_t frac, const char *mark)
+{
+    size_t rest;
+    char text[_STDIO_DIGITS_MAX];
+    _Bool powered = mark[0] != '\0';
+    char point = localeconv()->decimal_point[0];
+    long high = powered || num->sn_exp > 0 ? num->sn_exp : 0;
+    size_t whole = powered ? 1 : (size_t) high + 1;
+    size_t dot = frac > 0 || (flags & _STDIO_FLAG_ALT) ? 1 : 0;
+    _Stdio_UintmaxType power = (_Stdio_UintmaxType) (num->sn_exp < 0 ? -num->sn_exp : num->sn_exp);
+    size_t count = _Stdio_Digits(text + sizeof(text), power, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
+    size_t zeros = count < _STDIO_EXPONENT_MIN ? _STDIO_EXPONENT_MIN - count : 0;
+    size_t tail = powered ? strlen(mark) + 1 + zeros + count : 0;
+
+    rest = _Stdio_EmitLead(sink, flags, width, num->sn_negative, "", whole + dot + frac + tail);
+    _Stdio_EmitSpan(sink, num, high, whole);
+    _Stdio_Emit(sink, &point, dot);
+    _Stdio_EmitSpan(sink, num, high - (long) whole, frac);
+    if (powered) {
+        _Stdio_Emit(sink, mark, strlen(mark));
+        _Stdio_Emit(sink, num->sn_exp < 0 ? "-" : "+", 1);
+        _Stdio_EmitPad(sink, '0', zeros);
+        _Stdio_Emit(sink, text + sizeof(text) - count, count);
+    }
+    _Stdio_EmitPad(sink, ' ', rest);
+}
+
+// Give the sink an infinity or a NaN in a width, a sign and a text, no zeros.
+void _Stdio_EmitSpecial(_Stdio_Sink *sink, int flags, int width, const _Stdio_Numeral *num, _Bool upper)
+{
+    size_t rest;
+    const char *inf = upper ? _ERR_STDIO_INF_UPPER : _ERR_STDIO_INF;
+    const char *nan = upper ? _ERR_STDIO_NAN_UPPER : _ERR_STDIO_NAN;
+    const char *text = num->sn_kind == _STDIO_REAL_NAN ? nan : inf;
+
+    flags &= ~_STDIO_FLAG_ZERO;
+    rest = _Stdio_EmitLead(sink, flags, width, num->sn_negative, "", strlen(text));
+    _Stdio_Emit(sink, text, strlen(text));
+    _Stdio_EmitPad(sink, ' ', rest);
+}
+
 // Give the sink a character as %c converts it.
 void _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch)
 {
@@ -1039,6 +1296,69 @@ void _Stdio_EmitPointer(_Stdio_Sink *sink, int flags, int width, int precision, 
     _Stdio_EmitInteger(sink, flags, width, precision, 0, "0x", text + sizeof(text) - len, len);
 }
 
+// Give the sink a floating value as %f and %F convert it.
+void _Stdio_EmitFixed(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Bool upper)
+{
+    _Stdio_Numeral num;
+
+    _Stdio_Exact(value, &num);
+    if (num.sn_kind != _STDIO_REAL_FINITE) {
+        _Stdio_EmitSpecial(sink, flags, width, &num, upper);
+        return;
+    }
+    if (precision == _STDIO_PRECISION_NONE) {
+        precision = _STDIO_REAL_PRECISION;
+    }
+    _Stdio_Round(&num, (long) num.sn_exp + 1 + precision);
+    _Stdio_EmitNumeral(sink, flags, width, &num, (size_t) precision, "");
+}
+
+// Give the sink a floating value as %e and %E convert it.
+void _Stdio_EmitExponential(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Bool upper)
+{
+    _Stdio_Numeral num;
+
+    _Stdio_Exact(value, &num);
+    if (num.sn_kind != _STDIO_REAL_FINITE) {
+        _Stdio_EmitSpecial(sink, flags, width, &num, upper);
+        return;
+    }
+    if (precision == _STDIO_PRECISION_NONE) {
+        precision = _STDIO_REAL_PRECISION;
+    }
+    _Stdio_Round(&num, (long) precision + 1);
+    _Stdio_EmitNumeral(sink, flags, width, &num, (size_t) precision, upper ? "E" : "e");
+}
+
+// Give the sink a floating value as %g and %G convert it.
+void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Bool upper)
+{
+    long frac;
+    _Bool powered;
+    _Stdio_Numeral num;
+    const char *mark = "";
+
+    _Stdio_Exact(value, &num);
+    if (num.sn_kind != _STDIO_REAL_FINITE) {
+        _Stdio_EmitSpecial(sink, flags, width, &num, upper);
+        return;
+    }
+    if (precision == _STDIO_PRECISION_NONE) {
+        precision = _STDIO_REAL_PRECISION;
+    } else if (precision == 0) {
+        precision = _STDIO_REAL_LEAST;
+    }
+    _Stdio_Round(&num, precision);
+    powered = num.sn_exp < _STDIO_GENERAL_MIN || num.sn_exp >= precision;
+    frac = (flags & _STDIO_FLAG_ALT ? precision : (long) num.sn_len) - 1;
+    if (powered) {
+        mark = upper ? "E" : "e";
+    } else {
+        frac -= num.sn_exp;
+    }
+    _Stdio_EmitNumeral(sink, flags, width, &num, frac > 0 ? (size_t) frac : 0, mark);
+}
+
 // Give the sink the format's text, each directive converting its arguments.
 int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
 {
@@ -1053,6 +1373,7 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
     int precision;
     const char *str;
     const void *ptr;
+    long double fval;
     _Stdio_IntmaxType sval;
     _Stdio_UintmaxType uval;
 
@@ -1078,6 +1399,12 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
             _Stdio_EmitPointer(sink, flags, width, precision, ptr);
         } else if (_Stdio_ParseCount(format + i, &list, &len, &length, &dest)) {
             _Stdio_StoreCount(dest, length, sink->ss_count);
+        } else if (_Stdio_ParseFixed(format + i, &list, &len, &flags, &width, &precision, &fval, &upper)) {
+            _Stdio_EmitFixed(sink, flags, width, precision, fval, upper);
+        } else if (_Stdio_ParseExponential(format + i, &list, &len, &flags, &width, &precision, &fval, &upper)) {
+            _Stdio_EmitExponential(sink, flags, width, precision, fval, upper);
+        } else if (_Stdio_ParseGeneral(format + i, &list, &len, &flags, &width, &precision, &fval, &upper)) {
+            _Stdio_EmitGeneral(sink, flags, width, precision, fval, upper);
         } else {
             len = 1;
             _Stdio_Emit(sink, format + i, len);
