@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc16_00_locale_helpers.inc"
 
-// [C99 S7.11.1.1p4] The program should start in the "C" locale in each category.
+// [C99/S7.11.1.1p4] The program should start in the "C" locale in each category.
 static void Test_LocaleStartup(void)
 {
     _TEST_TRUE(keep(start, LC_ALL));

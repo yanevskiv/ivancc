@@ -13,7 +13,7 @@ static void on_reinstall(int sig)
     count++;
 }
 
-// [C99 S7.14.1.1p2] raise should run the handler last installed, none if ignored.
+// [C99/S7.14.1.1p2] raise should run the handler last installed, none if ignored.
 static void Test_SignalHandlers(void)
 {
     got = 0;

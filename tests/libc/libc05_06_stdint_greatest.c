@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// [C99 S7.18.1.5p1] intmax_t and uintmax_t should be no narrower than long long.
+// [C99/S7.18.1.5p1] intmax_t and uintmax_t should be no narrower than long long.
 static void Test_StdintGreatest(void)
 {
     _TEST_TRUE(sizeof(intmax_t) >= sizeof(long long));

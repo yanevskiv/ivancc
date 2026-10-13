@@ -2,7 +2,7 @@
 // bug045. An object of static storage duration was not aligned: gen wrote
 // each one after the last with no padding, and `.data` and `.bss` had an
 // alignment of 1, so after `char c;` the address of `int g;` was odd. Every
-// such object sits on a multiple of its type's alignment [C99 S3.2], a
+// such object sits on a multiple of its type's alignment [C99/S3.2], a
 // global, a file-scope static and a static local alike, with an initializer
 // or without, and an array of 16 bytes or more on a multiple of 16, as the
 // SysV ABI has it.

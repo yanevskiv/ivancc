@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99 S7.19.6.1p8] %g and %G should take %f's style or %e's by the exponent.
+// [C99/S7.19.6.1p8] %g and %G should take %f's style or %e's by the exponent.
 static void Test_StdioGeneral(void)
 {
     _TEST_TRUE(prints("0", "%g", 0.0));

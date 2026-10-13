@@ -6,7 +6,7 @@
 
 static char filebuf[SMALL];
 
-// [C99 S7.19.5.6p2] A stream buffered one way should pass lines past its size.
+// [C99/S7.19.5.6p2] A stream buffered one way should pass lines past its size.
 static bool buffers(int kind)
 {
     int lost = 0;
@@ -33,7 +33,7 @@ static bool buffers(int kind)
     return lost == 0;
 }
 
-// [C99 S7.19.5.6p2] A stream should write and read the same however buffered.
+// [C99/S7.19.5.6p2] A stream should write and read the same however buffered.
 static void Test_StdioBuffering(void)
 {
     _TEST_TRUE(buffers(_IOFBF));

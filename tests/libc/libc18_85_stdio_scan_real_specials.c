@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99 S7.19.6.2p12] %f should read an infinity or a NaN, as strtod reads one.
+// [C99/S7.19.6.2p12] %f should read an infinity or a NaN, as strtod reads one.
 static void Test_StdioScanRealSpecials(void)
 {
     char ch = FILL;

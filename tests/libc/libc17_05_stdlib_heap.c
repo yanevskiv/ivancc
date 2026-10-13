@@ -15,7 +15,7 @@
 
 static size_t length[SLOTS];
 
-// [C99 S7.20.3p1] Blocks made, resized and freed at random should keep their bytes.
+// [C99/S7.20.3p1] Blocks made, resized and freed at random should keep their bytes.
 static bool churn(void)
 {
     size_t i;
@@ -89,7 +89,7 @@ static bool merges(void)
     return true;
 }
 
-// [C99 S7.20.3p1] Live blocks should keep their bytes, and freed ones merge.
+// [C99/S7.20.3p1] Live blocks should keep their bytes, and freed ones merge.
 static void Test_StdlibHeap(void)
 {
     _TEST_TRUE(churn());

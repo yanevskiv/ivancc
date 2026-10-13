@@ -9,7 +9,7 @@
 // | 0 1
 // | 1 123
 // Non-standard: scanf's %p should read (nil), or hex with a sign or 0x or not.
-// Liberty: [C99 S7.19.6.2p12] the sequences %p matches are implementation-defined.
+// Liberty: [C99/S7.19.6.2p12] the sequences %p matches are implementation-defined.
 
 #include <stdio.h>
 

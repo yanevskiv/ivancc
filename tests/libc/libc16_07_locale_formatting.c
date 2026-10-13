@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc16_00_locale_helpers.inc"
 
-// [C99 S7.11.2.1p8] A copy of the formatting should be the program's to change.
+// [C99/S7.11.2.1p8] A copy of the formatting should be the program's to change.
 static void Test_LocaleFormatting(void)
 {
     struct lconv copy = *localeconv();

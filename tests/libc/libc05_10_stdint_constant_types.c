@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// [C99 S7.18.4.1p1] A constant macro should make a constant of its least type.
+// [C99/S7.18.4.1p1] A constant macro should make a constant of its least type.
 static void Test_StdintConstantTypes(void)
 {
     _TEST_UINT(sizeof(INT8_C(1)), sizeof(int));

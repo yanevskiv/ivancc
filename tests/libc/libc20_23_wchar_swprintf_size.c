@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99 S7.24.2.3p2] swprintf should write no more than n wide characters.
+// [C99/S7.24.2.3p2] swprintf should write no more than n wide characters.
 static void Test_WcharSwprintfSize(void)
 {
     wchar_t out[SIZE];
@@ -20,7 +20,7 @@ static void Test_WcharSwprintfSize(void)
     _TEST_MEM(out, L"\0xxxxxxx", WIDE(8));
 }
 
-// [C99 S7.24.2.3p3] swprintf should fail where n or more were to be written.
+// [C99/S7.24.2.3p3] swprintf should fail where n or more were to be written.
 static void Test_WcharSwprintfOverflow(void)
 {
     wchar_t out[SIZE];

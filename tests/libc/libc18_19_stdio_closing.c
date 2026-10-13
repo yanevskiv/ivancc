@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99 S7.19.5.1p2] A standard stream should close as any other does.
+// [C99/S7.19.5.1p2] A standard stream should close as any other does.
 static void Test_StdioClosing(void)
 {
     _TEST_INT(fclose(stdin), 0);

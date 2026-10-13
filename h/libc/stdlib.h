@@ -37,7 +37,7 @@
 #define _STDLIB_RAND_QUO 127773
 #define _STDLIB_RAND_REM 2836
 
-// The functions a block of atexit's holds, C99's least [C99 S7.20.4.2p2].
+// The functions a block of atexit's holds, C99's least [C99/S7.20.4.2p2].
 #define _STDLIB_EXITS 32
 
 // The status abort exits with if SIGABRT did not end the program, as glibc's.
@@ -46,7 +46,7 @@
 // The bytes of the merge buffer qsort keeps on the stack, as glibc's.
 #define _STDLIB_SORT_STACK 1024
 
-// [C99 S7.20] General utilities
+// [C99/S7.20] General utilities
 #define NULL ((void *) 0)
 
 #define EXIT_FAILURE 1
@@ -74,7 +74,7 @@ struct _Stdlib_Exits {
     void (*se_func[_STDLIB_EXITS])(void); // the functions, oldest first
 };
 
-// [C99 S7.20] General utilities
+// [C99/S7.20] General utilities
 typedef struct {
     int quot; // the quotient
     int rem;  // the remainder
@@ -116,7 +116,7 @@ void   _Stdlib_SortElements(char *base, size_t nmemb, size_t size, int (*compar)
 // Multibyte
 size_t _Stdlib_GetMbCurMax(void);
 
-// [C99 S7.20.1] Numeric conversion functions
+// [C99/S7.20.1] Numeric conversion functions
 double             atof(const char *nptr);
 int                atoi(const char *nptr);
 long               atol(const char *nptr);
@@ -129,17 +129,17 @@ long long          strtoll(const char *restrict nptr, char **restrict endptr, in
 unsigned long      strtoul(const char *restrict nptr, char **restrict endptr, int base);
 unsigned long long strtoull(const char *restrict nptr, char **restrict endptr, int base);
 
-// [C99 S7.20.2] Pseudo-random sequence generation functions
+// [C99/S7.20.2] Pseudo-random sequence generation functions
 int  rand(void);
 void srand(unsigned int seed);
 
-// [C99 S7.20.3] Memory management functions
+// [C99/S7.20.3] Memory management functions
 void *calloc(size_t nmemb, size_t size);
 void  free(void *ptr);
 void *malloc(size_t size);
 void *realloc(void *ptr, size_t size);
 
-// [C99 S7.20.4] Communication with the environment
+// [C99/S7.20.4] Communication with the environment
 void  abort(void);
 int   atexit(void (*func)(void));
 void  exit(int status);
@@ -147,11 +147,11 @@ void  _Exit(int status);
 char *getenv(const char *name);
 int   system(const char *string);
 
-// [C99 S7.20.5] Searching and sorting utilities
+// [C99/S7.20.5] Searching and sorting utilities
 void *bsearch(const void *key, const void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
 void  qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
 
-// [C99 S7.20.6] Integer arithmetic functions
+// [C99/S7.20.6] Integer arithmetic functions
 int       abs(int j);
 long      labs(long j);
 long long llabs(long long j);
@@ -159,12 +159,12 @@ div_t     div(int numer, int denom);
 ldiv_t    ldiv(long numer, long denom);
 lldiv_t   lldiv(long long numer, long long denom);
 
-// [C99 S7.20.7] Multibyte/wide character conversion functions
+// [C99/S7.20.7] Multibyte/wide character conversion functions
 int mblen(const char *str, size_t n);
 int mbtowc(wchar_t *restrict pwc, const char *restrict str, size_t n);
 int wctomb(char *str, wchar_t wc);
 
-// [C99 S7.20.8] Multibyte/wide string conversion functions
+// [C99/S7.20.8] Multibyte/wide string conversion functions
 size_t mbstowcs(wchar_t *restrict pwcs, const char *restrict str, size_t n);
 size_t wcstombs(char *restrict str, const wchar_t *restrict pwcs, size_t n);
 

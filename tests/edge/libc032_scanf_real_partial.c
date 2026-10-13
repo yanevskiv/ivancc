@@ -11,8 +11,8 @@
 // | 0 -7
 // | 1 100 [e]
 // Standard: scanf should fail a number that ends inside its exponent or 0x.
-// Unlike: [C99 S7.19.6.2p10] glibc stores what came before, so no libc test holds
-// this, though [C99 S7.19.6.2p20] fails 100ergs so.
+// Unlike: [C99/S7.19.6.2p10] glibc stores what came before, so no libc test holds
+// this, though [C99/S7.19.6.2p20] fails 100ergs so.
 
 #include <stdio.h>
 

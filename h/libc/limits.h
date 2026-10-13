@@ -26,7 +26,7 @@
 #ifndef _LIMITS_H
 #define _LIMITS_H
 
-// [C99 S7.10] Sizes of integer types
+// [C99/S7.10] Sizes of integer types
 #define CHAR_BIT   8
 #define SCHAR_MIN  (-128)
 #define SCHAR_MAX  127

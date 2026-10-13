@@ -5,7 +5,7 @@
 // | [] 2
 // | [ -1
 // Non-standard: printf should not convert a wide character past the precision.
-// Liberty: [C99 S7.19.6.1p8] C99 has the array converted, and its end not read.
+// Liberty: [C99/S7.19.6.1p8] C99 has the array converted, and its end not read.
 
 #include <stdio.h>
 #include <stddef.h>

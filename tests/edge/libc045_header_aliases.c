@@ -2,7 +2,7 @@
 // Non-standard: a header's alias for a type it may not declare should be
 // that type: wchar_t in <inttypes.h>, size_t in <locale.h>, va_list in
 // <stdio.h> and <wchar.h>, whose conversion state should hold a character.
-// Liberty: [C99 S7.1.3p1] a name that begins with an underscore and a capital
+// Liberty: [C99/S7.1.3p1] a name that begins with an underscore and a capital
 // is reserved for any use, so a header may declare one of its own.
 
 #include <stddef.h>

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc15_00_signal_helpers.inc"
 
-// [C99 S7.14p2] A sig_atomic_t should hold each of its limits.
+// [C99/S7.14p2] A sig_atomic_t should hold each of its limits.
 static void Test_SignalAtomic(void)
 {
     volatile sig_atomic_t atom = SIG_ATOMIC_MAX;

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99 S7.19.6.1p6] %a should begin as its flags say, fill a width and be exact.
+// [C99/S7.19.6.1p6] %a should begin as its flags say, fill a width and be exact.
 static bool fills(const char *format, double value, int width, const char *first)
 {
     char *end;
@@ -20,7 +20,7 @@ static bool fills(const char *format, double value, int width, const char *first
     return lost == 0;
 }
 
-// [C99 S7.19.6.1p6] %a should take a sign, a space, zeros after its 0x and a side.
+// [C99/S7.19.6.1p6] %a should take a sign, a space, zeros after its 0x and a side.
 static void Test_StdioHexFlags(void)
 {
     char got[HOLD];

@@ -6,7 +6,7 @@
 
 static char filebuf[SMALL];
 
-// [C99 S7.19.6.2p9] The first character after an integer's item should stay unread.
+// [C99/S7.19.6.2p9] The first character after an integer's item should stay unread.
 static bool leaves(int kind)
 {
     FILE *file;
@@ -47,7 +47,7 @@ static bool leaves(int kind)
     return lost == 0;
 }
 
-// [C99 S7.19.6.2p2] fscanf should read integers the same however buffered.
+// [C99/S7.19.6.2p2] fscanf should read integers the same however buffered.
 static void Test_StdioScanIntegerUnread(void)
 {
     _TEST_TRUE(leaves(_IOFBF));

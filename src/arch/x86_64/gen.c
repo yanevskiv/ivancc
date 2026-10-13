@@ -721,7 +721,7 @@ int32_t Gen_x86_64_SlotSize(const Ast_Type *type)
     return Ast_AlignTo(type->at_size, GEN_X86_64_WORD_SIZE);
 }
 
-// [SysV S3.1.2] Return the address multiple a variable sits on.
+// [SysV/S3.1.2] Return the address multiple a variable sits on.
 int32_t Gen_x86_64_ObjectAlign(const Ast_Var *var)
 {
     const Ast_Type *type = var->av_type;

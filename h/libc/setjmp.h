@@ -26,13 +26,13 @@
 #ifndef _SETJMP_H
 #define _SETJMP_H
 
-// [C99 S7.13] Nonlocal jumps
+// [C99/S7.13] Nonlocal jumps
 typedef long jmp_buf[8];
 
-// [C99 S7.13.1] Save calling environment
+// [C99/S7.13.1] Save calling environment
 int setjmp(jmp_buf env);
 
-// [C99 S7.13.2] Restore calling environment
+// [C99/S7.13.2] Restore calling environment
 void longjmp(jmp_buf env, int val);
 
 #endif // _SETJMP_H

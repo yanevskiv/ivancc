@@ -15,13 +15,13 @@ static wint_t next(wint_t wc)
     return wc < DENSE ? wc + 1 : wc + STEP;
 }
 
-// Tell whether wc is one of the hexadecimal digits [C99 S7.25.2.1.12] lists.
+// Tell whether wc is one of the hexadecimal digits [C99/S7.25.2.1.12] lists.
 static bool hex(wint_t wc)
 {
     return (wc >= L'0' && wc <= L'9') || (wc >= L'a' && wc <= L'f') || (wc >= L'A' && wc <= L'F');
 }
 
-// [C99 S7.25.2.1] Return the first code whose classes break what each must hold.
+// [C99/S7.25.2.1] Return the first code whose classes break what each must hold.
 static long broken(void)
 {
     wint_t wc;
@@ -60,7 +60,7 @@ static long broken(void)
     return NONE;
 }
 
-// [C99 S7.25.3.1] Return the first code a mapping moves against its classes.
+// [C99/S7.25.3.1] Return the first code a mapping moves against its classes.
 static long mismapped(void)
 {
     wctrans_t lower = wctrans("tolower");
@@ -84,7 +84,7 @@ static long mismapped(void)
     return NONE;
 }
 
-// [C99 S7.25.2.2.1p4] Return the first code a class by name judges otherwise.
+// [C99/S7.25.2.2.1p4] Return the first code a class by name judges otherwise.
 static long misnamed(void)
 {
     wctype_t class;
@@ -102,7 +102,7 @@ static long misnamed(void)
     return NONE;
 }
 
-// [C99 S7.25.2.1] In UTF-8 the classes and mappings should hold as in any locale.
+// [C99/S7.25.2.1] In UTF-8 the classes and mappings should hold as in any locale.
 static void Test_WctypeRelations(void)
 {
     if (! _TEST_TRUE(setlocale(LC_CTYPE, UTF8) != NULL)) {

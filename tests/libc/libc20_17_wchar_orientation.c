@@ -6,7 +6,7 @@
 
 #define NAME "wide.tmp"
 
-// [C99 S7.24.3.5p2] fwide should orient a stream once, and tell its orientation.
+// [C99/S7.24.3.5p2] fwide should orient a stream once, and tell its orientation.
 static void Test_WcharOrientation(void)
 {
     FILE *file = holding(NAME, "abc", 3);
@@ -34,7 +34,7 @@ static void Test_WcharOrientation(void)
     _TEST_INT(fclose(file), 0);
 }
 
-// [C99 S7.19.2p4] A stream's first read or write should orient it, and no other.
+// [C99/S7.19.2p4] A stream's first read or write should orient it, and no other.
 static void Test_WcharOrientationFirst(void)
 {
     FILE *file = holding(NAME, "abc", 3);

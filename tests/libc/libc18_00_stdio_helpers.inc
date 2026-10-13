@@ -42,7 +42,7 @@ static const unsigned char bytes[BYTES] = {0, UCHAR_MAX, '\n', '\r', '\n', CTRL_
 // Objects.
 static unsigned char wide[WIDE];
 
-// [C99 S7.19.5.3p3] A file opened in a mode should take a string and close.
+// [C99/S7.19.5.3p3] A file opened in a mode should take a string and close.
 static bool put(const char *name, const char *mode, const char *str)
 {
     int lost = 0;
@@ -76,7 +76,7 @@ static bool holds(const char *name, const char *str)
     return lost == 0;
 }
 
-// [C99 S7.19.7.2p2] fgets should read a stream's next line, or what is left.
+// [C99/S7.19.7.2p2] fgets should read a stream's next line, or what is left.
 static bool reads(FILE *file, const char *want)
 {
     int lost = 0;
@@ -98,7 +98,7 @@ static void pattern(void)
     }
 }
 
-// [C99 S7.19.6.12p3] A format should give its text and return the text's length.
+// [C99/S7.19.6.12p3] A format should give its text and return the text's length.
 static bool prints(const char *want, const char *format, ...)
 {
     int n;
@@ -114,7 +114,7 @@ static bool prints(const char *want, const char *format, ...)
     return lost == 0;
 }
 
-// [C99 S7.19.6.7p3] A format should assign a count of items, the first a string.
+// [C99/S7.19.6.7p3] A format should assign a count of items, the first a string.
 static bool scans(const char *input, const char *format, int count, const char *want)
 {
     int lost = 0;
@@ -129,7 +129,7 @@ static bool scans(const char *input, const char *format, int count, const char *
     return lost == 0;
 }
 
-// [C99 S7.19.6.7p3] A format should assign a count of items, the first an int.
+// [C99/S7.19.6.7p3] A format should assign a count of items, the first an int.
 static bool scans_int(const char *input, const char *format, int count, int want)
 {
     int lost = 0;
@@ -140,7 +140,7 @@ static bool scans_int(const char *input, const char *format, int count, int want
     return lost == 0;
 }
 
-// [C99 S7.19.6.7p3] A format should assign a count of items, the first unsigned.
+// [C99/S7.19.6.7p3] A format should assign a count of items, the first unsigned.
 static bool scans_unsigned(const char *input, const char *format, int count, unsigned int want)
 {
     int lost = 0;
@@ -151,7 +151,7 @@ static bool scans_unsigned(const char *input, const char *format, int count, uns
     return lost == 0;
 }
 
-// [C99 S7.19.6.7p3] A format should assign a count of items, the first a float.
+// [C99/S7.19.6.7p3] A format should assign a count of items, the first a float.
 static bool scans_float(const char *input, const char *format, int count, float want)
 {
     int lost = 0;
@@ -162,7 +162,7 @@ static bool scans_float(const char *input, const char *format, int count, float 
     return lost == 0;
 }
 
-// [C99 S7.19.6.7p3] A format should assign a count of items, the first a double.
+// [C99/S7.19.6.7p3] A format should assign a count of items, the first a double.
 static bool scans_double(const char *input, const char *format, int count, double want)
 {
     int lost = 0;
@@ -173,7 +173,7 @@ static bool scans_double(const char *input, const char *format, int count, doubl
     return lost == 0;
 }
 
-// [C99 S7.19.6.7p3] A format should assign a count, the first a long double.
+// [C99/S7.19.6.7p3] A format should assign a count, the first a long double.
 static bool scans_long_double(const char *input, const char *format, int count, long double want)
 {
     int lost = 0;
@@ -184,7 +184,7 @@ static bool scans_long_double(const char *input, const char *format, int count, 
     return lost == 0;
 }
 
-// [C99 S7.19.6.7p3] A format should assign a count of items, the first len wide
+// [C99/S7.19.6.7p3] A format should assign a count of items, the first len wide
 // characters, with nothing stored after them.
 static bool scans_wide(const char *input, const char *format, int count, const wchar_t *want, size_t len)
 {

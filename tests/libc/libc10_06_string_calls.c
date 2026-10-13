@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc10_00_string_helpers.inc"
 
-// [C99 S7.1.4p1] A pointer and a call in parentheses should reach each function.
+// [C99/S7.1.4p1] A pointer and a call in parentheses should reach each function.
 static void Test_StringCalls(void)
 {
     char buf[SIZE];

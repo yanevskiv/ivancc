@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc06_00_float_helpers.inc"
 
-// [C99 S5.2.4.2.2p11] An epsilon should be the step from 1 to the next value.
+// [C99/S5.2.4.2.2p11] An epsilon should be the step from 1 to the next value.
 static void Test_FloatEpsilon(void)
 {
     float one = 1;

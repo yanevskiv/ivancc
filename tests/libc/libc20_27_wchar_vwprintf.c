@@ -61,7 +61,7 @@ static int to_both(wchar_t *first, wchar_t *second, const wchar_t *format, ...)
     return n;
 }
 
-// [C99 S7.24.2.7] Each function that takes a list should convert its arguments.
+// [C99/S7.24.2.7] Each function that takes a list should convert its arguments.
 static void Test_WcharVwprintf(void)
 {
     FILE *file;
@@ -86,7 +86,7 @@ static void Test_WcharVwprintf(void)
     _TEST_INT(remove(NAME), 0);
 }
 
-// [C99 S7.24.2.11] wprintf and vwprintf should write to standard output.
+// [C99/S7.24.2.11] wprintf and vwprintf should write to standard output.
 static void Test_WcharWprintf(void)
 {
     _TEST_INT(fwide(stdout, 0), 0);

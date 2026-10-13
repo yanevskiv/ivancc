@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99 S7.19.6.2p12] %n should store the characters read so far and count nothing.
+// [C99/S7.19.6.2p12] %n should store the characters read so far and count nothing.
 static void Test_StdioScanCount(void)
 {
     int n = NONE;

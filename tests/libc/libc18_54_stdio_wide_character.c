@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99 S7.19.6.1p8] %lc should write a wide character as %ls writes it alone.
+// [C99/S7.19.6.1p8] %lc should write a wide character as %ls writes it alone.
 static bool alone(wchar_t wc)
 {
     int n1;
@@ -21,7 +21,7 @@ static bool alone(wchar_t wc)
     return lost == 0;
 }
 
-// [C99 S7.19.6.1p8] %lc should write a wide character's bytes, one if it is basic.
+// [C99/S7.19.6.1p8] %lc should write a wide character's bytes, one if it is basic.
 static void Test_StdioWideCharacter(void)
 {
     _TEST_TRUE(prints("a", "%lc", L'a'));

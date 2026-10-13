@@ -23,7 +23,7 @@ static long add(long a, long b, long c, long d, long e, long f, long g)
     return a + b + c + d + e + f + g;
 }
 
-// [C99 S7.13.2.1p2] longjmp should return from many calls down, past the stack.
+// [C99/S7.13.2.1p2] longjmp should return from many calls down, past the stack.
 static void Test_SetjmpDepth(void)
 {
     volatile int count = 0;

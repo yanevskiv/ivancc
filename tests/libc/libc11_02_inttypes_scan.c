@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// [C99 S7.8.1p1] Each SCN macro should be its type's length modifier and letter.
+// [C99/S7.8.1p1] Each SCN macro should be its type's length modifier and letter.
 static void Test_InttypesScan(void)
 {
     _TEST_STR(SCNd8, "hhd");

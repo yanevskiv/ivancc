@@ -21,7 +21,7 @@ static void last(void)
     puts("atexit's");
 }
 
-// [C99 S7.19.3p3] Each output function should write through a smaller buffer.
+// [C99/S7.19.3p3] Each output function should write through a smaller buffer.
 static void Test_StdioOutput(void)
 {
     int bad = 0;

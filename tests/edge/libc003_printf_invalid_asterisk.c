@@ -5,7 +5,7 @@
 // | [%*.*k|5|6] 11
 // | [%*Ld|5] 8
 // Non-standard: printf should take no argument for an invalid directive's *.
-// Liberty: [C99 S7.19.6.1p9] an invalid conversion is undefined behaviour.
+// Liberty: [C99/S7.19.6.1p9] an invalid conversion is undefined behaviour.
 
 #include <stdio.h>
 

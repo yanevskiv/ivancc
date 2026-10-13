@@ -26,7 +26,7 @@
 #ifndef _ISO646_H
 #define _ISO646_H
 
-// [C99 S7.9] Alternative spellings
+// [C99/S7.9] Alternative spellings
 #define and &&
 #define and_eq &=
 #define bitand &

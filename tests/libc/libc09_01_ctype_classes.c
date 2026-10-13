@@ -11,7 +11,7 @@
 #define PUNCT "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 #define CNTRL "\001\002\003\004\005\006\007\010\011\012\013\014\015\016\017\020\021\022\023\024\025\026\027\030\031\032\033\034\035\036\037\177"
 
-// [C99 S7.4.1p1] A class should hold of its set alone: return the first to differ.
+// [C99/S7.4.1p1] A class should hold of its set alone: return the first to differ.
 static int misjudged(int (*classify)(int), const char *set)
 {
     int ch;
@@ -24,7 +24,7 @@ static int misjudged(int (*classify)(int), const char *set)
     return NONE;
 }
 
-// [C99 S7.4.1p1] Each class should be true of its own characters and of no other.
+// [C99/S7.4.1p1] Each class should be true of its own characters and of no other.
 static void Test_CtypeClasses(void)
 {
     _TEST_INT(misjudged(isalnum, UPPER LOWER DIGIT), NONE);

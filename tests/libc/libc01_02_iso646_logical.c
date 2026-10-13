@@ -13,7 +13,7 @@ static int called(void)
     return 1;
 }
 
-// [C99 S7.9p1] and, or and not should yield 0 or 1, and skip an operand unneeded.
+// [C99/S7.9p1] and, or and not should yield 0 or 1, and skip an operand unneeded.
 static void Test_Iso646Logical(void)
 {
     _TEST_INT(1 and 2, 1);

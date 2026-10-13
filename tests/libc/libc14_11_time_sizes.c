@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// [C99 S7.23.3.5p8] strftime should count what it wrote, nothing if too long.
+// [C99/S7.23.3.5p8] strftime should count what it wrote, nothing if too long.
 static void Test_TimeSizes(void)
 {
     time_t when = LAST_1999;
