@@ -150,3 +150,36 @@ static bool scans_unsigned(const char *input, const char *format, int count, uns
     lost += ! _TEST_UINT(got, count == 1 ? want : FILL);
     return lost == 0;
 }
+
+// (S7.19.6.7p3) A format should assign a count of items, the first a float.
+static bool scans_float(const char *input, const char *format, int count, float want)
+{
+    int lost = 0;
+    float got = NONE;
+
+    lost += ! _TEST_INT(sscanf(input, format, &got), count);
+    lost += ! _TEST_FLOAT(got, count == 1 ? want : NONE);
+    return lost == 0;
+}
+
+// (S7.19.6.7p3) A format should assign a count of items, the first a double.
+static bool scans_double(const char *input, const char *format, int count, double want)
+{
+    int lost = 0;
+    double got = NONE;
+
+    lost += ! _TEST_INT(sscanf(input, format, &got), count);
+    lost += ! _TEST_FLOAT(got, count == 1 ? want : NONE);
+    return lost == 0;
+}
+
+// (S7.19.6.7p3) A format should assign a count, the first a long double.
+static bool scans_long_double(const char *input, const char *format, int count, long double want)
+{
+    int lost = 0;
+    long double got = NONE;
+
+    lost += ! _TEST_INT(sscanf(input, format, &got), count);
+    lost += ! _TEST_FLOAT(got, count == 1 ? want : NONE);
+    return lost == 0;
+}

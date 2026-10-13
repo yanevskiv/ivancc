@@ -1913,6 +1913,23 @@ _Bool _Stdio_MatchScanPointer(const char *format, _Stdio_VaList *list, size_t *l
     return 1;
 }
 
+// Match a %a, %e, %f or %g directive, of either case, with its length, l or L.
+_Bool _Stdio_MatchScanReal(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest)
+{
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || format[at] == '\0' || strchr(_STDIO_SCAN_REALS, format[at]) == NULL) {
+        return 0;
+    }
+    if (*length != _STDIO_SCAN_LENGTH_NONE && *length != _STDIO_SCAN_LENGTH_LONG && *length != _STDIO_SCAN_LENGTH_LDOUBLE) {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, void *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
 // Peek at the source's next character, left unread, or EOF if there is none.
 int _Stdio_PeekSource(_Stdio_Source *source)
 {
@@ -2062,6 +2079,134 @@ void _Stdio_StoreInteger(void *dest, int length, unsigned long long value)
             *(unsigned int *) dest = (unsigned int) value;
         } break;
     }
+}
+
+// Take the source's next characters into item while set has them, max at most.
+size_t _Stdio_TakeChars(_Stdio_Source *source, _Stdio_Item *item, const char *set, size_t max)
+{
+    int ch;
+    char *text;
+    size_t size;
+    size_t count = 0;
+
+    while (count < max && item->si_room > 0) {
+        ch = _Stdio_PeekSource(source);
+        if (ch == EOF || ch == '\0' || strchr(set, tolower(ch)) == NULL) {
+            break;
+        }
+
+        // Phase: grow the item to hold one character more and its null
+        if (item->si_len + 2 > item->si_size) {
+            size = item->si_size == 0 ? _STDIO_SCAN_ITEM : 2 * item->si_size;
+            text = realloc(item->si_text, size);
+            if (text == NULL) {
+                source->so_failure = _STDIO_FAILURE_INPUT;
+                item->si_room = 0;
+                break;
+            }
+            item->si_text = text;
+            item->si_size = size;
+        }
+        item->si_text[item->si_len++] = (char) ch;
+        item->si_text[item->si_len] = '\0';
+        _Stdio_AdvanceSource(source);
+        item->si_room--;
+        count++;
+    }
+    return count;
+}
+
+// Take the source's next characters into item while they spell word, any case.
+size_t _Stdio_TakeWord(_Stdio_Source *source, _Stdio_Item *item, const char *word)
+{
+    size_t count = 0;
+    char set[2] = {'\0', '\0'};
+
+    for (; word[count] != '\0'; count++) {
+        set[0] = word[count];
+        if (_Stdio_TakeChars(source, item, set, 1) == 0) {
+            break;
+        }
+    }
+    return count;
+}
+
+// Read the longest input that is or begins a floating number into a new item.
+void _Stdio_ReadReal(_Stdio_Source *source, int width, _Stdio_Item *item)
+{
+    int ch;
+    size_t digits;
+    const char *mark = _STDIO_SCAN_EXPONENT;
+    const char *set = _STDIO_SCAN_DECIMALS;
+
+    item->si_text = NULL;
+    item->si_len = 0;
+    item->si_size = 0;
+    item->si_room = width == _STDIO_SCAN_WIDTH_NONE ? SIZE_MAX : (size_t) width;
+
+    // Phase: read the sign
+    _Stdio_TakeChars(source, item, _STDIO_SCAN_SIGNS, 1);
+    ch = item->si_room > 0 ? tolower(_Stdio_PeekSource(source)) : EOF;
+
+    // Phase: read an infinity, or a NaN and what its parentheses hold
+    if (ch == _STDIO_SCAN_INFINITY[0]) {
+        _Stdio_TakeWord(source, item, _STDIO_SCAN_INFINITY);
+        return;
+    }
+    if (ch == _STDIO_SCAN_NAN[0]) {
+        if (_Stdio_TakeWord(source, item, _STDIO_SCAN_NAN) == sizeof(_STDIO_SCAN_NAN) - 1 && _Stdio_TakeChars(source, item, "(", 1) > 0) {
+            _Stdio_TakeChars(source, item, _STDIO_SCAN_NCHARS, SIZE_MAX);
+            _Stdio_TakeChars(source, item, ")", 1);
+        }
+        return;
+    }
+
+    // Phase: read 0x, which makes the digits hex and the exponent a power of 2
+    digits = _Stdio_TakeChars(source, item, "0", 1);
+    if (digits > 0 && _Stdio_TakeChars(source, item, "x", 1) > 0) {
+        digits = 0;
+        set = _STDIO_SCAN_HEXES;
+        mark = _STDIO_SCAN_POWER;
+    }
+
+    // Phase: read the digits and the point among them
+    digits += _Stdio_TakeChars(source, item, set, SIZE_MAX);
+    _Stdio_TakeChars(source, item, _STDIO_SCAN_POINT, 1);
+    digits += _Stdio_TakeChars(source, item, set, SIZE_MAX);
+
+    // Phase: read the exponent, which only a number with a digit has
+    if (digits > 0 && _Stdio_TakeChars(source, item, mark, 1) > 0) {
+        _Stdio_TakeChars(source, item, _STDIO_SCAN_SIGNS, 1);
+        _Stdio_TakeChars(source, item, _STDIO_SCAN_DECIMALS, SIZE_MAX);
+    }
+}
+
+// Convert all of str to a length's floating type, stored at dest if not null.
+_Bool _Stdio_ConvertReal(const char *str, int length, void *dest)
+{
+    char *end;
+    float single = 0;
+    double real = 0;
+    long double extended = 0;
+
+    if (length == _STDIO_SCAN_LENGTH_LONG) {
+        real = strtod(str, &end);
+    } else if (length == _STDIO_SCAN_LENGTH_LDOUBLE) {
+        extended = strtold(str, &end);
+    } else {
+        single = strtof(str, &end);
+    }
+    if (end == str || *end != '\0') {
+        return 0;
+    }
+    if (dest != NULL && length == _STDIO_SCAN_LENGTH_LONG) {
+        *(double *) dest = real;
+    } else if (dest != NULL && length == _STDIO_SCAN_LENGTH_LDOUBLE) {
+        *(long double *) dest = extended;
+    } else if (dest != NULL) {
+        *(float *) dest = single;
+    }
+    return 1;
 }
 
 // Scan the white space the source is at, none being enough.
@@ -2261,6 +2406,23 @@ void _Stdio_ScanPointer(_Stdio_Source *source, int width, void *dest)
     }
 }
 
+// Scan a floating number, after any white space, into dest as a length's type.
+void _Stdio_ScanReal(_Stdio_Source *source, int width, int length, void *dest)
+{
+    _Stdio_Item item;
+
+    _Stdio_ScanSpace(source);
+    _Stdio_ReadReal(source, width, &item);
+    if (source->so_failure == _STDIO_FAILURE_NONE && item.si_len == 0) {
+        source->so_failure = _Stdio_PeekSource(source) == EOF ? _STDIO_FAILURE_INPUT : _STDIO_FAILURE_MATCHING;
+    } else if (source->so_failure == _STDIO_FAILURE_NONE && ! _Stdio_ConvertReal(item.si_text, length, dest)) {
+        source->so_failure = _STDIO_FAILURE_MATCHING;
+    } else if (source->so_failure == _STDIO_FAILURE_NONE && dest != NULL) {
+        source->so_stored++;
+    }
+    free(item.si_text);
+}
+
 // Scan the source as the format says, each directive storing at its argument.
 int _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList args)
 {
@@ -2302,6 +2464,8 @@ int _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList a
             _Stdio_ScanHex(source, width, length, dest);
         } else if (_Stdio_MatchScanPointer(format + i, &list, &len, &width, &dest)) {
             _Stdio_ScanPointer(source, width, dest);
+        } else if (_Stdio_MatchScanReal(format + i, &list, &len, &width, &length, &dest)) {
+            _Stdio_ScanReal(source, width, length, dest);
         } else {
             len = 0;
             source->so_failure = _STDIO_FAILURE_MATCHING;

@@ -137,6 +137,20 @@
 #define _STDIO_SCAN_NIL       "(nil)"
 #define _STDIO_SCAN_NIL_WIDTH 5
 
+// The conversions that read a floating number, and such a number's characters:
+// a sign, a digit of either base, the point, either exponent's mark, the
+// words, and what a NaN's parentheses hold between them.
+#define _STDIO_SCAN_REALS    "aefgAEFG"
+#define _STDIO_SCAN_SIGNS    "+-"
+#define _STDIO_SCAN_DECIMALS "0123456789"
+#define _STDIO_SCAN_HEXES    "0123456789abcdef"
+#define _STDIO_SCAN_POINT    "."
+#define _STDIO_SCAN_EXPONENT "e"
+#define _STDIO_SCAN_POWER    "p"
+#define _STDIO_SCAN_INFINITY "infinity"
+#define _STDIO_SCAN_NAN      "nan"
+#define _STDIO_SCAN_NCHARS   "0123456789abcdefghijklmnopqrstuvwxyz_"
+
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
 
@@ -281,6 +295,15 @@ struct _Stdio_Source {
     _Stdio_Failure so_failure; // what stopped the input, if anything has
 };
 
+// An input item of any length: its characters, and how many more it may take.
+typedef struct _Stdio_Item _Stdio_Item;
+struct _Stdio_Item {
+    char *si_text;  // the characters and a null, allocated, or NULL for none
+    size_t si_len;  // how many characters there are
+    size_t si_size; // the bytes si_text points to
+    size_t si_room; // the characters the directive's width still allows
+};
+
 // (S7.19.1) Introduction
 typedef struct _Stdio_File FILE;
 
@@ -400,14 +423,19 @@ _Bool  _Stdio_MatchScanOctal(const char *format, _Stdio_VaList *list, size_t *le
 _Bool  _Stdio_MatchScanUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
 _Bool  _Stdio_MatchScanHex(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
 _Bool  _Stdio_MatchScanPointer(const char *format, _Stdio_VaList *list, size_t *len, int *width, void **dest);
+_Bool  _Stdio_MatchScanReal(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
 
 // Formatted input
-int   _Stdio_PeekSource(_Stdio_Source *source);
-void  _Stdio_AdvanceSource(_Stdio_Source *source);
-int   _Stdio_EndSource(_Stdio_Source *source);
-_Bool _Stdio_IsInSet(const char *set, size_t count, int ch);
-_Bool _Stdio_ReadInteger(_Stdio_Source *source, int width, int base, char *item);
-void  _Stdio_StoreInteger(void *dest, int length, unsigned long long value);
+int    _Stdio_PeekSource(_Stdio_Source *source);
+void   _Stdio_AdvanceSource(_Stdio_Source *source);
+int    _Stdio_EndSource(_Stdio_Source *source);
+_Bool  _Stdio_IsInSet(const char *set, size_t count, int ch);
+_Bool  _Stdio_ReadInteger(_Stdio_Source *source, int width, int base, char *item);
+void   _Stdio_StoreInteger(void *dest, int length, unsigned long long value);
+size_t _Stdio_TakeChars(_Stdio_Source *source, _Stdio_Item *item, const char *set, size_t max);
+size_t _Stdio_TakeWord(_Stdio_Source *source, _Stdio_Item *item, const char *word);
+void   _Stdio_ReadReal(_Stdio_Source *source, int width, _Stdio_Item *item);
+_Bool  _Stdio_ConvertReal(const char *str, int length, void *dest);
 
 // Scanning
 void _Stdio_ScanSpace(_Stdio_Source *source);
@@ -423,6 +451,7 @@ void _Stdio_ScanOctal(_Stdio_Source *source, int width, int length, void *dest);
 void _Stdio_ScanUnsigned(_Stdio_Source *source, int width, int length, void *dest);
 void _Stdio_ScanHex(_Stdio_Source *source, int width, int length, void *dest);
 void _Stdio_ScanPointer(_Stdio_Source *source, int width, void *dest);
+void _Stdio_ScanReal(_Stdio_Source *source, int width, int length, void *dest);
 int  _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList args);
 
 // Positioning
