@@ -193,6 +193,13 @@ void Asm_x86_64_EmitAddress(const char *label, int64_t addend)
     item->ai_addend = addend;
 }
 
+// Emit padding up to the next multiple of align in the section.
+void Asm_x86_64_EmitAlign(size_t align)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_ALIGN);
+    item->ai_align = align;
+}
+
 // Emit a raw assembler line from a printf-style format, written with indent.
 void Asm_x86_64_EmitDirective(const char *text, ...)
 {

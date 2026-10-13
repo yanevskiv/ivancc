@@ -215,6 +215,9 @@
 // A run of zero bytes.
 #define TXT_X86_64_PATTERN_ZERO "^\\.(zero|skip|space)" S "(" NUM ")$"
 
+// Padding to a multiple of a power of two.
+#define TXT_X86_64_PATTERN_ALIGN "^\\.align" S "(1|2|4|8|16|32|64|128|256|512|1024|2048|4096)$"
+
 // A string without a terminating NUL.
 #define TXT_X86_64_PATTERN_ASCII "^\\.ascii" S "(" STRING ")$"
 
@@ -460,6 +463,7 @@ static const char *Txt_x86_64_Pattern[TXT_X86_64_REGEX_COUNT] = {
     [TXT_X86_64_REGEX_LONG]          = TXT_X86_64_PATTERN_LONG,
     [TXT_X86_64_REGEX_QUAD]          = TXT_X86_64_PATTERN_QUAD,
     [TXT_X86_64_REGEX_ZERO]          = TXT_X86_64_PATTERN_ZERO,
+    [TXT_X86_64_REGEX_ALIGN]         = TXT_X86_64_PATTERN_ALIGN,
     [TXT_X86_64_REGEX_ASCII]         = TXT_X86_64_PATTERN_ASCII,
     [TXT_X86_64_REGEX_ASCIZ]         = TXT_X86_64_PATTERN_ASCIZ,
     [TXT_X86_64_REGEX_IGNORED]       = TXT_X86_64_PATTERN_IGNORED,
@@ -690,6 +694,9 @@ void Txt_x86_64_Att_Write(FILE *out)
                     fprintf(out, "  .quad %s\n", item->ai_label);
                 }
             } break;
+            case ASM_X86_64_ITEM_ALIGN: {
+                fprintf(out, "  .align %zu\n", item->ai_align);
+            } break;
             case ASM_X86_64_ITEM_DIRECTIVE: {
                 fprintf(out, "  %s\n", item->ai_text);
             } break;
@@ -914,6 +921,8 @@ void Txt_x86_64_Att_ReadDirective(const char *line)
 
         Asm_x86_64_EmitBytes(zeros, n);
         free(zeros);
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ALIGN], line, match)) {
+        Asm_x86_64_EmitAlign((size_t) strtoul(Str_RegexFieldTail(line, match, 0), NULL, 0));
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ASCII], line, match)) {
         Txt_x86_64_Att_ReadString(Str_RegexFieldTail(line, match, 0), TXT_X86_64_BARE);
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_ASCIZ], line, match)) {

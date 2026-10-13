@@ -228,6 +228,7 @@ void Enc_x86_64_Emit8(uint8_t byte);
 void Enc_x86_64_Emit32(uint32_t val);
 void Enc_x86_64_Emit64(uint64_t val);
 void Enc_x86_64_EmitRaw(const void *data, size_t len);
+void Enc_x86_64_AlignSection(size_t align);
 
 // Recording labels and fixups
 void Enc_x86_64_RecordLabel(const char *name);

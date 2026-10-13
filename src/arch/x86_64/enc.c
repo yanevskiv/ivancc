@@ -104,6 +104,15 @@ void Enc_x86_64_EmitRaw(const void *data, size_t len)
     Elf_BufferData(Elf_SectionData(Enc_x86_64_Cur), data, len);
 }
 
+// Pad the current section to a multiple of align, which it must then sit on.
+void Enc_x86_64_AlignSection(size_t align)
+{
+    Elf_BufferAlign(Elf_SectionData(Enc_x86_64_Cur), align);
+    if (align > Enc_x86_64_Cur->sec_addralign) {
+        Enc_x86_64_Cur->sec_addralign = align;
+    }
+}
+
 // Record a label at the current position in the current section.
 void Enc_x86_64_RecordLabel(const char *name)
 {
@@ -722,6 +731,9 @@ void Enc_x86_64_BuildObject(void)
             case ASM_X86_64_ITEM_ADDR: {
                 Enc_x86_64_RecordFixup(item->ai_label, R_X86_64_64, item->ai_addend);
                 Enc_x86_64_Emit64(0);
+            } break;
+            case ASM_X86_64_ITEM_ALIGN: {
+                Enc_x86_64_AlignSection(item->ai_align);
             } break;
             case ASM_X86_64_ITEM_GLOBL: {
                 Enc_x86_64_RecordGlobl(item->ai_label);

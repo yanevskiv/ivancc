@@ -40,6 +40,10 @@
 // Largest aggregate the ABI passes in registers.
 #define GEN_X86_64_SYSV_MAX_REG_SIZE 16
 
+// The size from which the ABI aligns an array object, and what it aligns it to.
+#define GEN_X86_64_SYSV_ARRAY_SIZE  16
+#define GEN_X86_64_SYSV_ARRAY_ALIGN 16
+
 // Most eightbytes one value passed in registers occupies.
 #define GEN_X86_64_SYSV_MAX_EIGHTBYTES (GEN_X86_64_SYSV_MAX_REG_SIZE / GEN_X86_64_SYSV_EIGHTBYTE)
 
@@ -156,6 +160,7 @@ int32_t          Gen_x86_64_Count(void);
 void             Gen_x86_64_EmitPush(void);
 void             Gen_x86_64_EmitPop(Asm_x86_64_Reg reg);
 int32_t          Gen_x86_64_SlotSize(const Ast_Type *type);
+int32_t          Gen_x86_64_ObjectAlign(const Ast_Type *type);
 int32_t          Gen_x86_64_SlotAlign(const Ast_Type *type);
 Asm_x86_64_Width Gen_x86_64_TypeWidth(const Ast_Type *type);
 void             Gen_x86_64_EmitVarAddr(const Ast_Var *var, Asm_x86_64_Reg reg);

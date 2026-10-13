@@ -721,13 +721,24 @@ int32_t Gen_x86_64_SlotSize(const Ast_Type *type)
     return Ast_AlignTo(type->at_size, GEN_X86_64_WORD_SIZE);
 }
 
+// Return the address multiple an object of type sits on, by the SysV ABI.
+int32_t Gen_x86_64_ObjectAlign(const Ast_Type *type)
+{
+    bool array = type->at_kind == AST_TYPE_KIND_ARRAY && type->at_size >= GEN_X86_64_SYSV_ARRAY_SIZE;
+
+    if (array && type->at_align < GEN_X86_64_SYSV_ARRAY_ALIGN) {
+        return GEN_X86_64_SYSV_ARRAY_ALIGN;
+    }
+    return type->at_align;
+}
+
 // Return the address multiple a local's frame slot sits on.
 int32_t Gen_x86_64_SlotAlign(const Ast_Type *type)
 {
     if (Ast_IsVla(type)) {
         return GEN_X86_64_WORD_SIZE;
     }
-    return type->at_align;
+    return Gen_x86_64_ObjectAlign(type);
 }
 
 // Return the operand width in bits used to load or store a value of type.
@@ -2065,6 +2076,9 @@ void Gen_x86_64_EmitGlobal(Ast_Var *var)
     }
     if (var->av_storage != AST_STORAGE_STATIC) {
         Asm_x86_64_EmitGlobl("%s", var->av_symbol);
+    }
+    if (Gen_x86_64_ObjectAlign(var->av_type) > AST_TYPE_ALIGN_CHAR) {
+        Asm_x86_64_EmitAlign((size_t) Gen_x86_64_ObjectAlign(var->av_type));
     }
     Asm_x86_64_EmitLabel("%s", var->av_symbol);
     Gen_x86_64_EmitImage(bytes, size, addrs, naddrs);
