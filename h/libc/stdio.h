@@ -60,6 +60,9 @@
 // The precision of a directive that gives none.
 #define _STDIO_PRECISION_NONE (-1)
 
+// The width or precision a directive leaves to an argument.
+#define _STDIO_COUNT_ARGUMENT (-2)
+
 // A directive's length modifier: none, hh, h, l, ll, j, z, t or L.
 #define _STDIO_LENGTH_NONE    0
 #define _STDIO_LENGTH_CHAR    1
@@ -137,16 +140,6 @@ struct _Stdio_Sink {
     _Bool ss_failed;
 };
 
-// A conversion specification: its flags, width, precision, length and letter.
-typedef struct _Stdio_Directive _Stdio_Directive;
-struct _Stdio_Directive {
-    int sd_flags;                // _STDIO_FLAG_LEFT and the rest
-    int sd_width;
-    int sd_precision;            // _STDIO_PRECISION_NONE if it gives none
-    int sd_length;               // _STDIO_LENGTH_NONE and the rest
-    char sd_conv;
-};
-
 // (S7.19.1) Introduction
 typedef struct _Stdio_File FILE;
 
@@ -195,13 +188,24 @@ int    _Stdio_Flush(FILE *stream);
 int    _Stdio_FlushAll(void);
 void   _Stdio_FlushLines(void);
 
+// Parsing
+size_t _Stdio_ParseHead(const char *format, int *flags, int *width, int *precision, int *length);
+void   _Stdio_TakeHead(_Stdio_VaList *list, int *flags, int *width, int *precision);
+_Bool  _Stdio_ParseText(const char *format, size_t *len);
+_Bool  _Stdio_ParsePercent(const char *format, _Stdio_VaList *list, size_t *len);
+_Bool  _Stdio_ParseChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch);
+_Bool  _Stdio_ParseString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str);
+
 // Formatted output
+int _Stdio_End(_Stdio_Sink *sink);
+
+// Emitting
 void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len);
-void _Stdio_Pad(_Stdio_Sink *sink, int ch, size_t len);
-void _Stdio_Field(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *data, size_t len);
-void _Stdio_String(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *str);
-int  _Stdio_Format(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
-int  _Stdio_End(_Stdio_Sink *sink);
+void _Stdio_EmitPad(_Stdio_Sink *sink, int ch, size_t len);
+void _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data, size_t len);
+void _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch);
+void _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, const char *str);
+int  _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
 
 // Positioning
 long _Stdio_Ahead(FILE *stream);

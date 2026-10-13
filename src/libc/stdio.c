@@ -26,6 +26,15 @@
 // Module header.
 #include <stdio.h>
 
+// The hook exit flushes the streams by.
+#include <_crt.h>
+
+// The files' calls, the terminal's settings and the standard descriptors.
+#include <_sys.h>
+
+// The text a null string is written as.
+#include <_err.h>
+
 // The error a failed open, read, write or close reports.
 #include <errno.h>
 
@@ -35,21 +44,12 @@
 // The streams fopen allocates and the buffers they do.
 #include <stdlib.h>
 
-// The hook exit flushes the streams by.
-#include <_crt.h>
-
 // The largest int puts returns and the largest size fread and fwrite move.
 #include <limits.h>
 #include <stdint.h>
 
-// The files' calls, the terminal's settings and the standard descriptors.
-#include <_sys.h>
-
 // The arguments a format converts.
 #include <stdarg.h>
-
-// The text a null string is written as.
-#include <_err.h>
 
 // A temporary name: where it is, and the characters and length of its end.
 #define _STDIO_TEMP_PREFIX  "/tmp/tmp."
@@ -481,6 +481,173 @@ void _Stdio_FlushLines(void)
     }
 }
 
+// Parse a directive's percent sign, flags, width, precision and length.
+size_t _Stdio_ParseHead(const char *format, int *flags, int *width, int *precision, int *length)
+{
+    int digit;
+    size_t i = 0;
+
+    if (format[i] != '%') {
+        return 0;
+    }
+
+    // Phase: parse the flags
+    *flags = 0;
+    for (i++; ; i++) {
+        if (format[i] == '-') {
+            *flags |= _STDIO_FLAG_LEFT;
+        } else if (format[i] == '+') {
+            *flags |= _STDIO_FLAG_SIGN;
+        } else if (format[i] == ' ') {
+            *flags |= _STDIO_FLAG_SPACE;
+        } else if (format[i] == '#') {
+            *flags |= _STDIO_FLAG_ALT;
+        } else if (format[i] == '0') {
+            *flags |= _STDIO_FLAG_ZERO;
+        } else {
+            break;
+        }
+    }
+
+    // Phase: parse the width
+    *width = 0;
+    if (format[i] == '*') {
+        *width = _STDIO_COUNT_ARGUMENT;
+        i++;
+    } else {
+        for (; format[i] >= '0' && format[i] <= '9'; i++) {
+            digit = format[i] - '0';
+            *width = *width > (INT_MAX - digit) / _STDIO_COUNT_BASE ? INT_MAX : *width * _STDIO_COUNT_BASE + digit;
+        }
+    }
+
+    // Phase: parse the precision
+    *precision = _STDIO_PRECISION_NONE;
+    if (format[i] == '.' && format[i + 1] == '*') {
+        *precision = _STDIO_COUNT_ARGUMENT;
+        i += 2;
+    } else if (format[i] == '.') {
+        *precision = 0;
+        for (i++; format[i] >= '0' && format[i] <= '9'; i++) {
+            digit = format[i] - '0';
+            *precision = *precision > (INT_MAX - digit) / _STDIO_COUNT_BASE ? INT_MAX : *precision * _STDIO_COUNT_BASE + digit;
+        }
+    }
+
+    // Phase: parse the length
+    *length = _STDIO_LENGTH_NONE;
+    if (format[i] == 'h' && format[i + 1] == 'h') {
+        *length = _STDIO_LENGTH_CHAR;
+        i += 2;
+    } else if (format[i] == 'h') {
+        *length = _STDIO_LENGTH_SHORT;
+        i++;
+    } else if (format[i] == 'l' && format[i + 1] == 'l') {
+        *length = _STDIO_LENGTH_LLONG;
+        i += 2;
+    } else if (format[i] == 'l') {
+        *length = _STDIO_LENGTH_LONG;
+        i++;
+    } else if (format[i] == 'j') {
+        *length = _STDIO_LENGTH_INTMAX;
+        i++;
+    } else if (format[i] == 'z') {
+        *length = _STDIO_LENGTH_SIZE;
+        i++;
+    } else if (format[i] == 't') {
+        *length = _STDIO_LENGTH_PTRDIFF;
+        i++;
+    } else if (format[i] == 'L') {
+        *length = _STDIO_LENGTH_LDOUBLE;
+        i++;
+    }
+    return i;
+}
+
+// Take the width and precision a directive left to its arguments.
+void _Stdio_TakeHead(_Stdio_VaList *list, int *flags, int *width, int *precision)
+{
+    if (*width == _STDIO_COUNT_ARGUMENT) {
+        *width = va_arg(*list, int);
+    }
+    if (*width < 0) {
+        *flags |= _STDIO_FLAG_LEFT;
+        *width = *width == INT_MIN ? INT_MAX : -*width;
+    }
+    if (*precision == _STDIO_COUNT_ARGUMENT) {
+        *precision = va_arg(*list, int);
+    }
+    if (*precision < 0) {
+        *precision = _STDIO_PRECISION_NONE;
+    }
+}
+
+// Parse the text before a directive.
+_Bool _Stdio_ParseText(const char *format, size_t *len)
+{
+    *len = strcspn(format, "%");
+    return *len > 0;
+}
+
+// Parse a %% directive.
+_Bool _Stdio_ParsePercent(const char *format, _Stdio_VaList *list, size_t *len)
+{
+    int flags;
+    int width;
+    int length;
+    int precision;
+    size_t at = _Stdio_ParseHead(format, &flags, &width, &precision, &length);
+
+    if (at == 0 || length != _STDIO_LENGTH_NONE || format[at] != '%') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, &flags, &width, &precision);
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %c directive with its argument.
+_Bool _Stdio_ParseChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch)
+{
+    int length;
+    int precision;
+    size_t at = _Stdio_ParseHead(format, flags, width, &precision, &length);
+
+    if (at == 0 || length != _STDIO_LENGTH_NONE || format[at] != 'c') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, &precision);
+    *ch = (char) va_arg(*list, int);
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %s directive with its argument.
+_Bool _Stdio_ParseString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || length != _STDIO_LENGTH_NONE || format[at] != 's') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *str = va_arg(*list, const char *);
+    *len = at + 1;
+    return 1;
+}
+
+// End the sink's string, and return its count, or EOF if it failed.
+int _Stdio_End(_Stdio_Sink *sink)
+{
+    if (sink->ss_stream == NULL && sink->ss_size > 0) {
+        size_t last = sink->ss_size - 1;
+
+        sink->ss_str[sink->ss_count < last ? sink->ss_count : last] = '\0';
+    }
+    return sink->ss_failed ? EOF : (int) sink->ss_count;
+}
+
 // Give the sink len characters of data, counted though its string be full.
 void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len)
 {
@@ -504,7 +671,7 @@ void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len)
 }
 
 // Give the sink len copies of the character ch.
-void _Stdio_Pad(_Stdio_Sink *sink, int ch, size_t len)
+void _Stdio_EmitPad(_Stdio_Sink *sink, int ch, size_t len)
 {
     char chunk[_STDIO_PAD_CHUNK];
 
@@ -517,158 +684,72 @@ void _Stdio_Pad(_Stdio_Sink *sink, int ch, size_t len)
     }
 }
 
-// Give the sink len characters of data in the directive's width, on its side.
-void _Stdio_Field(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *data, size_t len)
+// Give the sink len characters of data in a width.
+void _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data, size_t len)
 {
-    size_t width = (size_t) dir->sd_width;
-    size_t pad = width > len ? width - len : 0;
+    size_t pad = (size_t) width > len ? (size_t) width - len : 0;
 
-    if (! (dir->sd_flags & _STDIO_FLAG_LEFT)) {
-        _Stdio_Pad(sink, ' ', pad);
+    if (! (flags & _STDIO_FLAG_LEFT)) {
+        _Stdio_EmitPad(sink, ' ', pad);
     }
     _Stdio_Emit(sink, data, len);
-    if (dir->sd_flags & _STDIO_FLAG_LEFT) {
-        _Stdio_Pad(sink, ' ', pad);
+    if (flags & _STDIO_FLAG_LEFT) {
+        _Stdio_EmitPad(sink, ' ', pad);
     }
 }
 
-// Convert the string str by the directive, a null one as glibc does.
-void _Stdio_String(_Stdio_Sink *sink, const _Stdio_Directive *dir, const char *str)
+// Give the sink a character as %c converts it.
+void _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch)
+{
+    _Stdio_EmitField(sink, flags, width, &ch, 1);
+}
+
+// Give the sink a string as %s converts it, a null one as glibc does.
+void _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, const char *str)
 {
     size_t len;
     const char *end;
-    int limit = dir->sd_precision;
 
     if (str == NULL) {
-        str = limit == _STDIO_PRECISION_NONE || limit >= (int) sizeof(_ERR_STDIO_NULL) - 1 ? _ERR_STDIO_NULL : "";
+        str = precision == _STDIO_PRECISION_NONE || precision >= (int) sizeof(_ERR_STDIO_NULL) - 1 ? _ERR_STDIO_NULL : "";
     }
-    if (limit == _STDIO_PRECISION_NONE) {
+    if (precision == _STDIO_PRECISION_NONE) {
         len = strlen(str);
     } else {
-        end = memchr(str, '\0', (size_t) limit);
-        len = end != NULL ? (size_t) (end - str) : (size_t) limit;
+        end = memchr(str, '\0', (size_t) precision);
+        len = end != NULL ? (size_t) (end - str) : (size_t) precision;
     }
-    _Stdio_Field(sink, dir, str, len);
+    _Stdio_EmitField(sink, flags, width, str, len);
 }
 
-// Give the sink the format's text, each directive converting an argument.
-int _Stdio_Format(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
+// Give the sink the format's text, each directive converting its arguments.
+int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
 {
     char ch;
-    int digit;
-    size_t start;
-    _Stdio_Directive dir;
+    int flags;
+    int width;
+    size_t len;
+    va_list list;
+    int precision;
+    const char *str;
 
-    for (size_t i = 0; format[i] != '\0'; i++) {
-        if (format[i] != '%') {
-            _Stdio_Emit(sink, format + i, 1);
-            continue;
-        }
-
-        // Phase: parse the directive
-        start = i;
-        dir.sd_flags = 0;
-        for (i++; ; i++) {
-            if (format[i] == '-') {
-                dir.sd_flags |= _STDIO_FLAG_LEFT;
-            } else if (format[i] == '+') {
-                dir.sd_flags |= _STDIO_FLAG_SIGN;
-            } else if (format[i] == ' ') {
-                dir.sd_flags |= _STDIO_FLAG_SPACE;
-            } else if (format[i] == '#') {
-                dir.sd_flags |= _STDIO_FLAG_ALT;
-            } else if (format[i] == '0') {
-                dir.sd_flags |= _STDIO_FLAG_ZERO;
-            } else {
-                break;
-            }
-        }
-        dir.sd_width = 0;
-        if (format[i] == '*') {
-            dir.sd_width = va_arg(args, int);
-            i++;
+    va_copy(list, args);
+    for (size_t i = 0; format[i] != '\0'; i += len) {
+        if (_Stdio_ParseText(format + i, &len)) {
+            _Stdio_Emit(sink, format + i, len);
+        } else if (_Stdio_ParsePercent(format + i, &list, &len)) {
+            _Stdio_Emit(sink, "%", 1);
+        } else if (_Stdio_ParseChar(format + i, &list, &len, &flags, &width, &ch)) {
+            _Stdio_EmitChar(sink, flags, width, ch);
+        } else if (_Stdio_ParseString(format + i, &list, &len, &flags, &width, &precision, &str)) {
+            _Stdio_EmitString(sink, flags, width, precision, str);
         } else {
-            for (; format[i] >= '0' && format[i] <= '9'; i++) {
-                digit = format[i] - '0';
-                dir.sd_width = dir.sd_width > (INT_MAX - digit) / _STDIO_COUNT_BASE ? INT_MAX : dir.sd_width * _STDIO_COUNT_BASE + digit;
-            }
-        }
-        if (dir.sd_width < 0) {
-            dir.sd_flags |= _STDIO_FLAG_LEFT;
-            dir.sd_width = dir.sd_width == INT_MIN ? INT_MAX : -dir.sd_width;
-        }
-        dir.sd_precision = _STDIO_PRECISION_NONE;
-        if (format[i] == '.' && format[i + 1] == '*') {
-            dir.sd_precision = va_arg(args, int);
-            i += 2;
-        } else if (format[i] == '.') {
-            dir.sd_precision = 0;
-            for (i++; format[i] >= '0' && format[i] <= '9'; i++) {
-                digit = format[i] - '0';
-                dir.sd_precision = dir.sd_precision > (INT_MAX - digit) / _STDIO_COUNT_BASE ? INT_MAX : dir.sd_precision * _STDIO_COUNT_BASE + digit;
-            }
-        }
-        if (dir.sd_precision < 0) {
-            dir.sd_precision = _STDIO_PRECISION_NONE;
-        }
-        dir.sd_length = _STDIO_LENGTH_NONE;
-        if (format[i] == 'h' && format[i + 1] == 'h') {
-            dir.sd_length = _STDIO_LENGTH_CHAR;
-            i += 2;
-        } else if (format[i] == 'h') {
-            dir.sd_length = _STDIO_LENGTH_SHORT;
-            i++;
-        } else if (format[i] == 'l' && format[i + 1] == 'l') {
-            dir.sd_length = _STDIO_LENGTH_LLONG;
-            i += 2;
-        } else if (format[i] == 'l') {
-            dir.sd_length = _STDIO_LENGTH_LONG;
-            i++;
-        } else if (format[i] == 'j') {
-            dir.sd_length = _STDIO_LENGTH_INTMAX;
-            i++;
-        } else if (format[i] == 'z') {
-            dir.sd_length = _STDIO_LENGTH_SIZE;
-            i++;
-        } else if (format[i] == 't') {
-            dir.sd_length = _STDIO_LENGTH_PTRDIFF;
-            i++;
-        } else if (format[i] == 'L') {
-            dir.sd_length = _STDIO_LENGTH_LDOUBLE;
-            i++;
-        }
-        dir.sd_conv = format[i];
-
-        // Phase: emit the conversion
-        switch (dir.sd_length == _STDIO_LENGTH_NONE ? dir.sd_conv : '\0') {
-            case '%': {
-                _Stdio_Emit(sink, "%", 1);
-            } break;
-            case 'c': {
-                ch = (char) va_arg(args, int);
-                _Stdio_Field(sink, &dir, &ch, 1);
-            } break;
-            case 's': {
-                _Stdio_String(sink, &dir, va_arg(args, const char *));
-            } break;
-            default: {
-                _Stdio_Emit(sink, "%", 1);
-                i = start;
-            } break;
+            len = 1;
+            _Stdio_Emit(sink, format + i, len);
         }
     }
+    va_end(list);
     return _Stdio_End(sink);
-}
-
-// End the sink's string, and return its count, or EOF if it failed.
-int _Stdio_End(_Stdio_Sink *sink)
-{
-    if (sink->ss_stream == NULL && sink->ss_size > 0) {
-        size_t last = sink->ss_size - 1;
-
-        sink->ss_str[sink->ss_count < last ? sink->ss_count : last] = '\0';
-    }
-    return sink->ss_failed ? EOF : (int) sink->ss_count;
 }
 
 // Return how many bytes the stream took from its file and has yet to give out.
@@ -964,7 +1045,7 @@ int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList a
     if (_Stdio_Lend(stream, lent, sizeof(lent)) != 0) {
         return EOF;
     }
-    result = _Stdio_Format(&sink, format, arg);
+    result = _Stdio_EmitFormat(&sink, format, arg);
     return _Stdio_Reclaim(stream) == 0 ? result : EOF;
 }
 
@@ -982,7 +1063,7 @@ int vsnprintf(char *restrict str, size_t n, const char *restrict format, _Stdio_
         .ss_size = n
     };
 
-    return _Stdio_Format(&sink, format, arg);
+    return _Stdio_EmitFormat(&sink, format, arg);
 }
 
 // Write the list's arguments into str, however long, as the format says.
