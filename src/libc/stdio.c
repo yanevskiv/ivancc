@@ -1828,6 +1828,91 @@ _Bool _Stdio_MatchScanCount(const char *format, _Stdio_VaList *list, size_t *len
     return 1;
 }
 
+// Match a %d directive with its length and where it stores, null if nowhere.
+_Bool _Stdio_MatchScanDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest)
+{
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _STDIO_SCAN_LENGTH_LDOUBLE || format[at] != 'd') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, void *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %i directive with its length and where it stores, null if nowhere.
+_Bool _Stdio_MatchScanInteger(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest)
+{
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _STDIO_SCAN_LENGTH_LDOUBLE || format[at] != 'i') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, void *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %o directive with its length and where it stores, null if nowhere.
+_Bool _Stdio_MatchScanOctal(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest)
+{
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _STDIO_SCAN_LENGTH_LDOUBLE || format[at] != 'o') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, void *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %u directive with its length and where it stores, null if nowhere.
+_Bool _Stdio_MatchScanUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest)
+{
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _STDIO_SCAN_LENGTH_LDOUBLE || format[at] != 'u') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, void *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %x or %X directive with its length and where it stores, if anywhere.
+_Bool _Stdio_MatchScanHex(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest)
+{
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _STDIO_SCAN_LENGTH_LDOUBLE || (format[at] != 'x' && format[at] != 'X')) {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, void *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %p directive with where it stores, null if it stores nothing.
+_Bool _Stdio_MatchScanPointer(const char *format, _Stdio_VaList *list, size_t *len, int *width, void **dest)
+{
+    int length;
+    _Stdio_Assign assign;
+    size_t at = _Stdio_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _STDIO_SCAN_LENGTH_NONE || format[at] != 'p') {
+        return 0;
+    }
+    *dest = assign == _STDIO_ASSIGN_STORE ? va_arg(*list, void *) : NULL;
+    *len = at + 1;
+    return 1;
+}
+
 // Peek at the source's next character, left unread, or EOF if there is none.
 int _Stdio_PeekSource(_Stdio_Source *source)
 {
@@ -1885,6 +1970,98 @@ _Bool _Stdio_IsInSet(const char *set, size_t count, int ch)
         }
     }
     return 0;
+}
+
+// Read the longest input that is or begins an integer of a base into item.
+_Bool _Stdio_ReadInteger(_Stdio_Source *source, int width, int base, char *item)
+{
+    int ch;
+    int digit;
+    size_t first;
+    size_t len = 0;
+    size_t read = 0;
+    size_t digits = 0;
+    size_t max = width == _STDIO_SCAN_WIDTH_NONE ? SIZE_MAX : (size_t) width;
+
+    // Phase: read the sign
+    ch = _Stdio_PeekSource(source);
+    if (ch == '+' || ch == '-') {
+        item[len++] = (char) ch;
+        _Stdio_AdvanceSource(source);
+        read++;
+    }
+
+    // Phase: read the prefix, which settles the base if the directive did not
+    first = len;
+    if (read < max && _Stdio_PeekSource(source) == '0') {
+        item[len++] = '0';
+        _Stdio_AdvanceSource(source);
+        read++;
+        digits++;
+        ch = _Stdio_PeekSource(source);
+        if (read < max && (ch == 'x' || ch == 'X') && (base == _STDIO_SCAN_BASE_PREFIX || base == _STDIO_SCAN_BASE_HEX)) {
+            item[len++] = (char) ch;
+            _Stdio_AdvanceSource(source);
+            read++;
+            first = len;
+            digits = 0;
+            base = _STDIO_SCAN_BASE_HEX;
+        } else if (base == _STDIO_SCAN_BASE_PREFIX) {
+            base = _STDIO_SCAN_BASE_OCTAL;
+        }
+    } else if (base == _STDIO_SCAN_BASE_PREFIX) {
+        base = _STDIO_SCAN_BASE_DECIMAL;
+    }
+
+    // Phase: read the digits, keeping one leading zero and what item holds
+    for (; read < max; read++) {
+        ch = _Stdio_PeekSource(source);
+        digit = isdigit(ch) ? ch - '0' : isxdigit(ch) ? tolower(ch) - 'a' + _STDIO_SCAN_BASE_DECIMAL : base;
+        if (digit >= base) {
+            break;
+        }
+        if (len < _STDIO_SCAN_ITEM - 1 && (ch != '0' || len != first + 1 || item[first] != '0')) {
+            item[len++] = (char) ch;
+        }
+        _Stdio_AdvanceSource(source);
+        digits++;
+    }
+    item[len] = '\0';
+    if (digits == 0) {
+        source->so_failure = read == 0 && ch == EOF ? _STDIO_FAILURE_INPUT : _STDIO_FAILURE_MATCHING;
+    }
+    return digits > 0;
+}
+
+// Store value at dest as an integer of a length's type, signed or not.
+void _Stdio_StoreInteger(void *dest, int length, unsigned long long value)
+{
+    switch (length) {
+        case _STDIO_SCAN_LENGTH_CHAR: {
+            *(unsigned char *) dest = (unsigned char) value;
+        } break;
+        case _STDIO_SCAN_LENGTH_SHORT: {
+            *(unsigned short *) dest = (unsigned short) value;
+        } break;
+        case _STDIO_SCAN_LENGTH_LONG: {
+            *(unsigned long *) dest = (unsigned long) value;
+        } break;
+        case _STDIO_SCAN_LENGTH_LLONG: {
+            *(unsigned long long *) dest = value;
+        } break;
+        case _STDIO_SCAN_LENGTH_INTMAX: {
+            *(uintmax_t *) dest = (uintmax_t) value;
+        } break;
+        case _STDIO_SCAN_LENGTH_SIZE: {
+            *(size_t *) dest = (size_t) value;
+        } break;
+        case _STDIO_SCAN_LENGTH_PTRDIFF: {
+            *(ptrdiff_t *) dest = (ptrdiff_t) value;
+        } break;
+        default: {
+            *(unsigned int *) dest = (unsigned int) value;
+        } break;
+    }
 }
 
 // Scan the white space the source is at, none being enough.
@@ -1991,33 +2168,96 @@ void _Stdio_ScanSet(_Stdio_Source *source, int width, char *dest, const char *se
 // Scan nothing: store the characters read so far at dest, as a length's type.
 void _Stdio_ScanCount(_Stdio_Source *source, int length, void *dest)
 {
-    size_t count = source->so_count;
+    _Stdio_StoreInteger(dest, length, source->so_count);
+}
 
-    switch (length) {
-        case _STDIO_SCAN_LENGTH_CHAR: {
-            *(signed char *) dest = (signed char) count;
-        } break;
-        case _STDIO_SCAN_LENGTH_SHORT: {
-            *(short *) dest = (short) count;
-        } break;
-        case _STDIO_SCAN_LENGTH_LONG: {
-            *(long *) dest = (long) count;
-        } break;
-        case _STDIO_SCAN_LENGTH_LLONG: {
-            *(long long *) dest = (long long) count;
-        } break;
-        case _STDIO_SCAN_LENGTH_INTMAX: {
-            *(intmax_t *) dest = (intmax_t) count;
-        } break;
-        case _STDIO_SCAN_LENGTH_SIZE: {
-            *(size_t *) dest = count;
-        } break;
-        case _STDIO_SCAN_LENGTH_PTRDIFF: {
-            *(ptrdiff_t *) dest = (ptrdiff_t) count;
-        } break;
-        default: {
-            *(int *) dest = (int) count;
-        } break;
+// Scan a decimal integer, after any white space, into dest as a length's type.
+void _Stdio_ScanDecimal(_Stdio_Source *source, int width, int length, void *dest)
+{
+    char item[_STDIO_SCAN_ITEM];
+
+    _Stdio_ScanSpace(source);
+    if (_Stdio_ReadInteger(source, width, _STDIO_SCAN_BASE_DECIMAL, item) && dest != NULL) {
+        _Stdio_StoreInteger(dest, length, (unsigned long long) strtoll(item, NULL, _STDIO_SCAN_BASE_DECIMAL));
+        source->so_stored++;
+    }
+}
+
+// Scan an integer of the base its prefix names, after any white space.
+void _Stdio_ScanInteger(_Stdio_Source *source, int width, int length, void *dest)
+{
+    char item[_STDIO_SCAN_ITEM];
+
+    _Stdio_ScanSpace(source);
+    if (_Stdio_ReadInteger(source, width, _STDIO_SCAN_BASE_PREFIX, item) && dest != NULL) {
+        _Stdio_StoreInteger(dest, length, (unsigned long long) strtoll(item, NULL, _STDIO_SCAN_BASE_PREFIX));
+        source->so_stored++;
+    }
+}
+
+// Scan an octal integer, after any white space, into dest as a length's type.
+void _Stdio_ScanOctal(_Stdio_Source *source, int width, int length, void *dest)
+{
+    char item[_STDIO_SCAN_ITEM];
+
+    _Stdio_ScanSpace(source);
+    if (_Stdio_ReadInteger(source, width, _STDIO_SCAN_BASE_OCTAL, item) && dest != NULL) {
+        _Stdio_StoreInteger(dest, length, strtoull(item, NULL, _STDIO_SCAN_BASE_OCTAL));
+        source->so_stored++;
+    }
+}
+
+// Scan a decimal integer, after any white space, into dest as unsigned.
+void _Stdio_ScanUnsigned(_Stdio_Source *source, int width, int length, void *dest)
+{
+    char item[_STDIO_SCAN_ITEM];
+
+    _Stdio_ScanSpace(source);
+    if (_Stdio_ReadInteger(source, width, _STDIO_SCAN_BASE_DECIMAL, item) && dest != NULL) {
+        _Stdio_StoreInteger(dest, length, strtoull(item, NULL, _STDIO_SCAN_BASE_DECIMAL));
+        source->so_stored++;
+    }
+}
+
+// Scan a hex integer, 0x before it or not, after any white space, into dest.
+void _Stdio_ScanHex(_Stdio_Source *source, int width, int length, void *dest)
+{
+    char item[_STDIO_SCAN_ITEM];
+
+    _Stdio_ScanSpace(source);
+    if (_Stdio_ReadInteger(source, width, _STDIO_SCAN_BASE_HEX, item) && dest != NULL) {
+        _Stdio_StoreInteger(dest, length, strtoull(item, NULL, _STDIO_SCAN_BASE_HEX));
+        source->so_stored++;
+    }
+}
+
+// Scan a pointer as %p writes one, (nil) or hex, after any white space.
+void _Stdio_ScanPointer(_Stdio_Source *source, int width, void *dest)
+{
+    char item[_STDIO_SCAN_ITEM];
+    const char *nil = _STDIO_SCAN_NIL;
+    unsigned long long value = 0;
+
+    _Stdio_ScanSpace(source);
+    if (_Stdio_PeekSource(source) == nil[0] && (width == _STDIO_SCAN_WIDTH_NONE || width >= _STDIO_SCAN_NIL_WIDTH)) {
+        // Phase: scan a null pointer, in letters of either case
+        for (size_t i = 0; nil[i] != '\0'; i++) {
+            if (tolower(_Stdio_PeekSource(source)) != nil[i]) {
+                source->so_failure = _STDIO_FAILURE_MATCHING;
+                return;
+            }
+            _Stdio_AdvanceSource(source);
+        }
+    } else {
+        // Phase: scan an address
+        if (! _Stdio_ReadInteger(source, width, _STDIO_SCAN_BASE_HEX, item)) {
+            return;
+        }
+        value = strtoull(item, NULL, _STDIO_SCAN_BASE_HEX);
+    }
+    if (dest != NULL) {
+        *(void **) dest = (void *) (uintptr_t) value;
+        source->so_stored++;
     }
 }
 
@@ -2050,6 +2290,18 @@ int _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList a
             _Stdio_ScanSet(source, width, str, set, count, accept);
         } else if (_Stdio_MatchScanCount(format + i, &list, &len, &length, &dest)) {
             _Stdio_ScanCount(source, length, dest);
+        } else if (_Stdio_MatchScanDecimal(format + i, &list, &len, &width, &length, &dest)) {
+            _Stdio_ScanDecimal(source, width, length, dest);
+        } else if (_Stdio_MatchScanInteger(format + i, &list, &len, &width, &length, &dest)) {
+            _Stdio_ScanInteger(source, width, length, dest);
+        } else if (_Stdio_MatchScanOctal(format + i, &list, &len, &width, &length, &dest)) {
+            _Stdio_ScanOctal(source, width, length, dest);
+        } else if (_Stdio_MatchScanUnsigned(format + i, &list, &len, &width, &length, &dest)) {
+            _Stdio_ScanUnsigned(source, width, length, dest);
+        } else if (_Stdio_MatchScanHex(format + i, &list, &len, &width, &length, &dest)) {
+            _Stdio_ScanHex(source, width, length, dest);
+        } else if (_Stdio_MatchScanPointer(format + i, &list, &len, &width, &dest)) {
+            _Stdio_ScanPointer(source, width, dest);
         } else {
             len = 0;
             source->so_failure = _STDIO_FAILURE_MATCHING;

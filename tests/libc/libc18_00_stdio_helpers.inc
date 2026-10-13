@@ -128,3 +128,25 @@ static bool scans(const char *input, const char *format, int count, const char *
     }
     return lost == 0;
 }
+
+// (S7.19.6.7p3) A format should assign a count of items, the first an int.
+static bool scans_int(const char *input, const char *format, int count, int want)
+{
+    int lost = 0;
+    int got = NONE;
+
+    lost += ! _TEST_INT(sscanf(input, format, &got), count);
+    lost += ! _TEST_INT(got, count == 1 ? want : NONE);
+    return lost == 0;
+}
+
+// (S7.19.6.7p3) A format should assign a count of items, the first unsigned.
+static bool scans_unsigned(const char *input, const char *format, int count, unsigned int want)
+{
+    int lost = 0;
+    unsigned int got = FILL;
+
+    lost += ! _TEST_INT(sscanf(input, format, &got), count);
+    lost += ! _TEST_UINT(got, count == 1 ? want : FILL);
+    return lost == 0;
+}

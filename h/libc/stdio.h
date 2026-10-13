@@ -124,6 +124,19 @@
 #define _STDIO_SCAN_LENGTH_PTRDIFF 7
 #define _STDIO_SCAN_LENGTH_LDOUBLE 8
 
+// An input integer's base: the one its prefix names, 8, 10 or 16.
+#define _STDIO_SCAN_BASE_PREFIX  0
+#define _STDIO_SCAN_BASE_OCTAL   8
+#define _STDIO_SCAN_BASE_DECIMAL 10
+#define _STDIO_SCAN_BASE_HEX     16
+
+// The size of an array that holds an input integer: more digits overflow.
+#define _STDIO_SCAN_ITEM 32
+
+// A null pointer as %p reads it, and the least width that holds it.
+#define _STDIO_SCAN_NIL       "(nil)"
+#define _STDIO_SCAN_NIL_WIDTH 5
+
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
 
@@ -381,12 +394,20 @@ _Bool  _Stdio_MatchScanChar(const char *format, _Stdio_VaList *list, size_t *len
 _Bool  _Stdio_MatchScanString(const char *format, _Stdio_VaList *list, size_t *len, int *width, char **dest);
 _Bool  _Stdio_MatchScanSet(const char *format, _Stdio_VaList *list, size_t *len, int *width, char **dest, const char **set, size_t *count, _Stdio_Accept *accept);
 _Bool  _Stdio_MatchScanCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest);
+_Bool  _Stdio_MatchScanDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
+_Bool  _Stdio_MatchScanInteger(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
+_Bool  _Stdio_MatchScanOctal(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
+_Bool  _Stdio_MatchScanUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
+_Bool  _Stdio_MatchScanHex(const char *format, _Stdio_VaList *list, size_t *len, int *width, int *length, void **dest);
+_Bool  _Stdio_MatchScanPointer(const char *format, _Stdio_VaList *list, size_t *len, int *width, void **dest);
 
 // Formatted input
 int   _Stdio_PeekSource(_Stdio_Source *source);
 void  _Stdio_AdvanceSource(_Stdio_Source *source);
 int   _Stdio_EndSource(_Stdio_Source *source);
 _Bool _Stdio_IsInSet(const char *set, size_t count, int ch);
+_Bool _Stdio_ReadInteger(_Stdio_Source *source, int width, int base, char *item);
+void  _Stdio_StoreInteger(void *dest, int length, unsigned long long value);
 
 // Scanning
 void _Stdio_ScanSpace(_Stdio_Source *source);
@@ -396,6 +417,12 @@ void _Stdio_ScanChar(_Stdio_Source *source, int width, char *dest);
 void _Stdio_ScanString(_Stdio_Source *source, int width, char *dest);
 void _Stdio_ScanSet(_Stdio_Source *source, int width, char *dest, const char *set, size_t count, _Stdio_Accept accept);
 void _Stdio_ScanCount(_Stdio_Source *source, int length, void *dest);
+void _Stdio_ScanDecimal(_Stdio_Source *source, int width, int length, void *dest);
+void _Stdio_ScanInteger(_Stdio_Source *source, int width, int length, void *dest);
+void _Stdio_ScanOctal(_Stdio_Source *source, int width, int length, void *dest);
+void _Stdio_ScanUnsigned(_Stdio_Source *source, int width, int length, void *dest);
+void _Stdio_ScanHex(_Stdio_Source *source, int width, int length, void *dest);
+void _Stdio_ScanPointer(_Stdio_Source *source, int width, void *dest);
 int  _Stdio_ScanFormat(_Stdio_Source *source, const char *format, _Stdio_VaList args);
 
 // Positioning
