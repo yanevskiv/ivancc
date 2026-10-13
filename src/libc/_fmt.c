@@ -39,8 +39,91 @@
 // Copying into a string, filling the padding and measuring a string.
 #include <_str.h>
 
-// A wide character's bytes.
+// A wide character's bytes, and the character some bytes are.
 #include <_utf8.h>
+
+// The array an input item of any length grows in.
+#include <_mem.h>
+
+// The integer an input item is.
+#include <_int.h>
+
+// The floating number an input item is.
+#include <_fp.h>
+
+// Check whether ch is white space in the "C" locale, which no end of input is.
+_Bool _Fmt_IsSpace(int ch)
+{
+    return ch == ' ' || (ch >= '\t' && ch <= '\r');
+}
+
+// Check whether ch is a decimal digit.
+_Bool _Fmt_IsDigit(int ch)
+{
+    return ch >= '0' && ch <= '9';
+}
+
+// Check whether ch is a hex digit, in either case.
+_Bool _Fmt_IsHexDigit(int ch)
+{
+    return _Fmt_IsDigit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F');
+}
+
+// Convert ch to lowercase in the "C" locale, an end of input to itself.
+int _Fmt_ToLower(int ch)
+{
+    return ch >= 'A' && ch <= 'Z' ? ch - 'A' + 'a' : ch;
+}
+
+// Convert the integer str begins with, in a base, to a signed value.
+long _Fmt_ToSigned(const char *str, int base)
+{
+    _Int_Sign sign;
+    _Int_Range range;
+    unsigned long end;
+    unsigned long value = _Int_ToNumber(str, _INT_TEXT_NARROW, &end, base, &sign, &range);
+
+    return _Int_MakeSigned(value, sign, range);
+}
+
+// Convert the integer str begins with, in a base, to an unsigned value.
+unsigned long _Fmt_ToUnsigned(const char *str, int base)
+{
+    _Int_Sign sign;
+    _Int_Range range;
+    unsigned long end;
+    unsigned long value = _Int_ToNumber(str, _INT_TEXT_NARROW, &end, base, &sign, &range);
+
+    return _Int_MakeUnsigned(value, sign, range);
+}
+
+// Convert all of str to a length's floating type, stored at dest if not null.
+_Bool _Fmt_ToReal(const char *str, int length, void *dest)
+{
+    float single = 0;
+    double real = 0;
+    unsigned long end;
+    long double extended = 0;
+
+    if (length == _FMT_SCAN_LENGTH_LONG) {
+        real = _Fp_ToDouble(str, _FP_TEXT_NARROW, &end);
+    } else if (length == _FMT_SCAN_LENGTH_LDOUBLE) {
+        extended = _Fp_ToLongDouble(str, _FP_TEXT_NARROW, &end);
+    } else {
+        single = _Fp_ToFloat(str, _FP_TEXT_NARROW, &end);
+    }
+    if (end == 0 || str[end] != '\0') {
+        return 0;
+    }
+    if (dest != _FMT_NULL && length == _FMT_SCAN_LENGTH_LONG) {
+        *(double *) dest = real;
+    } else if (dest != _FMT_NULL && length == _FMT_SCAN_LENGTH_LDOUBLE) {
+        *(long double *) dest = extended;
+    } else if (dest != _FMT_NULL) {
+        *(float *) dest = single;
+    }
+    return 1;
+}
 
 // Match a directive's percent sign, flags, width, precision and length.
 unsigned long _Fmt_MatchPrintHead(const char *format, int *flags, int *width, int *precision, int *length)
@@ -1171,4 +1254,976 @@ int _Fmt_EmitFormat(_Fmt_Sink *sink, const char *format, _Fmt_VaList args)
     }
     __builtin_va_end(list);
     return _Fmt_EndSink(sink);
+}
+
+// Match an input directive's percent sign, asterisk, width and length.
+unsigned long _Fmt_MatchScanHead(const char *format, _Fmt_Assign *assign, int *width, int *length)
+{
+    int digit;
+    unsigned long from;
+    unsigned long i = 0;
+
+    if (format[i] != '%') {
+        return 0;
+    }
+    i++;
+
+    // Phase: match the asterisk
+    *assign = _FMT_ASSIGN_STORE;
+    if (format[i] == '*') {
+        *assign = _FMT_ASSIGN_SUPPRESS;
+        i++;
+    }
+
+    // Phase: match the width
+    *width = _FMT_SCAN_WIDTH_NONE;
+    for (from = i; format[i] >= '0' && format[i] <= '9'; i++) {
+        digit = format[i] - '0';
+        *width = *width > (_FMT_INT_MAX - digit) / _FMT_COUNT_BASE ? _FMT_INT_MAX : *width * _FMT_COUNT_BASE + digit;
+    }
+    if (i > from && *width == 0) {
+        return 0;
+    }
+
+    // Phase: match the length
+    *length = _FMT_SCAN_LENGTH_NONE;
+    if (format[i] == 'h' && format[i + 1] == 'h') {
+        *length = _FMT_SCAN_LENGTH_CHAR;
+        i += 2;
+    } else if (format[i] == 'h') {
+        *length = _FMT_SCAN_LENGTH_SHORT;
+        i++;
+    } else if (format[i] == 'l' && format[i + 1] == 'l') {
+        *length = _FMT_SCAN_LENGTH_LLONG;
+        i += 2;
+    } else if (format[i] == 'l') {
+        *length = _FMT_SCAN_LENGTH_LONG;
+        i++;
+    } else if (format[i] == 'j') {
+        *length = _FMT_SCAN_LENGTH_INTMAX;
+        i++;
+    } else if (format[i] == 'z') {
+        *length = _FMT_SCAN_LENGTH_SIZE;
+        i++;
+    } else if (format[i] == 't') {
+        *length = _FMT_SCAN_LENGTH_PTRDIFF;
+        i++;
+    } else if (format[i] == 'L') {
+        *length = _FMT_SCAN_LENGTH_LDOUBLE;
+        i++;
+    }
+    return i;
+}
+
+// Match a directive of white space, however much.
+_Bool _Fmt_MatchScanSpace(const char *format, unsigned long *len)
+{
+    unsigned long i = 0;
+
+    while (_Fmt_IsSpace((unsigned char) format[i])) {
+        i++;
+    }
+    *len = i;
+    return i > 0;
+}
+
+// Match a directive of ordinary characters, up to white space or a directive.
+_Bool _Fmt_MatchScanOrdinary(const char *format, unsigned long *len)
+{
+    unsigned long i = 0;
+
+    while (format[i] != '\0' && format[i] != '%' && ! _Fmt_IsSpace((unsigned char) format[i])) {
+        i++;
+    }
+    *len = i;
+    return i > 0;
+}
+
+// Match a %% directive, which is those two characters and no more.
+_Bool _Fmt_MatchScanPercent(const char *format, unsigned long *len)
+{
+    if (format[0] != '%' || format[1] != '%') {
+        return 0;
+    }
+    *len = 2;
+    return 1;
+}
+
+// Match a %c directive with where it stores, null if it stores nothing.
+_Bool _Fmt_MatchScanChar(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, char **dest)
+{
+    int length;
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _FMT_SCAN_LENGTH_NONE || format[at] != 'c') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, char *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %s directive with where it stores, null if it stores nothing.
+_Bool _Fmt_MatchScanString(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, char **dest)
+{
+    int length;
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _FMT_SCAN_LENGTH_NONE || format[at] != 's') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, char *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %[ directive with its scanset and where it stores, null if nowhere.
+_Bool _Fmt_MatchScanSet(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, char **dest, const char **set, unsigned long *count, _Fmt_Accept *accept)
+{
+    int length;
+    unsigned long end;
+    unsigned long from;
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _FMT_SCAN_LENGTH_NONE || format[at] != '[') {
+        return 0;
+    }
+
+    // Phase: match the scanset, a right bracket first being one of it
+    *accept = _FMT_ACCEPT_LISTED;
+    from = at + 1;
+    if (format[from] == '^') {
+        *accept = _FMT_ACCEPT_UNLISTED;
+        from++;
+    }
+    end = from;
+    if (format[end] == ']') {
+        end++;
+    }
+    while (format[end] != '\0' && format[end] != ']') {
+        end++;
+    }
+    if (format[end] != ']') {
+        return 0;
+    }
+    *set = format + from;
+    *count = end - from;
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, char *) : _FMT_NULL;
+    *len = end + 1;
+    return 1;
+}
+
+// Match a %n directive with its length and where it stores.
+_Bool _Fmt_MatchScanCount(const char *format, _Fmt_VaList *list, unsigned long *len, int *length, void **dest)
+{
+    int width;
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, &width, length);
+
+    if (at == 0 || *length == _FMT_SCAN_LENGTH_LDOUBLE || format[at] != 'n') {
+        return 0;
+    }
+    if (assign != _FMT_ASSIGN_STORE || width != _FMT_SCAN_WIDTH_NONE) {
+        return 0;
+    }
+    *dest = __builtin_va_arg(*list, void *);
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %d directive with its length and where it stores, null if nowhere.
+_Bool _Fmt_MatchScanDecimal(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest)
+{
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _FMT_SCAN_LENGTH_LDOUBLE || format[at] != 'd') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, void *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %i directive with its length and where it stores, null if nowhere.
+_Bool _Fmt_MatchScanInteger(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest)
+{
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _FMT_SCAN_LENGTH_LDOUBLE || format[at] != 'i') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, void *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %o directive with its length and where it stores, null if nowhere.
+_Bool _Fmt_MatchScanOctal(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest)
+{
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _FMT_SCAN_LENGTH_LDOUBLE || format[at] != 'o') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, void *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %u directive with its length and where it stores, null if nowhere.
+_Bool _Fmt_MatchScanUnsigned(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest)
+{
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _FMT_SCAN_LENGTH_LDOUBLE || format[at] != 'u') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, void *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %x or %X directive with its length and where it stores, if anywhere.
+_Bool _Fmt_MatchScanHex(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest)
+{
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || *length == _FMT_SCAN_LENGTH_LDOUBLE || (format[at] != 'x' && format[at] != 'X')) {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, void *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %p directive with where it stores, null if it stores nothing.
+_Bool _Fmt_MatchScanPointer(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, void **dest)
+{
+    int length;
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _FMT_SCAN_LENGTH_NONE || format[at] != 'p') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, void *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %a, %e, %f or %g directive, of either case, with its length, l or L.
+_Bool _Fmt_MatchScanReal(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest)
+{
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, length);
+
+    if (at == 0 || format[at] == '\0' || _Str_FindChar(_FMT_SCAN_REALS, format[at]) == _FMT_NULL) {
+        return 0;
+    }
+    if (*length != _FMT_SCAN_LENGTH_NONE && *length != _FMT_SCAN_LENGTH_LONG && *length != _FMT_SCAN_LENGTH_LDOUBLE) {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, void *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %lc directive with where it stores, null if it stores nothing.
+_Bool _Fmt_MatchScanWideChar(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, _Fmt_WcharType **dest)
+{
+    int length;
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _FMT_SCAN_LENGTH_LONG || format[at] != 'c') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, _Fmt_WcharType *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %ls directive with where it stores, null if it stores nothing.
+_Bool _Fmt_MatchScanWideString(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, _Fmt_WcharType **dest)
+{
+    int length;
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _FMT_SCAN_LENGTH_LONG || format[at] != 's') {
+        return 0;
+    }
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, _Fmt_WcharType *) : _FMT_NULL;
+    *len = at + 1;
+    return 1;
+}
+
+// Match a %l[ directive with its scanset and where it stores, null if nowhere.
+_Bool _Fmt_MatchScanWideSet(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, _Fmt_WcharType **dest, const char **set, unsigned long *count, _Fmt_Accept *accept)
+{
+    int length;
+    unsigned long end;
+    unsigned long from;
+    _Fmt_Assign assign;
+    unsigned long at = _Fmt_MatchScanHead(format, &assign, width, &length);
+
+    if (at == 0 || length != _FMT_SCAN_LENGTH_LONG || format[at] != '[') {
+        return 0;
+    }
+
+    // Phase: match the scanset, a right bracket first being one of it
+    *accept = _FMT_ACCEPT_LISTED;
+    from = at + 1;
+    if (format[from] == '^') {
+        *accept = _FMT_ACCEPT_UNLISTED;
+        from++;
+    }
+    end = from;
+    if (format[end] == ']') {
+        end++;
+    }
+    while (format[end] != '\0' && format[end] != ']') {
+        end++;
+    }
+    if (format[end] != ']') {
+        return 0;
+    }
+    *set = format + from;
+    *count = end - from;
+    *dest = assign == _FMT_ASSIGN_STORE ? __builtin_va_arg(*list, _Fmt_WcharType *) : _FMT_NULL;
+    *len = end + 1;
+    return 1;
+}
+
+// Peek at the source's next character, left unread, or _FILE_END for none.
+int _Fmt_PeekSource(_Fmt_Source *source)
+{
+    char ch;
+    _File_Stream *stream = source->fo_stream;
+
+    if (stream == _FMT_NULL) {
+        ch = source->fo_str[source->fo_count];
+        return ch != '\0' ? (unsigned char) ch : _FILE_END;
+    }
+    if (stream->fs_flags & _FILE_BACK) {
+        return stream->fs_back;
+    }
+    if (stream->fs_head == stream->fs_tail) {
+        stream->fs_head = 0;
+        stream->fs_tail = _File_ReadDescriptor(stream, stream->fs_buf, stream->fs_size);
+    }
+    return stream->fs_head < stream->fs_tail ? stream->fs_buf[stream->fs_head] : _FILE_END;
+}
+
+// Advance the source past the character peeked at, which counts as read.
+void _Fmt_AdvanceSource(_Fmt_Source *source)
+{
+    _File_Stream *stream = source->fo_stream;
+
+    if (stream != _FMT_NULL && (stream->fs_flags & _FILE_BACK)) {
+        stream->fs_flags &= ~_FILE_BACK;
+    } else if (stream != _FMT_NULL) {
+        stream->fs_head++;
+    }
+    source->fo_count++;
+}
+
+// End the source's input, and return its assignments, or _FILE_END for none.
+int _Fmt_EndSource(_Fmt_Source *source)
+{
+    if (source->fo_failure == _FMT_FAILURE_INPUT && source->fo_stored == 0) {
+        return _FILE_END;
+    }
+    return source->fo_stored;
+}
+
+// Return whether ch is in a scanset's count characters, a-z being a range.
+_Bool _Fmt_IsInSet(const char *set, unsigned long count, int ch)
+{
+    const unsigned char *list = (const unsigned char *) set;
+
+    for (unsigned long i = 0; i < count; i++) {
+        if (i > 0 && i + 1 < count && list[i] == '-' && list[i - 1] <= list[i + 1]) {
+            if (ch >= list[i - 1] && ch < list[i + 1]) {
+                return 1;
+            }
+        } else if (ch == list[i]) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Read the longest input that is or begins an integer of a base into item.
+_Bool _Fmt_ReadInteger(_Fmt_Source *source, int width, int base, char *item)
+{
+    int ch;
+    int digit;
+    unsigned long first;
+    unsigned long len = 0;
+    unsigned long read = 0;
+    unsigned long digits = 0;
+    unsigned long max = width == _FMT_SCAN_WIDTH_NONE ? _FMT_SIZE_MAX : (unsigned long) width;
+
+    // Phase: read the sign
+    ch = _Fmt_PeekSource(source);
+    if (ch == '+' || ch == '-') {
+        item[len++] = (char) ch;
+        _Fmt_AdvanceSource(source);
+        read++;
+    }
+
+    // Phase: read the prefix, which settles the base if the directive did not
+    first = len;
+    if (read < max && _Fmt_PeekSource(source) == '0') {
+        item[len++] = '0';
+        _Fmt_AdvanceSource(source);
+        read++;
+        digits++;
+        ch = _Fmt_PeekSource(source);
+        if (read < max && (ch == 'x' || ch == 'X') && (base == _FMT_SCAN_BASE_PREFIX || base == _FMT_SCAN_BASE_HEX)) {
+            item[len++] = (char) ch;
+            _Fmt_AdvanceSource(source);
+            read++;
+            first = len;
+            digits = 0;
+            base = _FMT_SCAN_BASE_HEX;
+        } else if (base == _FMT_SCAN_BASE_PREFIX) {
+            base = _FMT_SCAN_BASE_OCTAL;
+        }
+    } else if (base == _FMT_SCAN_BASE_PREFIX) {
+        base = _FMT_SCAN_BASE_DECIMAL;
+    }
+
+    // Phase: read the digits, keeping one leading zero and what item holds
+    for (; read < max; read++) {
+        ch = _Fmt_PeekSource(source);
+        digit = _Fmt_IsDigit(ch) ? ch - '0' : _Fmt_IsHexDigit(ch) ? _Fmt_ToLower(ch) - 'a' + _FMT_SCAN_BASE_DECIMAL : base;
+        if (digit >= base) {
+            break;
+        }
+        if (len < _FMT_SCAN_ITEM - 1 && (ch != '0' || len != first + 1 || item[first] != '0')) {
+            item[len++] = (char) ch;
+        }
+        _Fmt_AdvanceSource(source);
+        digits++;
+    }
+    item[len] = '\0';
+    if (digits == 0) {
+        source->fo_failure = read == 0 && ch == _FILE_END ? _FMT_FAILURE_INPUT : _FMT_FAILURE_MATCHING;
+    }
+    return digits > 0;
+}
+
+// Store value at dest as an integer of a length's type, signed or not.
+void _Fmt_StoreInteger(void *dest, int length, unsigned long long value)
+{
+    switch (length) {
+        case _FMT_SCAN_LENGTH_CHAR: {
+            *(unsigned char *) dest = (unsigned char) value;
+        } break;
+        case _FMT_SCAN_LENGTH_SHORT: {
+            *(unsigned short *) dest = (unsigned short) value;
+        } break;
+        case _FMT_SCAN_LENGTH_LONG: {
+            *(unsigned long *) dest = (unsigned long) value;
+        } break;
+        case _FMT_SCAN_LENGTH_LLONG: {
+            *(unsigned long long *) dest = value;
+        } break;
+        case _FMT_SCAN_LENGTH_INTMAX: {
+            *(_Fmt_UintmaxType *) dest = (_Fmt_UintmaxType) value;
+        } break;
+        case _FMT_SCAN_LENGTH_SIZE: {
+            *(unsigned long *) dest = (unsigned long) value;
+        } break;
+        case _FMT_SCAN_LENGTH_PTRDIFF: {
+            *(long *) dest = (long) value;
+        } break;
+        default: {
+            *(unsigned int *) dest = (unsigned int) value;
+        } break;
+    }
+}
+
+// Take the source's next characters into item while set has them, max at most.
+unsigned long _Fmt_TakeChars(_Fmt_Source *source, _Fmt_Item *item, const char *set, unsigned long max)
+{
+    int ch;
+    char *text;
+    unsigned long size;
+    unsigned long count = 0;
+
+    while (count < max && item->fi_room > 0) {
+        ch = _Fmt_PeekSource(source);
+        if (ch == _FILE_END || ch == '\0' || _Str_FindChar(set, _Fmt_ToLower(ch)) == _FMT_NULL) {
+            break;
+        }
+
+        // Phase: grow the item to hold one character more and its null
+        if (item->fi_len + 2 > item->fi_size) {
+            size = item->fi_size == 0 ? _FMT_SCAN_ITEM : 2 * item->fi_size;
+            text = _Mem_ResizeMemory(item->fi_text, size);
+            if (text == _FMT_NULL) {
+                source->fo_failure = _FMT_FAILURE_INPUT;
+                item->fi_room = 0;
+                break;
+            }
+            item->fi_text = text;
+            item->fi_size = size;
+        }
+        item->fi_text[item->fi_len++] = (char) ch;
+        item->fi_text[item->fi_len] = '\0';
+        _Fmt_AdvanceSource(source);
+        item->fi_room--;
+        count++;
+    }
+    return count;
+}
+
+// Take the source's next characters into item while they spell word, any case.
+unsigned long _Fmt_TakeWord(_Fmt_Source *source, _Fmt_Item *item, const char *word)
+{
+    unsigned long count = 0;
+    char set[2] = {'\0', '\0'};
+
+    for (; word[count] != '\0'; count++) {
+        set[0] = word[count];
+        if (_Fmt_TakeChars(source, item, set, 1) == 0) {
+            break;
+        }
+    }
+    return count;
+}
+
+// Read the longest input that is or begins a floating number into a new item.
+void _Fmt_ReadReal(_Fmt_Source *source, int width, _Fmt_Item *item)
+{
+    int ch;
+    unsigned long digits;
+    const char *mark = _FMT_SCAN_EXPONENT;
+    const char *set = _FMT_SCAN_DECIMALS;
+
+    item->fi_text = _FMT_NULL;
+    item->fi_len = 0;
+    item->fi_size = 0;
+    item->fi_room = width == _FMT_SCAN_WIDTH_NONE ? _FMT_SIZE_MAX : (unsigned long) width;
+
+    // Phase: read the sign
+    _Fmt_TakeChars(source, item, _FMT_SCAN_SIGNS, 1);
+    ch = item->fi_room > 0 ? _Fmt_ToLower(_Fmt_PeekSource(source)) : _FILE_END;
+
+    // Phase: read an infinity, or a NaN and what its parentheses hold
+    if (ch == _FMT_SCAN_INFINITY[0]) {
+        _Fmt_TakeWord(source, item, _FMT_SCAN_INFINITY);
+        return;
+    }
+    if (ch == _FMT_SCAN_NAN[0]) {
+        if (_Fmt_TakeWord(source, item, _FMT_SCAN_NAN) == sizeof(_FMT_SCAN_NAN) - 1 && _Fmt_TakeChars(source, item, "(", 1) > 0) {
+            _Fmt_TakeChars(source, item, _FMT_SCAN_NCHARS, _FMT_SIZE_MAX);
+            _Fmt_TakeChars(source, item, ")", 1);
+        }
+        return;
+    }
+
+    // Phase: read 0x, which makes the digits hex and the exponent a power of 2
+    digits = _Fmt_TakeChars(source, item, "0", 1);
+    if (digits > 0 && _Fmt_TakeChars(source, item, "x", 1) > 0) {
+        digits = 0;
+        set = _FMT_SCAN_HEXES;
+        mark = _FMT_SCAN_POWER;
+    }
+
+    // Phase: read the digits and the point among them
+    digits += _Fmt_TakeChars(source, item, set, _FMT_SIZE_MAX);
+    _Fmt_TakeChars(source, item, _FMT_SCAN_POINT, 1);
+    digits += _Fmt_TakeChars(source, item, set, _FMT_SIZE_MAX);
+
+    // Phase: read the exponent, which only a number with a digit has
+    if (digits > 0 && _Fmt_TakeChars(source, item, mark, 1) > 0) {
+        _Fmt_TakeChars(source, item, _FMT_SCAN_SIGNS, 1);
+        _Fmt_TakeChars(source, item, _FMT_SCAN_DECIMALS, _FMT_SIZE_MAX);
+    }
+}
+
+// Decode ch as a character's next byte, storing the character if ch ends it.
+void _Fmt_DecodeByte(_Fmt_Source *source, _Fmt_Wide *wide, int ch)
+{
+    _Fmt_WcharType wc;
+
+    wide->fw_byte[wide->fw_count++] = (char) ch;
+    if (_Utf8_DecodeChar(wide->fw_byte, wide->fw_count, &wc) >= 0) {
+        if (wide->fw_dest != _FMT_NULL) {
+            *wide->fw_dest++ = wc;
+        }
+        wide->fw_count = 0;
+    } else if (wide->fw_count >= _Utf8_GetCharMax()) {
+        _Err_Errno = _SYS_EILSEQ;
+        source->fo_failure = _FMT_FAILURE_INPUT;
+    }
+}
+
+// End a directive's wide characters, and return whether every one was whole.
+_Bool _Fmt_EndWide(_Fmt_Source *source, const _Fmt_Wide *wide)
+{
+    if (source->fo_failure == _FMT_FAILURE_NONE && wide->fw_count > 0) {
+        source->fo_failure = _FMT_FAILURE_INPUT;
+        _Err_Errno = _SYS_EILSEQ;
+    }
+    return source->fo_failure == _FMT_FAILURE_NONE;
+}
+
+// Scan the white space the source is at, none being enough.
+void _Fmt_ScanSpace(_Fmt_Source *source)
+{
+    while (_Fmt_IsSpace(_Fmt_PeekSource(source))) {
+        _Fmt_AdvanceSource(source);
+    }
+}
+
+// Scan len characters that should be text's, stopping at one that is not.
+void _Fmt_ScanOrdinary(_Fmt_Source *source, const char *text, unsigned long len)
+{
+    int ch;
+
+    for (unsigned long i = 0; i < len; i++) {
+        ch = _Fmt_PeekSource(source);
+        if (ch != (unsigned char) text[i]) {
+            source->fo_failure = ch == _FILE_END ? _FMT_FAILURE_INPUT : _FMT_FAILURE_MATCHING;
+            return;
+        }
+        _Fmt_AdvanceSource(source);
+    }
+}
+
+// Scan a percent sign, after any white space.
+void _Fmt_ScanPercent(_Fmt_Source *source)
+{
+    _Fmt_ScanSpace(source);
+    _Fmt_ScanOrdinary(source, "%", 1);
+}
+
+// Scan width characters into dest, one if no width, with no null after them.
+void _Fmt_ScanChar(_Fmt_Source *source, int width, char *dest)
+{
+    int ch;
+    unsigned long count = width == _FMT_SCAN_WIDTH_NONE ? 1 : (unsigned long) width;
+
+    for (unsigned long i = 0; i < count; i++) {
+        ch = _Fmt_PeekSource(source);
+        if (ch == _FILE_END) {
+            source->fo_failure = _FMT_FAILURE_INPUT;
+            return;
+        }
+        if (dest != _FMT_NULL) {
+            dest[i] = (char) ch;
+        }
+        _Fmt_AdvanceSource(source);
+    }
+    if (dest != _FMT_NULL) {
+        source->fo_stored++;
+    }
+}
+
+// Scan a word, after any white space, into dest as a string, width its bound.
+void _Fmt_ScanString(_Fmt_Source *source, int width, char *dest)
+{
+    int ch;
+    unsigned long len = 0;
+    unsigned long max = width == _FMT_SCAN_WIDTH_NONE ? _FMT_SIZE_MAX : (unsigned long) width;
+
+    _Fmt_ScanSpace(source);
+    while (len < max && (ch = _Fmt_PeekSource(source)) != _FILE_END && ! _Fmt_IsSpace(ch)) {
+        if (dest != _FMT_NULL) {
+            dest[len] = (char) ch;
+        }
+        _Fmt_AdvanceSource(source);
+        len++;
+    }
+    if (len == 0) {
+        source->fo_failure = _FMT_FAILURE_INPUT;
+        return;
+    }
+    if (dest != _FMT_NULL) {
+        dest[len] = '\0';
+        source->fo_stored++;
+    }
+}
+
+// Scan the characters a scanset takes into dest as a string, width its bound.
+void _Fmt_ScanSet(_Fmt_Source *source, int width, char *dest, const char *set, unsigned long count, _Fmt_Accept accept)
+{
+    int ch = 0;
+    unsigned long len = 0;
+    unsigned long max = width == _FMT_SCAN_WIDTH_NONE ? _FMT_SIZE_MAX : (unsigned long) width;
+
+    while (len < max && (ch = _Fmt_PeekSource(source)) != _FILE_END && _Fmt_IsInSet(set, count, ch) == (accept == _FMT_ACCEPT_LISTED)) {
+        if (dest != _FMT_NULL) {
+            dest[len] = (char) ch;
+        }
+        _Fmt_AdvanceSource(source);
+        len++;
+    }
+    if (len == 0) {
+        source->fo_failure = ch == _FILE_END ? _FMT_FAILURE_INPUT : _FMT_FAILURE_MATCHING;
+        return;
+    }
+    if (dest != _FMT_NULL) {
+        dest[len] = '\0';
+        source->fo_stored++;
+    }
+}
+
+// Scan nothing: store the characters read so far at dest, as a length's type.
+void _Fmt_ScanCount(_Fmt_Source *source, int length, void *dest)
+{
+    _Fmt_StoreInteger(dest, length, source->fo_count);
+}
+
+// Scan a decimal integer, after any white space, into dest as a length's type.
+void _Fmt_ScanDecimal(_Fmt_Source *source, int width, int length, void *dest)
+{
+    char item[_FMT_SCAN_ITEM];
+
+    _Fmt_ScanSpace(source);
+    if (_Fmt_ReadInteger(source, width, _FMT_SCAN_BASE_DECIMAL, item) && dest != _FMT_NULL) {
+        _Fmt_StoreInteger(dest, length, (unsigned long long) _Fmt_ToSigned(item, _FMT_SCAN_BASE_DECIMAL));
+        source->fo_stored++;
+    }
+}
+
+// Scan an integer of the base its prefix names, after any white space.
+void _Fmt_ScanInteger(_Fmt_Source *source, int width, int length, void *dest)
+{
+    char item[_FMT_SCAN_ITEM];
+
+    _Fmt_ScanSpace(source);
+    if (_Fmt_ReadInteger(source, width, _FMT_SCAN_BASE_PREFIX, item) && dest != _FMT_NULL) {
+        _Fmt_StoreInteger(dest, length, (unsigned long long) _Fmt_ToSigned(item, _FMT_SCAN_BASE_PREFIX));
+        source->fo_stored++;
+    }
+}
+
+// Scan an octal integer, after any white space, into dest as a length's type.
+void _Fmt_ScanOctal(_Fmt_Source *source, int width, int length, void *dest)
+{
+    char item[_FMT_SCAN_ITEM];
+
+    _Fmt_ScanSpace(source);
+    if (_Fmt_ReadInteger(source, width, _FMT_SCAN_BASE_OCTAL, item) && dest != _FMT_NULL) {
+        _Fmt_StoreInteger(dest, length, _Fmt_ToUnsigned(item, _FMT_SCAN_BASE_OCTAL));
+        source->fo_stored++;
+    }
+}
+
+// Scan a decimal integer, after any white space, into dest as unsigned.
+void _Fmt_ScanUnsigned(_Fmt_Source *source, int width, int length, void *dest)
+{
+    char item[_FMT_SCAN_ITEM];
+
+    _Fmt_ScanSpace(source);
+    if (_Fmt_ReadInteger(source, width, _FMT_SCAN_BASE_DECIMAL, item) && dest != _FMT_NULL) {
+        _Fmt_StoreInteger(dest, length, _Fmt_ToUnsigned(item, _FMT_SCAN_BASE_DECIMAL));
+        source->fo_stored++;
+    }
+}
+
+// Scan a hex integer, 0x before it or not, after any white space, into dest.
+void _Fmt_ScanHex(_Fmt_Source *source, int width, int length, void *dest)
+{
+    char item[_FMT_SCAN_ITEM];
+
+    _Fmt_ScanSpace(source);
+    if (_Fmt_ReadInteger(source, width, _FMT_SCAN_BASE_HEX, item) && dest != _FMT_NULL) {
+        _Fmt_StoreInteger(dest, length, _Fmt_ToUnsigned(item, _FMT_SCAN_BASE_HEX));
+        source->fo_stored++;
+    }
+}
+
+// Scan a pointer as %p writes one, (nil) or hex, after any white space.
+void _Fmt_ScanPointer(_Fmt_Source *source, int width, void *dest)
+{
+    char item[_FMT_SCAN_ITEM];
+    const char *nil = _FMT_SCAN_NIL;
+    unsigned long long value = 0;
+
+    _Fmt_ScanSpace(source);
+    if (_Fmt_PeekSource(source) == nil[0] && (width == _FMT_SCAN_WIDTH_NONE || width >= _FMT_SCAN_NIL_WIDTH)) {
+        // Phase: scan a null pointer, in letters of either case
+        for (unsigned long i = 0; nil[i] != '\0'; i++) {
+            if (_Fmt_ToLower(_Fmt_PeekSource(source)) != nil[i]) {
+                source->fo_failure = _FMT_FAILURE_MATCHING;
+                return;
+            }
+            _Fmt_AdvanceSource(source);
+        }
+    } else {
+        // Phase: scan an address
+        if (! _Fmt_ReadInteger(source, width, _FMT_SCAN_BASE_HEX, item)) {
+            return;
+        }
+        value = _Fmt_ToUnsigned(item, _FMT_SCAN_BASE_HEX);
+    }
+    if (dest != _FMT_NULL) {
+        *(void **) dest = (void *) (unsigned long) value;
+        source->fo_stored++;
+    }
+}
+
+// Scan a floating number, after any white space, into dest as a length's type.
+void _Fmt_ScanReal(_Fmt_Source *source, int width, int length, void *dest)
+{
+    _Fmt_Item item;
+
+    _Fmt_ScanSpace(source);
+    _Fmt_ReadReal(source, width, &item);
+    if (source->fo_failure == _FMT_FAILURE_NONE && item.fi_len == 0) {
+        source->fo_failure = _Fmt_PeekSource(source) == _FILE_END ? _FMT_FAILURE_INPUT : _FMT_FAILURE_MATCHING;
+    } else if (source->fo_failure == _FMT_FAILURE_NONE && ! _Fmt_ToReal(item.fi_text, length, dest)) {
+        source->fo_failure = _FMT_FAILURE_MATCHING;
+    } else if (source->fo_failure == _FMT_FAILURE_NONE && dest != _FMT_NULL) {
+        source->fo_stored++;
+    }
+    _Mem_FreeMemory(item.fi_text);
+}
+
+// Scan width bytes, one if no width, into dest as wide characters, no null.
+void _Fmt_ScanWideChar(_Fmt_Source *source, int width, _Fmt_WcharType *dest)
+{
+    int ch;
+    _Fmt_Wide wide;
+    unsigned long count = width == _FMT_SCAN_WIDTH_NONE ? 1 : (unsigned long) width;
+
+    wide.fw_dest = dest;
+    wide.fw_count = 0;
+    for (unsigned long i = 0; i < count && source->fo_failure == _FMT_FAILURE_NONE; i++) {
+        ch = _Fmt_PeekSource(source);
+        if (ch == _FILE_END) {
+            source->fo_failure = _FMT_FAILURE_INPUT;
+            return;
+        }
+        _Fmt_DecodeByte(source, &wide, ch);
+        _Fmt_AdvanceSource(source);
+    }
+    if (_Fmt_EndWide(source, &wide) && dest != _FMT_NULL) {
+        source->fo_stored++;
+    }
+}
+
+// Scan a word, after any white space, into dest as a wide string, width bytes.
+void _Fmt_ScanWideString(_Fmt_Source *source, int width, _Fmt_WcharType *dest)
+{
+    int ch;
+    _Fmt_Wide wide;
+    unsigned long len = 0;
+    unsigned long max = width == _FMT_SCAN_WIDTH_NONE ? _FMT_SIZE_MAX : (unsigned long) width;
+
+    wide.fw_dest = dest;
+    wide.fw_count = 0;
+    _Fmt_ScanSpace(source);
+    while (len < max && source->fo_failure == _FMT_FAILURE_NONE && (ch = _Fmt_PeekSource(source)) != _FILE_END && ! _Fmt_IsSpace(ch)) {
+        _Fmt_DecodeByte(source, &wide, ch);
+        _Fmt_AdvanceSource(source);
+        len++;
+    }
+    if (len == 0) {
+        source->fo_failure = _FMT_FAILURE_INPUT;
+        return;
+    }
+    if (_Fmt_EndWide(source, &wide) && dest != _FMT_NULL) {
+        *wide.fw_dest = 0;
+        source->fo_stored++;
+    }
+}
+
+// Scan the bytes a scanset takes into dest as a wide string, width bytes.
+void _Fmt_ScanWideSet(_Fmt_Source *source, int width, _Fmt_WcharType *dest, const char *set, unsigned long count, _Fmt_Accept accept)
+{
+    int ch = 0;
+    _Fmt_Wide wide;
+    unsigned long len = 0;
+    unsigned long max = width == _FMT_SCAN_WIDTH_NONE ? _FMT_SIZE_MAX : (unsigned long) width;
+
+    wide.fw_dest = dest;
+    wide.fw_count = 0;
+    while (len < max && source->fo_failure == _FMT_FAILURE_NONE && (ch = _Fmt_PeekSource(source)) != _FILE_END && _Fmt_IsInSet(set, count, ch) == (accept == _FMT_ACCEPT_LISTED)) {
+        _Fmt_DecodeByte(source, &wide, ch);
+        _Fmt_AdvanceSource(source);
+        len++;
+    }
+    if (len == 0) {
+        source->fo_failure = ch == _FILE_END ? _FMT_FAILURE_INPUT : _FMT_FAILURE_MATCHING;
+        return;
+    }
+    if (_Fmt_EndWide(source, &wide) && dest != _FMT_NULL) {
+        *wide.fw_dest = 0;
+        source->fo_stored++;
+    }
+}
+
+// Scan the source as the format says, each directive storing at its argument.
+int _Fmt_ScanFormat(_Fmt_Source *source, const char *format, _Fmt_VaList args)
+{
+    int width;
+    char *str;
+    int length;
+    void *dest;
+    const char *set;
+    _Fmt_VaList list;
+    unsigned long len;
+    _Fmt_Accept accept;
+    unsigned long count;
+    _Fmt_WcharType *wstr;
+
+    __builtin_va_copy(list, args);
+    for (unsigned long i = 0; format[i] != '\0' && source->fo_failure == _FMT_FAILURE_NONE; i += len) {
+        if (_Fmt_MatchScanSpace(format + i, &len)) {
+            _Fmt_ScanSpace(source);
+        } else if (_Fmt_MatchScanOrdinary(format + i, &len)) {
+            _Fmt_ScanOrdinary(source, format + i, len);
+        } else if (_Fmt_MatchScanPercent(format + i, &len)) {
+            _Fmt_ScanPercent(source);
+        } else if (_Fmt_MatchScanChar(format + i, &list, &len, &width, &str)) {
+            _Fmt_ScanChar(source, width, str);
+        } else if (_Fmt_MatchScanString(format + i, &list, &len, &width, &str)) {
+            _Fmt_ScanString(source, width, str);
+        } else if (_Fmt_MatchScanSet(format + i, &list, &len, &width, &str, &set, &count, &accept)) {
+            _Fmt_ScanSet(source, width, str, set, count, accept);
+        } else if (_Fmt_MatchScanCount(format + i, &list, &len, &length, &dest)) {
+            _Fmt_ScanCount(source, length, dest);
+        } else if (_Fmt_MatchScanDecimal(format + i, &list, &len, &width, &length, &dest)) {
+            _Fmt_ScanDecimal(source, width, length, dest);
+        } else if (_Fmt_MatchScanInteger(format + i, &list, &len, &width, &length, &dest)) {
+            _Fmt_ScanInteger(source, width, length, dest);
+        } else if (_Fmt_MatchScanOctal(format + i, &list, &len, &width, &length, &dest)) {
+            _Fmt_ScanOctal(source, width, length, dest);
+        } else if (_Fmt_MatchScanUnsigned(format + i, &list, &len, &width, &length, &dest)) {
+            _Fmt_ScanUnsigned(source, width, length, dest);
+        } else if (_Fmt_MatchScanHex(format + i, &list, &len, &width, &length, &dest)) {
+            _Fmt_ScanHex(source, width, length, dest);
+        } else if (_Fmt_MatchScanPointer(format + i, &list, &len, &width, &dest)) {
+            _Fmt_ScanPointer(source, width, dest);
+        } else if (_Fmt_MatchScanReal(format + i, &list, &len, &width, &length, &dest)) {
+            _Fmt_ScanReal(source, width, length, dest);
+        } else if (_Fmt_MatchScanWideChar(format + i, &list, &len, &width, &wstr)) {
+            _Fmt_ScanWideChar(source, width, wstr);
+        } else if (_Fmt_MatchScanWideString(format + i, &list, &len, &width, &wstr)) {
+            _Fmt_ScanWideString(source, width, wstr);
+        } else if (_Fmt_MatchScanWideSet(format + i, &list, &len, &width, &wstr, &set, &count, &accept)) {
+            _Fmt_ScanWideSet(source, width, wstr, set, count, accept);
+        } else {
+            len = 0;
+            source->fo_failure = _FMT_FAILURE_MATCHING;
+        }
+    }
+    __builtin_va_end(list);
+    return _Fmt_EndSource(source);
 }

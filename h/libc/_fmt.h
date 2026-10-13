@@ -27,7 +27,7 @@
 #ifndef _FMT_H
 #define _FMT_H
 
-// The streams formatted output goes to.
+// The streams formatted output goes to and formatted input comes from.
 #include <_file.h>
 
 // A pointer to nothing, of any type.
@@ -112,6 +112,47 @@
 // The fewest digits a power of two has.
 #define _FMT_POWER_MIN 1
 
+// The width of an input directive that gives none.
+#define _FMT_SCAN_WIDTH_NONE 0
+
+// An input directive's length modifier: none, hh, h, l, ll, j, z, t or L.
+#define _FMT_SCAN_LENGTH_NONE    0
+#define _FMT_SCAN_LENGTH_CHAR    1
+#define _FMT_SCAN_LENGTH_SHORT   2
+#define _FMT_SCAN_LENGTH_LONG    3
+#define _FMT_SCAN_LENGTH_LLONG   4
+#define _FMT_SCAN_LENGTH_INTMAX  5
+#define _FMT_SCAN_LENGTH_SIZE    6
+#define _FMT_SCAN_LENGTH_PTRDIFF 7
+#define _FMT_SCAN_LENGTH_LDOUBLE 8
+
+// An input integer's base: the one its prefix names, 8, 10 or 16.
+#define _FMT_SCAN_BASE_PREFIX  0
+#define _FMT_SCAN_BASE_OCTAL   8
+#define _FMT_SCAN_BASE_DECIMAL 10
+#define _FMT_SCAN_BASE_HEX     16
+
+// The size of an array that holds an input integer: more digits overflow.
+#define _FMT_SCAN_ITEM 32
+
+// A null pointer as %p reads it, and the least width that holds it.
+#define _FMT_SCAN_NIL       "(nil)"
+#define _FMT_SCAN_NIL_WIDTH 5
+
+// The conversions that read a floating number, and such a number's characters:
+// a sign, a digit of either base, the point, either exponent's mark, the
+// words, and what a NaN's parentheses hold between them.
+#define _FMT_SCAN_REALS    "aefgAEFG"
+#define _FMT_SCAN_SIGNS    "+-"
+#define _FMT_SCAN_DECIMALS "0123456789"
+#define _FMT_SCAN_HEXES    "0123456789abcdef"
+#define _FMT_SCAN_POINT    "."
+#define _FMT_SCAN_EXPONENT "e"
+#define _FMT_SCAN_POWER    "p"
+#define _FMT_SCAN_INFINITY "infinity"
+#define _FMT_SCAN_NAN      "nan"
+#define _FMT_SCAN_NCHARS   "0123456789abcdefghijklmnopqrstuvwxyz_"
+
 // The argument list a format's directives take from.
 typedef __builtin_va_list _Fmt_VaList;
 
@@ -145,6 +186,28 @@ enum _Fmt_Real {
     _FMT_REAL_NAN       // not a number
 };
 
+// What an input directive does with what it converts.
+typedef enum _Fmt_Assign _Fmt_Assign;
+enum _Fmt_Assign {
+    _FMT_ASSIGN_STORE,   // store it at the next argument
+    _FMT_ASSIGN_SUPPRESS // store nothing, the directive having an asterisk
+};
+
+// The characters a scanset takes: those it lists, or all the others.
+typedef enum _Fmt_Accept _Fmt_Accept;
+enum _Fmt_Accept {
+    _FMT_ACCEPT_LISTED,  // the characters between its brackets
+    _FMT_ACCEPT_UNLISTED // every other, the scanset beginning with ^
+};
+
+// What stopped formatted input: nothing, no input or input that does not fit.
+typedef enum _Fmt_Failure _Fmt_Failure;
+enum _Fmt_Failure {
+    _FMT_FAILURE_NONE,    // nothing has
+    _FMT_FAILURE_INPUT,   // the input ended, could not be read or decoded
+    _FMT_FAILURE_MATCHING // the input is not what a directive takes
+};
+
 // Where formatted output goes: a stream, or else a string of a size.
 typedef struct _Fmt_Sink _Fmt_Sink;
 struct _Fmt_Sink {
@@ -164,6 +227,44 @@ struct _Fmt_Numeral {
     unsigned long fn_len;            // how many there are, 0 for zero
     int fn_exp;                      // the first's power of ten, 0 for zero
 };
+
+// Where formatted input comes from: a stream, or else a string.
+typedef struct _Fmt_Source _Fmt_Source;
+struct _Fmt_Source {
+    _File_Stream *fo_stream; // the stream, or _FMT_NULL for a string
+    const char *fo_str;      // the string, where there is no stream
+    unsigned long fo_count;  // the characters read so far
+    int fo_stored;           // the assignments made so far
+    _Fmt_Failure fo_failure; // what stopped the input, if anything has
+};
+
+// An input item of any length: its characters, and how many more it may take.
+typedef struct _Fmt_Item _Fmt_Item;
+struct _Fmt_Item {
+    char *fi_text;         // the characters and a null, allocated, or null
+    unsigned long fi_len;  // how many characters there are
+    unsigned long fi_size; // the bytes fi_text points to
+    unsigned long fi_room; // the characters the directive's width still allows
+};
+
+// The wide characters an input directive stores, decoded a byte at a time.
+typedef struct _Fmt_Wide _Fmt_Wide;
+struct _Fmt_Wide {
+    _Fmt_WcharType *fw_dest;      // where the next one goes, or _FMT_NULL
+    char fw_byte[_FMT_BYTES_MAX]; // the bytes of a character not yet whole
+    unsigned long fw_count;       // how many such bytes there are
+};
+
+// Characters
+_Bool _Fmt_IsSpace(int ch);
+_Bool _Fmt_IsDigit(int ch);
+_Bool _Fmt_IsHexDigit(int ch);
+
+// Converting
+int           _Fmt_ToLower(int ch);
+long          _Fmt_ToSigned(const char *str, int base);
+unsigned long _Fmt_ToUnsigned(const char *str, int base);
+_Bool         _Fmt_ToReal(const char *str, int length, void *dest);
 
 // Print matching
 unsigned long    _Fmt_MatchPrintHead(const char *format, int *flags, int *width, int *precision, int *length);
@@ -220,5 +321,59 @@ void          _Fmt_EmitHexLongReal(_Fmt_Sink *sink, int flags, int width, int pr
 void          _Fmt_EmitWideChar(_Fmt_Sink *sink, int flags, int width, _Fmt_WcharType wc);
 void          _Fmt_EmitWideString(_Fmt_Sink *sink, int flags, int width, int precision, const _Fmt_WcharType *wstr);
 int           _Fmt_EmitFormat(_Fmt_Sink *sink, const char *format, _Fmt_VaList args);
+
+// Scan matching
+unsigned long _Fmt_MatchScanHead(const char *format, _Fmt_Assign *assign, int *width, int *length);
+_Bool         _Fmt_MatchScanSpace(const char *format, unsigned long *len);
+_Bool         _Fmt_MatchScanOrdinary(const char *format, unsigned long *len);
+_Bool         _Fmt_MatchScanPercent(const char *format, unsigned long *len);
+_Bool         _Fmt_MatchScanChar(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, char **dest);
+_Bool         _Fmt_MatchScanString(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, char **dest);
+_Bool         _Fmt_MatchScanSet(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, char **dest, const char **set, unsigned long *count, _Fmt_Accept *accept);
+_Bool         _Fmt_MatchScanCount(const char *format, _Fmt_VaList *list, unsigned long *len, int *length, void **dest);
+_Bool         _Fmt_MatchScanDecimal(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest);
+_Bool         _Fmt_MatchScanInteger(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest);
+_Bool         _Fmt_MatchScanOctal(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest);
+_Bool         _Fmt_MatchScanUnsigned(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest);
+_Bool         _Fmt_MatchScanHex(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest);
+_Bool         _Fmt_MatchScanPointer(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, void **dest);
+_Bool         _Fmt_MatchScanReal(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, int *length, void **dest);
+_Bool         _Fmt_MatchScanWideChar(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, _Fmt_WcharType **dest);
+_Bool         _Fmt_MatchScanWideString(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, _Fmt_WcharType **dest);
+_Bool         _Fmt_MatchScanWideSet(const char *format, _Fmt_VaList *list, unsigned long *len, int *width, _Fmt_WcharType **dest, const char **set, unsigned long *count, _Fmt_Accept *accept);
+
+// Formatted input
+int           _Fmt_PeekSource(_Fmt_Source *source);
+void          _Fmt_AdvanceSource(_Fmt_Source *source);
+int           _Fmt_EndSource(_Fmt_Source *source);
+_Bool         _Fmt_IsInSet(const char *set, unsigned long count, int ch);
+_Bool         _Fmt_ReadInteger(_Fmt_Source *source, int width, int base, char *item);
+void          _Fmt_StoreInteger(void *dest, int length, unsigned long long value);
+unsigned long _Fmt_TakeChars(_Fmt_Source *source, _Fmt_Item *item, const char *set, unsigned long max);
+unsigned long _Fmt_TakeWord(_Fmt_Source *source, _Fmt_Item *item, const char *word);
+void          _Fmt_ReadReal(_Fmt_Source *source, int width, _Fmt_Item *item);
+void          _Fmt_DecodeByte(_Fmt_Source *source, _Fmt_Wide *wide, int ch);
+_Bool         _Fmt_EndWide(_Fmt_Source *source, const _Fmt_Wide *wide);
+
+// Scanning
+void _Fmt_ScanSpace(_Fmt_Source *source);
+void _Fmt_ScanOrdinary(_Fmt_Source *source, const char *text, unsigned long len);
+void _Fmt_ScanPercent(_Fmt_Source *source);
+void _Fmt_ScanChar(_Fmt_Source *source, int width, char *dest);
+void _Fmt_ScanString(_Fmt_Source *source, int width, char *dest);
+void _Fmt_ScanSet(_Fmt_Source *source, int width, char *dest, const char *set, unsigned long count, _Fmt_Accept accept);
+void _Fmt_ScanCount(_Fmt_Source *source, int length, void *dest);
+void _Fmt_ScanDecimal(_Fmt_Source *source, int width, int length, void *dest);
+void _Fmt_ScanInteger(_Fmt_Source *source, int width, int length, void *dest);
+void _Fmt_ScanOctal(_Fmt_Source *source, int width, int length, void *dest);
+void _Fmt_ScanUnsigned(_Fmt_Source *source, int width, int length, void *dest);
+void _Fmt_ScanHex(_Fmt_Source *source, int width, int length, void *dest);
+void _Fmt_ScanPointer(_Fmt_Source *source, int width, void *dest);
+void _Fmt_ScanReal(_Fmt_Source *source, int width, int length, void *dest);
+void _Fmt_ScanWideChar(_Fmt_Source *source, int width, _Fmt_WcharType *dest);
+void _Fmt_ScanWideString(_Fmt_Source *source, int width, _Fmt_WcharType *dest);
+void _Fmt_ScanWideSet(_Fmt_Source *source, int width, _Fmt_WcharType *dest, const char *set, unsigned long count, _Fmt_Accept accept);
+int  _Fmt_ScanFormat(_Fmt_Source *source, const char *format, _Fmt_VaList args);
+
 
 #endif // _FMT_H
