@@ -64,37 +64,37 @@ typedef unsigned long _Locale_SizeType;
 // A name setlocale takes, the name it returns for it and its encoding.
 typedef struct _Locale_Name _Locale_Name;
 struct _Locale_Name {
-    const char *ln_name;
-    const char *ln_reported;
+    const char *ln_name;     // the name setlocale takes
+    const char *ln_reported; // the name setlocale returns for it
     _Bool ln_utf8;           // UTF-8, not "C"'s ASCII
 };
 
 // (S7.11) Localization
 struct lconv {
-    char *decimal_point;
-    char *thousands_sep;
-    char *grouping;
-    char *mon_decimal_point;
-    char *mon_thousands_sep;
-    char *mon_grouping;
-    char *positive_sign;
-    char *negative_sign;
-    char *currency_symbol;
-    char frac_digits;
-    char p_cs_precedes;
-    char n_cs_precedes;
-    char p_sep_by_space;
-    char n_sep_by_space;
-    char p_sign_posn;
-    char n_sign_posn;
-    char *int_curr_symbol;
-    char int_frac_digits;
-    char int_p_cs_precedes;
-    char int_n_cs_precedes;
-    char int_p_sep_by_space;
-    char int_n_sep_by_space;
-    char int_p_sign_posn;
-    char int_n_sign_posn;
+    char *decimal_point;     // the decimal point of a number
+    char *thousands_sep;     // what separates a number's digit groups
+    char *grouping;          // the sizes of a number's digit groups
+    char *mon_decimal_point; // the decimal point of money
+    char *mon_thousands_sep; // what separates money's digit groups
+    char *mon_grouping;      // the sizes of money's digit groups
+    char *positive_sign;     // the sign of money not below zero
+    char *negative_sign;     // the sign of money below zero
+    char *currency_symbol;   // the local currency symbol
+    char frac_digits;        // the digits after money's decimal point
+    char p_cs_precedes;      // 1 if the symbol precedes money not below zero
+    char n_cs_precedes;      // 1 if the symbol precedes money below zero
+    char p_sep_by_space;     // how symbol, sign and money not below zero part
+    char n_sep_by_space;     // how symbol, sign and money below zero part
+    char p_sign_posn;        // where the sign of money not below zero goes
+    char n_sign_posn;        // where the sign of money below zero goes
+    char *int_curr_symbol;   // the international currency symbol
+    char int_frac_digits;    // frac_digits, in the international format
+    char int_p_cs_precedes;  // p_cs_precedes, in the international format
+    char int_n_cs_precedes;  // n_cs_precedes, in the international format
+    char int_p_sep_by_space; // p_sep_by_space, in the international format
+    char int_n_sep_by_space; // n_sep_by_space, in the international format
+    char int_p_sign_posn;    // p_sign_posn, in the international format
+    char int_n_sign_posn;    // n_sign_posn, in the international format
 };
 
 // The names setlocale takes, each with the name it returns, as glibc's do.

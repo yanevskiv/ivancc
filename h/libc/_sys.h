@@ -211,51 +211,51 @@
 // Linux's struct stat, the kernel's and not glibc's.
 typedef struct _Sys_Stat _Sys_Stat;
 struct _Sys_Stat {
-    unsigned long st_dev;
-    unsigned long st_ino;
-    unsigned long st_nlink;
-    unsigned int st_mode;
-    unsigned int st_uid;
-    unsigned int st_gid;
-    unsigned int st_pad;
-    unsigned long st_rdev;
-    long st_size;
-    long st_blksize;
-    long st_blocks;
-    unsigned long st_atime;
-    unsigned long st_atime_nsec;
-    unsigned long st_mtime;
-    unsigned long st_mtime_nsec;
-    unsigned long st_ctime;
-    unsigned long st_ctime_nsec;
-    long st_unused[_SYS_STAT_UNUSED];
+    unsigned long st_dev;             // the device the file is on
+    unsigned long st_ino;             // the file's inode number
+    unsigned long st_nlink;           // the hard links to the file
+    unsigned int st_mode;             // the file's type and permissions
+    unsigned int st_uid;              // the owner's user
+    unsigned int st_gid;              // the owner's group
+    unsigned int st_pad;              // padding
+    unsigned long st_rdev;            // the device a special file stands for
+    long st_size;                     // the file's size in bytes
+    long st_blksize;                  // the block size best for its I/O
+    long st_blocks;                   // the 512-byte blocks it takes up
+    unsigned long st_atime;           // the last access, in seconds
+    unsigned long st_atime_nsec;      // the last access's nanoseconds
+    unsigned long st_mtime;           // the last change of data, in seconds
+    unsigned long st_mtime_nsec;      // the last change of data's nanoseconds
+    unsigned long st_ctime;           // the last change of status, in seconds
+    unsigned long st_ctime_nsec;      // the last change of status's nanoseconds
+    long st_unused[_SYS_STAT_UNUSED]; // unused
 };
 
 // Linux's struct termios, the kernel's and not glibc's.
 typedef struct _Sys_Termios _Sys_Termios;
 struct _Sys_Termios {
-    unsigned int c_iflag;
-    unsigned int c_oflag;
-    unsigned int c_cflag;
-    unsigned int c_lflag;
-    unsigned char c_line;
-    unsigned char c_cc[_SYS_NCCS];
+    unsigned int c_iflag;          // the input modes
+    unsigned int c_oflag;          // the output modes
+    unsigned int c_cflag;          // the control modes
+    unsigned int c_lflag;          // the local modes
+    unsigned char c_line;          // the line discipline
+    unsigned char c_cc[_SYS_NCCS]; // the control characters
 };
 
 // Linux's struct timespec.
 typedef struct _Sys_Timespec _Sys_Timespec;
 struct _Sys_Timespec {
-    long tv_sec;
-    long tv_nsec;
+    long tv_sec;  // the seconds
+    long tv_nsec; // the nanoseconds past them
 };
 
 // Linux's struct sigaction.
 typedef struct _Sys_Sigaction _Sys_Sigaction;
 struct _Sys_Sigaction {
-    void (*sa_handler)(int);
-    unsigned long sa_flags;
-    void (*sa_restorer)(void);
-    unsigned long sa_mask;
+    void (*sa_handler)(int);   // the handler, or to ignore or the default
+    unsigned long sa_flags;    // the flags that change the handling
+    void (*sa_restorer)(void); // the function a handler returns through
+    unsigned long sa_mask;     // the signals blocked while the handler runs
 };
 
 // System calls

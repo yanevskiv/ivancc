@@ -120,24 +120,24 @@ typedef long time_t;
 // Text written into a buffer.
 typedef struct _Time_Text _Time_Text;
 struct _Time_Text {
-    char   *tt_str;
-    size_t tt_size;
-    size_t tt_len;
+    char   *tt_str; // the buffer
+    size_t tt_size; // the buffer's size
+    size_t tt_len;  // the characters written, which may pass the size
 };
 
 // (S7.23.1) Components of time
 struct tm {
-    int tm_sec;
-    int tm_min;
-    int tm_hour;
-    int tm_mday;
-    int tm_mon;
-    int tm_year;
-    int tm_wday;
-    int tm_yday;
-    int tm_isdst;
-    long _Time_TmGmtoff;
-    const char *_Time_TmZone;
+    int tm_sec;               // seconds after the minute, 0 to 60
+    int tm_min;               // minutes after the hour, 0 to 59
+    int tm_hour;              // hours since midnight, 0 to 23
+    int tm_mday;              // day of the month, 1 to 31
+    int tm_mon;               // months since January, 0 to 11
+    int tm_year;              // years since 1900
+    int tm_wday;              // days since Sunday, 0 to 6
+    int tm_yday;              // days since January 1, 0 to 365
+    int tm_isdst;             // Daylight Saving Time: above 0, 0 or unknown
+    long _Time_TmGmtoff;      // seconds east of UTC
+    const char *_Time_TmZone; // the time zone's abbreviation
 };
 
 // The days before each month of a year that starts in March.

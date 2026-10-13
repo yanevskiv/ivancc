@@ -69,25 +69,25 @@ typedef int wchar_t;
 // A block of the functions atexit registered, and the block before it.
 typedef struct _Stdlib_Exits _Stdlib_Exits;
 struct _Stdlib_Exits {
-    _Stdlib_Exits *se_next;
-    int se_count;
-    void (*se_func[_STDLIB_EXITS])(void);
+    _Stdlib_Exits *se_next;               // the block filled before this one
+    int se_count;                         // the functions in this block
+    void (*se_func[_STDLIB_EXITS])(void); // the functions, oldest first
 };
 
 // (S7.20) General utilities
 typedef struct {
-    int quot;
-    int rem;
+    int quot; // the quotient
+    int rem;  // the remainder
 } div_t;
 
 typedef struct {
-    long quot;
-    long rem;
+    long quot; // the quotient
+    long rem;  // the remainder
 } ldiv_t;
 
 typedef struct {
-    long long quot;
-    long long rem;
+    long long quot; // the quotient
+    long long rem;  // the remainder
 } lldiv_t;
 
 // The state of rand, its taps and whether srand has seeded it.

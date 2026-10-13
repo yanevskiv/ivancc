@@ -43,8 +43,8 @@
 // An unsigned number in words, least significant first, its top word nonzero.
 typedef struct _Bigint_Number _Bigint_Number;
 struct _Bigint_Number {
-    int bn_len;
-    unsigned int bn_word[_BIGINT_WORDS];
+    int bn_len;                          // the words in use, 0 for zero
+    unsigned int bn_word[_BIGINT_WORDS]; // the words, 32 bits in each
 };
 
 // Arithmetic

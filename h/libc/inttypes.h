@@ -190,8 +190,8 @@ typedef int _Inttypes_WcharType;
 
 // (S7.8) Format conversion of integer types
 typedef struct {
-    intmax_t quot;
-    intmax_t rem;
+    intmax_t quot; // the quotient
+    intmax_t rem;  // the remainder
 } imaxdiv_t;
 
 // (S7.8.2) Functions for greatest-width integer types
