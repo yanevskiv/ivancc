@@ -38,8 +38,14 @@
 // Copying into a string, filling the padding and measuring a string.
 #include <_str.h>
 
-// A wide character's bytes.
+// A wide character's bytes, and the wide character some bytes are.
 #include <_utf8.h>
+
+// Copying into a wide string and measuring one.
+#include <_wstr.h>
+
+// The wide characters a stream is given.
+#include <_wfile.h>
 
 // The conversions, a letter that means two things by its length being two.
 const _Print_Rule _Print_Rules[_PRINT_RULES] = {
@@ -69,6 +75,7 @@ const _Print_Rule _Print_Rules[_PRINT_RULES] = {
 // Put len characters of data, counted though the sink's string be full.
 void _Print_PutText(_Print_Sink *sink, const char *data, unsigned long len)
 {
+    unsigned long i;
     unsigned long room;
 
     if (sink->ps_status == _PRINT_STATUS_FAILED) {
@@ -83,9 +90,51 @@ void _Print_PutText(_Print_Sink *sink, const char *data, unsigned long len)
         sink->ps_status = _PRINT_STATUS_FAILED;
     } else if (sink->ps_stream == _PRINT_NULL && sink->ps_count + 1 < sink->ps_size) {
         room = sink->ps_size - 1 - sink->ps_count;
-        _Str_CopyBytes(sink->ps_str + sink->ps_count, data, len < room ? len : room);
+        if (sink->ps_text == _PRINT_TEXT_NARROW) {
+            _Str_CopyBytes(sink->ps_str + sink->ps_count, data, len < room ? len : room);
+        }
+        for (i = 0; sink->ps_text == _PRINT_TEXT_WIDE && i < len && i < room; i++) {
+            sink->ps_wstr[sink->ps_count + i] = (unsigned char) data[i];
+        }
     }
     sink->ps_count += len;
+}
+
+// Put len wide characters of data in a wide sink, counted as its text is.
+void _Print_PutWide(_Print_Sink *sink, const _Print_WcharType *data, unsigned long len)
+{
+    unsigned long i;
+    unsigned long room;
+
+    if (sink->ps_status == _PRINT_STATUS_FAILED) {
+        return;
+    }
+    if (len > (unsigned long) _PRINT_INT_MAX - sink->ps_count) {
+        _Err_Errno = _SYS_EOVERFLOW;
+        sink->ps_status = _PRINT_STATUS_FAILED;
+        return;
+    }
+    for (i = 0; sink->ps_stream != _PRINT_NULL && i < len; i++) {
+        if (_Wfile_PutChar(sink->ps_stream, data[i]) == _WFILE_END) {
+            sink->ps_status = _PRINT_STATUS_FAILED;
+            return;
+        }
+    }
+    if (sink->ps_stream == _PRINT_NULL && sink->ps_count + 1 < sink->ps_size) {
+        room = sink->ps_size - 1 - sink->ps_count;
+        _Wstr_CopyArray(sink->ps_wstr + sink->ps_count, data, len < room ? len : room);
+    }
+    sink->ps_count += len;
+}
+
+// Put len characters of the format from index, which are of the sink's text.
+void _Print_PutFormat(_Print_Sink *sink, const void *format, unsigned long index, unsigned long len)
+{
+    if (sink->ps_text == _PRINT_TEXT_WIDE) {
+        _Print_PutWide(sink, (const _Print_WcharType *) format + index, len);
+    } else {
+        _Print_PutText(sink, (const char *) format + index, len);
+    }
 }
 
 // Put len copies of the character ch.
@@ -105,42 +154,66 @@ void _Print_PutPad(_Print_Sink *sink, int ch, unsigned long len)
 // End the sink's string, and return its count, or _FILE_END if it failed.
 int _Print_EndSink(_Print_Sink *sink)
 {
-    if (sink->ps_stream == _PRINT_NULL && sink->ps_size > 0) {
-        unsigned long last = sink->ps_size - 1;
+    _Bool wide = sink->ps_text == _PRINT_TEXT_WIDE;
+    unsigned long last = sink->ps_size > 0 ? sink->ps_size - 1 : 0;
+    unsigned long end = sink->ps_count < last ? sink->ps_count : last;
 
-        sink->ps_str[sink->ps_count < last ? sink->ps_count : last] = '\0';
+    if (sink->ps_stream == _PRINT_NULL && sink->ps_size > 0 && wide) {
+        sink->ps_wstr[end] = L'\0';
+    } else if (sink->ps_stream == _PRINT_NULL && sink->ps_size > 0) {
+        sink->ps_str[end] = '\0';
+    }
+    if (sink->ps_stream == _PRINT_NULL && wide && sink->ps_count >= sink->ps_size) {
+        sink->ps_status = _PRINT_STATUS_FAILED;
     }
     return sink->ps_status == _PRINT_STATUS_FAILED ? _FILE_END : (int) sink->ps_count;
 }
 
-// Match the text before a directive, and return its length, 0 for none.
-unsigned long _Print_MatchText(const char *format)
+// Read character index of a format, a wide string or a narrow one.
+int _Print_ReadChar(const void *format, _Print_Text text, unsigned long index)
 {
-    return _Str_CountUnlisted(format, "%");
+    if (text == _PRINT_TEXT_WIDE) {
+        return ((const _Print_WcharType *) format)[index];
+    }
+    return ((const unsigned char *) format)[index];
+}
+
+// Match the text before a directive, and return its length, 0 for none.
+unsigned long _Print_MatchText(const void *format, _Print_Text text, unsigned long index)
+{
+    int ch;
+    unsigned long i = index;
+
+    while ((ch = _Print_ReadChar(format, text, i)) != '\0' && ch != '%') {
+        i++;
+    }
+    return i - index;
 }
 
 // Match a directive's percent sign, flags, width, precision and length.
-unsigned long _Print_MatchHead(const char *format, _Print_Directive *dir)
+unsigned long _Print_MatchHead(const void *format, _Print_Text text, unsigned long index, _Print_Directive *dir)
 {
+    int ch;
     int digit;
-    unsigned long i = 0;
+    unsigned long i = index;
 
-    if (format[i] != '%') {
+    if (_Print_ReadChar(format, text, i) != '%') {
         return 0;
     }
 
     // Phase: match the flags
     dir->pd_flags = 0;
     for (i++; ; i++) {
-        if (format[i] == '-') {
+        ch = _Print_ReadChar(format, text, i);
+        if (ch == '-') {
             dir->pd_flags |= _PRINT_FLAG_LEFT;
-        } else if (format[i] == '+') {
+        } else if (ch == '+') {
             dir->pd_flags |= _PRINT_FLAG_SIGN;
-        } else if (format[i] == ' ') {
+        } else if (ch == ' ') {
             dir->pd_flags |= _PRINT_FLAG_SPACE;
-        } else if (format[i] == '#') {
+        } else if (ch == '#') {
             dir->pd_flags |= _PRINT_FLAG_ALT;
-        } else if (format[i] == '0') {
+        } else if (ch == '0') {
             dir->pd_flags |= _PRINT_FLAG_ZERO;
         } else {
             break;
@@ -149,61 +222,63 @@ unsigned long _Print_MatchHead(const char *format, _Print_Directive *dir)
 
     // Phase: match the width
     dir->pd_width = 0;
-    if (format[i] == '*') {
+    if (ch == '*') {
         dir->pd_width = _PRINT_COUNT_ARGUMENT;
         i++;
     } else {
-        for (; format[i] >= '0' && format[i] <= '9'; i++) {
-            digit = format[i] - '0';
+        for (; (ch = _Print_ReadChar(format, text, i)) >= '0' && ch <= '9'; i++) {
+            digit = ch - '0';
             dir->pd_width = dir->pd_width > (_PRINT_INT_MAX - digit) / _PRINT_COUNT_BASE ? _PRINT_INT_MAX : dir->pd_width * _PRINT_COUNT_BASE + digit;
         }
     }
 
     // Phase: match the precision
     dir->pd_precision = _PRINT_PRECISION_NONE;
-    if (format[i] == '.' && format[i + 1] == '*') {
+    ch = _Print_ReadChar(format, text, i);
+    if (ch == '.' && _Print_ReadChar(format, text, i + 1) == '*') {
         dir->pd_precision = _PRINT_COUNT_ARGUMENT;
         i += 2;
-    } else if (format[i] == '.') {
+    } else if (ch == '.') {
         dir->pd_precision = 0;
-        for (i++; format[i] >= '0' && format[i] <= '9'; i++) {
-            digit = format[i] - '0';
+        for (i++; (ch = _Print_ReadChar(format, text, i)) >= '0' && ch <= '9'; i++) {
+            digit = ch - '0';
             dir->pd_precision = dir->pd_precision > (_PRINT_INT_MAX - digit) / _PRINT_COUNT_BASE ? _PRINT_INT_MAX : dir->pd_precision * _PRINT_COUNT_BASE + digit;
         }
     }
 
     // Phase: match the length
     dir->pd_length = _PRINT_LENGTH_NONE;
-    if (format[i] == 'h' && format[i + 1] == 'h') {
+    ch = _Print_ReadChar(format, text, i);
+    if (ch == 'h' && _Print_ReadChar(format, text, i + 1) == 'h') {
         dir->pd_length = _PRINT_LENGTH_CHAR;
         i += 2;
-    } else if (format[i] == 'h') {
+    } else if (ch == 'h') {
         dir->pd_length = _PRINT_LENGTH_SHORT;
         i++;
-    } else if (format[i] == 'l' && format[i + 1] == 'l') {
+    } else if (ch == 'l' && _Print_ReadChar(format, text, i + 1) == 'l') {
         dir->pd_length = _PRINT_LENGTH_LLONG;
         i += 2;
-    } else if (format[i] == 'l') {
+    } else if (ch == 'l') {
         dir->pd_length = _PRINT_LENGTH_LONG;
         i++;
-    } else if (format[i] == 'j') {
+    } else if (ch == 'j') {
         dir->pd_length = _PRINT_LENGTH_INTMAX;
         i++;
-    } else if (format[i] == 'z') {
+    } else if (ch == 'z') {
         dir->pd_length = _PRINT_LENGTH_SIZE;
         i++;
-    } else if (format[i] == 't') {
+    } else if (ch == 't') {
         dir->pd_length = _PRINT_LENGTH_PTRDIFF;
         i++;
-    } else if (format[i] == 'L') {
+    } else if (ch == 'L') {
         dir->pd_length = _PRINT_LENGTH_LDOUBLE;
         i++;
     }
-    return i;
+    return i - index;
 }
 
 // Find the conversion a letter names with a length, or null if none does.
-const _Print_Rule *_Print_FindRule(char letter, _Print_Length length)
+const _Print_Rule *_Print_FindRule(int letter, _Print_Length length)
 {
     for (unsigned long i = 0; i < _PRINT_RULES; i++) {
         if (_Print_Rules[i].pr_letter == letter && (_Print_Rules[i].pr_lengths & (1 << length))) {
@@ -330,16 +405,16 @@ void _Print_TakeArgument(_Print_VaList *list, _Print_Arg arg, _Print_Directive *
 }
 
 // Match a directive with its arguments, and return its length, 0 for none.
-unsigned long _Print_MatchDirective(const char *format, _Print_VaList *list, _Print_Directive *dir)
+unsigned long _Print_MatchDirective(const void *format, _Print_Text text, unsigned long index, _Print_VaList *list, _Print_Directive *dir)
 {
     const _Print_Rule *rule;
-    unsigned long at = _Print_MatchHead(format, dir);
+    unsigned long at = _Print_MatchHead(format, text, index, dir);
 
     // Phase: find its conversion, before any argument is taken
     if (at == 0) {
         return 0;
     }
-    rule = _Print_FindRule(format[at], dir->pd_length);
+    rule = _Print_FindRule(_Print_ReadChar(format, text, index + at), dir->pd_length);
     if (rule == _PRINT_NULL) {
         return 0;
     }
@@ -631,6 +706,54 @@ void _Print_WriteText(_Print_Sink *sink, int flags, int width, const char *data,
     _Print_WriteField(sink, flags & _PRINT_FLAG_LEFT, width, &field);
 }
 
+// Write len wide characters of data in a wide sink's width.
+void _Print_WriteWideText(_Print_Sink *sink, int flags, int width, const _Print_WcharType *data, unsigned long len)
+{
+    unsigned long pad = (unsigned long) width > len ? (unsigned long) width - len : 0;
+
+    if (! (flags & _PRINT_FLAG_LEFT)) {
+        _Print_PutPad(sink, ' ', pad);
+    }
+    _Print_PutWide(sink, data, len);
+    if (flags & _PRINT_FLAG_LEFT) {
+        _Print_PutPad(sink, ' ', pad);
+    }
+}
+
+// Write the wide characters str's bytes are, max at most, in a wide sink.
+void _Print_WriteDecodedText(_Print_Sink *sink, int flags, int width, const char *str, unsigned long max)
+{
+    int n = 0;
+    unsigned long i;
+    unsigned long at;
+    unsigned long pad;
+    _Print_WcharType wc;
+    unsigned long count = 0;
+
+    // Phase: count the characters, each one whole
+    for (at = 0; count < max && str[at] != '\0'; at += (unsigned long) n, count++) {
+        n = _Utf8_DecodeChar(str + at, _UTF8_MAX, &wc);
+        if (n < 0) {
+            _Err_Errno = _SYS_EILSEQ;
+            sink->ps_status = _PRINT_STATUS_FAILED;
+            return;
+        }
+    }
+
+    // Phase: write them in the width
+    pad = (unsigned long) width > count ? (unsigned long) width - count : 0;
+    if (! (flags & _PRINT_FLAG_LEFT)) {
+        _Print_PutPad(sink, ' ', pad);
+    }
+    for (i = 0, at = 0; i < count; i++, at += (unsigned long) n) {
+        n = _Utf8_DecodeChar(str + at, _UTF8_MAX, &wc);
+        _Print_PutWide(sink, &wc, 1);
+    }
+    if (flags & _PRINT_FLAG_LEFT) {
+        _Print_PutPad(sink, ' ', pad);
+    }
+}
+
 // Write a rounded numeral in a width, frac digits after its point.
 void _Print_WriteNumeral(_Print_Sink *sink, int flags, int width, const _Print_Numeral *num, unsigned long frac, const char *mark)
 {
@@ -726,6 +849,22 @@ void _Print_WriteMantissa(_Print_Sink *sink, const _Print_Directive *dir, _Print
     _Print_WriteField(sink, dir->pd_flags, dir->pd_width, &field);
 }
 
+// Write a character as %c converts it, the wide one it is in a wide sink.
+void _Print_WriteChar(_Print_Sink *sink, const _Print_Directive *dir)
+{
+    _Print_WcharType wc;
+    char ch = (char) dir->pd_uval;
+
+    if (sink->ps_text == _PRINT_TEXT_NARROW) {
+        _Print_WriteText(sink, dir->pd_flags, dir->pd_width, &ch, 1);
+    } else if (_Utf8_DecodeChar(&ch, 1, &wc) == _UTF8_ASCII_LEN) {
+        _Print_WriteWideText(sink, dir->pd_flags, dir->pd_width, &wc, 1);
+    } else {
+        _Err_Errno = _SYS_EILSEQ;
+        sink->ps_status = _PRINT_STATUS_FAILED;
+    }
+}
+
 // Write a string as %s converts it, a null one as glibc does.
 void _Print_WriteString(_Print_Sink *sink, const _Print_Directive *dir)
 {
@@ -736,6 +875,10 @@ void _Print_WriteString(_Print_Sink *sink, const _Print_Directive *dir)
 
     if (str == _PRINT_NULL) {
         str = precision == _PRINT_PRECISION_NONE || precision >= (int) sizeof(_ERR_PRINT_NULL) - 1 ? _ERR_PRINT_NULL : "";
+    }
+    if (sink->ps_text == _PRINT_TEXT_WIDE) {
+        _Print_WriteDecodedText(sink, dir->pd_flags, dir->pd_width, str, precision == _PRINT_PRECISION_NONE ? _PRINT_SIZE_MAX : (unsigned long) precision);
+        return;
     }
     if (precision == _PRINT_PRECISION_NONE) {
         len = _Str_GetLength(str);
@@ -850,7 +993,22 @@ void _Print_WriteHexReal(_Print_Sink *sink, const _Print_Directive *dir)
     _Print_WriteMantissa(sink, dir, sign, mant, exp);
 }
 
-// Write a wide string as %ls converts it, in the locale's bytes.
+// Write a wide character as %lc converts it, as a wide string of it alone.
+void _Print_WriteWideChar(_Print_Sink *sink, const _Print_Directive *dir)
+{
+    _Print_Directive one = *dir;
+    _Print_WcharType pair[2] = {(_Print_WcharType) dir->pd_uval, L'\0'};
+
+    if (sink->ps_text == _PRINT_TEXT_WIDE) {
+        _Print_WriteWideText(sink, dir->pd_flags, dir->pd_width, pair, 1);
+        return;
+    }
+    one.pd_wstr = pair;
+    one.pd_precision = _PRINT_PRECISION_NONE;
+    _Print_WriteWideString(sink, &one);
+}
+
+// Write a wide string as %ls converts it, a narrow sink's in its bytes.
 void _Print_WriteWideString(_Print_Sink *sink, const _Print_Directive *dir)
 {
     int n;
@@ -858,12 +1016,21 @@ void _Print_WriteWideString(_Print_Sink *sink, const _Print_Directive *dir)
     unsigned long pad;
     unsigned long len = 0;
     unsigned long count = 0;
+    const _Print_WcharType *end;
     char bytes[_PRINT_BYTES_MAX];
     const _Print_WcharType *wstr = dir->pd_wstr;
     unsigned long max = dir->pd_precision == _PRINT_PRECISION_NONE ? _PRINT_SIZE_MAX : (unsigned long) dir->pd_precision;
 
     if (wstr == _PRINT_NULL) {
         _Print_WriteString(sink, dir);
+        return;
+    }
+
+    // Phase: write a wide sink the characters as they are
+    if (sink->ps_text == _PRINT_TEXT_WIDE) {
+        end = _Wstr_FindInArray(wstr, L'\0', max);
+        len = end != _PRINT_NULL ? (unsigned long) (end - wstr) : max;
+        _Print_WriteWideText(sink, dir->pd_flags, dir->pd_width, wstr, len);
         return;
     }
 
@@ -903,8 +1070,7 @@ void _Print_WriteDirective(_Print_Sink *sink, const _Print_Directive *dir)
             _Print_PutText(sink, "%", 1);
         } break;
         case _PRINT_KIND_CHAR: {
-            char ch = (char) dir->pd_uval;
-            _Print_WriteText(sink, dir->pd_flags, dir->pd_width, &ch, 1);
+            _Print_WriteChar(sink, dir);
         } break;
         case _PRINT_KIND_STRING: {
             _Print_WriteString(sink, dir);
@@ -929,11 +1095,7 @@ void _Print_WriteDirective(_Print_Sink *sink, const _Print_Directive *dir)
             _Print_WriteHexReal(sink, dir);
         } break;
         case _PRINT_KIND_WIDE_CHAR: {
-            _Print_Directive one = *dir;
-            _Print_WcharType pair[2] = {(_Print_WcharType) dir->pd_uval, L'\0'};
-            one.pd_wstr = pair;
-            one.pd_precision = _PRINT_PRECISION_NONE;
-            _Print_WriteWideString(sink, &one);
+            _Print_WriteWideChar(sink, dir);
         } break;
         case _PRINT_KIND_WIDE_STRING: {
             _Print_WriteWideString(sink, dir);
@@ -942,21 +1104,22 @@ void _Print_WriteDirective(_Print_Sink *sink, const _Print_Directive *dir)
 }
 
 // Write the format's text, each directive converting its arguments.
-int _Print_WriteFormat(_Print_Sink *sink, const char *format, _Print_VaList args)
+int _Print_WriteFormat(_Print_Sink *sink, const void *format, _Print_VaList args)
 {
     unsigned long len;
     _Print_VaList list;
     _Print_Directive dir;
+    _Print_Text text = sink->ps_text;
 
     __builtin_va_copy(list, args);
-    for (unsigned long i = 0; format[i] != '\0'; i += len) {
-        if ((len = _Print_MatchText(format + i)) > 0) {
-            _Print_PutText(sink, format + i, len);
-        } else if ((len = _Print_MatchDirective(format + i, &list, &dir)) > 0) {
+    for (unsigned long i = 0; _Print_ReadChar(format, text, i) != '\0'; i += len) {
+        if ((len = _Print_MatchText(format, text, i)) > 0) {
+            _Print_PutFormat(sink, format, i, len);
+        } else if ((len = _Print_MatchDirective(format, text, i, &list, &dir)) > 0) {
             _Print_WriteDirective(sink, &dir);
         } else {
             len = 1;
-            _Print_PutText(sink, format + i, len);
+            _Print_PutFormat(sink, format, i, len);
         }
     }
     __builtin_va_end(list);

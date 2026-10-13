@@ -130,6 +130,13 @@ typedef unsigned long _Print_UintmaxType;
 typedef int          _Print_WcharType;
 typedef unsigned int _Print_WintType;
 
+// The characters a format and the sink it is written to are made of.
+typedef enum _Print_Text _Print_Text;
+enum _Print_Text {
+    _PRINT_TEXT_NARROW, // char, a character one or more of them
+    _PRINT_TEXT_WIDE    // wide characters
+};
+
 // Whether the sink took all it was given.
 typedef enum _Print_Status _Print_Status;
 enum _Print_Status {
@@ -215,11 +222,13 @@ enum _Print_Real {
 // Where formatted output goes: a stream, or else a string of a size.
 typedef struct _Print_Sink _Print_Sink;
 struct _Print_Sink {
-    _File_Stream *ps_stream; // the stream, or _PRINT_NULL for a string
-    char *ps_str;            // the string, where there is no stream
-    unsigned long ps_size;   // the string's size, its null counted
-    unsigned long ps_count;  // the characters given so far, kept or not
-    _Print_Status ps_status; // whether it took them all
+    _Print_Text ps_text;       // what it and its format are made of
+    _File_Stream *ps_stream;   // the stream, or _PRINT_NULL for a string
+    char *ps_str;              // the string, where there is no stream
+    _Print_WcharType *ps_wstr; // the string, where it is a wide one
+    unsigned long ps_size;     // the string's size, its null counted
+    unsigned long ps_count;    // the characters given so far, kept or not
+    _Print_Status ps_status;   // whether it took them all
 };
 
 // A conversion: its letter, the lengths that go with it and what they mean.
@@ -284,16 +293,19 @@ extern const _Print_Rule _Print_Rules[_PRINT_RULES];
 
 // Sink
 void _Print_PutText(_Print_Sink *sink, const char *data, unsigned long len);
+void _Print_PutWide(_Print_Sink *sink, const _Print_WcharType *data, unsigned long len);
+void _Print_PutFormat(_Print_Sink *sink, const void *format, unsigned long index, unsigned long len);
 void _Print_PutPad(_Print_Sink *sink, int ch, unsigned long len);
 int  _Print_EndSink(_Print_Sink *sink);
 
 // Matching
-unsigned long      _Print_MatchText(const char *format);
-unsigned long      _Print_MatchHead(const char *format, _Print_Directive *dir);
-const _Print_Rule *_Print_FindRule(char letter, _Print_Length length);
+int                _Print_ReadChar(const void *format, _Print_Text text, unsigned long index);
+unsigned long      _Print_MatchText(const void *format, _Print_Text text, unsigned long index);
+unsigned long      _Print_MatchHead(const void *format, _Print_Text text, unsigned long index, _Print_Directive *dir);
+const _Print_Rule *_Print_FindRule(int letter, _Print_Length length);
 void               _Print_TakeCounts(_Print_VaList *list, _Print_Directive *dir);
 void               _Print_TakeArgument(_Print_VaList *list, _Print_Arg arg, _Print_Directive *dir);
-unsigned long      _Print_MatchDirective(const char *format, _Print_VaList *list, _Print_Directive *dir);
+unsigned long      _Print_MatchDirective(const void *format, _Print_Text text, unsigned long index, _Print_VaList *list, _Print_Directive *dir);
 
 // Converting
 unsigned long _Print_ToDigits(char *end, _Print_UintmaxType value, int base, const char *digits);
@@ -311,17 +323,21 @@ void _Print_AddZeros(_Print_Field *field, unsigned long count);
 void _Print_AddSpan(_Print_Field *field, const _Print_Numeral *num, long high, unsigned long count);
 void _Print_WriteField(_Print_Sink *sink, int flags, int width, const _Print_Field *field);
 void _Print_WriteText(_Print_Sink *sink, int flags, int width, const char *data, unsigned long len);
+void _Print_WriteWideText(_Print_Sink *sink, int flags, int width, const _Print_WcharType *data, unsigned long len);
+void _Print_WriteDecodedText(_Print_Sink *sink, int flags, int width, const char *str, unsigned long max);
 void _Print_WriteNumeral(_Print_Sink *sink, int flags, int width, const _Print_Numeral *num, unsigned long frac, const char *mark);
 void _Print_WriteSpecial(_Print_Sink *sink, const _Print_Directive *dir, _Print_Sign sign, _Print_Real kind);
 void _Print_WriteMantissa(_Print_Sink *sink, const _Print_Directive *dir, _Print_Sign sign, unsigned long long mant, int exp);
 
 // Formatted output
+void _Print_WriteChar(_Print_Sink *sink, const _Print_Directive *dir);
 void _Print_WriteString(_Print_Sink *sink, const _Print_Directive *dir);
 void _Print_WriteInteger(_Print_Sink *sink, const _Print_Directive *dir);
 void _Print_WriteReal(_Print_Sink *sink, const _Print_Directive *dir);
 void _Print_WriteHexReal(_Print_Sink *sink, const _Print_Directive *dir);
+void _Print_WriteWideChar(_Print_Sink *sink, const _Print_Directive *dir);
 void _Print_WriteWideString(_Print_Sink *sink, const _Print_Directive *dir);
 void _Print_WriteDirective(_Print_Sink *sink, const _Print_Directive *dir);
-int  _Print_WriteFormat(_Print_Sink *sink, const char *format, _Print_VaList args);
+int  _Print_WriteFormat(_Print_Sink *sink, const void *format, _Print_VaList args);
 
 #endif // _PRINT_H

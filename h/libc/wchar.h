@@ -50,6 +50,9 @@
 #define WEOF 0xFFFFFFFFU
 #endif
 
+// The argument list, which wchar.h may not name.
+typedef __builtin_va_list _Wchar_VaList;
+
 #ifndef __SIZE_T__
 #define __SIZE_T__
 typedef unsigned long size_t;
@@ -83,6 +86,14 @@ extern mbstate_t _Wchar_WcsrtombsState;
 // Restartable conversions
 size_t _Wchar_DecodeChar(wchar_t *pwc, const char *str, size_t n, mbstate_t *state);
 size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state);
+
+// (S7.24.2) Formatted wide character input/output functions
+int fwprintf(_File_Stream *restrict stream, const wchar_t *restrict format, ...);
+int swprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, ...);
+int vfwprintf(_File_Stream *restrict stream, const wchar_t *restrict format, _Wchar_VaList arg);
+int vswprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, _Wchar_VaList arg);
+int vwprintf(const wchar_t *restrict format, _Wchar_VaList arg);
+int wprintf(const wchar_t *restrict format, ...);
 
 // (S7.24.3) Wide character input/output functions
 wint_t   fgetwc(_File_Stream *stream);

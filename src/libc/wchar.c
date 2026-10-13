@@ -32,6 +32,12 @@
 // The wide characters of a stream.
 #include <_wfile.h>
 
+// The engine the wprintf family formats by.
+#include <_print.h>
+
+// The arguments a format's directives take.
+#include <stdarg.h>
+
 // The longest character a conversion state holds the bytes of.
 #include <_utf8.h>
 
@@ -71,6 +77,9 @@ typedef char _Wchar_CheckState[_WCHAR_STATE_BYTES == _UTF8_MAX ? 1 : -1];
 
 // Check what _wfile gives at a stream's end against the header's, and EOF.
 typedef char _Wchar_CheckEnd[_WFILE_END == WEOF && _FILE_END == EOF ? 1 : -1];
+
+// Check the header's own argument list against stdarg.h's.
+typedef char _Wchar_CheckVaList[sizeof(_Wchar_VaList) == sizeof(va_list) ? 1 : -1];
 
 // Check that long and long long are intmax_t, as wcstol and its family take.
 typedef char _Wchar_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
@@ -138,6 +147,78 @@ size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state)
         state->count = 0;
     }
     return (size_t) len;
+}
+
+// Write the arguments to the stream as the wide format says.
+int fwprintf(FILE *restrict stream, const wchar_t *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vfwprintf(stream, format, args);
+    va_end(args);
+    return result;
+}
+
+// Write the arguments into str's n wide characters as the wide format says.
+int swprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vswprintf(str, n, format, args);
+    va_end(args);
+    return result;
+}
+
+// Write the list's arguments to the stream as the wide format says.
+int vfwprintf(FILE *restrict stream, const wchar_t *restrict format, _Wchar_VaList arg)
+{
+    int result;
+    unsigned char lent[BUFSIZ];
+    _Print_Sink sink = {
+        .ps_text   = _PRINT_TEXT_WIDE,
+        .ps_stream = stream
+    };
+
+    _File_OrientStream(stream, _FILE_ORIENT_WIDE);
+    if (_File_LendBuffer(stream, lent, sizeof(lent)) != 0) {
+        return EOF;
+    }
+    result = _Print_WriteFormat(&sink, format, arg);
+    return _File_ReclaimBuffer(stream) == 0 ? result : EOF;
+}
+
+// Write the list's arguments into str's n wide characters, or fail to fit.
+int vswprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, _Wchar_VaList arg)
+{
+    _Print_Sink sink = {
+        .ps_text = _PRINT_TEXT_WIDE,
+        .ps_wstr = str,
+        .ps_size = n
+    };
+
+    return _Print_WriteFormat(&sink, format, arg);
+}
+
+// Write the list's arguments to standard output as the wide format says.
+int vwprintf(const wchar_t *restrict format, _Wchar_VaList arg)
+{
+    return vfwprintf(stdout, format, arg);
+}
+
+// Write the arguments to standard output as the wide format says.
+int wprintf(const wchar_t *restrict format, ...)
+{
+    int result;
+    va_list args;
+
+    va_start(args, format);
+    result = vfwprintf(stdout, format, args);
+    va_end(args);
+    return result;
 }
 
 // Get the stream's next wide character, or WEOF.
