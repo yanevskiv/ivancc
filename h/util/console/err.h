@@ -36,9 +36,6 @@
 // The columns a source line's number is printed in.
 #define ERR_SOURCE_WIDTH 5
 
-// No line of context beside the line a diagnostic names.
-#define ERR_SOURCE_NONE 0
-
 // The lines shown before and after the line a diagnostic names.
 #define ERR_SOURCE_BEFORE 2
 #define ERR_SOURCE_AFTER  2
