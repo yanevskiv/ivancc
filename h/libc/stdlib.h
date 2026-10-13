@@ -26,39 +26,6 @@
 #ifndef _STDLIB_H
 #define _STDLIB_H
 
-// The significant digits strtod keeps, past a long double halfway point's 11515.
-#define _STDLIB_DIGITS 11520
-
-// The decimal exponents past which a number overflows or is zero in every format.
-#define _STDLIB_EXP10_MAX 4933
-#define _STDLIB_EXP10_MIN (-4951)
-
-// The magnitude an exponent stops growing at, past every format's range.
-#define _STDLIB_EXP_LIMIT 100000000000000000L
-
-// The digits a word of strtod's big integer takes at once, and their scale.
-#define _STDLIB_CHUNK_DIGITS 9
-#define _STDLIB_CHUNK_SCALE  1000000000U
-
-// The bits of a hexadecimal digit, a value past every one, and its top bit.
-#define _STDLIB_HEX_BITS  4
-#define _STDLIB_HEX_LIMIT 16
-#define _STDLIB_HEX_TOP   8
-
-// The bits of the mantissa strtod rounds from.
-#define _STDLIB_MANT_BITS 64
-
-// What lies below a mantissa's last bit, against half that bit.
-#define _STDLIB_REST_NONE  0
-#define _STDLIB_REST_BELOW 1
-#define _STDLIB_REST_HALF  2
-#define _STDLIB_REST_ABOVE 3
-
-// The sign bits of a float, a double and a long double's exponent word.
-#define _STDLIB_FLOAT_SIGN   0x80000000U
-#define _STDLIB_DOUBLE_SIGN  0x8000000000000000ULL
-#define _STDLIB_LDOUBLE_SIGN 0x8000U
-
 // The words of rand's state, the gap of its taps and the outputs srand skips.
 #define _STDLIB_RAND_WORDS   31
 #define _STDLIB_RAND_SEP     3
@@ -99,47 +66,6 @@ typedef unsigned long size_t;
 typedef int wchar_t;
 #endif
 
-// The characters a text to convert is made of.
-typedef enum _Stdlib_Text _Stdlib_Text;
-enum _Stdlib_Text {
-    _STDLIB_TEXT_NARROW,
-    _STDLIB_TEXT_WIDE
-};
-
-// A floating type: its mantissa's bits, its exponents' range, and an explicit leading bit.
-typedef struct _Stdlib_Format _Stdlib_Format;
-struct _Stdlib_Format {
-    int sf_mant;
-    int sf_min;
-    int sf_max;
-    _Bool sf_explicit;
-};
-
-// A converted number's sign and its biased exponent and mantissa fields.
-typedef struct _Stdlib_Real _Stdlib_Real;
-struct _Stdlib_Real {
-    _Bool sr_negative;
-    unsigned int sr_exp;
-    unsigned long long sr_mant;
-};
-
-// A number before rounding: 64 bits from the top one, its exponent and the rest below.
-typedef struct _Stdlib_Unrounded _Stdlib_Unrounded;
-struct _Stdlib_Unrounded {
-    unsigned long long su_mant;
-    long su_exp;
-    int su_rest;
-};
-
-// A decimal's first significant digit, the digits kept, its exponent and a dropped nonzero.
-typedef struct _Stdlib_Decimal _Stdlib_Decimal;
-struct _Stdlib_Decimal {
-    size_t sd_first;
-    long sd_count;
-    long sd_exp;
-    _Bool sd_sticky;
-};
-
 // A block of the functions atexit registered, and the block before it.
 typedef struct _Stdlib_Exits _Stdlib_Exits;
 struct _Stdlib_Exits {
@@ -164,11 +90,6 @@ typedef struct {
     long long rem;
 } lldiv_t;
 
-// The formats of float, double and long double.
-extern const _Stdlib_Format _Stdlib_FloatFormat;
-extern const _Stdlib_Format _Stdlib_DoubleFormat;
-extern const _Stdlib_Format _Stdlib_LongDoubleFormat;
-
 // The state of rand, its taps and whether srand has seeded it.
 extern unsigned int _Stdlib_RandState[_STDLIB_RAND_WORDS];
 extern int _Stdlib_RandFront;
@@ -178,21 +99,6 @@ extern _Bool _Stdlib_RandSeeded;
 // The first block of atexit's, and the newest.
 extern _Stdlib_Exits _Stdlib_ExitBase;
 extern _Stdlib_Exits *_Stdlib_ExitTop;
-
-// Conversion
-int                _Stdlib_ReadChar(const void *str, _Stdlib_Text text, size_t index);
-_Bool              _Stdlib_IsSpace(int ch);
-int                _Stdlib_ConvertHexDigit(int ch);
-size_t             _Stdlib_MatchWord(const void *str, _Stdlib_Text text, size_t index, const char *word);
-size_t             _Stdlib_ReadExponent(const void *str, _Stdlib_Text text, size_t index, int letter, long *exp);
-unsigned long long _Stdlib_ReadPayload(const void *str, _Stdlib_Text text, size_t index, size_t stop);
-size_t             _Stdlib_ReadNotANumber(const void *str, _Stdlib_Text text, size_t index, unsigned long long *payload);
-size_t             _Stdlib_ScanDecimal(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Decimal *dec);
-void               _Stdlib_ConvertDecimal(const void *str, _Stdlib_Text text, int point, const _Stdlib_Decimal *dec, _Stdlib_Unrounded *value);
-size_t             _Stdlib_ReadHex(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Unrounded *value);
-void               _Stdlib_DropBits(_Stdlib_Unrounded *value, long bits);
-void               _Stdlib_RoundReal(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real);
-size_t             _Stdlib_ConvertReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *fmt, _Stdlib_Real *real);
 
 // Exit
 void (*_Stdlib_PopExit(void))(void);

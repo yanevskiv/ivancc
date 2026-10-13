@@ -44,19 +44,13 @@
 // The signal abort ends the program by.
 #include <signal.h>
 
-// The exact arithmetic strtod rounds by.
-#include <_bigint.h>
+// The conversion strtod and its two stand on.
+#include <_fp.h>
 
-// The floating types strtod converts to.
+// The floating types the checks hold _fp's formats to.
 #include <float.h>
 
-// The decimal point strtod reads.
-#include <locale.h>
-
-// The white space and letters strtod reads.
-#include <ctype.h>
-
-// The range of a character and an unsigned long long.
+// The ranges the checks hold long and long long to.
 #include <limits.h>
 
 // The integer conversions strtol and its family share.
@@ -74,29 +68,10 @@ typedef char _Stdlib_CheckWchar[sizeof(int) == sizeof(wchar_t) && (wchar_t) -1 <
 // Check that long and long long are intmax_t, as strtol and its family take.
 typedef char _Stdlib_CheckLong[LONG_MAX == INTMAX_MAX && LLONG_MAX == INTMAX_MAX && ULONG_MAX == UINTMAX_MAX && ULLONG_MAX == UINTMAX_MAX ? 1 : -1];
 
-// The format of float, its exponents one below C's.
-const _Stdlib_Format _Stdlib_FloatFormat = {
-    .sf_mant     = FLT_MANT_DIG,
-    .sf_min      = FLT_MIN_EXP - 1,
-    .sf_max      = FLT_MAX_EXP - 1,
-    .sf_explicit = 0
-};
-
-// The format of double, its exponents one below C's.
-const _Stdlib_Format _Stdlib_DoubleFormat = {
-    .sf_mant     = DBL_MANT_DIG,
-    .sf_min      = DBL_MIN_EXP - 1,
-    .sf_max      = DBL_MAX_EXP - 1,
-    .sf_explicit = 0
-};
-
-// The format of long double, its exponents one below C's, its leading bit kept.
-const _Stdlib_Format _Stdlib_LongDoubleFormat = {
-    .sf_mant     = LDBL_MANT_DIG,
-    .sf_min      = LDBL_MIN_EXP - 1,
-    .sf_max      = LDBL_MAX_EXP - 1,
-    .sf_explicit = 1
-};
+// Check the formats _fp converts to against float.h's.
+typedef char _Stdlib_CheckFloat[FLT_MANT_DIG == _FP_FLOAT_MANT && FLT_MIN_EXP - 1 == _FP_FLOAT_MIN && FLT_MAX_EXP - 1 == _FP_FLOAT_MAX ? 1 : -1];
+typedef char _Stdlib_CheckDouble[DBL_MANT_DIG == _FP_DOUBLE_MANT && DBL_MIN_EXP - 1 == _FP_DOUBLE_MIN && DBL_MAX_EXP - 1 == _FP_DOUBLE_MAX ? 1 : -1];
+typedef char _Stdlib_CheckLongDouble[LDBL_MANT_DIG == _FP_LDOUBLE_MANT && LDBL_MIN_EXP - 1 == _FP_LDOUBLE_MIN && LDBL_MAX_EXP - 1 == _FP_LDOUBLE_MAX ? 1 : -1];
 
 // The state of rand, its taps and whether srand has seeded it.
 unsigned int _Stdlib_RandState[_STDLIB_RAND_WORDS];
@@ -107,420 +82,6 @@ _Bool _Stdlib_RandSeeded;
 // The first block of atexit's, C99's 32 without malloc, and the newest.
 _Stdlib_Exits _Stdlib_ExitBase;
 _Stdlib_Exits *_Stdlib_ExitTop = &_Stdlib_ExitBase;
-
-// Read character index of str, a wide string or a narrow one.
-int _Stdlib_ReadChar(const void *str, _Stdlib_Text text, size_t index)
-{
-    if (text == _STDLIB_TEXT_WIDE) {
-        return ((const wchar_t *) str)[index];
-    }
-    return ((const unsigned char *) str)[index];
-}
-
-// Check whether ch is white space in the "C" locale.
-_Bool _Stdlib_IsSpace(int ch)
-{
-    return ch >= 0 && ch <= UCHAR_MAX && isspace(ch);
-}
-
-// Convert the hex digit ch to its value, or _STDLIB_HEX_LIMIT for none.
-int _Stdlib_ConvertHexDigit(int ch)
-{
-    if (ch >= '0' && ch <= '9') {
-        return ch - '0';
-    }
-    if (ch >= 'a' && ch <= 'f') {
-        return ch - 'a' + 10;
-    }
-    if (ch >= 'A' && ch <= 'F') {
-        return ch - 'A' + 10;
-    }
-    return _STDLIB_HEX_LIMIT;
-}
-
-// Match word at index of str in any case, and give its length, or 0.
-size_t _Stdlib_MatchWord(const void *str, _Stdlib_Text text, size_t index, const char *word)
-{
-    size_t i;
-    int ch;
-
-    for (i = 0; word[i] != '\0'; i++) {
-        ch = _Stdlib_ReadChar(str, text, index + i);
-        if (ch < 0 || ch > UCHAR_MAX || tolower(ch) != word[i]) {
-            return 0;
-        }
-    }
-    return i;
-}
-
-// Read an exponent after letter at index into *exp, and give the index past it.
-size_t _Stdlib_ReadExponent(const void *str, _Stdlib_Text text, size_t index, int letter, long *exp)
-{
-    size_t i = index + 1;
-    _Bool negative = 0;
-    long value = 0;
-    int ch = _Stdlib_ReadChar(str, text, index);
-
-    *exp = 0;
-    if (ch != letter && ch != toupper(letter)) {
-        return index;
-    }
-    ch = _Stdlib_ReadChar(str, text, i);
-    if (ch == '+' || ch == '-') {
-        negative = ch == '-';
-        i++;
-    }
-    ch = _Stdlib_ReadChar(str, text, i);
-    if (ch < '0' || ch > '9') {
-        return index;
-    }
-    for (; ch >= '0' && ch <= '9'; ch = _Stdlib_ReadChar(str, text, i)) {
-        if (value < _STDLIB_EXP_LIMIT) {
-            value = value * 10 + (ch - '0');
-        }
-        i++;
-    }
-    *exp = negative ? -value : value;
-    return i;
-}
-
-// Read a NaN's payload up to stop as strtoull in base 0, or 0, as glibc's.
-unsigned long long _Stdlib_ReadPayload(const void *str, _Stdlib_Text text, size_t index, size_t stop)
-{
-    unsigned long long value = 0;
-    int base = 10;
-    int digit;
-
-    if (_Stdlib_ReadChar(str, text, index) == '0') {
-        base = 8;
-        if (tolower(_Stdlib_ReadChar(str, text, index + 1)) == 'x' && _Stdlib_ConvertHexDigit(_Stdlib_ReadChar(str, text, index + 2)) < _STDLIB_HEX_LIMIT) {
-            base = _STDLIB_HEX_LIMIT;
-            index += 2;
-        }
-    }
-    for (; index < stop; index++) {
-        digit = _Stdlib_ConvertHexDigit(_Stdlib_ReadChar(str, text, index));
-        if (digit >= base) {
-            return 0;
-        }
-        value = value > (ULLONG_MAX - (unsigned long long) digit) / (unsigned long long) base ? ULLONG_MAX : value * (unsigned long long) base + (unsigned long long) digit;
-    }
-    return value;
-}
-
-// Read a NaN's parenthesized characters at index, and give the index past them.
-size_t _Stdlib_ReadNotANumber(const void *str, _Stdlib_Text text, size_t index, unsigned long long *payload)
-{
-    size_t i = index + 1;
-    int ch;
-
-    *payload = 0;
-    if (_Stdlib_ReadChar(str, text, index) != '(') {
-        return index;
-    }
-    for (ch = _Stdlib_ReadChar(str, text, i); ch == '_' || (ch >= 0 && ch <= UCHAR_MAX && isalnum(ch)); ch = _Stdlib_ReadChar(str, text, i)) {
-        i++;
-    }
-    if (ch != ')') {
-        return index;
-    }
-    *payload = _Stdlib_ReadPayload(str, text, index + 1, i);
-    return i + 1;
-}
-
-// Scan a decimal's digits and exponent at index, and give the index past them.
-size_t _Stdlib_ScanDecimal(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Decimal *dec)
-{
-    size_t i;
-    _Bool digits = 0;
-    _Bool fraction = 0;
-    long exp;
-    int ch;
-
-    dec->sd_first = 0;
-    dec->sd_count = 0;
-    dec->sd_exp = 0;
-    dec->sd_sticky = 0;
-    for (i = index; ; i++) {
-        ch = _Stdlib_ReadChar(str, text, i);
-        if (ch == point && ! fraction) {
-            fraction = 1;
-            continue;
-        }
-        if (ch < '0' || ch > '9') {
-            break;
-        }
-        digits = 1;
-        if (dec->sd_count == 0 && ch == '0') {
-            dec->sd_exp -= fraction;
-            continue;
-        }
-        if (dec->sd_count == 0) {
-            dec->sd_first = i;
-        }
-        if (dec->sd_count < _STDLIB_DIGITS) {
-            dec->sd_count++;
-            dec->sd_exp -= fraction;
-        } else {
-            dec->sd_sticky |= ch != '0';
-            dec->sd_exp += ! fraction;
-        }
-    }
-    if (! digits) {
-        return index;
-    }
-    i = _Stdlib_ReadExponent(str, text, i, 'e', &exp);
-    dec->sd_exp += exp;
-    return i;
-}
-
-// Convert a scanned decimal exactly to 64 bits and what lies below them.
-void _Stdlib_ConvertDecimal(const void *str, _Stdlib_Text text, int point, const _Stdlib_Decimal *dec, _Stdlib_Unrounded *value)
-{
-    _Bigint_Number num;
-    _Bigint_Number den;
-    size_t i = dec->sd_first;
-    long count = dec->sd_count + dec->sd_sticky;
-    long exp = dec->sd_exp - dec->sd_sticky;
-    long top = dec->sd_count + dec->sd_exp;
-    unsigned int chunk = 0;
-    unsigned int scale = 1;
-    long n;
-    int ch;
-    int bits;
-    int cmp;
-
-    value->su_mant = (unsigned long long) 1 << (_STDLIB_MANT_BITS - 1);
-    value->su_rest = _STDLIB_REST_NONE;
-    if (dec->sd_count == 0) {
-        value->su_mant = 0;
-        return;
-    }
-    if (top > _STDLIB_EXP10_MAX || top < _STDLIB_EXP10_MIN) {
-        value->su_exp = top > 0 ? _STDLIB_EXP_LIMIT : -_STDLIB_EXP_LIMIT;
-        return;
-    }
-    _Bigint_SetValue(&num, 0);
-    for (n = 0; n < count; n++) {
-        ch = n < dec->sd_count ? _Stdlib_ReadChar(str, text, i) : '1';
-        i++;
-        if (ch == point) {
-            ch = _Stdlib_ReadChar(str, text, i);
-            i++;
-        }
-        chunk = chunk * 10 + (unsigned int) (ch - '0');
-        scale *= 10;
-        if (scale == _STDLIB_CHUNK_SCALE || n == count - 1) {
-            _Bigint_MulAddWords(&num, scale, chunk);
-            chunk = 0;
-            scale = 1;
-        }
-    }
-    _Bigint_SetValue(&den, 1);
-    if (exp >= 0) {
-        _Bigint_MulPow5(&num, (int) exp);
-    } else {
-        _Bigint_MulPow5(&den, (int) -exp);
-    }
-    bits = _Bigint_CountBits(&num) - _Bigint_CountBits(&den);
-    if (bits > 0) {
-        _Bigint_ShiftBitsLeft(&den, bits);
-    } else {
-        _Bigint_ShiftBitsLeft(&num, -bits);
-    }
-    if (_Bigint_CompareNumbers(&num, &den) < 0) {
-        _Bigint_ShiftBitsLeft(&num, 1);
-        bits--;
-    }
-    value->su_exp = exp + bits;
-    _Bigint_ShiftBitsLeft(&num, _STDLIB_MANT_BITS - 1);
-    value->su_mant = _Bigint_DivideNumber(&num, &den);
-    if (num.bn_len != 0) {
-        _Bigint_ShiftBitsLeft(&num, 1);
-        cmp = _Bigint_CompareNumbers(&num, &den);
-        value->su_rest = cmp < 0 ? _STDLIB_REST_BELOW : cmp == 0 ? _STDLIB_REST_HALF : _STDLIB_REST_ABOVE;
-    }
-}
-
-// Read a hexadecimal's digits and exponent at index, and give the end.
-size_t _Stdlib_ReadHex(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Unrounded *value)
-{
-    unsigned long long mant = 0;
-    unsigned int extra = 0;
-    _Bool sticky = 0;
-    _Bool fraction = 0;
-    long count = 0;
-    long exp = 0;
-    long power;
-    size_t i;
-    int ch;
-    int digit;
-
-    for (i = index; ; i++) {
-        ch = _Stdlib_ReadChar(str, text, i);
-        if (ch == point && ! fraction) {
-            fraction = 1;
-            continue;
-        }
-        digit = _Stdlib_ConvertHexDigit(ch);
-        if (digit == _STDLIB_HEX_LIMIT) {
-            break;
-        }
-        if (count == 0 && digit == 0) {
-            exp -= fraction * _STDLIB_HEX_BITS;
-            continue;
-        }
-        if (count < _STDLIB_MANT_BITS / _STDLIB_HEX_BITS) {
-            mant = mant << _STDLIB_HEX_BITS | (unsigned long long) digit;
-            exp -= fraction * _STDLIB_HEX_BITS;
-        } else {
-            if (count == _STDLIB_MANT_BITS / _STDLIB_HEX_BITS) {
-                extra = (unsigned int) digit;
-            } else {
-                sticky |= digit != 0;
-            }
-            exp += ! fraction * _STDLIB_HEX_BITS;
-        }
-        count++;
-    }
-    i = _Stdlib_ReadExponent(str, text, i, 'p', &power);
-    value->su_mant = mant;
-    value->su_exp = exp + power + _STDLIB_MANT_BITS - 1;
-    value->su_rest = _STDLIB_REST_NONE;
-    if (mant == 0) {
-        return i;
-    }
-    while (mant >> (_STDLIB_MANT_BITS - 1) == 0) {
-        mant = mant << 1 | extra >> (_STDLIB_HEX_BITS - 1);
-        extra = extra << 1 & (_STDLIB_HEX_LIMIT - 1);
-        value->su_exp--;
-    }
-    value->su_mant = mant;
-    if (extra > _STDLIB_HEX_TOP || (extra == _STDLIB_HEX_TOP && sticky)) {
-        value->su_rest = _STDLIB_REST_ABOVE;
-    } else if (extra == _STDLIB_HEX_TOP) {
-        value->su_rest = _STDLIB_REST_HALF;
-    } else if (extra != 0 || sticky) {
-        value->su_rest = _STDLIB_REST_BELOW;
-    }
-    return i;
-}
-
-// Drop the low bits of value's mantissa, keeping what they were against half.
-void _Stdlib_DropBits(_Stdlib_Unrounded *value, long bits)
-{
-    unsigned long long mant = value->su_mant;
-    _Bool rest = value->su_rest != _STDLIB_REST_NONE;
-    _Bool round;
-    _Bool lower;
-
-    if (bits > _STDLIB_MANT_BITS) {
-        value->su_mant = 0;
-        value->su_rest = mant != 0 || rest ? _STDLIB_REST_BELOW : _STDLIB_REST_NONE;
-        return;
-    }
-    round = mant >> (bits - 1) & 1;
-    lower = (bits > 1 && (mant & ~0ULL >> (_STDLIB_MANT_BITS + 1 - bits)) != 0) || rest;
-    value->su_mant = bits == _STDLIB_MANT_BITS ? 0 : mant >> bits;
-    if (round) {
-        value->su_rest = lower ? _STDLIB_REST_ABOVE : _STDLIB_REST_HALF;
-    } else {
-        value->su_rest = lower ? _STDLIB_REST_BELOW : _STDLIB_REST_NONE;
-    }
-}
-
-// Round value to fmt to nearest, ties to even, with ERANGE as glibc's.
-void _Stdlib_RoundReal(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real)
-{
-    _Stdlib_Unrounded part = *value;
-    unsigned long long ones = ~0ULL >> (_STDLIB_MANT_BITS - fmt->sf_mant);
-    _Bool tiny;
-
-    real->sr_exp = 0;
-    real->sr_mant = 0;
-    if (part.su_mant == 0) {
-        return;
-    }
-    if (fmt->sf_mant < _STDLIB_MANT_BITS) {
-        _Stdlib_DropBits(&part, _STDLIB_MANT_BITS - fmt->sf_mant);
-    }
-    tiny = part.su_exp < fmt->sf_min && ! (part.su_exp == fmt->sf_min - 1 && part.su_mant == ones && part.su_rest >= _STDLIB_REST_HALF);
-    if (part.su_exp < fmt->sf_min) {
-        _Stdlib_DropBits(&part, fmt->sf_min - part.su_exp);
-    }
-    if (part.su_rest > _STDLIB_REST_HALF || (part.su_rest == _STDLIB_REST_HALF && (part.su_mant & 1))) {
-        part.su_mant++;
-        if (part.su_exp >= fmt->sf_min && (part.su_mant & ones) == 0) {
-            part.su_mant = 1ULL << (fmt->sf_mant - 1);
-            part.su_exp++;
-        }
-    }
-    if (part.su_exp > fmt->sf_max) {
-        real->sr_exp = (unsigned int) (2 * fmt->sf_max + 1);
-        real->sr_mant = fmt->sf_explicit ? 1ULL << (fmt->sf_mant - 1) : 0;
-        errno = ERANGE;
-        return;
-    }
-    if (part.su_exp >= fmt->sf_min) {
-        real->sr_exp = (unsigned int) (part.su_exp + fmt->sf_max);
-    } else {
-        real->sr_exp = part.su_mant >> (fmt->sf_mant - 1) != 0;
-    }
-    real->sr_mant = fmt->sf_explicit ? part.su_mant : part.su_mant & ones >> 1;
-    if (tiny && part.su_rest != _STDLIB_REST_NONE) {
-        errno = ERANGE;
-    }
-}
-
-// Convert the number at the start of str to fmt's fields, and give its end.
-size_t _Stdlib_ConvertReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *fmt, _Stdlib_Real *real)
-{
-    _Stdlib_Unrounded value;
-    _Stdlib_Decimal dec;
-    unsigned long long payload;
-    int point = (unsigned char) localeconv()->decimal_point[0];
-    size_t i = 0;
-    size_t end;
-    int ch;
-
-    real->sr_negative = 0;
-    real->sr_exp = (unsigned int) (2 * fmt->sf_max + 1);
-    real->sr_mant = fmt->sf_explicit ? 1ULL << (fmt->sf_mant - 1) : 0;
-    while (_Stdlib_IsSpace(_Stdlib_ReadChar(str, text, i))) {
-        i++;
-    }
-    ch = _Stdlib_ReadChar(str, text, i);
-    if (ch == '+' || ch == '-') {
-        real->sr_negative = ch == '-';
-        i++;
-    }
-    if (_Stdlib_MatchWord(str, text, i, "inf")) {
-        end = _Stdlib_MatchWord(str, text, i, "infinity");
-        return i + (end != 0 ? end : _Stdlib_MatchWord(str, text, i, "inf"));
-    }
-    if (_Stdlib_MatchWord(str, text, i, "nan")) {
-        end = _Stdlib_ReadNotANumber(str, text, i + _Stdlib_MatchWord(str, text, i, "nan"), &payload);
-        real->sr_mant |= 1ULL << (fmt->sf_mant - 2) | (payload & ~0ULL >> (_STDLIB_MANT_BITS + 1 - fmt->sf_mant));
-        return end;
-    }
-    ch = _Stdlib_ReadChar(str, text, i + 1);
-    if (_Stdlib_ReadChar(str, text, i) == '0' && (ch == 'x' || ch == 'X')
-        && (_Stdlib_ConvertHexDigit(_Stdlib_ReadChar(str, text, i + 2)) < _STDLIB_HEX_LIMIT
-            || (_Stdlib_ReadChar(str, text, i + 2) == point && _Stdlib_ConvertHexDigit(_Stdlib_ReadChar(str, text, i + 3)) < _STDLIB_HEX_LIMIT))) {
-        end = _Stdlib_ReadHex(str, text, i + 2, point, &value);
-    } else {
-        end = _Stdlib_ScanDecimal(str, text, i, point, &dec);
-        if (end == i) {
-            real->sr_negative = 0;
-            real->sr_exp = 0;
-            real->sr_mant = 0;
-            return 0;
-        }
-        _Stdlib_ConvertDecimal(str, text, point, &dec, &value);
-    }
-    _Stdlib_RoundReal(&value, fmt, real);
-    return end;
-}
 
 // Pop the function atexit registered last, or return NULL when none is left.
 void (*_Stdlib_PopExit(void))(void)
@@ -710,55 +271,36 @@ long long atoll(const char *nptr)
 // Convert the start of the string nptr to a double, correctly rounded.
 double strtod(const char *restrict nptr, char **restrict endptr)
 {
-    _Stdlib_Real real;
-    size_t end = _Stdlib_ConvertReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_DoubleFormat, &real);
-    unsigned long long bits = (unsigned long long) real.sr_exp << (DBL_MANT_DIG - 1) | real.sr_mant;
-    double value;
+    size_t end;
+    double value = _Fp_ConvertDouble(nptr, _FP_TEXT_NARROW, &end);
 
-    if (real.sr_negative) {
-        bits |= _STDLIB_DOUBLE_SIGN;
-    }
     if (endptr != NULL) {
         *endptr = (char *) nptr + end;
     }
-    memcpy(&value, &bits, sizeof(value));
     return value;
 }
 
 // Convert the start of the string nptr to a float, correctly rounded.
 float strtof(const char *restrict nptr, char **restrict endptr)
 {
-    _Stdlib_Real real;
-    size_t end = _Stdlib_ConvertReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_FloatFormat, &real);
-    unsigned int bits = real.sr_exp << (FLT_MANT_DIG - 1) | (unsigned int) real.sr_mant;
-    float value;
+    size_t end;
+    float value = _Fp_ConvertFloat(nptr, _FP_TEXT_NARROW, &end);
 
-    if (real.sr_negative) {
-        bits |= _STDLIB_FLOAT_SIGN;
-    }
     if (endptr != NULL) {
         *endptr = (char *) nptr + end;
     }
-    memcpy(&value, &bits, sizeof(value));
     return value;
 }
 
 // Convert the start of the string nptr to a long double, correctly rounded.
 long double strtold(const char *restrict nptr, char **restrict endptr)
 {
-    _Stdlib_Real real;
-    size_t end = _Stdlib_ConvertReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_LongDoubleFormat, &real);
-    unsigned short top = (unsigned short) real.sr_exp;
-    long double value = 0;
+    size_t end;
+    long double value = _Fp_ConvertLongDouble(nptr, _FP_TEXT_NARROW, &end);
 
-    if (real.sr_negative) {
-        top |= _STDLIB_LDOUBLE_SIGN;
-    }
     if (endptr != NULL) {
         *endptr = (char *) nptr + end;
     }
-    memcpy(&value, &real.sr_mant, sizeof(real.sr_mant));
-    memcpy((char *) &value + sizeof(real.sr_mant), &top, sizeof(top));
     return value;
 }
 
