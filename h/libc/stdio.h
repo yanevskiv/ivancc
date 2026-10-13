@@ -111,26 +111,35 @@
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
 
+// The buffering setvbuf takes: full, by line and none.
 #define _IOFBF 0
 #define _IOLBF 1
 #define _IONBF 2
 
+// The size of the buffer setbuf takes.
 #define BUFSIZ 8192
 
+// What a function returns at the end of a file.
 #define EOF (-1)
 
+// The files a program is sure to have open at once.
 #define FOPEN_MAX 16
 
+// The size of an array that holds the longest file name.
 #define FILENAME_MAX 4096
 
+// The size of an array that holds a name tmpnam makes.
 #define L_tmpnam 20
 
+// The origins fseek takes: the position, the end and the start.
 #define SEEK_CUR 1
 #define SEEK_END 2
 #define SEEK_SET 0
 
+// The names tmpnam is sure to make, no two alike.
 #define TMP_MAX 10000
 
+// The standard streams, by the names a program gives them.
 #define stderr (&_Stdio_Stderr)
 #define stdin  (&_Stdio_Stdin)
 #define stdout (&_Stdio_Stdout)
@@ -152,27 +161,27 @@ typedef long fpos_t;
 // A stream: its descriptor, its buffer, what it may do and the stream after it.
 typedef struct _Stdio_File _Stdio_File;
 struct _Stdio_File {
-    int sf_fd;
-    int sf_flags;                // _STDIO_READ, _STDIO_WRITE and what happened
-    int sf_state;                // _STDIO_IDLE, _STDIO_READING, _STDIO_WRITING
-    int sf_mode;                 // _IOFBF, _IOLBF, _IONBF or _STDIO_AUTO
-    unsigned char *sf_buf;
-    size_t sf_size;
-    size_t sf_head;              // the bytes of the buffer already read
-    size_t sf_tail;              // the bytes the buffer holds, read or to write
-    unsigned char sf_byte;       // an unbuffered stream's buffer
-    unsigned char sf_back;       // the character ungetc pushed back
-    _Stdio_File *sf_next;
+    int sf_fd;             // the file's descriptor, or _STDIO_NOFILE
+    int sf_flags;          // _STDIO_READ, _STDIO_WRITE and what happened
+    int sf_state;          // _STDIO_IDLE, _STDIO_READING, _STDIO_WRITING
+    int sf_mode;           // _IOFBF, _IOLBF, _IONBF or _STDIO_AUTO
+    unsigned char *sf_buf; // the buffer, the stream's own or setvbuf's
+    size_t sf_size;        // the buffer's size
+    size_t sf_head;        // the bytes of the buffer already read
+    size_t sf_tail;        // the bytes the buffer holds, read or to write
+    unsigned char sf_byte; // an unbuffered stream's buffer
+    unsigned char sf_back; // the character ungetc pushed back
+    _Stdio_File *sf_next;  // the next of the open streams
 };
 
 // Where formatted output goes: a stream, or else a string of a size.
 typedef struct _Stdio_Sink _Stdio_Sink;
 struct _Stdio_Sink {
-    _Stdio_File *ss_stream;
-    char *ss_str;
-    size_t ss_size;              // the string's size, its null counted
-    size_t ss_count;             // the characters given so far, kept or not
-    _Bool ss_failed;
+    _Stdio_File *ss_stream; // the stream, or NULL for a string
+    char *ss_str;           // the string, where there is no stream
+    size_t ss_size;         // the string's size, its null counted
+    size_t ss_count;        // the characters given so far, kept or not
+    _Bool ss_failed;        // a write failed, or the count overflowed
 };
 
 // A floating value's decimal digits, no zero first or last.
