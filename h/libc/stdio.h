@@ -190,45 +190,45 @@ typedef long fpos_t;
 // The letters a conversion writes in.
 typedef enum _Stdio_Case _Stdio_Case;
 enum _Stdio_Case {
-    _STDIO_CASE_LOWER,
-    _STDIO_CASE_UPPER
+    _STDIO_CASE_LOWER, // lowercase, as %x and %e write
+    _STDIO_CASE_UPPER  // capitals, as %X and %E write
 };
 
 // The sign of a number to write.
 typedef enum _Stdio_Sign _Stdio_Sign;
 enum _Stdio_Sign {
-    _STDIO_SIGN_PLUS,
-    _STDIO_SIGN_MINUS
+    _STDIO_SIGN_PLUS, // zero or more
+    _STDIO_SIGN_MINUS // less than zero, or a set sign bit
 };
 
 // What a floating value is.
 typedef enum _Stdio_Real _Stdio_Real;
 enum _Stdio_Real {
-    _STDIO_REAL_FINITE,
-    _STDIO_REAL_INFINITE,
-    _STDIO_REAL_NAN
+    _STDIO_REAL_FINITE,   // a number, zero and the subnormals among them
+    _STDIO_REAL_INFINITE, // an infinity
+    _STDIO_REAL_NAN       // not a number
 };
 
 // What an input directive does with what it converts.
 typedef enum _Stdio_Assign _Stdio_Assign;
 enum _Stdio_Assign {
-    _STDIO_ASSIGN_STORE,
-    _STDIO_ASSIGN_SUPPRESS
+    _STDIO_ASSIGN_STORE,   // store it at the next argument
+    _STDIO_ASSIGN_SUPPRESS // store nothing, the directive having an asterisk
 };
 
 // The characters a scanset takes: those it lists, or all the others.
 typedef enum _Stdio_Accept _Stdio_Accept;
 enum _Stdio_Accept {
-    _STDIO_ACCEPT_LISTED,
-    _STDIO_ACCEPT_UNLISTED
+    _STDIO_ACCEPT_LISTED,  // the characters between its brackets
+    _STDIO_ACCEPT_UNLISTED // every other, the scanset beginning with ^
 };
 
 // What stopped formatted input: nothing, no input or input that does not fit.
 typedef enum _Stdio_Failure _Stdio_Failure;
 enum _Stdio_Failure {
-    _STDIO_FAILURE_NONE,
-    _STDIO_FAILURE_INPUT,
-    _STDIO_FAILURE_MATCHING
+    _STDIO_FAILURE_NONE,    // nothing has
+    _STDIO_FAILURE_INPUT,   // the input ended, could not be read or decoded
+    _STDIO_FAILURE_MATCHING // the input is not what a directive takes
 };
 
 // A stream, as _file.h defines it, which this header may not include.

@@ -84,27 +84,6 @@ _Bool _Fp_IsAlnum(int ch)
     return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
 }
 
-// Convert ch to lowercase if it is an uppercase letter of the "C" locale.
-int _Fp_ToLower(int ch)
-{
-    return ch >= 'A' && ch <= 'Z' ? ch - 'A' + 'a' : ch;
-}
-
-// Convert the hex digit ch to its value, or _FP_HEX_LIMIT for none.
-int _Fp_ToHexDigit(int ch)
-{
-    if (ch >= '0' && ch <= '9') {
-        return ch - '0';
-    }
-    if (ch >= 'a' && ch <= 'f') {
-        return ch - 'a' + 10;
-    }
-    if (ch >= 'A' && ch <= 'F') {
-        return ch - 'A' + 10;
-    }
-    return _FP_HEX_LIMIT;
-}
-
 // Match word at index of str in any case, and give its length, or 0.
 unsigned long _Fp_MatchWord(const void *str, _Fp_Text text, unsigned long index, const char *word)
 {
@@ -241,74 +220,6 @@ unsigned long _Fp_ScanDecimal(const void *str, _Fp_Text text, unsigned long inde
     return i;
 }
 
-// Convert a scanned decimal exactly to 64 bits and what lies below them.
-void _Fp_ToUnrounded(const void *str, _Fp_Text text, int point, const _Fp_Decimal *dec, _Fp_Unrounded *value)
-{
-    _Bigint_Number num;
-    _Bigint_Number den;
-    unsigned long i = dec->fd_first;
-    long count = dec->fd_count + dec->fd_sticky;
-    long exp = dec->fd_exp - dec->fd_sticky;
-    long top = dec->fd_count + dec->fd_exp;
-    unsigned int chunk = 0;
-    unsigned int scale = 1;
-    long n;
-    int ch;
-    int bits;
-    int cmp;
-
-    value->fu_mant = (unsigned long long) 1 << (_FP_MANT_BITS - 1);
-    value->fu_rest = _FP_REST_NONE;
-    if (dec->fd_count == 0) {
-        value->fu_mant = 0;
-        return;
-    }
-    if (top > _FP_EXP10_MAX || top < _FP_EXP10_MIN) {
-        value->fu_exp = top > 0 ? _FP_EXP_LIMIT : -_FP_EXP_LIMIT;
-        return;
-    }
-    _Bigint_SetValue(&num, 0);
-    for (n = 0; n < count; n++) {
-        ch = n < dec->fd_count ? _Fp_ReadChar(str, text, i) : '1';
-        i++;
-        if (ch == point) {
-            ch = _Fp_ReadChar(str, text, i);
-            i++;
-        }
-        chunk = chunk * 10 + (unsigned int) (ch - '0');
-        scale *= 10;
-        if (scale == _FP_CHUNK_SCALE || n == count - 1) {
-            _Bigint_MulAddWords(&num, scale, chunk);
-            chunk = 0;
-            scale = 1;
-        }
-    }
-    _Bigint_SetValue(&den, 1);
-    if (exp >= 0) {
-        _Bigint_MulPow5(&num, (int) exp);
-    } else {
-        _Bigint_MulPow5(&den, (int) -exp);
-    }
-    bits = _Bigint_CountBits(&num) - _Bigint_CountBits(&den);
-    if (bits > 0) {
-        _Bigint_ShiftBitsLeft(&den, bits);
-    } else {
-        _Bigint_ShiftBitsLeft(&num, -bits);
-    }
-    if (_Bigint_CompareNumbers(&num, &den) < 0) {
-        _Bigint_ShiftBitsLeft(&num, 1);
-        bits--;
-    }
-    value->fu_exp = exp + bits;
-    _Bigint_ShiftBitsLeft(&num, _FP_MANT_BITS - 1);
-    value->fu_mant = _Bigint_DivideNumber(&num, &den);
-    if (num.bn_len != 0) {
-        _Bigint_ShiftBitsLeft(&num, 1);
-        cmp = _Bigint_CompareNumbers(&num, &den);
-        value->fu_rest = cmp < 0 ? _FP_REST_BELOW : cmp == 0 ? _FP_REST_HALF : _FP_REST_ABOVE;
-    }
-}
-
 // Read a hexadecimal's digits and exponent at index, and give the end.
 unsigned long _Fp_ReadHex(const void *str, _Fp_Text text, unsigned long index, int point, _Fp_Unrounded *value)
 {
@@ -436,6 +347,95 @@ void _Fp_RoundReal(const _Fp_Unrounded *value, const _Fp_Format *fmt, _Fp_Real *
     real->fr_mant = fmt->ff_explicit ? part.fu_mant : part.fu_mant & ones >> 1;
     if (tiny && part.fu_rest != _FP_REST_NONE) {
         _Err_Errno = _SYS_ERANGE;
+    }
+}
+
+// Convert ch to lowercase if it is an uppercase letter of the "C" locale.
+int _Fp_ToLower(int ch)
+{
+    return ch >= 'A' && ch <= 'Z' ? ch - 'A' + 'a' : ch;
+}
+
+// Convert the hex digit ch to its value, or _FP_HEX_LIMIT for none.
+int _Fp_ToHexDigit(int ch)
+{
+    if (ch >= '0' && ch <= '9') {
+        return ch - '0';
+    }
+    if (ch >= 'a' && ch <= 'f') {
+        return ch - 'a' + 10;
+    }
+    if (ch >= 'A' && ch <= 'F') {
+        return ch - 'A' + 10;
+    }
+    return _FP_HEX_LIMIT;
+}
+
+// Convert a scanned decimal exactly to 64 bits and what lies below them.
+void _Fp_ToUnrounded(const void *str, _Fp_Text text, int point, const _Fp_Decimal *dec, _Fp_Unrounded *value)
+{
+    _Bigint_Number num;
+    _Bigint_Number den;
+    unsigned long i = dec->fd_first;
+    long count = dec->fd_count + dec->fd_sticky;
+    long exp = dec->fd_exp - dec->fd_sticky;
+    long top = dec->fd_count + dec->fd_exp;
+    unsigned int chunk = 0;
+    unsigned int scale = 1;
+    long n;
+    int ch;
+    int bits;
+    int cmp;
+
+    value->fu_mant = (unsigned long long) 1 << (_FP_MANT_BITS - 1);
+    value->fu_rest = _FP_REST_NONE;
+    if (dec->fd_count == 0) {
+        value->fu_mant = 0;
+        return;
+    }
+    if (top > _FP_EXP10_MAX || top < _FP_EXP10_MIN) {
+        value->fu_exp = top > 0 ? _FP_EXP_LIMIT : -_FP_EXP_LIMIT;
+        return;
+    }
+    _Bigint_SetValue(&num, 0);
+    for (n = 0; n < count; n++) {
+        ch = n < dec->fd_count ? _Fp_ReadChar(str, text, i) : '1';
+        i++;
+        if (ch == point) {
+            ch = _Fp_ReadChar(str, text, i);
+            i++;
+        }
+        chunk = chunk * 10 + (unsigned int) (ch - '0');
+        scale *= 10;
+        if (scale == _FP_CHUNK_SCALE || n == count - 1) {
+            _Bigint_MulAddWords(&num, scale, chunk);
+            chunk = 0;
+            scale = 1;
+        }
+    }
+    _Bigint_SetValue(&den, 1);
+    if (exp >= 0) {
+        _Bigint_MulPow5(&num, (int) exp);
+    } else {
+        _Bigint_MulPow5(&den, (int) -exp);
+    }
+    bits = _Bigint_CountBits(&num) - _Bigint_CountBits(&den);
+    if (bits > 0) {
+        _Bigint_ShiftBitsLeft(&den, bits);
+    } else {
+        _Bigint_ShiftBitsLeft(&num, -bits);
+    }
+    if (_Bigint_CompareNumbers(&num, &den) < 0) {
+        _Bigint_ShiftBitsLeft(&num, 1);
+        bits--;
+    }
+    value->fu_exp = exp + bits;
+    _Bigint_ShiftBitsLeft(&num, _FP_MANT_BITS - 1);
+    value->fu_mant = _Bigint_DivideNumber(&num, &den);
+    if (num.bn_len != 0) {
+        _Bigint_ShiftBitsLeft(&num, 1);
+        cmp = _Bigint_CompareNumbers(&num, &den);
+        value->fu_rest = cmp < 0 ? _FP_REST_BELOW : cmp == 0 ? _FP_REST_HALF : _FP_REST_ABOVE;
     }
 }
 

@@ -38,11 +38,11 @@
 // The least the heap grows by, so that few allocations move the break.
 #define _MEM_GROW 0x10000
 
-// A block of the heap: its size with this header, and while free the next.
+// A block of the heap, the header before the memory an allocation gives.
 typedef struct _Mem_Block _Mem_Block;
 struct _Mem_Block {
-    unsigned long mb_size;
-    _Mem_Block *mb_next;
+    unsigned long mb_size; // the block's bytes, this header counted
+    _Mem_Block *mb_next;   // the next free block, while this one is free
 };
 
 // The free blocks, in address order.

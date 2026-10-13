@@ -50,22 +50,22 @@
 // The characters a text to convert is made of.
 typedef enum _Int_Text _Int_Text;
 enum _Int_Text {
-    _INT_TEXT_NARROW,
-    _INT_TEXT_WIDE
+    _INT_TEXT_NARROW, // a string of char
+    _INT_TEXT_WIDE    // a string of wide characters
 };
 
 // The sign a number was written with.
 typedef enum _Int_Sign _Int_Sign;
 enum _Int_Sign {
-    _INT_SIGN_PLUS,
-    _INT_SIGN_MINUS
+    _INT_SIGN_PLUS, // a plus sign, or none
+    _INT_SIGN_MINUS // a minus sign
 };
 
 // Where a number's magnitude lies, of what an unsigned long holds.
 typedef enum _Int_Range _Int_Range;
 enum _Int_Range {
-    _INT_RANGE_INSIDE,
-    _INT_RANGE_OUTSIDE
+    _INT_RANGE_INSIDE, // an unsigned long holds it
+    _INT_RANGE_OUTSIDE // it is greater than any unsigned long
 };
 
 // Conversion

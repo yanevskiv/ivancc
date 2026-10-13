@@ -84,45 +84,42 @@
 // The characters a text to convert is made of.
 typedef enum _Fp_Text _Fp_Text;
 enum _Fp_Text {
-    _FP_TEXT_NARROW,
-    _FP_TEXT_WIDE
+    _FP_TEXT_NARROW, // a string of char
+    _FP_TEXT_WIDE    // a string of wide characters
 };
 
-// A floating type: its mantissa's bits, its exponents' range, and whether
-// its leading bit is explicit.
+// A floating type, as the conversion needs to know it.
 typedef struct _Fp_Format _Fp_Format;
 struct _Fp_Format {
-    int ff_mant;
-    int ff_min;
-    int ff_max;
-    _Bool ff_explicit;
+    int ff_mant;       // the bits of its mantissa
+    int ff_min;        // its least exponent, one below C's
+    int ff_max;        // its greatest exponent, one below C's
+    _Bool ff_explicit; // whether it keeps its mantissa's leading bit
 };
 
-// A converted number's sign and its biased exponent and mantissa fields.
+// A converted number, as the fields of its type.
 typedef struct _Fp_Real _Fp_Real;
 struct _Fp_Real {
-    _Bool fr_negative;
-    unsigned int fr_exp;
-    unsigned long long fr_mant;
+    _Bool fr_negative;          // whether its sign bit is set
+    unsigned int fr_exp;        // its biased exponent
+    unsigned long long fr_mant; // its mantissa
 };
 
-// A number before rounding: 64 bits from the top one, its exponent and the
-// rest below.
+// A number before it is rounded to a type.
 typedef struct _Fp_Unrounded _Fp_Unrounded;
 struct _Fp_Unrounded {
-    unsigned long long fu_mant;
-    long fu_exp;
-    int fu_rest;
+    unsigned long long fu_mant; // its first 64 bits, from the top one
+    long fu_exp;                // the top bit's power of two
+    int fu_rest;                // what lies below them, an _FP_REST_ value
 };
 
-// A decimal's first significant digit, the digits kept, its exponent and
-// whether a nonzero digit was dropped.
+// A decimal as it was scanned, before its digits are converted.
 typedef struct _Fp_Decimal _Fp_Decimal;
 struct _Fp_Decimal {
-    unsigned long fd_first;
-    long fd_count;
-    long fd_exp;
-    _Bool fd_sticky;
+    unsigned long fd_first; // where its first significant digit is
+    long fd_count;          // the digits kept, _FP_DIGITS at most
+    long fd_exp;            // the last kept digit's power of ten
+    _Bool fd_sticky;        // whether a digit that was dropped is nonzero
 };
 
 // The formats of float, double and long double.
@@ -130,24 +127,26 @@ extern const _Fp_Format _Fp_FloatFormat;
 extern const _Fp_Format _Fp_DoubleFormat;
 extern const _Fp_Format _Fp_LongDoubleFormat;
 
-// Conversion
+// Reading
 int                _Fp_ReadChar(const void *str, _Fp_Text text, unsigned long index);
 _Bool              _Fp_IsSpace(int ch);
 _Bool              _Fp_IsAlnum(int ch);
-int                _Fp_ToLower(int ch);
-int                _Fp_ToHexDigit(int ch);
 unsigned long      _Fp_MatchWord(const void *str, _Fp_Text text, unsigned long index, const char *word);
 unsigned long      _Fp_ReadExponent(const void *str, _Fp_Text text, unsigned long index, int letter, long *exp);
 unsigned long long _Fp_ReadPayload(const void *str, _Fp_Text text, unsigned long index, unsigned long stop);
 unsigned long      _Fp_ReadNotANumber(const void *str, _Fp_Text text, unsigned long index, unsigned long long *payload);
 unsigned long      _Fp_ScanDecimal(const void *str, _Fp_Text text, unsigned long index, int point, _Fp_Decimal *dec);
-void               _Fp_ToUnrounded(const void *str, _Fp_Text text, int point, const _Fp_Decimal *dec, _Fp_Unrounded *value);
 unsigned long      _Fp_ReadHex(const void *str, _Fp_Text text, unsigned long index, int point, _Fp_Unrounded *value);
 void               _Fp_DropBits(_Fp_Unrounded *value, long bits);
 void               _Fp_RoundReal(const _Fp_Unrounded *value, const _Fp_Format *fmt, _Fp_Real *real);
-unsigned long      _Fp_ToReal(const void *str, _Fp_Text text, const _Fp_Format *fmt, _Fp_Real *real);
-float              _Fp_ToFloat(const void *str, _Fp_Text text, unsigned long *end);
-double             _Fp_ToDouble(const void *str, _Fp_Text text, unsigned long *end);
-long double        _Fp_ToLongDouble(const void *str, _Fp_Text text, unsigned long *end);
+
+// Converting
+int           _Fp_ToLower(int ch);
+int           _Fp_ToHexDigit(int ch);
+void          _Fp_ToUnrounded(const void *str, _Fp_Text text, int point, const _Fp_Decimal *dec, _Fp_Unrounded *value);
+unsigned long _Fp_ToReal(const void *str, _Fp_Text text, const _Fp_Format *fmt, _Fp_Real *real);
+float         _Fp_ToFloat(const void *str, _Fp_Text text, unsigned long *end);
+double        _Fp_ToDouble(const void *str, _Fp_Text text, unsigned long *end);
+long double   _Fp_ToLongDouble(const void *str, _Fp_Text text, unsigned long *end);
 
 #endif // _FP_H
