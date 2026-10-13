@@ -32,7 +32,7 @@
 // The files' calls, the terminal's settings and the standard descriptors.
 #include <_sys.h>
 
-// The text a null string is written as.
+// The texts a null string and a null pointer are written as.
 #include <_err.h>
 
 // The error a failed open, read, write or close reports.
@@ -44,12 +44,17 @@
 // The streams fopen allocates and the buffers they do.
 #include <stdlib.h>
 
-// The largest int puts returns and the largest size fread and fwrite move.
+// The largest int puts returns and a width or a precision holds.
 #include <limits.h>
+
+// The largest size fread and fwrite move, and the integers %jd and %p name.
 #include <stdint.h>
 
 // The arguments a format converts.
 #include <stdarg.h>
+
+// The difference of two pointers, which %td takes.
+#include <stddef.h>
 
 // A temporary name: where it is, and the characters and length of its end.
 #define _STDIO_TEMP_PREFIX  "/tmp/tmp."
@@ -70,6 +75,16 @@ typedef char _Stdio_CheckTempName[sizeof(_STDIO_TEMP_PREFIX) + _STDIO_TEMP_DIGIT
 
 // Check the header's own argument list against stdarg.h's.
 typedef char _Stdio_CheckVaList[sizeof(_Stdio_VaList) == sizeof(va_list) ? 1 : -1];
+
+// Check the header's own widest integers against stdint.h's.
+typedef char _Stdio_CheckIntmax[sizeof(_Stdio_IntmaxType) == sizeof(intmax_t) && (_Stdio_IntmaxType) -1 < 0 ? 1 : -1];
+typedef char _Stdio_CheckUintmax[sizeof(_Stdio_UintmaxType) == sizeof(uintmax_t) && (_Stdio_UintmaxType) -1 > 0 ? 1 : -1];
+
+// Check that a size and a pointer difference are one width, each %z and %t.
+typedef char _Stdio_CheckPtrdiff[sizeof(size_t) == sizeof(ptrdiff_t) ? 1 : -1];
+
+// Check that an integer's digits in octal, three bits each, fit their array.
+typedef char _Stdio_CheckDigits[sizeof(uintmax_t) * CHAR_BIT <= _STDIO_DIGITS_MAX * 3 ? 1 : -1];
 
 // Standard input, read-only, its buffering picked at its first use.
 FILE _Stdio_Stdin = {
@@ -582,6 +597,38 @@ void _Stdio_TakeHead(_Stdio_VaList *list, int *flags, int *width, int *precision
     }
 }
 
+// Take an unsigned integer argument of the type a length names.
+_Stdio_UintmaxType _Stdio_TakeUnsigned(_Stdio_VaList *list, int length)
+{
+    _Stdio_UintmaxType value;
+
+    switch (length) {
+        case _STDIO_LENGTH_CHAR: {
+            value = (unsigned char) va_arg(*list, unsigned);
+        } break;
+        case _STDIO_LENGTH_SHORT: {
+            value = (unsigned short) va_arg(*list, unsigned);
+        } break;
+        case _STDIO_LENGTH_LONG: {
+            value = va_arg(*list, unsigned long);
+        } break;
+        case _STDIO_LENGTH_LLONG: {
+            value = va_arg(*list, unsigned long long);
+        } break;
+        case _STDIO_LENGTH_INTMAX: {
+            value = va_arg(*list, uintmax_t);
+        } break;
+        case _STDIO_LENGTH_SIZE:
+        case _STDIO_LENGTH_PTRDIFF: {
+            value = va_arg(*list, size_t);
+        } break;
+        default: {
+            value = va_arg(*list, unsigned);
+        } break;
+    }
+    return value;
+}
+
 // Parse the text before a directive.
 _Bool _Stdio_ParseText(const char *format, size_t *len)
 {
@@ -635,6 +682,166 @@ _Bool _Stdio_ParseString(const char *format, _Stdio_VaList *list, size_t *len, i
     *str = va_arg(*list, const char *);
     *len = at + 1;
     return 1;
+}
+
+// Parse a %d or %i directive with its argument.
+_Bool _Stdio_ParseDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_IntmaxType *value)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || length == _STDIO_LENGTH_LDOUBLE || (format[at] != 'd' && format[at] != 'i')) {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    switch (length) {
+        case _STDIO_LENGTH_CHAR: {
+            *value = (signed char) va_arg(*list, int);
+        } break;
+        case _STDIO_LENGTH_SHORT: {
+            *value = (short) va_arg(*list, int);
+        } break;
+        case _STDIO_LENGTH_LONG: {
+            *value = va_arg(*list, long);
+        } break;
+        case _STDIO_LENGTH_LLONG: {
+            *value = va_arg(*list, long long);
+        } break;
+        case _STDIO_LENGTH_INTMAX: {
+            *value = va_arg(*list, intmax_t);
+        } break;
+        case _STDIO_LENGTH_SIZE:
+        case _STDIO_LENGTH_PTRDIFF: {
+            *value = va_arg(*list, ptrdiff_t);
+        } break;
+        default: {
+            *value = va_arg(*list, int);
+        } break;
+    }
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %u directive with its argument.
+_Bool _Stdio_ParseUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || length == _STDIO_LENGTH_LDOUBLE || format[at] != 'u') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *value = _Stdio_TakeUnsigned(list, length);
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %o directive with its argument.
+_Bool _Stdio_ParseOctal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || length == _STDIO_LENGTH_LDOUBLE || format[at] != 'o') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *value = _Stdio_TakeUnsigned(list, length);
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %x or %X directive with its argument.
+_Bool _Stdio_ParseHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Bool *upper)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || length == _STDIO_LENGTH_LDOUBLE || (format[at] != 'x' && format[at] != 'X')) {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *value = _Stdio_TakeUnsigned(list, length);
+    *upper = format[at] == 'X';
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %p directive with its argument.
+_Bool _Stdio_ParsePointer(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const void **ptr)
+{
+    int length;
+    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+
+    if (at == 0 || length != _STDIO_LENGTH_NONE || format[at] != 'p') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, flags, width, precision);
+    *ptr = va_arg(*list, const void *);
+    *len = at + 1;
+    return 1;
+}
+
+// Parse a %n directive with its argument.
+_Bool _Stdio_ParseCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest)
+{
+    int flags;
+    int width;
+    int precision;
+    size_t at = _Stdio_ParseHead(format, &flags, &width, &precision, length);
+
+    if (at == 0 || *length == _STDIO_LENGTH_LDOUBLE || format[at] != 'n') {
+        return 0;
+    }
+    _Stdio_TakeHead(list, &flags, &width, &precision);
+    *dest = va_arg(*list, void *);
+    *len = at + 1;
+    return 1;
+}
+
+// Write a value's digits in a base to end at end, none for zero.
+size_t _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits)
+{
+    char *ptr = end;
+
+    while (value != 0) {
+        ptr--;
+        ptr[0] = digits[value % (_Stdio_UintmaxType) base];
+        value /= (_Stdio_UintmaxType) base;
+    }
+    return (size_t) (end - ptr);
+}
+
+// Store a count at dest as an integer of the type a length names.
+void _Stdio_StoreCount(void *dest, int length, size_t count)
+{
+    switch (length) {
+        case _STDIO_LENGTH_CHAR: {
+            *(signed char *) dest = (signed char) count;
+        } break;
+        case _STDIO_LENGTH_SHORT: {
+            *(short *) dest = (short) count;
+        } break;
+        case _STDIO_LENGTH_LONG: {
+            *(long *) dest = (long) count;
+        } break;
+        case _STDIO_LENGTH_LLONG: {
+            *(long long *) dest = (long long) count;
+        } break;
+        case _STDIO_LENGTH_INTMAX: {
+            *(intmax_t *) dest = (intmax_t) count;
+        } break;
+        case _STDIO_LENGTH_SIZE: {
+            *(size_t *) dest = count;
+        } break;
+        case _STDIO_LENGTH_PTRDIFF: {
+            *(ptrdiff_t *) dest = (ptrdiff_t) count;
+        } break;
+        default: {
+            *(int *) dest = (int) count;
+        } break;
+    }
 }
 
 // End the sink's string, and return its count, or EOF if it failed.
@@ -698,6 +905,54 @@ void _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data,
     }
 }
 
+// Give the sink what leads a number, and return the spaces to follow it.
+size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Bool negative, const char *prefix, size_t len)
+{
+    size_t pad;
+    size_t lead;
+    const char *sign = "";
+
+    if (negative) {
+        sign = "-";
+    } else if (flags & _STDIO_FLAG_SIGN) {
+        sign = "+";
+    } else if (flags & _STDIO_FLAG_SPACE) {
+        sign = " ";
+    }
+    if (flags & _STDIO_FLAG_LEFT) {
+        flags &= ~_STDIO_FLAG_ZERO;
+    }
+    lead = strlen(sign) + strlen(prefix);
+    pad = (size_t) width > lead + len ? (size_t) width - lead - len : 0;
+    if (! (flags & (_STDIO_FLAG_LEFT | _STDIO_FLAG_ZERO))) {
+        _Stdio_EmitPad(sink, ' ', pad);
+    }
+    _Stdio_Emit(sink, sign, strlen(sign));
+    _Stdio_Emit(sink, prefix, strlen(prefix));
+    if (flags & _STDIO_FLAG_ZERO) {
+        _Stdio_EmitPad(sink, '0', pad);
+    }
+    return flags & _STDIO_FLAG_LEFT ? pad : 0;
+}
+
+// Give the sink an integer's digits in a width, its precision the fewest.
+void _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, _Bool negative, const char *prefix, const char *digits, size_t len)
+{
+    size_t rest;
+    size_t zeros;
+
+    if (precision == _STDIO_PRECISION_NONE) {
+        precision = _STDIO_INTEGER_PRECISION;
+    } else {
+        flags &= ~_STDIO_FLAG_ZERO;
+    }
+    zeros = (size_t) precision > len ? (size_t) precision - len : 0;
+    rest = _Stdio_EmitLead(sink, flags, width, negative, prefix, zeros + len);
+    _Stdio_EmitPad(sink, '0', zeros);
+    _Stdio_Emit(sink, digits, len);
+    _Stdio_EmitPad(sink, ' ', rest);
+}
+
 // Give the sink a character as %c converts it.
 void _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch)
 {
@@ -722,16 +977,84 @@ void _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, c
     _Stdio_EmitField(sink, flags, width, str, len);
 }
 
+// Give the sink an integer as %d and %i convert it.
+void _Stdio_EmitDecimal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_IntmaxType value)
+{
+    char text[_STDIO_DIGITS_MAX];
+    _Stdio_UintmaxType magnitude = value < 0 ? -(_Stdio_UintmaxType) value : (_Stdio_UintmaxType) value;
+    size_t len = _Stdio_Digits(text + sizeof(text), magnitude, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
+
+    _Stdio_EmitInteger(sink, flags, width, precision, value < 0, "", text + sizeof(text) - len, len);
+}
+
+// Give the sink an unsigned integer as %u converts it.
+void _Stdio_EmitUnsigned(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value)
+{
+    char text[_STDIO_DIGITS_MAX];
+    size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
+
+    flags &= ~(_STDIO_FLAG_SIGN | _STDIO_FLAG_SPACE);
+    _Stdio_EmitInteger(sink, flags, width, precision, 0, "", text + sizeof(text) - len, len);
+}
+
+// Give the sink an unsigned integer as %o converts it.
+void _Stdio_EmitOctal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value)
+{
+    char text[_STDIO_DIGITS_MAX];
+    const char *prefix = "";
+    size_t least = precision == _STDIO_PRECISION_NONE ? _STDIO_INTEGER_PRECISION : (size_t) precision;
+    size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_OCTAL, _STDIO_DIGITS_LOWER);
+
+    if ((flags & _STDIO_FLAG_ALT) && len >= least) {
+        prefix = "0";
+    }
+    flags &= ~(_STDIO_FLAG_SIGN | _STDIO_FLAG_SPACE);
+    _Stdio_EmitInteger(sink, flags, width, precision, 0, prefix, text + sizeof(text) - len, len);
+}
+
+// Give the sink an unsigned integer as %x and %X convert it.
+void _Stdio_EmitHex(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value, _Bool upper)
+{
+    char text[_STDIO_DIGITS_MAX];
+    const char *prefix = "";
+    size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_HEX, upper ? _STDIO_DIGITS_UPPER : _STDIO_DIGITS_LOWER);
+
+    if ((flags & _STDIO_FLAG_ALT) && value != 0) {
+        prefix = upper ? "0X" : "0x";
+    }
+    flags &= ~(_STDIO_FLAG_SIGN | _STDIO_FLAG_SPACE);
+    _Stdio_EmitInteger(sink, flags, width, precision, 0, prefix, text + sizeof(text) - len, len);
+}
+
+// Give the sink a pointer as glibc does: a null one a text, another by %#lx.
+void _Stdio_EmitPointer(_Stdio_Sink *sink, int flags, int width, int precision, const void *ptr)
+{
+    char text[_STDIO_DIGITS_MAX];
+    size_t len = _Stdio_Digits(text + sizeof(text), (uintptr_t) ptr, _STDIO_BASE_HEX, _STDIO_DIGITS_LOWER);
+
+    if (ptr == NULL) {
+        _Stdio_EmitField(sink, flags, width, _ERR_STDIO_NIL, sizeof(_ERR_STDIO_NIL) - 1);
+        return;
+    }
+    _Stdio_EmitInteger(sink, flags, width, precision, 0, "0x", text + sizeof(text) - len, len);
+}
+
 // Give the sink the format's text, each directive converting its arguments.
 int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
 {
     char ch;
     int flags;
     int width;
+    int length;
     size_t len;
+    void *dest;
+    _Bool upper;
     va_list list;
     int precision;
     const char *str;
+    const void *ptr;
+    _Stdio_IntmaxType sval;
+    _Stdio_UintmaxType uval;
 
     va_copy(list, args);
     for (size_t i = 0; format[i] != '\0'; i += len) {
@@ -743,6 +1066,18 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
             _Stdio_EmitChar(sink, flags, width, ch);
         } else if (_Stdio_ParseString(format + i, &list, &len, &flags, &width, &precision, &str)) {
             _Stdio_EmitString(sink, flags, width, precision, str);
+        } else if (_Stdio_ParseDecimal(format + i, &list, &len, &flags, &width, &precision, &sval)) {
+            _Stdio_EmitDecimal(sink, flags, width, precision, sval);
+        } else if (_Stdio_ParseUnsigned(format + i, &list, &len, &flags, &width, &precision, &uval)) {
+            _Stdio_EmitUnsigned(sink, flags, width, precision, uval);
+        } else if (_Stdio_ParseOctal(format + i, &list, &len, &flags, &width, &precision, &uval)) {
+            _Stdio_EmitOctal(sink, flags, width, precision, uval);
+        } else if (_Stdio_ParseHex(format + i, &list, &len, &flags, &width, &precision, &uval, &upper)) {
+            _Stdio_EmitHex(sink, flags, width, precision, uval, upper);
+        } else if (_Stdio_ParsePointer(format + i, &list, &len, &flags, &width, &precision, &ptr)) {
+            _Stdio_EmitPointer(sink, flags, width, precision, ptr);
+        } else if (_Stdio_ParseCount(format + i, &list, &len, &length, &dest)) {
+            _Stdio_StoreCount(dest, length, sink->ss_count);
         } else {
             len = 1;
             _Stdio_Emit(sink, format + i, len);

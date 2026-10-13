@@ -77,6 +77,19 @@
 // The characters a field's padding is given by at a time.
 #define _STDIO_PAD_CHUNK 32
 
+// The bases an integer is written in, and the digits of the largest.
+#define _STDIO_BASE_OCTAL   8
+#define _STDIO_BASE_DECIMAL 10
+#define _STDIO_BASE_HEX     16
+#define _STDIO_DIGITS_LOWER "0123456789abcdef"
+#define _STDIO_DIGITS_UPPER "0123456789ABCDEF"
+
+// The most digits an integer has, in octal.
+#define _STDIO_DIGITS_MAX 22
+
+// An integer conversion's precision if it gives none.
+#define _STDIO_INTEGER_PRECISION 1
+
 // (S7.19.1) Introduction
 #define NULL ((void *) 0)
 
@@ -106,6 +119,10 @@
 
 // The argument list, which stdio.h may not name.
 typedef __builtin_va_list _Stdio_VaList;
+
+// The widest integers, which stdio.h may not name.
+typedef long          _Stdio_IntmaxType;
+typedef unsigned long _Stdio_UintmaxType;
 
 #ifndef __SIZE_T__
 #define __SIZE_T__
@@ -189,23 +206,39 @@ int    _Stdio_FlushAll(void);
 void   _Stdio_FlushLines(void);
 
 // Parsing
-size_t _Stdio_ParseHead(const char *format, int *flags, int *width, int *precision, int *length);
-void   _Stdio_TakeHead(_Stdio_VaList *list, int *flags, int *width, int *precision);
-_Bool  _Stdio_ParseText(const char *format, size_t *len);
-_Bool  _Stdio_ParsePercent(const char *format, _Stdio_VaList *list, size_t *len);
-_Bool  _Stdio_ParseChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch);
-_Bool  _Stdio_ParseString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str);
+size_t             _Stdio_ParseHead(const char *format, int *flags, int *width, int *precision, int *length);
+void               _Stdio_TakeHead(_Stdio_VaList *list, int *flags, int *width, int *precision);
+_Stdio_UintmaxType _Stdio_TakeUnsigned(_Stdio_VaList *list, int length);
+_Bool              _Stdio_ParseText(const char *format, size_t *len);
+_Bool              _Stdio_ParsePercent(const char *format, _Stdio_VaList *list, size_t *len);
+_Bool              _Stdio_ParseChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch);
+_Bool              _Stdio_ParseString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str);
+_Bool              _Stdio_ParseDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_IntmaxType *value);
+_Bool              _Stdio_ParseUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value);
+_Bool              _Stdio_ParseOctal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value);
+_Bool              _Stdio_ParseHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Bool *upper);
+_Bool              _Stdio_ParsePointer(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const void **ptr);
+_Bool              _Stdio_ParseCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest);
 
 // Formatted output
-int _Stdio_End(_Stdio_Sink *sink);
+size_t _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits);
+void   _Stdio_StoreCount(void *dest, int length, size_t count);
+int    _Stdio_End(_Stdio_Sink *sink);
 
 // Emitting
-void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len);
-void _Stdio_EmitPad(_Stdio_Sink *sink, int ch, size_t len);
-void _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data, size_t len);
-void _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch);
-void _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, const char *str);
-int  _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
+void   _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len);
+void   _Stdio_EmitPad(_Stdio_Sink *sink, int ch, size_t len);
+void   _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data, size_t len);
+size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Bool negative, const char *prefix, size_t len);
+void   _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, _Bool negative, const char *prefix, const char *digits, size_t len);
+void   _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch);
+void   _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, const char *str);
+void   _Stdio_EmitDecimal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_IntmaxType value);
+void   _Stdio_EmitUnsigned(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value);
+void   _Stdio_EmitOctal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value);
+void   _Stdio_EmitHex(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value, _Bool upper);
+void   _Stdio_EmitPointer(_Stdio_Sink *sink, int flags, int width, int precision, const void *ptr);
+int    _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
 
 // Positioning
 long _Stdio_Ahead(FILE *stream);
