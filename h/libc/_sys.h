@@ -259,27 +259,27 @@ struct _Sys_Sigaction {
 };
 
 // System calls
-long  _Sys_Syscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
-long  _Sys_Read(int fd, void *buf, unsigned long len);
-long  _Sys_Write(int fd, const void *buf, unsigned long len);
-long  _Sys_Open(const char *path, int flags, int mode);
-long  _Sys_Close(int fd);
-long  _Sys_Lstat(const char *path, _Sys_Stat *info);
-long  _Sys_Lseek(int fd, long offset, int whence);
-void *_Sys_Brk(void *addr);
-long  _Sys_RtSigaction(int sig, const _Sys_Sigaction *act, _Sys_Sigaction *oact);
-long  _Sys_RtSigprocmask(int how, const unsigned long *set, unsigned long *oset);
-long  _Sys_Ioctl(int fd, unsigned long request, void *arg);
-long  _Sys_Dup2(int fd, int as);
-int   _Sys_Getpid(void);
-long  _Sys_Kill(int pid, int sig);
-long  _Sys_Rename(const char *from, const char *to);
-long  _Sys_Rmdir(const char *path);
-long  _Sys_Unlink(const char *path);
-long  _Sys_ClockGettime(int clock, _Sys_Timespec *spec);
-void  _Sys_ExitGroup(int status);
+long  _Sys_InvokeSyscall(long number, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+long  _Sys_InvokeRead(int fd, void *buf, unsigned long len);
+long  _Sys_InvokeWrite(int fd, const void *buf, unsigned long len);
+long  _Sys_InvokeOpen(const char *path, int flags, int mode);
+long  _Sys_InvokeClose(int fd);
+long  _Sys_InvokeLstat(const char *path, _Sys_Stat *info);
+long  _Sys_InvokeLseek(int fd, long offset, int whence);
+void *_Sys_InvokeBrk(void *addr);
+long  _Sys_InvokeRtSigaction(int sig, const _Sys_Sigaction *act, _Sys_Sigaction *oact);
+long  _Sys_InvokeRtSigprocmask(int how, const unsigned long *set, unsigned long *oset);
+long  _Sys_InvokeIoctl(int fd, unsigned long request, void *arg);
+long  _Sys_InvokeDup2(int fd, int as);
+int   _Sys_InvokeGetpid(void);
+long  _Sys_InvokeKill(int pid, int sig);
+long  _Sys_InvokeRename(const char *from, const char *to);
+long  _Sys_InvokeRmdir(const char *path);
+long  _Sys_InvokeUnlink(const char *path);
+long  _Sys_InvokeClockGettime(int clock, _Sys_Timespec *spec);
+void  _Sys_InvokeExitGroup(int status);
 
 // Signal handlers
-void _Sys_RestoreRt(void);
+void _Sys_InvokeRtSigreturn(void);
 
 #endif // _SYS_H

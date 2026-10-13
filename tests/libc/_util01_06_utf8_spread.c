@@ -17,14 +17,14 @@ static void Test_Utf8Spread(void)
     unsigned long wrong = 0;
 
     while (code <= _UTF8_CODE_MAX) {
-        len = _Utf8_CodeLength(code);
+        len = _Utf8_GetCodeLength(code);
         back = UNSET;
         if (len == 0) {
             none++;
-            wrong += _Utf8_Encode(code, buf) != _UTF8_INVALID;
+            wrong += _Utf8_EncodeCode(code, buf) != _UTF8_INVALID;
         } else {
-            wrong += _Utf8_Encode(code, buf) != len;
-            wrong += _Utf8_Decode(buf, (unsigned long) len, &back) != len;
+            wrong += _Utf8_EncodeCode(code, buf) != len;
+            wrong += _Utf8_DecodeSequence(buf, (unsigned long) len, &back) != len;
             wrong += back != code;
         }
         code += code / SPREAD + 1;

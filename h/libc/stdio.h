@@ -241,67 +241,67 @@ extern _Bool _Stdio_TempSeeded;
 extern char _Stdio_TempBuffer[L_tmpnam];
 
 // Opening
-FILE *_Stdio_New(void);
+FILE *_Stdio_MakeStream(void);
 _Bool _Stdio_IsMode(const char *mode);
-int   _Stdio_OpenFlags(const char *mode);
-void  _Stdio_Attach(FILE *stream, int fd, int flags);
-int   _Stdio_Open(FILE *stream, const char *filename, const char *mode);
-int   _Stdio_Reset(FILE *stream);
-void  _Stdio_Free(FILE *stream);
+int   _Stdio_ConvertMode(const char *mode);
+void  _Stdio_AttachDescriptor(FILE *stream, int fd, int flags);
+int   _Stdio_OpenFile(FILE *stream, const char *filename, const char *mode);
+int   _Stdio_ResetStream(FILE *stream);
+void  _Stdio_FreeStream(FILE *stream);
 
 // Buffering
-void  _Stdio_Setup(FILE *stream);
+void  _Stdio_SetupBuffer(FILE *stream);
 _Bool _Stdio_IsTerminal(int fd);
-int   _Stdio_Lend(FILE *stream, unsigned char *buf, size_t size);
-int   _Stdio_Reclaim(FILE *stream);
+int   _Stdio_LendBuffer(FILE *stream, unsigned char *buf, size_t size);
+int   _Stdio_ReclaimBuffer(FILE *stream);
 
 // Input
-int    _Stdio_ToRead(FILE *stream);
-size_t _Stdio_Get(FILE *stream, void *data, size_t len);
-size_t _Stdio_Take(FILE *stream, unsigned char *data, size_t len);
-size_t _Stdio_Read(FILE *stream, unsigned char *data, size_t len);
+int    _Stdio_PrepareInput(FILE *stream);
+size_t _Stdio_GetBytes(FILE *stream, void *data, size_t len);
+size_t _Stdio_ReadBuffer(FILE *stream, unsigned char *data, size_t len);
+size_t _Stdio_ReadDescriptor(FILE *stream, unsigned char *data, size_t len);
 char  *_Stdio_GetLine(FILE *stream, char *str, size_t max);
 
 // Output
-int    _Stdio_ToWrite(FILE *stream);
-size_t _Stdio_Put(FILE *stream, const void *data, size_t len);
-int    _Stdio_WriteAll(FILE *stream, const unsigned char *data, size_t len);
-int    _Stdio_Flush(FILE *stream);
-int    _Stdio_FlushAll(void);
+int    _Stdio_PrepareOutput(FILE *stream);
+size_t _Stdio_PutBytes(FILE *stream, const void *data, size_t len);
+int    _Stdio_WriteDescriptor(FILE *stream, const unsigned char *data, size_t len);
+int    _Stdio_FlushBuffer(FILE *stream);
+int    _Stdio_FlushStreams(void);
 void   _Stdio_FlushLines(void);
 
-// Parsing
-size_t             _Stdio_ParseHead(const char *format, int *flags, int *width, int *precision, int *length);
+// Print matching
+size_t             _Stdio_MatchPrintHead(const char *format, int *flags, int *width, int *precision, int *length);
 void               _Stdio_TakeHead(_Stdio_VaList *list, int *flags, int *width, int *precision);
 _Stdio_UintmaxType _Stdio_TakeUnsigned(_Stdio_VaList *list, int length);
-_Bool              _Stdio_ParseText(const char *format, size_t *len);
-_Bool              _Stdio_ParsePercent(const char *format, _Stdio_VaList *list, size_t *len);
-_Bool              _Stdio_ParseChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch);
-_Bool              _Stdio_ParseString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str);
-_Bool              _Stdio_ParseDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_IntmaxType *value);
-_Bool              _Stdio_ParseUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value);
-_Bool              _Stdio_ParseOctal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value);
-_Bool              _Stdio_ParseHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Stdio_Case *letters);
-_Bool              _Stdio_ParsePointer(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const void **ptr);
-_Bool              _Stdio_ParseCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest);
-_Bool              _Stdio_ParseFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
-_Bool              _Stdio_ParseExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
-_Bool              _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
-_Bool              _Stdio_ParseHexReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, double *value, _Stdio_Case *letters);
-_Bool              _Stdio_ParseHexLongReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
-_Bool              _Stdio_ParseWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, _Stdio_WcharType *wc);
-_Bool              _Stdio_ParseWideString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const _Stdio_WcharType **wstr);
+_Bool              _Stdio_MatchPrintText(const char *format, size_t *len);
+_Bool              _Stdio_MatchPrintPercent(const char *format, _Stdio_VaList *list, size_t *len);
+_Bool              _Stdio_MatchPrintChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch);
+_Bool              _Stdio_MatchPrintString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str);
+_Bool              _Stdio_MatchPrintDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_IntmaxType *value);
+_Bool              _Stdio_MatchPrintUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value);
+_Bool              _Stdio_MatchPrintOctal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value);
+_Bool              _Stdio_MatchPrintHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Stdio_Case *letters);
+_Bool              _Stdio_MatchPrintPointer(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const void **ptr);
+_Bool              _Stdio_MatchPrintCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest);
+_Bool              _Stdio_MatchPrintFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
+_Bool              _Stdio_MatchPrintExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
+_Bool              _Stdio_MatchPrintGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
+_Bool              _Stdio_MatchPrintHexReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, double *value, _Stdio_Case *letters);
+_Bool              _Stdio_MatchPrintHexLongReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters);
+_Bool              _Stdio_MatchPrintWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, _Stdio_WcharType *wc);
+_Bool              _Stdio_MatchPrintWideString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const _Stdio_WcharType **wstr);
 
 // Formatted output
-size_t      _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits);
+size_t      _Stdio_WriteDigits(char *end, _Stdio_UintmaxType value, int base, const char *digits);
 void        _Stdio_StoreCount(void *dest, int length, size_t count);
-_Stdio_Real _Stdio_Unpack(long double value, _Stdio_Sign *sign, unsigned long long *mant, int *exp);
-void        _Stdio_Exact(long double value, _Stdio_Numeral *num);
-void        _Stdio_Round(_Stdio_Numeral *num, long keep);
-int         _Stdio_End(_Stdio_Sink *sink);
+_Stdio_Real _Stdio_UnpackReal(long double value, _Stdio_Sign *sign, unsigned long long *mant, int *exp);
+void        _Stdio_WriteNumeral(long double value, _Stdio_Numeral *num);
+void        _Stdio_RoundNumeral(_Stdio_Numeral *num, long keep);
+int         _Stdio_EndSink(_Stdio_Sink *sink);
 
 // Emitting
-void   _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len);
+void   _Stdio_EmitText(_Stdio_Sink *sink, const char *data, size_t len);
 void   _Stdio_EmitPad(_Stdio_Sink *sink, int ch, size_t len);
 void   _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data, size_t len);
 size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign, const char *prefix, size_t len);
@@ -327,13 +327,13 @@ void   _Stdio_EmitWideString(_Stdio_Sink *sink, int flags, int width, int precis
 int    _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args);
 
 // Positioning
-long _Stdio_Ahead(FILE *stream);
-int  _Stdio_Seek(FILE *stream, long offset, int whence);
-void _Stdio_Unread(FILE *stream);
+long _Stdio_CountReadAhead(FILE *stream);
+int  _Stdio_SeekStream(FILE *stream, long offset, int whence);
+void _Stdio_DiscardReadAhead(FILE *stream);
 
 // Temporary names
-unsigned long _Stdio_TempSeed(void);
-void          _Stdio_TempName(char *str);
+unsigned long _Stdio_MakeTempSeed(void);
+void          _Stdio_WriteTempName(char *str);
 
 // (S7.19.4) Operations on files
 int   remove(const char *filename);

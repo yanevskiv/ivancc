@@ -141,7 +141,7 @@ _Bool _Stdio_TempSeeded;
 char _Stdio_TempBuffer[L_tmpnam];
 
 // Make a stream with no file, first among the open ones.
-FILE *_Stdio_New(void)
+FILE *_Stdio_MakeStream(void)
 {
     FILE *stream = calloc(1, sizeof(FILE));
 
@@ -166,8 +166,8 @@ _Bool _Stdio_IsMode(const char *mode)
     return rest[0] == '\0' || strcmp(rest, "b") == 0 || strcmp(rest, "+") == 0 || strcmp(rest, "b+") == 0 || strcmp(rest, "+b") == 0;
 }
 
-// Turn fopen's mode into the flags open takes.
-int _Stdio_OpenFlags(const char *mode)
+// Convert fopen's mode into the flags open takes.
+int _Stdio_ConvertMode(const char *mode)
 {
     int flags = mode[0] == 'r' ? _SYS_O_RDONLY : _SYS_O_WRONLY | _SYS_O_CREAT;
 
@@ -183,8 +183,8 @@ int _Stdio_OpenFlags(const char *mode)
     return flags;
 }
 
-// Give the stream the descriptor fd, to read or write as its open flags say.
-void _Stdio_Attach(FILE *stream, int fd, int flags)
+// Attach the descriptor fd to the stream, to read or write as its flags say.
+void _Stdio_AttachDescriptor(FILE *stream, int fd, int flags)
 {
     stream->sf_fd = fd;
     if ((flags & _SYS_O_ACCMODE) != _SYS_O_WRONLY) {
@@ -196,7 +196,7 @@ void _Stdio_Attach(FILE *stream, int fd, int flags)
 }
 
 // Open the file filename for the stream, to read or write as the mode says.
-int _Stdio_Open(FILE *stream, const char *filename, const char *mode)
+int _Stdio_OpenFile(FILE *stream, const char *filename, const char *mode)
 {
     long fd;
     int flags;
@@ -205,20 +205,20 @@ int _Stdio_Open(FILE *stream, const char *filename, const char *mode)
         errno = _SYS_EINVAL;
         return EOF;
     }
-    flags = _Stdio_OpenFlags(mode);
-    fd = _Sys_Open(filename, flags, _SYS_DEFFILEMODE);
+    flags = _Stdio_ConvertMode(mode);
+    fd = _Sys_InvokeOpen(filename, flags, _SYS_DEFFILEMODE);
     if (fd < 0) {
         errno = (int) -fd;
         return EOF;
     }
-    _Stdio_Attach(stream, (int) fd, flags);
+    _Stdio_AttachDescriptor(stream, (int) fd, flags);
     return 0;
 }
 
-// Flush the stream and take its buffer, indicators and access from it.
-int _Stdio_Reset(FILE *stream)
+// Reset the stream: flush it and take its buffer, indicators and access.
+int _Stdio_ResetStream(FILE *stream)
 {
-    int result = _Stdio_Flush(stream);
+    int result = _Stdio_FlushBuffer(stream);
 
     if (stream->sf_flags & _STDIO_OWNBUF) {
         free(stream->sf_buf);
@@ -233,8 +233,8 @@ int _Stdio_Reset(FILE *stream)
     return result;
 }
 
-// Take the stream off the open ones and free one fopen made.
-void _Stdio_Free(FILE *stream)
+// Free the stream if fopen made it, and take it off the open ones.
+void _Stdio_FreeStream(FILE *stream)
 {
     FILE **iter = &_Stdio_Streams;
 
@@ -251,8 +251,8 @@ void _Stdio_Free(FILE *stream)
     }
 }
 
-// Pick the stream's buffering and buffer at its first use, none without memory.
-void _Stdio_Setup(FILE *stream)
+// Set up the stream's buffering and buffer at first use, none without memory.
+void _Stdio_SetupBuffer(FILE *stream)
 {
     size_t size = stream->sf_size != 0 ? stream->sf_size : BUFSIZ;
 
@@ -283,13 +283,13 @@ _Bool _Stdio_IsTerminal(int fd)
 {
     _Sys_Termios term;
 
-    return _Sys_Ioctl(fd, _SYS_TCGETS, &term) == 0;
+    return _Sys_InvokeIoctl(fd, _SYS_TCGETS, &term) == 0;
 }
 
-// Ready the stream for output, and lend an unbuffered one buf for a call.
-int _Stdio_Lend(FILE *stream, unsigned char *buf, size_t size)
+// Lend an unbuffered stream buf for a call, the stream readied for output.
+int _Stdio_LendBuffer(FILE *stream, unsigned char *buf, size_t size)
 {
-    if (_Stdio_ToWrite(stream) != 0) {
+    if (_Stdio_PrepareOutput(stream) != 0) {
         return EOF;
     }
     if (stream->sf_mode == _IONBF) {
@@ -299,42 +299,42 @@ int _Stdio_Lend(FILE *stream, unsigned char *buf, size_t size)
     return 0;
 }
 
-// Write what a lent buffer holds, and give the stream its own byte back.
-int _Stdio_Reclaim(FILE *stream)
+// Reclaim a lent buffer: write what it holds, and give the stream its byte.
+int _Stdio_ReclaimBuffer(FILE *stream)
 {
     int result = 0;
 
     if (stream->sf_mode == _IONBF && stream->sf_state == _STDIO_WRITING) {
-        result = _Stdio_Flush(stream);
+        result = _Stdio_FlushBuffer(stream);
         stream->sf_buf = &stream->sf_byte;
         stream->sf_size = 1;
     }
     return result;
 }
 
-// Ready the stream for input, or set its error indicator if it is write-only.
-int _Stdio_ToRead(FILE *stream)
+// Prepare the stream for input, or set its error indicator if it is write-only.
+int _Stdio_PrepareInput(FILE *stream)
 {
     if (! (stream->sf_flags & _STDIO_READ)) {
         stream->sf_flags |= _STDIO_ERROR;
         errno = _SYS_EBADF;
         return EOF;
     }
-    if (_Stdio_Flush(stream) != 0) {
+    if (_Stdio_FlushBuffer(stream) != 0) {
         return EOF;
     }
-    _Stdio_Setup(stream);
+    _Stdio_SetupBuffer(stream);
     stream->sf_state = _STDIO_READING;
     return 0;
 }
 
-// Take up to len bytes from the stream into data, and return how many came.
-size_t _Stdio_Get(FILE *stream, void *data, size_t len)
+// Get up to len bytes from the stream into data, and return how many came.
+size_t _Stdio_GetBytes(FILE *stream, void *data, size_t len)
 {
     size_t done = 0;
     unsigned char *bytes = data;
 
-    if (_Stdio_ToRead(stream) != 0) {
+    if (_Stdio_PrepareInput(stream) != 0) {
         return 0;
     }
     if (len > 0 && (stream->sf_flags & _STDIO_BACK)) {
@@ -345,9 +345,9 @@ size_t _Stdio_Get(FILE *stream, void *data, size_t len)
         size_t part = len - done;
 
         if (stream->sf_head == stream->sf_tail && part >= stream->sf_size) {
-            part = _Stdio_Read(stream, bytes + done, part);
+            part = _Stdio_ReadDescriptor(stream, bytes + done, part);
         } else {
-            part = _Stdio_Take(stream, bytes + done, part);
+            part = _Stdio_ReadBuffer(stream, bytes + done, part);
         }
         if (part == 0) {
             return done;
@@ -357,12 +357,12 @@ size_t _Stdio_Get(FILE *stream, void *data, size_t len)
     return done;
 }
 
-// Copy up to len bytes of the stream's buffer into data, refilling it if empty.
-size_t _Stdio_Take(FILE *stream, unsigned char *data, size_t len)
+// Read up to len bytes of the stream's buffer into data, refilled if empty.
+size_t _Stdio_ReadBuffer(FILE *stream, unsigned char *data, size_t len)
 {
     if (stream->sf_head == stream->sf_tail) {
         stream->sf_head = 0;
-        stream->sf_tail = _Stdio_Read(stream, stream->sf_buf, stream->sf_size);
+        stream->sf_tail = _Stdio_ReadDescriptor(stream, stream->sf_buf, stream->sf_size);
     }
     if (len > stream->sf_tail - stream->sf_head) {
         len = stream->sf_tail - stream->sf_head;
@@ -373,7 +373,7 @@ size_t _Stdio_Take(FILE *stream, unsigned char *data, size_t len)
 }
 
 // Read up to len bytes from the stream's descriptor, none once at its end.
-size_t _Stdio_Read(FILE *stream, unsigned char *data, size_t len)
+size_t _Stdio_ReadDescriptor(FILE *stream, unsigned char *data, size_t len)
 {
     long done;
 
@@ -383,7 +383,7 @@ size_t _Stdio_Read(FILE *stream, unsigned char *data, size_t len)
     if (stream->sf_mode != _IOFBF) {
         _Stdio_FlushLines();
     }
-    done = _Sys_Read(stream->sf_fd, data, len);
+    done = _Sys_InvokeRead(stream->sf_fd, data, len);
     if (done < 0) {
         errno = (int) -done;
         stream->sf_flags |= _STDIO_ERROR;
@@ -395,7 +395,7 @@ size_t _Stdio_Read(FILE *stream, unsigned char *data, size_t len)
     return (size_t) done;
 }
 
-// Read a line of at most max characters, its new-line among them, into str.
+// Get a line of at most max characters, its new-line among them, into str.
 char *_Stdio_GetLine(FILE *stream, char *str, size_t max)
 {
     int ch = 0;
@@ -411,8 +411,8 @@ char *_Stdio_GetLine(FILE *stream, char *str, size_t max)
     return str;
 }
 
-// Ready the stream for output, or set its error indicator if it is read-only.
-int _Stdio_ToWrite(FILE *stream)
+// Prepare the stream for output, or set its error indicator if it is read-only.
+int _Stdio_PrepareOutput(FILE *stream)
 {
     if (! (stream->sf_flags & _STDIO_WRITE)) {
         stream->sf_flags |= _STDIO_ERROR;
@@ -420,31 +420,31 @@ int _Stdio_ToWrite(FILE *stream)
         return EOF;
     }
     if (stream->sf_state == _STDIO_READING) {
-        _Stdio_Unread(stream);
+        _Stdio_DiscardReadAhead(stream);
         stream->sf_flags &= ~_STDIO_BACK;
         stream->sf_head = 0;
         stream->sf_tail = 0;
     }
-    _Stdio_Setup(stream);
+    _Stdio_SetupBuffer(stream);
     stream->sf_state = _STDIO_WRITING;
     return 0;
 }
 
-// Buffer len bytes of data for the stream, and return how many it took.
-size_t _Stdio_Put(FILE *stream, const void *data, size_t len)
+// Put len bytes of data in the stream's buffer, and return how many it took.
+size_t _Stdio_PutBytes(FILE *stream, const void *data, size_t len)
 {
     size_t done = 0;
     const unsigned char *bytes = data;
 
-    if (_Stdio_ToWrite(stream) != 0) {
+    if (_Stdio_PrepareOutput(stream) != 0) {
         return 0;
     }
-    _Crt_Flush = _Stdio_FlushAll;
+    _Crt_FlushStreams = _Stdio_FlushStreams;
     while (done < len) {
         size_t part = len - done;
 
         if (stream->sf_tail == 0 && part >= stream->sf_size) {
-            return _Stdio_WriteAll(stream, bytes + done, part) == 0 ? len : done;
+            return _Stdio_WriteDescriptor(stream, bytes + done, part) == 0 ? len : done;
         }
         if (part > stream->sf_size - stream->sf_tail) {
             part = stream->sf_size - stream->sf_tail;
@@ -452,21 +452,21 @@ size_t _Stdio_Put(FILE *stream, const void *data, size_t len)
         memcpy(stream->sf_buf + stream->sf_tail, bytes + done, part);
         stream->sf_tail += part;
         done += part;
-        if (stream->sf_tail == stream->sf_size && _Stdio_Flush(stream) != 0) {
+        if (stream->sf_tail == stream->sf_size && _Stdio_FlushBuffer(stream) != 0) {
             return done - part;
         }
     }
-    if (stream->sf_mode == _IOLBF && memchr(data, '\n', len) != NULL && _Stdio_Flush(stream) != 0) {
+    if (stream->sf_mode == _IOLBF && memchr(data, '\n', len) != NULL && _Stdio_FlushBuffer(stream) != 0) {
         return 0;
     }
     return len;
 }
 
 // Write len bytes of data to the stream's descriptor, however many writes.
-int _Stdio_WriteAll(FILE *stream, const unsigned char *data, size_t len)
+int _Stdio_WriteDescriptor(FILE *stream, const unsigned char *data, size_t len)
 {
     while (len > 0) {
-        long done = _Sys_Write(stream->sf_fd, data, len);
+        long done = _Sys_InvokeWrite(stream->sf_fd, data, len);
 
         if (done <= 0) {
             errno = done < 0 ? (int) -done : _SYS_EIO;
@@ -479,8 +479,8 @@ int _Stdio_WriteAll(FILE *stream, const unsigned char *data, size_t len)
     return 0;
 }
 
-// Write what waits in the stream's buffer, dropping it if the write fails.
-int _Stdio_Flush(FILE *stream)
+// Flush what waits in the stream's buffer, dropping it if the write fails.
+int _Stdio_FlushBuffer(FILE *stream)
 {
     size_t len = stream->sf_tail;
 
@@ -488,17 +488,17 @@ int _Stdio_Flush(FILE *stream)
         return 0;
     }
     stream->sf_tail = 0;
-    return _Stdio_WriteAll(stream, stream->sf_buf, len);
+    return _Stdio_WriteDescriptor(stream, stream->sf_buf, len);
 }
 
 // Flush every open stream, and return EOF if any failed.
-int _Stdio_FlushAll(void)
+int _Stdio_FlushStreams(void)
 {
     FILE *stream;
     int result = 0;
 
     for (stream = _Stdio_Streams; stream != NULL; stream = stream->sf_next) {
-        if (_Stdio_Flush(stream) != 0) {
+        if (_Stdio_FlushBuffer(stream) != 0) {
             result = EOF;
         }
     }
@@ -512,13 +512,13 @@ void _Stdio_FlushLines(void)
 
     for (stream = _Stdio_Streams; stream != NULL; stream = stream->sf_next) {
         if (stream->sf_mode == _IOLBF) {
-            _Stdio_Flush(stream);
+            _Stdio_FlushBuffer(stream);
         }
     }
 }
 
-// Parse a directive's percent sign, flags, width, precision and length.
-size_t _Stdio_ParseHead(const char *format, int *flags, int *width, int *precision, int *length)
+// Match a directive's percent sign, flags, width, precision and length.
+size_t _Stdio_MatchPrintHead(const char *format, int *flags, int *width, int *precision, int *length)
 {
     int digit;
     size_t i = 0;
@@ -527,7 +527,7 @@ size_t _Stdio_ParseHead(const char *format, int *flags, int *width, int *precisi
         return 0;
     }
 
-    // Phase: parse the flags
+    // Phase: match the flags
     *flags = 0;
     for (i++; ; i++) {
         if (format[i] == '-') {
@@ -545,7 +545,7 @@ size_t _Stdio_ParseHead(const char *format, int *flags, int *width, int *precisi
         }
     }
 
-    // Phase: parse the width
+    // Phase: match the width
     *width = 0;
     if (format[i] == '*') {
         *width = _STDIO_COUNT_ARGUMENT;
@@ -557,7 +557,7 @@ size_t _Stdio_ParseHead(const char *format, int *flags, int *width, int *precisi
         }
     }
 
-    // Phase: parse the precision
+    // Phase: match the precision
     *precision = _STDIO_PRECISION_NONE;
     if (format[i] == '.' && format[i + 1] == '*') {
         *precision = _STDIO_COUNT_ARGUMENT;
@@ -570,7 +570,7 @@ size_t _Stdio_ParseHead(const char *format, int *flags, int *width, int *precisi
         }
     }
 
-    // Phase: parse the length
+    // Phase: match the length
     *length = _STDIO_LENGTH_NONE;
     if (format[i] == 'h' && format[i + 1] == 'h') {
         *length = _STDIO_LENGTH_CHAR;
@@ -650,21 +650,21 @@ _Stdio_UintmaxType _Stdio_TakeUnsigned(_Stdio_VaList *list, int length)
     return value;
 }
 
-// Parse the text before a directive.
-_Bool _Stdio_ParseText(const char *format, size_t *len)
+// Match the text before a directive.
+_Bool _Stdio_MatchPrintText(const char *format, size_t *len)
 {
     *len = strcspn(format, "%");
     return *len > 0;
 }
 
-// Parse a %% directive.
-_Bool _Stdio_ParsePercent(const char *format, _Stdio_VaList *list, size_t *len)
+// Match a %% directive.
+_Bool _Stdio_MatchPrintPercent(const char *format, _Stdio_VaList *list, size_t *len)
 {
     int flags;
     int width;
     int length;
     int precision;
-    size_t at = _Stdio_ParseHead(format, &flags, &width, &precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, &flags, &width, &precision, &length);
 
     if (at == 0 || length != _STDIO_LENGTH_NONE || format[at] != '%') {
         return 0;
@@ -674,12 +674,12 @@ _Bool _Stdio_ParsePercent(const char *format, _Stdio_VaList *list, size_t *len)
     return 1;
 }
 
-// Parse a %c directive with its argument.
-_Bool _Stdio_ParseChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch)
+// Match a %c directive with its argument.
+_Bool _Stdio_MatchPrintChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, char *ch)
 {
     int length;
     int precision;
-    size_t at = _Stdio_ParseHead(format, flags, width, &precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, &precision, &length);
 
     if (at == 0 || length != _STDIO_LENGTH_NONE || format[at] != 'c') {
         return 0;
@@ -690,11 +690,11 @@ _Bool _Stdio_ParseChar(const char *format, _Stdio_VaList *list, size_t *len, int
     return 1;
 }
 
-// Parse a %s directive with its argument.
-_Bool _Stdio_ParseString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str)
+// Match a %s directive with its argument.
+_Bool _Stdio_MatchPrintString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const char **str)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || length != _STDIO_LENGTH_NONE || format[at] != 's') {
         return 0;
@@ -705,11 +705,11 @@ _Bool _Stdio_ParseString(const char *format, _Stdio_VaList *list, size_t *len, i
     return 1;
 }
 
-// Parse a %d or %i directive with its argument.
-_Bool _Stdio_ParseDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_IntmaxType *value)
+// Match a %d or %i directive with its argument.
+_Bool _Stdio_MatchPrintDecimal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_IntmaxType *value)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || length == _STDIO_LENGTH_LDOUBLE || (format[at] != 'd' && format[at] != 'i')) {
         return 0;
@@ -743,11 +743,11 @@ _Bool _Stdio_ParseDecimal(const char *format, _Stdio_VaList *list, size_t *len, 
     return 1;
 }
 
-// Parse a %u directive with its argument.
-_Bool _Stdio_ParseUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value)
+// Match a %u directive with its argument.
+_Bool _Stdio_MatchPrintUnsigned(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || length == _STDIO_LENGTH_LDOUBLE || format[at] != 'u') {
         return 0;
@@ -758,11 +758,11 @@ _Bool _Stdio_ParseUnsigned(const char *format, _Stdio_VaList *list, size_t *len,
     return 1;
 }
 
-// Parse a %o directive with its argument.
-_Bool _Stdio_ParseOctal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value)
+// Match a %o directive with its argument.
+_Bool _Stdio_MatchPrintOctal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || length == _STDIO_LENGTH_LDOUBLE || format[at] != 'o') {
         return 0;
@@ -773,11 +773,11 @@ _Bool _Stdio_ParseOctal(const char *format, _Stdio_VaList *list, size_t *len, in
     return 1;
 }
 
-// Parse a %x or %X directive with its argument.
-_Bool _Stdio_ParseHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Stdio_Case *letters)
+// Match a %x or %X directive with its argument.
+_Bool _Stdio_MatchPrintHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Stdio_Case *letters)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || length == _STDIO_LENGTH_LDOUBLE || (format[at] != 'x' && format[at] != 'X')) {
         return 0;
@@ -789,11 +789,11 @@ _Bool _Stdio_ParseHex(const char *format, _Stdio_VaList *list, size_t *len, int 
     return 1;
 }
 
-// Parse a %p directive with its argument.
-_Bool _Stdio_ParsePointer(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const void **ptr)
+// Match a %p directive with its argument.
+_Bool _Stdio_MatchPrintPointer(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const void **ptr)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || length != _STDIO_LENGTH_NONE || format[at] != 'p') {
         return 0;
@@ -804,13 +804,13 @@ _Bool _Stdio_ParsePointer(const char *format, _Stdio_VaList *list, size_t *len, 
     return 1;
 }
 
-// Parse a %n directive with its argument.
-_Bool _Stdio_ParseCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest)
+// Match a %n directive with its argument.
+_Bool _Stdio_MatchPrintCount(const char *format, _Stdio_VaList *list, size_t *len, int *length, void **dest)
 {
     int flags;
     int width;
     int precision;
-    size_t at = _Stdio_ParseHead(format, &flags, &width, &precision, length);
+    size_t at = _Stdio_MatchPrintHead(format, &flags, &width, &precision, length);
 
     if (at == 0 || *length == _STDIO_LENGTH_LDOUBLE || format[at] != 'n') {
         return 0;
@@ -821,11 +821,11 @@ _Bool _Stdio_ParseCount(const char *format, _Stdio_VaList *list, size_t *len, in
     return 1;
 }
 
-// Parse a %f or %F directive with its argument.
-_Bool _Stdio_ParseFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
+// Match a %f or %F directive with its argument.
+_Bool _Stdio_MatchPrintFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || (format[at] != 'f' && format[at] != 'F')) {
         return 0;
@@ -840,11 +840,11 @@ _Bool _Stdio_ParseFixed(const char *format, _Stdio_VaList *list, size_t *len, in
     return 1;
 }
 
-// Parse a %e or %E directive with its argument.
-_Bool _Stdio_ParseExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
+// Match a %e or %E directive with its argument.
+_Bool _Stdio_MatchPrintExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || (format[at] != 'e' && format[at] != 'E')) {
         return 0;
@@ -859,11 +859,11 @@ _Bool _Stdio_ParseExponential(const char *format, _Stdio_VaList *list, size_t *l
     return 1;
 }
 
-// Parse a %g or %G directive with its argument.
-_Bool _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
+// Match a %g or %G directive with its argument.
+_Bool _Stdio_MatchPrintGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || (format[at] != 'g' && format[at] != 'G')) {
         return 0;
@@ -878,11 +878,11 @@ _Bool _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, 
     return 1;
 }
 
-// Parse a %a or %A directive with its argument, a double.
-_Bool _Stdio_ParseHexReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, double *value, _Stdio_Case *letters)
+// Match a %a or %A directive with its argument, a double.
+_Bool _Stdio_MatchPrintHexReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, double *value, _Stdio_Case *letters)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || (format[at] != 'a' && format[at] != 'A')) {
         return 0;
@@ -897,11 +897,11 @@ _Bool _Stdio_ParseHexReal(const char *format, _Stdio_VaList *list, size_t *len, 
     return 1;
 }
 
-// Parse a %La or %LA directive with its argument, a long double.
-_Bool _Stdio_ParseHexLongReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
+// Match a %La or %LA directive with its argument, a long double.
+_Bool _Stdio_MatchPrintHexLongReal(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || length != _STDIO_LENGTH_LDOUBLE || (format[at] != 'a' && format[at] != 'A')) {
         return 0;
@@ -913,12 +913,12 @@ _Bool _Stdio_ParseHexLongReal(const char *format, _Stdio_VaList *list, size_t *l
     return 1;
 }
 
-// Parse a %lc directive with its argument, a wide character.
-_Bool _Stdio_ParseWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, _Stdio_WcharType *wc)
+// Match a %lc directive with its argument, a wide character.
+_Bool _Stdio_MatchPrintWideChar(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, _Stdio_WcharType *wc)
 {
     int length;
     int precision;
-    size_t at = _Stdio_ParseHead(format, flags, width, &precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, &precision, &length);
 
     if (at == 0 || length != _STDIO_LENGTH_LONG || format[at] != 'c') {
         return 0;
@@ -929,11 +929,11 @@ _Bool _Stdio_ParseWideChar(const char *format, _Stdio_VaList *list, size_t *len,
     return 1;
 }
 
-// Parse a %ls directive with its argument, a wide string.
-_Bool _Stdio_ParseWideString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const _Stdio_WcharType **wstr)
+// Match a %ls directive with its argument, a wide string.
+_Bool _Stdio_MatchPrintWideString(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, const _Stdio_WcharType **wstr)
 {
     int length;
-    size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
+    size_t at = _Stdio_MatchPrintHead(format, flags, width, precision, &length);
 
     if (at == 0 || length != _STDIO_LENGTH_LONG || format[at] != 's') {
         return 0;
@@ -945,7 +945,7 @@ _Bool _Stdio_ParseWideString(const char *format, _Stdio_VaList *list, size_t *le
 }
 
 // Write a value's digits in a base to end at end, none for zero.
-size_t _Stdio_Digits(char *end, _Stdio_UintmaxType value, int base, const char *digits)
+size_t _Stdio_WriteDigits(char *end, _Stdio_UintmaxType value, int base, const char *digits)
 {
     char *ptr = end;
 
@@ -988,8 +988,8 @@ void _Stdio_StoreCount(void *dest, int length, size_t count)
     }
 }
 
-// Take a floating value apart, into a sign and its bits by a power of two.
-_Stdio_Real _Stdio_Unpack(long double value, _Stdio_Sign *sign, unsigned long long *mant, int *exp)
+// Unpack a floating value into a sign and its bits by a power of two.
+_Stdio_Real _Stdio_UnpackReal(long double value, _Stdio_Sign *sign, unsigned long long *mant, int *exp)
 {
     unsigned short top;
     unsigned int biased;
@@ -1012,7 +1012,7 @@ _Stdio_Real _Stdio_Unpack(long double value, _Stdio_Sign *sign, unsigned long lo
 }
 
 // Write a floating value's sign, what it is and its every decimal digit.
-void _Stdio_Exact(long double value, _Stdio_Numeral *num)
+void _Stdio_WriteNumeral(long double value, _Stdio_Numeral *num)
 {
     int i;
     int exp;
@@ -1028,7 +1028,7 @@ void _Stdio_Exact(long double value, _Stdio_Numeral *num)
     char *ptr = end;
 
     // Phase: take the value apart
-    num->sn_kind = _Stdio_Unpack(value, &num->sn_sign, &mant, &exp);
+    num->sn_kind = _Stdio_UnpackReal(value, &num->sn_sign, &mant, &exp);
     num->sn_len = 0;
     num->sn_exp = 0;
     if (num->sn_kind != _STDIO_REAL_FINITE) {
@@ -1036,11 +1036,11 @@ void _Stdio_Exact(long double value, _Stdio_Numeral *num)
     }
 
     // Phase: write the whole part's digits
-    _Bigint_Set(&big, mant);
+    _Bigint_SetValue(&big, mant);
     if (exp > 0) {
-        _Bigint_ShiftLeft(&big, exp);
+        _Bigint_ShiftBitsLeft(&big, exp);
     } else {
-        _Bigint_ShiftRight(&big, -exp);
+        _Bigint_ShiftBitsRight(&big, -exp);
     }
     while (big.bn_len > 0) {
         chunk = _Bigint_DivideWord(&big, _BIGINT_POW10_WORD);
@@ -1059,13 +1059,13 @@ void _Stdio_Exact(long double value, _Stdio_Numeral *num)
 
     // Phase: write the fraction's digits
     below = exp < 0 ? -exp : 0;
-    _Bigint_Set(&big, mant);
-    _Bigint_Split(&big, below);
+    _Bigint_SetValue(&big, mant);
+    _Bigint_SplitBits(&big, below);
     while (big.bn_len > 0) {
         step = below < _BIGINT_POW5_STEP ? below : _BIGINT_POW5_STEP;
         _Bigint_MulPow5(&big, step);
         below -= step;
-        part = _Bigint_Split(&big, below);
+        part = _Bigint_SplitBits(&big, below);
         for (i = step - 1; i >= 0; i--) {
             run[i] = (char) ('0' + part % _STDIO_BASE_DECIMAL);
             part /= _STDIO_BASE_DECIMAL;
@@ -1088,7 +1088,7 @@ void _Stdio_Exact(long double value, _Stdio_Numeral *num)
 }
 
 // Round num to its first keep digits, to nearest and a tie to even.
-void _Stdio_Round(_Stdio_Numeral *num, long keep)
+void _Stdio_RoundNumeral(_Stdio_Numeral *num, long keep)
 {
     _Bool up;
     size_t len;
@@ -1122,7 +1122,7 @@ void _Stdio_Round(_Stdio_Numeral *num, long keep)
 }
 
 // End the sink's string, and return its count, or EOF if it failed.
-int _Stdio_End(_Stdio_Sink *sink)
+int _Stdio_EndSink(_Stdio_Sink *sink)
 {
     if (sink->ss_stream == NULL && sink->ss_size > 0) {
         size_t last = sink->ss_size - 1;
@@ -1132,8 +1132,8 @@ int _Stdio_End(_Stdio_Sink *sink)
     return sink->ss_failed ? EOF : (int) sink->ss_count;
 }
 
-// Give the sink len characters of data, counted though its string be full.
-void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len)
+// Emit len characters of data, counted though the sink's string be full.
+void _Stdio_EmitText(_Stdio_Sink *sink, const char *data, size_t len)
 {
     size_t room;
 
@@ -1146,7 +1146,7 @@ void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len)
         return;
     }
     if (sink->ss_stream != NULL) {
-        sink->ss_failed = _Stdio_Put(sink->ss_stream, data, len) != len;
+        sink->ss_failed = _Stdio_PutBytes(sink->ss_stream, data, len) != len;
     } else if (sink->ss_count + 1 < sink->ss_size) {
         room = sink->ss_size - 1 - sink->ss_count;
         memcpy(sink->ss_str + sink->ss_count, data, len < room ? len : room);
@@ -1154,7 +1154,7 @@ void _Stdio_Emit(_Stdio_Sink *sink, const char *data, size_t len)
     sink->ss_count += len;
 }
 
-// Give the sink len copies of the character ch.
+// Emit len copies of the character ch.
 void _Stdio_EmitPad(_Stdio_Sink *sink, int ch, size_t len)
 {
     char chunk[_STDIO_PAD_CHUNK];
@@ -1163,12 +1163,12 @@ void _Stdio_EmitPad(_Stdio_Sink *sink, int ch, size_t len)
     while (len > 0 && ! sink->ss_failed) {
         size_t part = len < sizeof(chunk) ? len : sizeof(chunk);
 
-        _Stdio_Emit(sink, chunk, part);
+        _Stdio_EmitText(sink, chunk, part);
         len -= part;
     }
 }
 
-// Give the sink len characters of data in a width.
+// Emit len characters of data in a width.
 void _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data, size_t len)
 {
     size_t pad = (size_t) width > len ? (size_t) width - len : 0;
@@ -1176,13 +1176,13 @@ void _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data,
     if (! (flags & _STDIO_FLAG_LEFT)) {
         _Stdio_EmitPad(sink, ' ', pad);
     }
-    _Stdio_Emit(sink, data, len);
+    _Stdio_EmitText(sink, data, len);
     if (flags & _STDIO_FLAG_LEFT) {
         _Stdio_EmitPad(sink, ' ', pad);
     }
 }
 
-// Give the sink what leads a number, and return the spaces to follow it.
+// Emit what leads a number, and return the spaces to follow it.
 size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign, const char *prefix, size_t len)
 {
     size_t pad;
@@ -1204,15 +1204,15 @@ size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign
     if (! (flags & (_STDIO_FLAG_LEFT | _STDIO_FLAG_ZERO))) {
         _Stdio_EmitPad(sink, ' ', pad);
     }
-    _Stdio_Emit(sink, text, strlen(text));
-    _Stdio_Emit(sink, prefix, strlen(prefix));
+    _Stdio_EmitText(sink, text, strlen(text));
+    _Stdio_EmitText(sink, prefix, strlen(prefix));
     if (flags & _STDIO_FLAG_ZERO) {
         _Stdio_EmitPad(sink, '0', pad);
     }
     return flags & _STDIO_FLAG_LEFT ? pad : 0;
 }
 
-// Give the sink an integer's digits in a width, its precision the fewest.
+// Emit an integer's digits in a width, its precision the fewest.
 void _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_Sign sign, const char *prefix, const char *digits, size_t len)
 {
     size_t rest;
@@ -1226,11 +1226,11 @@ void _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, 
     zeros = (size_t) precision > len ? (size_t) precision - len : 0;
     rest = _Stdio_EmitLead(sink, flags, width, sign, prefix, zeros + len);
     _Stdio_EmitPad(sink, '0', zeros);
-    _Stdio_Emit(sink, digits, len);
+    _Stdio_EmitText(sink, digits, len);
     _Stdio_EmitPad(sink, ' ', rest);
 }
 
-// Give the sink count digits of num from the one worth 10^high, zeros for none.
+// Emit count digits of num from the one worth 10^high, zeros for none.
 void _Stdio_EmitSpan(_Stdio_Sink *sink, const _Stdio_Numeral *num, long high, size_t count)
 {
     size_t real;
@@ -1246,11 +1246,11 @@ void _Stdio_EmitSpan(_Stdio_Sink *sink, const _Stdio_Numeral *num, long high, si
         real = count;
     }
     _Stdio_EmitPad(sink, '0', lead);
-    _Stdio_Emit(sink, num->sn_digit + skip, real);
+    _Stdio_EmitText(sink, num->sn_digit + skip, real);
     _Stdio_EmitPad(sink, '0', count - real);
 }
 
-// Give the sink a rounded numeral in a width, frac digits after its point.
+// Emit a rounded numeral in a width, frac digits after its point.
 void _Stdio_EmitNumeral(_Stdio_Sink *sink, int flags, int width, const _Stdio_Numeral *num, size_t frac, const char *mark)
 {
     size_t rest;
@@ -1261,24 +1261,24 @@ void _Stdio_EmitNumeral(_Stdio_Sink *sink, int flags, int width, const _Stdio_Nu
     size_t whole = powered ? 1 : (size_t) high + 1;
     size_t dot = frac > 0 || (flags & _STDIO_FLAG_ALT) ? 1 : 0;
     _Stdio_UintmaxType power = (_Stdio_UintmaxType) (num->sn_exp < 0 ? -num->sn_exp : num->sn_exp);
-    size_t count = _Stdio_Digits(text + sizeof(text), power, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
+    size_t count = _Stdio_WriteDigits(text + sizeof(text), power, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
     size_t zeros = count < _STDIO_EXPONENT_MIN ? _STDIO_EXPONENT_MIN - count : 0;
     size_t tail = powered ? strlen(mark) + 1 + zeros + count : 0;
 
     rest = _Stdio_EmitLead(sink, flags, width, num->sn_sign, "", whole + dot + frac + tail);
     _Stdio_EmitSpan(sink, num, high, whole);
-    _Stdio_Emit(sink, &point, dot);
+    _Stdio_EmitText(sink, &point, dot);
     _Stdio_EmitSpan(sink, num, high - (long) whole, frac);
     if (powered) {
-        _Stdio_Emit(sink, mark, strlen(mark));
-        _Stdio_Emit(sink, num->sn_exp < 0 ? "-" : "+", 1);
+        _Stdio_EmitText(sink, mark, strlen(mark));
+        _Stdio_EmitText(sink, num->sn_exp < 0 ? "-" : "+", 1);
         _Stdio_EmitPad(sink, '0', zeros);
-        _Stdio_Emit(sink, text + sizeof(text) - count, count);
+        _Stdio_EmitText(sink, text + sizeof(text) - count, count);
     }
     _Stdio_EmitPad(sink, ' ', rest);
 }
 
-// Give the sink an infinity or a NaN in a width, a sign and a text, no zeros.
+// Emit an infinity or a NaN in a width, a sign and a text, no zeros.
 void _Stdio_EmitSpecial(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign, _Stdio_Real kind, _Stdio_Case letters)
 {
     size_t rest;
@@ -1288,11 +1288,11 @@ void _Stdio_EmitSpecial(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sig
 
     flags &= ~_STDIO_FLAG_ZERO;
     rest = _Stdio_EmitLead(sink, flags, width, sign, "", strlen(text));
-    _Stdio_Emit(sink, text, strlen(text));
+    _Stdio_EmitText(sink, text, strlen(text));
     _Stdio_EmitPad(sink, ' ', rest);
 }
 
-// Give the sink a mantissa in hex, its top four bits first, by a power of two.
+// Emit a mantissa in hex, its top four bits first, by a power of two.
 void _Stdio_EmitMantissa(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_Sign sign, unsigned long long mant, int exp, _Stdio_Case letters)
 {
     size_t dot;
@@ -1330,29 +1330,29 @@ void _Stdio_EmitMantissa(_Stdio_Sink *sink, int flags, int width, int precision,
     // Phase: write its digits and its power
     dot = precision > 0 || (flags & _STDIO_FLAG_ALT) ? 1 : 0;
     memset(digits, '0', sizeof(digits));
-    _Stdio_Digits(digits + sizeof(digits), mant, _STDIO_BASE_HEX, upper ? _STDIO_DIGITS_UPPER : _STDIO_DIGITS_LOWER);
-    count = _Stdio_Digits(text + sizeof(text), (_Stdio_UintmaxType) (exp < 0 ? -exp : exp), _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
+    _Stdio_WriteDigits(digits + sizeof(digits), mant, _STDIO_BASE_HEX, upper ? _STDIO_DIGITS_UPPER : _STDIO_DIGITS_LOWER);
+    count = _Stdio_WriteDigits(text + sizeof(text), (_Stdio_UintmaxType) (exp < 0 ? -exp : exp), _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
     zeros = count < _STDIO_POWER_MIN ? _STDIO_POWER_MIN - count : 0;
     kept = precision < last ? (size_t) precision : (size_t) last;
     rest = _Stdio_EmitLead(sink, flags, width, sign, upper ? "0X" : "0x", 1 + dot + (size_t) precision + 2 + zeros + count);
-    _Stdio_Emit(sink, digits, 1);
-    _Stdio_Emit(sink, &point, dot);
-    _Stdio_Emit(sink, digits + 1, kept);
+    _Stdio_EmitText(sink, digits, 1);
+    _Stdio_EmitText(sink, &point, dot);
+    _Stdio_EmitText(sink, digits + 1, kept);
     _Stdio_EmitPad(sink, '0', (size_t) precision - kept);
-    _Stdio_Emit(sink, upper ? "P" : "p", 1);
-    _Stdio_Emit(sink, exp < 0 ? "-" : "+", 1);
+    _Stdio_EmitText(sink, upper ? "P" : "p", 1);
+    _Stdio_EmitText(sink, exp < 0 ? "-" : "+", 1);
     _Stdio_EmitPad(sink, '0', zeros);
-    _Stdio_Emit(sink, text + sizeof(text) - count, count);
+    _Stdio_EmitText(sink, text + sizeof(text) - count, count);
     _Stdio_EmitPad(sink, ' ', rest);
 }
 
-// Give the sink a character as %c converts it.
+// Emit a character as %c converts it.
 void _Stdio_EmitChar(_Stdio_Sink *sink, int flags, int width, char ch)
 {
     _Stdio_EmitField(sink, flags, width, &ch, 1);
 }
 
-// Give the sink a string as %s converts it, a null one as glibc does.
+// Emit a string as %s converts it, a null one as glibc does.
 void _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, const char *str)
 {
     size_t len;
@@ -1370,33 +1370,33 @@ void _Stdio_EmitString(_Stdio_Sink *sink, int flags, int width, int precision, c
     _Stdio_EmitField(sink, flags, width, str, len);
 }
 
-// Give the sink an integer as %d and %i convert it.
+// Emit an integer as %d and %i convert it.
 void _Stdio_EmitDecimal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_IntmaxType value)
 {
     char text[_STDIO_DIGITS_MAX];
     _Stdio_UintmaxType magnitude = value < 0 ? -(_Stdio_UintmaxType) value : (_Stdio_UintmaxType) value;
-    size_t len = _Stdio_Digits(text + sizeof(text), magnitude, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
+    size_t len = _Stdio_WriteDigits(text + sizeof(text), magnitude, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
 
     _Stdio_EmitInteger(sink, flags, width, precision, value < 0 ? _STDIO_SIGN_MINUS : _STDIO_SIGN_PLUS, "", text + sizeof(text) - len, len);
 }
 
-// Give the sink an unsigned integer as %u converts it.
+// Emit an unsigned integer as %u converts it.
 void _Stdio_EmitUnsigned(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value)
 {
     char text[_STDIO_DIGITS_MAX];
-    size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
+    size_t len = _Stdio_WriteDigits(text + sizeof(text), value, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
 
     flags &= ~(_STDIO_FLAG_SIGN | _STDIO_FLAG_SPACE);
     _Stdio_EmitInteger(sink, flags, width, precision, _STDIO_SIGN_PLUS, "", text + sizeof(text) - len, len);
 }
 
-// Give the sink an unsigned integer as %o converts it.
+// Emit an unsigned integer as %o converts it.
 void _Stdio_EmitOctal(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value)
 {
     char text[_STDIO_DIGITS_MAX];
     const char *prefix = "";
     size_t least = precision == _STDIO_PRECISION_NONE ? _STDIO_INTEGER_PRECISION : (size_t) precision;
-    size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_OCTAL, _STDIO_DIGITS_LOWER);
+    size_t len = _Stdio_WriteDigits(text + sizeof(text), value, _STDIO_BASE_OCTAL, _STDIO_DIGITS_LOWER);
 
     if ((flags & _STDIO_FLAG_ALT) && len >= least) {
         prefix = "0";
@@ -1405,13 +1405,13 @@ void _Stdio_EmitOctal(_Stdio_Sink *sink, int flags, int width, int precision, _S
     _Stdio_EmitInteger(sink, flags, width, precision, _STDIO_SIGN_PLUS, prefix, text + sizeof(text) - len, len);
 }
 
-// Give the sink an unsigned integer as %x and %X convert it.
+// Emit an unsigned integer as %x and %X convert it.
 void _Stdio_EmitHex(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value, _Stdio_Case letters)
 {
     char text[_STDIO_DIGITS_MAX];
     const char *prefix = "";
     const char *digits = letters == _STDIO_CASE_UPPER ? _STDIO_DIGITS_UPPER : _STDIO_DIGITS_LOWER;
-    size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_HEX, digits);
+    size_t len = _Stdio_WriteDigits(text + sizeof(text), value, _STDIO_BASE_HEX, digits);
 
     if ((flags & _STDIO_FLAG_ALT) && value != 0) {
         prefix = letters == _STDIO_CASE_UPPER ? "0X" : "0x";
@@ -1420,11 +1420,11 @@ void _Stdio_EmitHex(_Stdio_Sink *sink, int flags, int width, int precision, _Std
     _Stdio_EmitInteger(sink, flags, width, precision, _STDIO_SIGN_PLUS, prefix, text + sizeof(text) - len, len);
 }
 
-// Give the sink a pointer as glibc does: a null one a text, another by %#lx.
+// Emit a pointer as glibc does: a null one a text, another by %#lx.
 void _Stdio_EmitPointer(_Stdio_Sink *sink, int flags, int width, int precision, const void *ptr)
 {
     char text[_STDIO_DIGITS_MAX];
-    size_t len = _Stdio_Digits(text + sizeof(text), (uintptr_t) ptr, _STDIO_BASE_HEX, _STDIO_DIGITS_LOWER);
+    size_t len = _Stdio_WriteDigits(text + sizeof(text), (uintptr_t) ptr, _STDIO_BASE_HEX, _STDIO_DIGITS_LOWER);
 
     if (ptr == NULL) {
         _Stdio_EmitField(sink, flags, width, _ERR_STDIO_NIL, sizeof(_ERR_STDIO_NIL) - 1);
@@ -1433,12 +1433,12 @@ void _Stdio_EmitPointer(_Stdio_Sink *sink, int flags, int width, int precision, 
     _Stdio_EmitInteger(sink, flags, width, precision, _STDIO_SIGN_PLUS, "0x", text + sizeof(text) - len, len);
 }
 
-// Give the sink a floating value as %f and %F convert it.
+// Emit a floating value as %f and %F convert it.
 void _Stdio_EmitFixed(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters)
 {
     _Stdio_Numeral num;
 
-    _Stdio_Exact(value, &num);
+    _Stdio_WriteNumeral(value, &num);
     if (num.sn_kind != _STDIO_REAL_FINITE) {
         _Stdio_EmitSpecial(sink, flags, width, num.sn_sign, num.sn_kind, letters);
         return;
@@ -1446,16 +1446,16 @@ void _Stdio_EmitFixed(_Stdio_Sink *sink, int flags, int width, int precision, lo
     if (precision == _STDIO_PRECISION_NONE) {
         precision = _STDIO_REAL_PRECISION;
     }
-    _Stdio_Round(&num, (long) num.sn_exp + 1 + precision);
+    _Stdio_RoundNumeral(&num, (long) num.sn_exp + 1 + precision);
     _Stdio_EmitNumeral(sink, flags, width, &num, (size_t) precision, "");
 }
 
-// Give the sink a floating value as %e and %E convert it.
+// Emit a floating value as %e and %E convert it.
 void _Stdio_EmitExponential(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters)
 {
     _Stdio_Numeral num;
 
-    _Stdio_Exact(value, &num);
+    _Stdio_WriteNumeral(value, &num);
     if (num.sn_kind != _STDIO_REAL_FINITE) {
         _Stdio_EmitSpecial(sink, flags, width, num.sn_sign, num.sn_kind, letters);
         return;
@@ -1463,11 +1463,11 @@ void _Stdio_EmitExponential(_Stdio_Sink *sink, int flags, int width, int precisi
     if (precision == _STDIO_PRECISION_NONE) {
         precision = _STDIO_REAL_PRECISION;
     }
-    _Stdio_Round(&num, (long) precision + 1);
+    _Stdio_RoundNumeral(&num, (long) precision + 1);
     _Stdio_EmitNumeral(sink, flags, width, &num, (size_t) precision, letters == _STDIO_CASE_UPPER ? "E" : "e");
 }
 
-// Give the sink a floating value as %g and %G convert it.
+// Emit a floating value as %g and %G convert it.
 void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters)
 {
     long frac;
@@ -1475,7 +1475,7 @@ void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, 
     _Stdio_Numeral num;
     const char *mark = "";
 
-    _Stdio_Exact(value, &num);
+    _Stdio_WriteNumeral(value, &num);
     if (num.sn_kind != _STDIO_REAL_FINITE) {
         _Stdio_EmitSpecial(sink, flags, width, num.sn_sign, num.sn_kind, letters);
         return;
@@ -1485,7 +1485,7 @@ void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, 
     } else if (precision == 0) {
         precision = _STDIO_REAL_LEAST;
     }
-    _Stdio_Round(&num, precision);
+    _Stdio_RoundNumeral(&num, precision);
     powered = num.sn_exp < _STDIO_GENERAL_MIN || num.sn_exp >= precision;
     frac = (flags & _STDIO_FLAG_ALT ? precision : (long) num.sn_len) - 1;
     if (powered) {
@@ -1496,14 +1496,14 @@ void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, 
     _Stdio_EmitNumeral(sink, flags, width, &num, frac > 0 ? (size_t) frac : 0, mark);
 }
 
-// Give the sink a double as %a and %A convert it, its first digit a 1 or a 0.
+// Emit a double as %a and %A convert it, its first digit a 1 or a 0.
 void _Stdio_EmitHexReal(_Stdio_Sink *sink, int flags, int width, int precision, double value, _Stdio_Case letters)
 {
     int exp;
     int under;
     _Stdio_Sign sign;
     unsigned long long mant;
-    _Stdio_Real kind = _Stdio_Unpack(value, &sign, &mant, &exp);
+    _Stdio_Real kind = _Stdio_UnpackReal(value, &sign, &mant, &exp);
 
     if (kind != _STDIO_REAL_FINITE) {
         _Stdio_EmitSpecial(sink, flags, width, sign, kind, letters);
@@ -1514,13 +1514,13 @@ void _Stdio_EmitHexReal(_Stdio_Sink *sink, int flags, int width, int precision, 
     _Stdio_EmitMantissa(sink, flags, width, precision, sign, mant >> (_STDIO_HEX_BITS - 1) >> under, exp + under, letters);
 }
 
-// Give the sink a long double as %La and %LA convert it, its top bits first.
+// Emit a long double as %La and %LA convert it, its top bits first.
 void _Stdio_EmitHexLongReal(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters)
 {
     int exp;
     _Stdio_Sign sign;
     unsigned long long mant;
-    _Stdio_Real kind = _Stdio_Unpack(value, &sign, &mant, &exp);
+    _Stdio_Real kind = _Stdio_UnpackReal(value, &sign, &mant, &exp);
 
     if (kind != _STDIO_REAL_FINITE) {
         _Stdio_EmitSpecial(sink, flags, width, sign, kind, letters);
@@ -1530,7 +1530,7 @@ void _Stdio_EmitHexLongReal(_Stdio_Sink *sink, int flags, int width, int precisi
     _Stdio_EmitMantissa(sink, flags, width, precision, sign, mant, exp, letters);
 }
 
-// Give the sink a wide character as %lc converts it, a wide string of it alone.
+// Emit a wide character as %lc converts it, a wide string of it alone.
 void _Stdio_EmitWideChar(_Stdio_Sink *sink, int flags, int width, _Stdio_WcharType wc)
 {
     _Stdio_WcharType pair[2] = {wc, L'\0'};
@@ -1538,7 +1538,7 @@ void _Stdio_EmitWideChar(_Stdio_Sink *sink, int flags, int width, _Stdio_WcharTy
     _Stdio_EmitWideString(sink, flags, width, _STDIO_PRECISION_NONE, pair);
 }
 
-// Give the sink a wide string as %ls converts it, in the locale's bytes.
+// Emit a wide string as %ls converts it, in the locale's bytes.
 void _Stdio_EmitWideString(_Stdio_Sink *sink, int flags, int width, int precision, const _Stdio_WcharType *wstr)
 {
     int n;
@@ -1574,14 +1574,14 @@ void _Stdio_EmitWideString(_Stdio_Sink *sink, int flags, int width, int precisio
     }
     for (i = 0; i < count; i++) {
         n = wctomb(bytes, wstr[i]);
-        _Stdio_Emit(sink, bytes, (size_t) n);
+        _Stdio_EmitText(sink, bytes, (size_t) n);
     }
     if (flags & _STDIO_FLAG_LEFT) {
         _Stdio_EmitPad(sink, ' ', pad);
     }
 }
 
-// Give the sink the format's text, each directive converting its arguments.
+// Emit the format's text, each directive converting its arguments.
 int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
 {
     char ch;
@@ -1604,51 +1604,51 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
 
     va_copy(list, args);
     for (size_t i = 0; format[i] != '\0'; i += len) {
-        if (_Stdio_ParseText(format + i, &len)) {
-            _Stdio_Emit(sink, format + i, len);
-        } else if (_Stdio_ParsePercent(format + i, &list, &len)) {
-            _Stdio_Emit(sink, "%", 1);
-        } else if (_Stdio_ParseChar(format + i, &list, &len, &flags, &width, &ch)) {
+        if (_Stdio_MatchPrintText(format + i, &len)) {
+            _Stdio_EmitText(sink, format + i, len);
+        } else if (_Stdio_MatchPrintPercent(format + i, &list, &len)) {
+            _Stdio_EmitText(sink, "%", 1);
+        } else if (_Stdio_MatchPrintChar(format + i, &list, &len, &flags, &width, &ch)) {
             _Stdio_EmitChar(sink, flags, width, ch);
-        } else if (_Stdio_ParseString(format + i, &list, &len, &flags, &width, &precision, &str)) {
+        } else if (_Stdio_MatchPrintString(format + i, &list, &len, &flags, &width, &precision, &str)) {
             _Stdio_EmitString(sink, flags, width, precision, str);
-        } else if (_Stdio_ParseDecimal(format + i, &list, &len, &flags, &width, &precision, &sval)) {
+        } else if (_Stdio_MatchPrintDecimal(format + i, &list, &len, &flags, &width, &precision, &sval)) {
             _Stdio_EmitDecimal(sink, flags, width, precision, sval);
-        } else if (_Stdio_ParseUnsigned(format + i, &list, &len, &flags, &width, &precision, &uval)) {
+        } else if (_Stdio_MatchPrintUnsigned(format + i, &list, &len, &flags, &width, &precision, &uval)) {
             _Stdio_EmitUnsigned(sink, flags, width, precision, uval);
-        } else if (_Stdio_ParseOctal(format + i, &list, &len, &flags, &width, &precision, &uval)) {
+        } else if (_Stdio_MatchPrintOctal(format + i, &list, &len, &flags, &width, &precision, &uval)) {
             _Stdio_EmitOctal(sink, flags, width, precision, uval);
-        } else if (_Stdio_ParseHex(format + i, &list, &len, &flags, &width, &precision, &uval, &letters)) {
+        } else if (_Stdio_MatchPrintHex(format + i, &list, &len, &flags, &width, &precision, &uval, &letters)) {
             _Stdio_EmitHex(sink, flags, width, precision, uval, letters);
-        } else if (_Stdio_ParsePointer(format + i, &list, &len, &flags, &width, &precision, &ptr)) {
+        } else if (_Stdio_MatchPrintPointer(format + i, &list, &len, &flags, &width, &precision, &ptr)) {
             _Stdio_EmitPointer(sink, flags, width, precision, ptr);
-        } else if (_Stdio_ParseCount(format + i, &list, &len, &length, &dest)) {
+        } else if (_Stdio_MatchPrintCount(format + i, &list, &len, &length, &dest)) {
             _Stdio_StoreCount(dest, length, sink->ss_count);
-        } else if (_Stdio_ParseFixed(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
+        } else if (_Stdio_MatchPrintFixed(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
             _Stdio_EmitFixed(sink, flags, width, precision, fval, letters);
-        } else if (_Stdio_ParseExponential(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
+        } else if (_Stdio_MatchPrintExponential(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
             _Stdio_EmitExponential(sink, flags, width, precision, fval, letters);
-        } else if (_Stdio_ParseGeneral(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
+        } else if (_Stdio_MatchPrintGeneral(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
             _Stdio_EmitGeneral(sink, flags, width, precision, fval, letters);
-        } else if (_Stdio_ParseHexReal(format + i, &list, &len, &flags, &width, &precision, &dval, &letters)) {
+        } else if (_Stdio_MatchPrintHexReal(format + i, &list, &len, &flags, &width, &precision, &dval, &letters)) {
             _Stdio_EmitHexReal(sink, flags, width, precision, dval, letters);
-        } else if (_Stdio_ParseHexLongReal(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
+        } else if (_Stdio_MatchPrintHexLongReal(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
             _Stdio_EmitHexLongReal(sink, flags, width, precision, fval, letters);
-        } else if (_Stdio_ParseWideChar(format + i, &list, &len, &flags, &width, &wc)) {
+        } else if (_Stdio_MatchPrintWideChar(format + i, &list, &len, &flags, &width, &wc)) {
             _Stdio_EmitWideChar(sink, flags, width, wc);
-        } else if (_Stdio_ParseWideString(format + i, &list, &len, &flags, &width, &precision, &wstr)) {
+        } else if (_Stdio_MatchPrintWideString(format + i, &list, &len, &flags, &width, &precision, &wstr)) {
             _Stdio_EmitWideString(sink, flags, width, precision, wstr);
         } else {
             len = 1;
-            _Stdio_Emit(sink, format + i, len);
+            _Stdio_EmitText(sink, format + i, len);
         }
     }
     va_end(list);
-    return _Stdio_End(sink);
+    return _Stdio_EndSink(sink);
 }
 
-// Return how many bytes the stream took from its file and has yet to give out.
-long _Stdio_Ahead(FILE *stream)
+// Count the bytes the stream took from its file and has yet to give out.
+long _Stdio_CountReadAhead(FILE *stream)
 {
     long ahead = 0;
 
@@ -1661,18 +1661,18 @@ long _Stdio_Ahead(FILE *stream)
     return ahead;
 }
 
-// Move the stream to offset from the origin whence, and empty its buffer.
-int _Stdio_Seek(FILE *stream, long offset, int whence)
+// Seek the stream to offset from the origin whence, and empty its buffer.
+int _Stdio_SeekStream(FILE *stream, long offset, int whence)
 {
     long pos;
 
-    if (_Stdio_Flush(stream) != 0) {
+    if (_Stdio_FlushBuffer(stream) != 0) {
         return EOF;
     }
     if (whence == _SYS_SEEK_CUR) {
-        offset -= _Stdio_Ahead(stream);
+        offset -= _Stdio_CountReadAhead(stream);
     }
-    pos = _Sys_Lseek(stream->sf_fd, offset, whence);
+    pos = _Sys_InvokeLseek(stream->sf_fd, offset, whence);
     if (pos < 0) {
         errno = (int) -pos;
         return EOF;
@@ -1683,32 +1683,32 @@ int _Stdio_Seek(FILE *stream, long offset, int whence)
     return 0;
 }
 
-// Move the stream's file back over what the stream read ahead.
-void _Stdio_Unread(FILE *stream)
+// Discard what the stream read ahead, moving its file back over it.
+void _Stdio_DiscardReadAhead(FILE *stream)
 {
-    if (_Stdio_Ahead(stream) > 0) {
-        _Stdio_Seek(stream, 0, _SYS_SEEK_CUR);
+    if (_Stdio_CountReadAhead(stream) > 0) {
+        _Stdio_SeekStream(stream, 0, _SYS_SEEK_CUR);
     }
 }
 
-// Return a number that differs from run to run, by the clock and the stack.
-unsigned long _Stdio_TempSeed(void)
+// Make a number that differs from run to run, by the clock and the stack.
+unsigned long _Stdio_MakeTempSeed(void)
 {
     _Sys_Timespec now = {0, 0};
 
-    _Sys_ClockGettime(_SYS_CLOCK_REALTIME, &now);
+    _Sys_InvokeClockGettime(_SYS_CLOCK_REALTIME, &now);
     return (unsigned long) now.tv_sec ^ (unsigned long) now.tv_nsec ^ (unsigned long) &now;
 }
 
 // Write the next temporary name, one no call before wrote, into str.
-void _Stdio_TempName(char *str)
+void _Stdio_WriteTempName(char *str)
 {
     int k;
     unsigned long number;
     size_t len = sizeof(_STDIO_TEMP_PREFIX) - 1;
 
     if (! _Stdio_TempSeeded) {
-        _Stdio_TempNumber = _Stdio_TempSeed() % _STDIO_TEMP_NAMES;
+        _Stdio_TempNumber = _Stdio_MakeTempSeed() % _STDIO_TEMP_NAMES;
         _Stdio_TempSeeded = 1;
     }
     _Stdio_TempNumber = (_Stdio_TempNumber + _STDIO_TEMP_STEP) % _STDIO_TEMP_NAMES;
@@ -1724,10 +1724,10 @@ void _Stdio_TempName(char *str)
 // Remove the file filename, or the empty directory of that name.
 int remove(const char *filename)
 {
-    long status = _Sys_Unlink(filename);
+    long status = _Sys_InvokeUnlink(filename);
 
     if (status == -_SYS_EISDIR) {
-        status = _Sys_Rmdir(filename);
+        status = _Sys_InvokeRmdir(filename);
     }
     if (status < 0) {
         errno = (int) -status;
@@ -1739,7 +1739,7 @@ int remove(const char *filename)
 // Give the file old the name new, replacing a file that has it as Linux does.
 int rename(const char *old, const char *new)
 {
-    long status = _Sys_Rename(old, new);
+    long status = _Sys_InvokeRename(old, new);
 
     if (status < 0) {
         errno = (int) -status;
@@ -1754,23 +1754,23 @@ FILE *tmpfile(void)
     int tries;
     char name[L_tmpnam];
     long fd = -_SYS_EEXIST;
-    FILE *stream = _Stdio_New();
+    FILE *stream = _Stdio_MakeStream();
     int flags = _SYS_O_RDWR | _SYS_O_CREAT | _SYS_O_EXCL;
 
     if (stream == NULL) {
         return NULL;
     }
     for (tries = 0; tries < TMP_MAX && fd == -_SYS_EEXIST; tries++) {
-        _Stdio_TempName(name);
-        fd = _Sys_Open(name, flags, _SYS_S_IRUSR | _SYS_S_IWUSR);
+        _Stdio_WriteTempName(name);
+        fd = _Sys_InvokeOpen(name, flags, _SYS_S_IRUSR | _SYS_S_IWUSR);
     }
     if (fd < 0) {
         errno = (int) -fd;
-        _Stdio_Free(stream);
+        _Stdio_FreeStream(stream);
         return NULL;
     }
-    _Sys_Unlink(name);
-    _Stdio_Attach(stream, (int) fd, flags);
+    _Sys_InvokeUnlink(name);
+    _Stdio_AttachDescriptor(stream, (int) fd, flags);
     return stream;
 }
 
@@ -1784,8 +1784,8 @@ char *tmpnam(char *str)
         str = _Stdio_TempBuffer;
     }
     for (tries = 0; tries < TMP_MAX; tries++) {
-        _Stdio_TempName(str);
-        if (_Sys_Lstat(str, &info) == -_SYS_ENOENT) {
+        _Stdio_WriteTempName(str);
+        if (_Sys_InvokeLstat(str, &info) == -_SYS_ENOENT) {
             return str;
         }
     }
@@ -1795,14 +1795,14 @@ char *tmpnam(char *str)
 // Flush the stream, close its file and end the stream.
 int fclose(FILE *stream)
 {
-    int result = _Stdio_Reset(stream);
-    long status = _Sys_Close(stream->sf_fd);
+    int result = _Stdio_ResetStream(stream);
+    long status = _Sys_InvokeClose(stream->sf_fd);
 
     if (status < 0) {
         errno = (int) -status;
         result = EOF;
     }
-    _Stdio_Free(stream);
+    _Stdio_FreeStream(stream);
     return result;
 }
 
@@ -1810,19 +1810,19 @@ int fclose(FILE *stream)
 int fflush(FILE *stream)
 {
     if (stream == NULL) {
-        return _Stdio_FlushAll();
+        return _Stdio_FlushStreams();
     }
-    _Stdio_Unread(stream);
-    return _Stdio_Flush(stream);
+    _Stdio_DiscardReadAhead(stream);
+    return _Stdio_FlushBuffer(stream);
 }
 
 // Open the file filename as the mode says, and return a stream for it.
 FILE *fopen(const char *restrict filename, const char *restrict mode)
 {
-    FILE *stream = _Stdio_New();
+    FILE *stream = _Stdio_MakeStream();
 
-    if (stream != NULL && _Stdio_Open(stream, filename, mode) != 0) {
-        _Stdio_Free(stream);
+    if (stream != NULL && _Stdio_OpenFile(stream, filename, mode) != 0) {
+        _Stdio_FreeStream(stream);
         return NULL;
     }
     return stream;
@@ -1837,17 +1837,17 @@ FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *re
         errno = _SYS_EINVAL;
         return NULL;
     }
-    _Stdio_Reset(stream);
-    if (_Stdio_Open(stream, filename, mode) != 0) {
-        _Sys_Close(fd);
-        _Stdio_Free(stream);
+    _Stdio_ResetStream(stream);
+    if (_Stdio_OpenFile(stream, filename, mode) != 0) {
+        _Sys_InvokeClose(fd);
+        _Stdio_FreeStream(stream);
         return NULL;
     }
-    if (_Sys_Dup2(stream->sf_fd, fd) == fd) {
-        _Sys_Close(stream->sf_fd);
+    if (_Sys_InvokeDup2(stream->sf_fd, fd) == fd) {
+        _Sys_InvokeClose(stream->sf_fd);
         stream->sf_fd = fd;
     } else {
-        _Sys_Close(fd);
+        _Sys_InvokeClose(fd);
     }
     return stream;
 }
@@ -1864,7 +1864,7 @@ int setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size)
     if (mode != _IOFBF && mode != _IOLBF && mode != _IONBF) {
         return EOF;
     }
-    if ((buf != NULL && size == 0) || _Stdio_Flush(stream) != 0) {
+    if ((buf != NULL && size == 0) || _Stdio_FlushBuffer(stream) != 0) {
         return EOF;
     }
     if (stream->sf_flags & _STDIO_OWNBUF) {
@@ -1937,11 +1937,11 @@ int vfprintf(FILE *restrict stream, const char *restrict format, _Stdio_VaList a
         .ss_stream = stream
     };
 
-    if (_Stdio_Lend(stream, lent, sizeof(lent)) != 0) {
+    if (_Stdio_LendBuffer(stream, lent, sizeof(lent)) != 0) {
         return EOF;
     }
     result = _Stdio_EmitFormat(&sink, format, arg);
-    return _Stdio_Reclaim(stream) == 0 ? result : EOF;
+    return _Stdio_ReclaimBuffer(stream) == 0 ? result : EOF;
 }
 
 // Write the list's arguments to standard output as the format says.
@@ -1972,7 +1972,7 @@ int fgetc(FILE *stream)
 {
     unsigned char byte;
 
-    return _Stdio_Get(stream, &byte, 1) == 1 ? byte : EOF;
+    return _Stdio_GetBytes(stream, &byte, 1) == 1 ? byte : EOF;
 }
 
 // Read a line of at most n - 1 characters, its new-line kept, into str.
@@ -1986,7 +1986,7 @@ int fputc(int ch, FILE *stream)
 {
     unsigned char byte = (unsigned char) ch;
 
-    return _Stdio_Put(stream, &byte, 1) == 1 ? byte : EOF;
+    return _Stdio_PutBytes(stream, &byte, 1) == 1 ? byte : EOF;
 }
 
 // Write the string str to the stream, and return 1 as glibc's does.
@@ -1994,7 +1994,7 @@ int fputs(const char *restrict str, FILE *restrict stream)
 {
     size_t len = strlen(str);
 
-    return _Stdio_Put(stream, str, len) == len ? 1 : EOF;
+    return _Stdio_PutBytes(stream, str, len) == len ? 1 : EOF;
 }
 
 // Read the stream's next character, as fgetc does.
@@ -2041,7 +2041,7 @@ int puts(const char *str)
 {
     size_t len = strlen(str);
 
-    if (_Stdio_Put(stdout, str, len) != len || _Stdio_Put(stdout, "\n", 1) != 1) {
+    if (_Stdio_PutBytes(stdout, str, len) != len || _Stdio_PutBytes(stdout, "\n", 1) != 1) {
         return EOF;
     }
     return len < INT_MAX ? (int) len + 1 : INT_MAX;
@@ -2050,7 +2050,7 @@ int puts(const char *str)
 // Push the character ch back for the stream's next read, one at a time.
 int ungetc(int ch, FILE *stream)
 {
-    if (ch == EOF || (stream->sf_flags & _STDIO_BACK) || _Stdio_ToRead(stream) != 0) {
+    if (ch == EOF || (stream->sf_flags & _STDIO_BACK) || _Stdio_PrepareInput(stream) != 0) {
         return EOF;
     }
     stream->sf_back = (unsigned char) ch;
@@ -2068,7 +2068,7 @@ size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict strea
     if (nmemb > SIZE_MAX / size) {
         nmemb = SIZE_MAX / size;
     }
-    return _Stdio_Get(stream, ptr, size * nmemb) / size;
+    return _Stdio_GetBytes(stream, ptr, size * nmemb) / size;
 }
 
 // Write nmemb elements of size bytes from ptr, and return how many went.
@@ -2080,7 +2080,7 @@ size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restric
     if (nmemb > SIZE_MAX / size) {
         nmemb = SIZE_MAX / size;
     }
-    return _Stdio_Put(stream, ptr, size * nmemb) / size;
+    return _Stdio_PutBytes(stream, ptr, size * nmemb) / size;
 }
 
 // Store the stream's position in pos.
@@ -2102,7 +2102,7 @@ int fseek(FILE *stream, long offset, int whence)
         errno = _SYS_EINVAL;
         return EOF;
     }
-    if (_Stdio_Seek(stream, offset, whence) != 0) {
+    if (_Stdio_SeekStream(stream, offset, whence) != 0) {
         return EOF;
     }
     stream->sf_flags &= ~_STDIO_EOF;
@@ -2120,15 +2120,15 @@ long ftell(FILE *stream)
 {
     long pos;
 
-    if (_Stdio_Flush(stream) != 0) {
+    if (_Stdio_FlushBuffer(stream) != 0) {
         return EOF;
     }
-    pos = _Sys_Lseek(stream->sf_fd, 0, _SYS_SEEK_CUR);
+    pos = _Sys_InvokeLseek(stream->sf_fd, 0, _SYS_SEEK_CUR);
     if (pos < 0) {
         errno = (int) -pos;
         return EOF;
     }
-    return pos - _Stdio_Ahead(stream);
+    return pos - _Stdio_CountReadAhead(stream);
 }
 
 // Move the stream to the start of its file, and clear its indicators.
@@ -2162,12 +2162,12 @@ void perror(const char *str)
     const char *text = strerror(errno);
     unsigned char lent[BUFSIZ];
 
-    _Stdio_Lend(stderr, lent, sizeof(lent));
+    _Stdio_LendBuffer(stderr, lent, sizeof(lent));
     if (str != NULL && str[0] != '\0') {
         fputs(str, stderr);
         fputs(": ", stderr);
     }
     fputs(text, stderr);
     fputs("\n", stderr);
-    _Stdio_Reclaim(stderr);
+    _Stdio_ReclaimBuffer(stderr);
 }

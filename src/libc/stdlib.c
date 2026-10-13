@@ -106,7 +106,7 @@ _Stdlib_Exits _Stdlib_ExitBase;
 _Stdlib_Exits *_Stdlib_ExitTop = &_Stdlib_ExitBase;
 
 // Read character index of str, a wide string or a narrow one.
-int _Stdlib_CharAt(const void *str, _Stdlib_Text text, size_t index)
+int _Stdlib_ReadChar(const void *str, _Stdlib_Text text, size_t index)
 {
     if (text == _STDLIB_TEXT_WIDE) {
         return ((const wchar_t *) str)[index];
@@ -120,8 +120,8 @@ _Bool _Stdlib_IsSpace(int ch)
     return ch >= 0 && ch <= UCHAR_MAX && isspace(ch);
 }
 
-// Give the value of the hexadecimal digit ch, or _STDLIB_HEX_LIMIT for none.
-int _Stdlib_HexDigit(int ch)
+// Convert the hex digit ch to its value, or _STDLIB_HEX_LIMIT for none.
+int _Stdlib_ConvertHexDigit(int ch)
 {
     if (ch >= '0' && ch <= '9') {
         return ch - '0';
@@ -135,14 +135,14 @@ int _Stdlib_HexDigit(int ch)
     return _STDLIB_HEX_LIMIT;
 }
 
-// Give the length of word if str holds it at index in any case, or 0.
-size_t _Stdlib_Match(const void *str, _Stdlib_Text text, size_t index, const char *word)
+// Match word at index of str in any case, and give its length, or 0.
+size_t _Stdlib_MatchWord(const void *str, _Stdlib_Text text, size_t index, const char *word)
 {
     size_t i;
     int ch;
 
     for (i = 0; word[i] != '\0'; i++) {
-        ch = _Stdlib_CharAt(str, text, index + i);
+        ch = _Stdlib_ReadChar(str, text, index + i);
         if (ch < 0 || ch > UCHAR_MAX || tolower(ch) != word[i]) {
             return 0;
         }
@@ -151,27 +151,27 @@ size_t _Stdlib_Match(const void *str, _Stdlib_Text text, size_t index, const cha
 }
 
 // Read an exponent after letter at index into *exp, and give the index past it.
-size_t _Stdlib_Exponent(const void *str, _Stdlib_Text text, size_t index, int letter, long *exp)
+size_t _Stdlib_ReadExponent(const void *str, _Stdlib_Text text, size_t index, int letter, long *exp)
 {
     size_t i = index + 1;
     _Bool negative = 0;
     long value = 0;
-    int ch = _Stdlib_CharAt(str, text, index);
+    int ch = _Stdlib_ReadChar(str, text, index);
 
     *exp = 0;
     if (ch != letter && ch != toupper(letter)) {
         return index;
     }
-    ch = _Stdlib_CharAt(str, text, i);
+    ch = _Stdlib_ReadChar(str, text, i);
     if (ch == '+' || ch == '-') {
         negative = ch == '-';
         i++;
     }
-    ch = _Stdlib_CharAt(str, text, i);
+    ch = _Stdlib_ReadChar(str, text, i);
     if (ch < '0' || ch > '9') {
         return index;
     }
-    for (; ch >= '0' && ch <= '9'; ch = _Stdlib_CharAt(str, text, i)) {
+    for (; ch >= '0' && ch <= '9'; ch = _Stdlib_ReadChar(str, text, i)) {
         if (value < _STDLIB_EXP_LIMIT) {
             value = value * 10 + (ch - '0');
         }
@@ -182,21 +182,21 @@ size_t _Stdlib_Exponent(const void *str, _Stdlib_Text text, size_t index, int le
 }
 
 // Read a NaN's payload up to stop as strtoull in base 0, or 0, as glibc's.
-unsigned long long _Stdlib_Payload(const void *str, _Stdlib_Text text, size_t index, size_t stop)
+unsigned long long _Stdlib_ReadPayload(const void *str, _Stdlib_Text text, size_t index, size_t stop)
 {
     unsigned long long value = 0;
     int base = 10;
     int digit;
 
-    if (_Stdlib_CharAt(str, text, index) == '0') {
+    if (_Stdlib_ReadChar(str, text, index) == '0') {
         base = 8;
-        if (tolower(_Stdlib_CharAt(str, text, index + 1)) == 'x' && _Stdlib_HexDigit(_Stdlib_CharAt(str, text, index + 2)) < _STDLIB_HEX_LIMIT) {
+        if (tolower(_Stdlib_ReadChar(str, text, index + 1)) == 'x' && _Stdlib_ConvertHexDigit(_Stdlib_ReadChar(str, text, index + 2)) < _STDLIB_HEX_LIMIT) {
             base = _STDLIB_HEX_LIMIT;
             index += 2;
         }
     }
     for (; index < stop; index++) {
-        digit = _Stdlib_HexDigit(_Stdlib_CharAt(str, text, index));
+        digit = _Stdlib_ConvertHexDigit(_Stdlib_ReadChar(str, text, index));
         if (digit >= base) {
             return 0;
         }
@@ -206,22 +206,22 @@ unsigned long long _Stdlib_Payload(const void *str, _Stdlib_Text text, size_t in
 }
 
 // Read a NaN's parenthesized characters at index, and give the index past them.
-size_t _Stdlib_NotANumber(const void *str, _Stdlib_Text text, size_t index, unsigned long long *payload)
+size_t _Stdlib_ReadNotANumber(const void *str, _Stdlib_Text text, size_t index, unsigned long long *payload)
 {
     size_t i = index + 1;
     int ch;
 
     *payload = 0;
-    if (_Stdlib_CharAt(str, text, index) != '(') {
+    if (_Stdlib_ReadChar(str, text, index) != '(') {
         return index;
     }
-    for (ch = _Stdlib_CharAt(str, text, i); ch == '_' || (ch >= 0 && ch <= UCHAR_MAX && isalnum(ch)); ch = _Stdlib_CharAt(str, text, i)) {
+    for (ch = _Stdlib_ReadChar(str, text, i); ch == '_' || (ch >= 0 && ch <= UCHAR_MAX && isalnum(ch)); ch = _Stdlib_ReadChar(str, text, i)) {
         i++;
     }
     if (ch != ')') {
         return index;
     }
-    *payload = _Stdlib_Payload(str, text, index + 1, i);
+    *payload = _Stdlib_ReadPayload(str, text, index + 1, i);
     return i + 1;
 }
 
@@ -239,7 +239,7 @@ size_t _Stdlib_ScanDecimal(const void *str, _Stdlib_Text text, size_t index, int
     dec->sd_exp = 0;
     dec->sd_sticky = 0;
     for (i = index; ; i++) {
-        ch = _Stdlib_CharAt(str, text, i);
+        ch = _Stdlib_ReadChar(str, text, i);
         if (ch == point && ! fraction) {
             fraction = 1;
             continue;
@@ -266,7 +266,7 @@ size_t _Stdlib_ScanDecimal(const void *str, _Stdlib_Text text, size_t index, int
     if (! digits) {
         return index;
     }
-    i = _Stdlib_Exponent(str, text, i, 'e', &exp);
+    i = _Stdlib_ReadExponent(str, text, i, 'e', &exp);
     dec->sd_exp += exp;
     return i;
 }
@@ -297,50 +297,50 @@ void _Stdlib_ConvertDecimal(const void *str, _Stdlib_Text text, int point, const
         value->su_exp = top > 0 ? _STDLIB_EXP_LIMIT : -_STDLIB_EXP_LIMIT;
         return;
     }
-    _Bigint_Set(&num, 0);
+    _Bigint_SetValue(&num, 0);
     for (n = 0; n < count; n++) {
-        ch = n < dec->sd_count ? _Stdlib_CharAt(str, text, i) : '1';
+        ch = n < dec->sd_count ? _Stdlib_ReadChar(str, text, i) : '1';
         i++;
         if (ch == point) {
-            ch = _Stdlib_CharAt(str, text, i);
+            ch = _Stdlib_ReadChar(str, text, i);
             i++;
         }
         chunk = chunk * 10 + (unsigned int) (ch - '0');
         scale *= 10;
         if (scale == _STDLIB_CHUNK_SCALE || n == count - 1) {
-            _Bigint_MulAdd(&num, scale, chunk);
+            _Bigint_MulAddWords(&num, scale, chunk);
             chunk = 0;
             scale = 1;
         }
     }
-    _Bigint_Set(&den, 1);
+    _Bigint_SetValue(&den, 1);
     if (exp >= 0) {
         _Bigint_MulPow5(&num, (int) exp);
     } else {
         _Bigint_MulPow5(&den, (int) -exp);
     }
-    bits = _Bigint_Bits(&num) - _Bigint_Bits(&den);
+    bits = _Bigint_CountBits(&num) - _Bigint_CountBits(&den);
     if (bits > 0) {
-        _Bigint_ShiftLeft(&den, bits);
+        _Bigint_ShiftBitsLeft(&den, bits);
     } else {
-        _Bigint_ShiftLeft(&num, -bits);
+        _Bigint_ShiftBitsLeft(&num, -bits);
     }
-    if (_Bigint_Compare(&num, &den) < 0) {
-        _Bigint_ShiftLeft(&num, 1);
+    if (_Bigint_CompareNumbers(&num, &den) < 0) {
+        _Bigint_ShiftBitsLeft(&num, 1);
         bits--;
     }
     value->su_exp = exp + bits;
-    _Bigint_ShiftLeft(&num, _STDLIB_MANT_BITS - 1);
-    value->su_mant = _Bigint_Divide(&num, &den);
+    _Bigint_ShiftBitsLeft(&num, _STDLIB_MANT_BITS - 1);
+    value->su_mant = _Bigint_DivideNumber(&num, &den);
     if (num.bn_len != 0) {
-        _Bigint_ShiftLeft(&num, 1);
-        cmp = _Bigint_Compare(&num, &den);
+        _Bigint_ShiftBitsLeft(&num, 1);
+        cmp = _Bigint_CompareNumbers(&num, &den);
         value->su_rest = cmp < 0 ? _STDLIB_REST_BELOW : cmp == 0 ? _STDLIB_REST_HALF : _STDLIB_REST_ABOVE;
     }
 }
 
 // Read a hexadecimal's digits and exponent at index, and give the end.
-size_t _Stdlib_Hex(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Unrounded *value)
+size_t _Stdlib_ReadHex(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Unrounded *value)
 {
     unsigned long long mant = 0;
     unsigned int extra = 0;
@@ -354,12 +354,12 @@ size_t _Stdlib_Hex(const void *str, _Stdlib_Text text, size_t index, int point, 
     int digit;
 
     for (i = index; ; i++) {
-        ch = _Stdlib_CharAt(str, text, i);
+        ch = _Stdlib_ReadChar(str, text, i);
         if (ch == point && ! fraction) {
             fraction = 1;
             continue;
         }
-        digit = _Stdlib_HexDigit(ch);
+        digit = _Stdlib_ConvertHexDigit(ch);
         if (digit == _STDLIB_HEX_LIMIT) {
             break;
         }
@@ -380,7 +380,7 @@ size_t _Stdlib_Hex(const void *str, _Stdlib_Text text, size_t index, int point, 
         }
         count++;
     }
-    i = _Stdlib_Exponent(str, text, i, 'p', &power);
+    i = _Stdlib_ReadExponent(str, text, i, 'p', &power);
     value->su_mant = mant;
     value->su_exp = exp + power + _STDLIB_MANT_BITS - 1;
     value->su_rest = _STDLIB_REST_NONE;
@@ -404,7 +404,7 @@ size_t _Stdlib_Hex(const void *str, _Stdlib_Text text, size_t index, int point, 
 }
 
 // Drop the low bits of value's mantissa, keeping what they were against half.
-void _Stdlib_Shift(_Stdlib_Unrounded *value, long bits)
+void _Stdlib_DropBits(_Stdlib_Unrounded *value, long bits)
 {
     unsigned long long mant = value->su_mant;
     _Bool rest = value->su_rest != _STDLIB_REST_NONE;
@@ -427,7 +427,7 @@ void _Stdlib_Shift(_Stdlib_Unrounded *value, long bits)
 }
 
 // Round value to fmt to nearest, ties to even, with ERANGE as glibc's.
-void _Stdlib_Round(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real)
+void _Stdlib_RoundReal(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real)
 {
     _Stdlib_Unrounded part = *value;
     unsigned long long ones = ~0ULL >> (_STDLIB_MANT_BITS - fmt->sf_mant);
@@ -439,11 +439,11 @@ void _Stdlib_Round(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _S
         return;
     }
     if (fmt->sf_mant < _STDLIB_MANT_BITS) {
-        _Stdlib_Shift(&part, _STDLIB_MANT_BITS - fmt->sf_mant);
+        _Stdlib_DropBits(&part, _STDLIB_MANT_BITS - fmt->sf_mant);
     }
     tiny = part.su_exp < fmt->sf_min && ! (part.su_exp == fmt->sf_min - 1 && part.su_mant == ones && part.su_rest >= _STDLIB_REST_HALF);
     if (part.su_exp < fmt->sf_min) {
-        _Stdlib_Shift(&part, fmt->sf_min - part.su_exp);
+        _Stdlib_DropBits(&part, fmt->sf_min - part.su_exp);
     }
     if (part.su_rest > _STDLIB_REST_HALF || (part.su_rest == _STDLIB_REST_HALF && (part.su_mant & 1))) {
         part.su_mant++;
@@ -470,7 +470,7 @@ void _Stdlib_Round(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _S
 }
 
 // Convert the number at the start of str to fmt's fields, and give its end.
-size_t _Stdlib_ToReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *fmt, _Stdlib_Real *real)
+size_t _Stdlib_ConvertReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *fmt, _Stdlib_Real *real)
 {
     _Stdlib_Unrounded value;
     _Stdlib_Decimal dec;
@@ -483,28 +483,28 @@ size_t _Stdlib_ToReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *
     real->sr_negative = 0;
     real->sr_exp = (unsigned int) (2 * fmt->sf_max + 1);
     real->sr_mant = fmt->sf_explicit ? 1ULL << (fmt->sf_mant - 1) : 0;
-    while (_Stdlib_IsSpace(_Stdlib_CharAt(str, text, i))) {
+    while (_Stdlib_IsSpace(_Stdlib_ReadChar(str, text, i))) {
         i++;
     }
-    ch = _Stdlib_CharAt(str, text, i);
+    ch = _Stdlib_ReadChar(str, text, i);
     if (ch == '+' || ch == '-') {
         real->sr_negative = ch == '-';
         i++;
     }
-    if (_Stdlib_Match(str, text, i, "inf")) {
-        end = _Stdlib_Match(str, text, i, "infinity");
-        return i + (end != 0 ? end : _Stdlib_Match(str, text, i, "inf"));
+    if (_Stdlib_MatchWord(str, text, i, "inf")) {
+        end = _Stdlib_MatchWord(str, text, i, "infinity");
+        return i + (end != 0 ? end : _Stdlib_MatchWord(str, text, i, "inf"));
     }
-    if (_Stdlib_Match(str, text, i, "nan")) {
-        end = _Stdlib_NotANumber(str, text, i + _Stdlib_Match(str, text, i, "nan"), &payload);
+    if (_Stdlib_MatchWord(str, text, i, "nan")) {
+        end = _Stdlib_ReadNotANumber(str, text, i + _Stdlib_MatchWord(str, text, i, "nan"), &payload);
         real->sr_mant |= 1ULL << (fmt->sf_mant - 2) | (payload & ~0ULL >> (_STDLIB_MANT_BITS + 1 - fmt->sf_mant));
         return end;
     }
-    ch = _Stdlib_CharAt(str, text, i + 1);
-    if (_Stdlib_CharAt(str, text, i) == '0' && (ch == 'x' || ch == 'X')
-        && (_Stdlib_HexDigit(_Stdlib_CharAt(str, text, i + 2)) < _STDLIB_HEX_LIMIT
-            || (_Stdlib_CharAt(str, text, i + 2) == point && _Stdlib_HexDigit(_Stdlib_CharAt(str, text, i + 3)) < _STDLIB_HEX_LIMIT))) {
-        end = _Stdlib_Hex(str, text, i + 2, point, &value);
+    ch = _Stdlib_ReadChar(str, text, i + 1);
+    if (_Stdlib_ReadChar(str, text, i) == '0' && (ch == 'x' || ch == 'X')
+        && (_Stdlib_ConvertHexDigit(_Stdlib_ReadChar(str, text, i + 2)) < _STDLIB_HEX_LIMIT
+            || (_Stdlib_ReadChar(str, text, i + 2) == point && _Stdlib_ConvertHexDigit(_Stdlib_ReadChar(str, text, i + 3)) < _STDLIB_HEX_LIMIT))) {
+        end = _Stdlib_ReadHex(str, text, i + 2, point, &value);
     } else {
         end = _Stdlib_ScanDecimal(str, text, i, point, &dec);
         if (end == i) {
@@ -515,12 +515,12 @@ size_t _Stdlib_ToReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *
         }
         _Stdlib_ConvertDecimal(str, text, point, &dec, &value);
     }
-    _Stdlib_Round(&value, fmt, real);
+    _Stdlib_RoundReal(&value, fmt, real);
     return end;
 }
 
-// Return the block size for size bytes, or 0 past PTRDIFF_MAX, as glibc's.
-size_t _Stdlib_BlockSize(size_t size)
+// Compute the block size for size bytes, or 0 past PTRDIFF_MAX, as glibc's.
+size_t _Stdlib_ComputeBlockSize(size_t size)
 {
     size_t header = sizeof(_Stdlib_Block);
     size_t block;
@@ -532,8 +532,8 @@ size_t _Stdlib_BlockSize(size_t size)
     return block < _STDLIB_BLOCK_MIN ? _STDLIB_BLOCK_MIN : block;
 }
 
-// Return the link to the first free block of at least size bytes, or NULL.
-_Stdlib_Block **_Stdlib_Fit(size_t size)
+// Find the link to the first free block of at least size bytes, or NULL.
+_Stdlib_Block **_Stdlib_FindFreeBlock(size_t size)
 {
     _Stdlib_Block **link = &_Stdlib_FreeList;
 
@@ -543,8 +543,8 @@ _Stdlib_Block **_Stdlib_Fit(size_t size)
     return *link ? link : NULL;
 }
 
-// Return the link to the free block that starts where block ends, or NULL.
-_Stdlib_Block **_Stdlib_Link(const _Stdlib_Block *block)
+// Find the link to the free block that starts where block ends, or NULL.
+_Stdlib_Block **_Stdlib_FindNextBlock(const _Stdlib_Block *block)
 {
     const char *end = (const char *) block + block->sb_size;
     _Stdlib_Block **link = &_Stdlib_FreeList;
@@ -556,7 +556,7 @@ _Stdlib_Block **_Stdlib_Link(const _Stdlib_Block *block)
 }
 
 // Take size bytes of the free block at link, and leave the rest of it free.
-void *_Stdlib_Take(_Stdlib_Block **link, size_t size)
+void *_Stdlib_TakeBlock(_Stdlib_Block **link, size_t size)
 {
     _Stdlib_Block *block = *link;
 
@@ -572,20 +572,20 @@ void *_Stdlib_Take(_Stdlib_Block **link, size_t size)
     return block + 1;
 }
 
-// Free what a block in use holds past size bytes.
-void _Stdlib_Trim(_Stdlib_Block *block, size_t size)
+// Trim a block in use to size bytes, freeing what it holds past them.
+void _Stdlib_TrimBlock(_Stdlib_Block *block, size_t size)
 {
     _Stdlib_Block *rest = (_Stdlib_Block *) ((char *) block + size);
 
     if (block->sb_size - size >= _STDLIB_BLOCK_MIN) {
         rest->sb_size = block->sb_size - size;
         block->sb_size = size;
-        _Stdlib_Release(rest);
+        _Stdlib_ReleaseBlock(rest);
     }
 }
 
-// Free a block, in address order and merged with its free neighbours.
-void _Stdlib_Release(_Stdlib_Block *block)
+// Release a block, in address order and merged with its free neighbours.
+void _Stdlib_ReleaseBlock(_Stdlib_Block *block)
 {
     _Stdlib_Block **link = &_Stdlib_FreeList;
     _Stdlib_Block *prev = NULL;
@@ -609,10 +609,10 @@ void _Stdlib_Release(_Stdlib_Block *block)
     }
 }
 
-// Move the break past at least size more bytes and free them, or return 0.
-int _Stdlib_Grow(size_t size)
+// Grow the heap by at least size bytes, moving the break, or return 0.
+int _Stdlib_GrowHeap(size_t size)
 {
-    char *start = _Sys_Brk(NULL);
+    char *start = _Sys_InvokeBrk(NULL);
     _Stdlib_Block *block;
     char *end;
 
@@ -621,16 +621,16 @@ int _Stdlib_Grow(size_t size)
         size = _STDLIB_GROW;
     }
     end = start + size;
-    if (_Sys_Brk(end) != end) {
+    if (_Sys_InvokeBrk(end) != end) {
         return 0;
     }
     block = (_Stdlib_Block *) start;
     block->sb_size = size;
-    _Stdlib_Release(block);
+    _Stdlib_ReleaseBlock(block);
     return 1;
 }
 
-// Take the function atexit registered last, or return NULL when none is left.
+// Pop the function atexit registered last, or return NULL when none is left.
 void (*_Stdlib_PopExit(void))(void)
 {
     _Stdlib_Exits *block = _Stdlib_ExitTop;
@@ -647,8 +647,8 @@ void (*_Stdlib_PopExit(void))(void)
     return block->se_func[block->se_count];
 }
 
-// Exchange the size bytes at left with those at right.
-void _Stdlib_Swap(char *left, char *right, size_t size)
+// Swap the size bytes at left with those at right.
+void _Stdlib_SwapBytes(char *left, char *right, size_t size)
 {
     char ch;
     size_t i;
@@ -661,25 +661,25 @@ void _Stdlib_Swap(char *left, char *right, size_t size)
 }
 
 // Reverse the order of nmemb elements of size bytes at base.
-void _Stdlib_Reverse(char *base, size_t nmemb, size_t size)
+void _Stdlib_ReverseElements(char *base, size_t nmemb, size_t size)
 {
     size_t i;
 
     for (i = 0; i < nmemb / 2; i++) {
-        _Stdlib_Swap(base + i * size, base + (nmemb - 1 - i) * size, size);
+        _Stdlib_SwapBytes(base + i * size, base + (nmemb - 1 - i) * size, size);
     }
 }
 
 // Rotate nmemb elements of size bytes at base so that element first leads.
-void _Stdlib_Rotate(char *base, size_t nmemb, size_t first, size_t size)
+void _Stdlib_RotateElements(char *base, size_t nmemb, size_t first, size_t size)
 {
-    _Stdlib_Reverse(base, first, size);
-    _Stdlib_Reverse(base + first * size, nmemb - first, size);
-    _Stdlib_Reverse(base, nmemb, size);
+    _Stdlib_ReverseElements(base, first, size);
+    _Stdlib_ReverseElements(base + first * size, nmemb - first, size);
+    _Stdlib_ReverseElements(base, nmemb, size);
 }
 
-// Give the index of the first of nmemb sorted elements not below key.
-size_t _Stdlib_LowerBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *))
+// Find the index of the first of nmemb sorted elements not below key.
+size_t _Stdlib_FindLowerBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *))
 {
     size_t low = 0;
     size_t mid;
@@ -696,8 +696,8 @@ size_t _Stdlib_LowerBound(const char *base, size_t nmemb, size_t size, const voi
     return low;
 }
 
-// Give the index of the first of nmemb sorted elements above key.
-size_t _Stdlib_UpperBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *))
+// Find the index of the first of nmemb sorted elements above key.
+size_t _Stdlib_FindUpperBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *))
 {
     size_t low = 0;
     size_t mid;
@@ -715,7 +715,7 @@ size_t _Stdlib_UpperBound(const char *base, size_t nmemb, size_t size, const voi
 }
 
 // Merge the sorted runs of left and right elements at base without a buffer.
-void _Stdlib_MergeInPlace(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *))
+void _Stdlib_MergeRunsInPlace(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *))
 {
     size_t cut1;
     size_t cut2;
@@ -725,24 +725,24 @@ void _Stdlib_MergeInPlace(char *base, size_t left, size_t right, size_t size, in
     }
     if (left + right == 2) {
         if (compar(base + size, base) < 0) {
-            _Stdlib_Swap(base, base + size, size);
+            _Stdlib_SwapBytes(base, base + size, size);
         }
         return;
     }
     if (left >= right) {
         cut1 = left / 2;
-        cut2 = _Stdlib_LowerBound(base + left * size, right, size, base + cut1 * size, compar);
+        cut2 = _Stdlib_FindLowerBound(base + left * size, right, size, base + cut1 * size, compar);
     } else {
         cut2 = right / 2;
-        cut1 = _Stdlib_UpperBound(base, left, size, base + (left + cut2) * size, compar);
+        cut1 = _Stdlib_FindUpperBound(base, left, size, base + (left + cut2) * size, compar);
     }
-    _Stdlib_Rotate(base + cut1 * size, left - cut1 + cut2, left - cut1, size);
-    _Stdlib_MergeInPlace(base, cut1, cut2, size, compar);
-    _Stdlib_MergeInPlace(base + (cut1 + cut2) * size, left - cut1, right - cut2, size, compar);
+    _Stdlib_RotateElements(base + cut1 * size, left - cut1 + cut2, left - cut1, size);
+    _Stdlib_MergeRunsInPlace(base, cut1, cut2, size, compar);
+    _Stdlib_MergeRunsInPlace(base + (cut1 + cut2) * size, left - cut1, right - cut2, size, compar);
 }
 
 // Merge the sorted runs of left and right elements at base through tmp.
-void _Stdlib_Merge(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp)
+void _Stdlib_MergeRuns(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp)
 {
     char *out = base;
     char *end = tmp + left * size;
@@ -765,7 +765,7 @@ void _Stdlib_Merge(char *base, size_t left, size_t right, size_t size, int (*com
 }
 
 // Sort nmemb elements of size bytes at base stably, merging through tmp if any.
-void _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp)
+void _Stdlib_SortElements(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp)
 {
     size_t half = nmemb / 2;
     char *mid = base + half * size;
@@ -773,33 +773,33 @@ void _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const voi
     if (nmemb < 2) {
         return;
     }
-    _Stdlib_Sort(base, half, size, compar, tmp);
-    _Stdlib_Sort(mid, nmemb - half, size, compar, tmp);
+    _Stdlib_SortElements(base, half, size, compar, tmp);
+    _Stdlib_SortElements(mid, nmemb - half, size, compar, tmp);
     if (compar(mid, mid - size) >= 0) {
         return;
     }
     if (tmp) {
-        _Stdlib_Merge(base, half, nmemb - half, size, compar, tmp);
+        _Stdlib_MergeRuns(base, half, nmemb - half, size, compar, tmp);
     } else {
-        _Stdlib_MergeInPlace(base, half, nmemb - half, size, compar);
+        _Stdlib_MergeRunsInPlace(base, half, nmemb - half, size, compar);
     }
 }
 
-// Give the bytes of the longest character in LC_CTYPE's encoding.
-size_t _Stdlib_MbCurMax(void)
+// Get the bytes of the longest character in LC_CTYPE's encoding.
+size_t _Stdlib_GetMbCurMax(void)
 {
     return _Utf8_Enabled ? _UTF8_MAX : _STDLIB_ASCII_LEN;
 }
 
 // Decode the character in the n bytes at str into *wc, and give its length.
-int _Stdlib_Decode(const char *str, size_t n, wchar_t *wc)
+int _Stdlib_DecodeChar(const char *str, size_t n, wchar_t *wc)
 {
     int len;
     unsigned int code;
     const unsigned char *ptr = (const unsigned char *) str;
 
     if (_Utf8_Enabled) {
-        len = _Utf8_Decode(ptr, n, &code);
+        len = _Utf8_DecodeSequence(ptr, n, &code);
         if (len > 0) {
             *wc = (wchar_t) code;
         }
@@ -816,13 +816,13 @@ int _Stdlib_Decode(const char *str, size_t n, wchar_t *wc)
 }
 
 // Encode wc at str in LC_CTYPE's encoding, and give its length.
-int _Stdlib_Encode(wchar_t wc, char *str)
+int _Stdlib_EncodeChar(wchar_t wc, char *str)
 {
     if (wc < 0) {
         return _UTF8_INVALID;
     }
     if (_Utf8_Enabled) {
-        return _Utf8_Encode((unsigned int) wc, (unsigned char *) str);
+        return _Utf8_EncodeCode((unsigned int) wc, (unsigned char *) str);
     }
     if (wc >= _STDLIB_TAG_FIRST && wc <= _STDLIB_TAG_LAST) {
         return 0;
@@ -862,7 +862,7 @@ long long atoll(const char *nptr)
 double strtod(const char *restrict nptr, char **restrict endptr)
 {
     _Stdlib_Real real;
-    size_t end = _Stdlib_ToReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_DoubleFormat, &real);
+    size_t end = _Stdlib_ConvertReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_DoubleFormat, &real);
     unsigned long long bits = (unsigned long long) real.sr_exp << (DBL_MANT_DIG - 1) | real.sr_mant;
     double value;
 
@@ -880,7 +880,7 @@ double strtod(const char *restrict nptr, char **restrict endptr)
 float strtof(const char *restrict nptr, char **restrict endptr)
 {
     _Stdlib_Real real;
-    size_t end = _Stdlib_ToReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_FloatFormat, &real);
+    size_t end = _Stdlib_ConvertReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_FloatFormat, &real);
     unsigned int bits = real.sr_exp << (FLT_MANT_DIG - 1) | (unsigned int) real.sr_mant;
     float value;
 
@@ -898,7 +898,7 @@ float strtof(const char *restrict nptr, char **restrict endptr)
 long double strtold(const char *restrict nptr, char **restrict endptr)
 {
     _Stdlib_Real real;
-    size_t end = _Stdlib_ToReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_LongDoubleFormat, &real);
+    size_t end = _Stdlib_ConvertReal(nptr, _STDLIB_TEXT_NARROW, &_Stdlib_LongDoubleFormat, &real);
     unsigned short top = (unsigned short) real.sr_exp;
     long double value = 0;
 
@@ -995,30 +995,30 @@ void *calloc(size_t nmemb, size_t size)
 void free(void *ptr)
 {
     if (ptr) {
-        _Stdlib_Release((_Stdlib_Block *) ptr - 1);
+        _Stdlib_ReleaseBlock((_Stdlib_Block *) ptr - 1);
     }
 }
 
 // Allocate size bytes, or return NULL with errno ENOMEM, as glibc does.
 void *malloc(size_t size)
 {
-    size_t need = _Stdlib_BlockSize(size);
-    _Stdlib_Block **link = need ? _Stdlib_Fit(need) : NULL;
+    size_t need = _Stdlib_ComputeBlockSize(size);
+    _Stdlib_Block **link = need ? _Stdlib_FindFreeBlock(need) : NULL;
 
-    if (! link && need && _Stdlib_Grow(need)) {
-        link = _Stdlib_Fit(need);
+    if (! link && need && _Stdlib_GrowHeap(need)) {
+        link = _Stdlib_FindFreeBlock(need);
     }
     if (! link) {
         errno = _SYS_ENOMEM;
         return NULL;
     }
-    return _Stdlib_Take(link, need);
+    return _Stdlib_TakeBlock(link, need);
 }
 
 // Resize the memory at ptr to size bytes; a size of 0 frees it, as glibc's.
 void *realloc(void *ptr, size_t size)
 {
-    size_t need = _Stdlib_BlockSize(size);
+    size_t need = _Stdlib_ComputeBlockSize(size);
     _Stdlib_Block *block;
     _Stdlib_Block **link;
     void *moved;
@@ -1035,13 +1035,13 @@ void *realloc(void *ptr, size_t size)
         return NULL;
     }
     block = (_Stdlib_Block *) ptr - 1;
-    link = need > block->sb_size ? _Stdlib_Link(block) : NULL;
+    link = need > block->sb_size ? _Stdlib_FindNextBlock(block) : NULL;
     if (link && block->sb_size + (*link)->sb_size >= need) {
         block->sb_size += (*link)->sb_size;
         *link = (*link)->sb_next;
     }
     if (need <= block->sb_size) {
-        _Stdlib_Trim(block, need);
+        _Stdlib_TrimBlock(block, need);
         return ptr;
     }
     moved = malloc(size);
@@ -1059,9 +1059,9 @@ void abort(void)
 
     raise(SIGABRT);
     signal(SIGABRT, SIG_DFL);
-    _Sys_RtSigprocmask(_SYS_SIG_UNBLOCK, &set, NULL);
+    _Sys_InvokeRtSigprocmask(_SYS_SIG_UNBLOCK, &set, NULL);
     raise(SIGABRT);
-    _Sys_ExitGroup(_STDLIB_ABORT_STATUS);
+    _Sys_InvokeExitGroup(_STDLIB_ABORT_STATUS);
 }
 
 // Register func for exit to call, or return -1 out of memory, as glibc's.
@@ -1091,8 +1091,8 @@ void exit(int status)
     while ((func = _Stdlib_PopExit()) != NULL) {
         func();
     }
-    if (_Crt_Flush != NULL) {
-        _Crt_Flush();
+    if (_Crt_FlushStreams != NULL) {
+        _Crt_FlushStreams();
     }
     _Exit(status);
 }
@@ -1100,7 +1100,7 @@ void exit(int status)
 // End the program with status, calling nothing atexit registered.
 void _Exit(int status)
 {
-    _Sys_ExitGroup(status);
+    _Sys_InvokeExitGroup(status);
 }
 
 // Return the value of the environment variable name, or NULL, as glibc's.
@@ -1167,7 +1167,7 @@ void qsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, co
         tmp = malloc(need);
         errno = saved;
     }
-    _Stdlib_Sort(base, nmemb, size, compar, tmp);
+    _Stdlib_SortElements(base, nmemb, size, compar, tmp);
     if (tmp != stack) {
         free(tmp);
     }
@@ -1236,7 +1236,7 @@ int mbtowc(wchar_t *restrict pwc, const char *restrict str, size_t n)
     if (str == NULL) {
         return 0;
     }
-    len = _Stdlib_Decode(str, n, &wc);
+    len = _Stdlib_DecodeChar(str, n, &wc);
     if (len < 0) {
         if (len == _UTF8_INVALID) {
             errno = EILSEQ;
@@ -1257,7 +1257,7 @@ int wctomb(char *str, wchar_t wc)
     if (str == NULL) {
         return 0;
     }
-    len = _Stdlib_Encode(wc, str);
+    len = _Stdlib_EncodeChar(wc, str);
     if (len < 0) {
         errno = EILSEQ;
         return -1;
@@ -1273,7 +1273,7 @@ size_t mbstowcs(wchar_t *restrict pwcs, const char *restrict str, size_t n)
     size_t count = 0;
 
     while (pwcs == NULL || count < n) {
-        len = _Stdlib_Decode(str, _UTF8_MAX, &wc);
+        len = _Stdlib_DecodeChar(str, _UTF8_MAX, &wc);
         if (len < 0) {
             errno = EILSEQ;
             return (size_t) -1;
@@ -1301,7 +1301,7 @@ size_t wcstombs(char *restrict str, const wchar_t *restrict pwcs, size_t n)
         if (str != NULL && count == n) {
             break;
         }
-        len = _Stdlib_Encode(*pwcs, buf);
+        len = _Stdlib_EncodeChar(*pwcs, buf);
         if (len < 0) {
             errno = EILSEQ;
             return (size_t) -1;

@@ -17,11 +17,11 @@ static _Bool coded(unsigned int code, const char *bytes, int len)
         want[k] = k < len ? (unsigned char) bytes[k] : FILL;
         buf[k] = FILL;
     }
-    lost += ! _TEST_INT(_Utf8_CodeLength(code), len);
-    lost += ! _TEST_INT(_Utf8_Encode(code, buf), len);
+    lost += ! _TEST_INT(_Utf8_GetCodeLength(code), len);
+    lost += ! _TEST_INT(_Utf8_EncodeCode(code, buf), len);
     lost += ! _TEST_MEM(buf, want, SIZE);
-    lost += ! _TEST_INT(_Utf8_LeadLength(want[0]), len);
-    lost += ! _TEST_INT(_Utf8_Decode(want, SIZE, &back), len);
+    lost += ! _TEST_INT(_Utf8_GetLeadLength(want[0]), len);
+    lost += ! _TEST_INT(_Utf8_DecodeSequence(want, SIZE, &back), len);
     lost += ! _TEST_UINT(back, code);
     for (k = 0; k < len; k++) {
         lost += ! refused(bytes, (unsigned long) k, _UTF8_INCOMPLETE);

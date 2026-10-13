@@ -48,16 +48,16 @@ struct _Bigint_Number {
 };
 
 // Arithmetic
-void               _Bigint_Set(_Bigint_Number *num, unsigned long long value);
-void               _Bigint_MulAdd(_Bigint_Number *num, unsigned int mul, unsigned int add);
+void               _Bigint_SetValue(_Bigint_Number *num, unsigned long long value);
+void               _Bigint_MulAddWords(_Bigint_Number *num, unsigned int mul, unsigned int add);
 void               _Bigint_MulPow5(_Bigint_Number *num, int exp);
-void               _Bigint_ShiftLeft(_Bigint_Number *num, int bits);
-void               _Bigint_ShiftRight(_Bigint_Number *num, int bits);
-int                _Bigint_Compare(const _Bigint_Number *num1, const _Bigint_Number *num2);
-void               _Bigint_Sub(_Bigint_Number *num1, const _Bigint_Number *num2);
-int                _Bigint_Bits(const _Bigint_Number *num);
-unsigned long long _Bigint_Divide(_Bigint_Number *num, const _Bigint_Number *den);
+void               _Bigint_ShiftBitsLeft(_Bigint_Number *num, int bits);
+void               _Bigint_ShiftBitsRight(_Bigint_Number *num, int bits);
+int                _Bigint_CompareNumbers(const _Bigint_Number *num1, const _Bigint_Number *num2);
+void               _Bigint_SubtractNumber(_Bigint_Number *num1, const _Bigint_Number *num2);
+int                _Bigint_CountBits(const _Bigint_Number *num);
+unsigned long long _Bigint_DivideNumber(_Bigint_Number *num, const _Bigint_Number *den);
 unsigned int       _Bigint_DivideWord(_Bigint_Number *num, unsigned int den);
-unsigned long long _Bigint_Split(_Bigint_Number *num, int bits);
+unsigned long long _Bigint_SplitBits(_Bigint_Number *num, int bits);
 
 #endif // _BIGINT_H

@@ -103,7 +103,7 @@
 
 #define RAND_MAX 2147483647
 
-#define MB_CUR_MAX (_Stdlib_MbCurMax())
+#define MB_CUR_MAX (_Stdlib_GetMbCurMax())
 
 #ifndef __SIZE_T__
 #define __SIZE_T__
@@ -206,46 +206,46 @@ extern _Stdlib_Exits _Stdlib_ExitBase;
 extern _Stdlib_Exits *_Stdlib_ExitTop;
 
 // Conversion
-int                _Stdlib_CharAt(const void *str, _Stdlib_Text text, size_t index);
+int                _Stdlib_ReadChar(const void *str, _Stdlib_Text text, size_t index);
 _Bool              _Stdlib_IsSpace(int ch);
-int                _Stdlib_HexDigit(int ch);
-size_t             _Stdlib_Match(const void *str, _Stdlib_Text text, size_t index, const char *word);
-size_t             _Stdlib_Exponent(const void *str, _Stdlib_Text text, size_t index, int letter, long *exp);
-unsigned long long _Stdlib_Payload(const void *str, _Stdlib_Text text, size_t index, size_t stop);
-size_t             _Stdlib_NotANumber(const void *str, _Stdlib_Text text, size_t index, unsigned long long *payload);
+int                _Stdlib_ConvertHexDigit(int ch);
+size_t             _Stdlib_MatchWord(const void *str, _Stdlib_Text text, size_t index, const char *word);
+size_t             _Stdlib_ReadExponent(const void *str, _Stdlib_Text text, size_t index, int letter, long *exp);
+unsigned long long _Stdlib_ReadPayload(const void *str, _Stdlib_Text text, size_t index, size_t stop);
+size_t             _Stdlib_ReadNotANumber(const void *str, _Stdlib_Text text, size_t index, unsigned long long *payload);
 size_t             _Stdlib_ScanDecimal(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Decimal *dec);
 void               _Stdlib_ConvertDecimal(const void *str, _Stdlib_Text text, int point, const _Stdlib_Decimal *dec, _Stdlib_Unrounded *value);
-size_t             _Stdlib_Hex(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Unrounded *value);
-void               _Stdlib_Shift(_Stdlib_Unrounded *value, long bits);
-void               _Stdlib_Round(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real);
-size_t             _Stdlib_ToReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *fmt, _Stdlib_Real *real);
+size_t             _Stdlib_ReadHex(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Unrounded *value);
+void               _Stdlib_DropBits(_Stdlib_Unrounded *value, long bits);
+void               _Stdlib_RoundReal(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real);
+size_t             _Stdlib_ConvertReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *fmt, _Stdlib_Real *real);
 
 // Heap
-size_t          _Stdlib_BlockSize(size_t size);
-_Stdlib_Block **_Stdlib_Fit(size_t size);
-_Stdlib_Block **_Stdlib_Link(const _Stdlib_Block *block);
-void           *_Stdlib_Take(_Stdlib_Block **link, size_t size);
-void            _Stdlib_Trim(_Stdlib_Block *block, size_t size);
-void            _Stdlib_Release(_Stdlib_Block *block);
-int             _Stdlib_Grow(size_t size);
+size_t          _Stdlib_ComputeBlockSize(size_t size);
+_Stdlib_Block **_Stdlib_FindFreeBlock(size_t size);
+_Stdlib_Block **_Stdlib_FindNextBlock(const _Stdlib_Block *block);
+void           *_Stdlib_TakeBlock(_Stdlib_Block **link, size_t size);
+void            _Stdlib_TrimBlock(_Stdlib_Block *block, size_t size);
+void            _Stdlib_ReleaseBlock(_Stdlib_Block *block);
+int             _Stdlib_GrowHeap(size_t size);
 
 // Exit
 void (*_Stdlib_PopExit(void))(void);
 
 // Sorting
-void   _Stdlib_Swap(char *left, char *right, size_t size);
-void   _Stdlib_Reverse(char *base, size_t nmemb, size_t size);
-void   _Stdlib_Rotate(char *base, size_t nmemb, size_t first, size_t size);
-size_t _Stdlib_LowerBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *));
-size_t _Stdlib_UpperBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *));
-void   _Stdlib_MergeInPlace(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *));
-void   _Stdlib_Merge(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp);
-void   _Stdlib_Sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp);
+void   _Stdlib_SwapBytes(char *left, char *right, size_t size);
+void   _Stdlib_ReverseElements(char *base, size_t nmemb, size_t size);
+void   _Stdlib_RotateElements(char *base, size_t nmemb, size_t first, size_t size);
+size_t _Stdlib_FindLowerBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *));
+size_t _Stdlib_FindUpperBound(const char *base, size_t nmemb, size_t size, const void *key, int (*compar)(const void *, const void *));
+void   _Stdlib_MergeRunsInPlace(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *));
+void   _Stdlib_MergeRuns(char *base, size_t left, size_t right, size_t size, int (*compar)(const void *, const void *), char *tmp);
+void   _Stdlib_SortElements(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), char *tmp);
 
 // Multibyte
-size_t _Stdlib_MbCurMax(void);
-int    _Stdlib_Decode(const char *str, size_t n, wchar_t *wc);
-int    _Stdlib_Encode(wchar_t wc, char *str);
+size_t _Stdlib_GetMbCurMax(void);
+int    _Stdlib_DecodeChar(const char *str, size_t n, wchar_t *wc);
+int    _Stdlib_EncodeChar(wchar_t wc, char *str);
 
 // (S7.20.1) Numeric conversion functions
 double             atof(const char *nptr);

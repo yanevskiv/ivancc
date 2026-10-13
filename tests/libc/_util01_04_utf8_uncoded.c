@@ -16,8 +16,8 @@ static _Bool uncoded(unsigned int code)
         want[k] = FILL;
         buf[k] = FILL;
     }
-    lost += ! _TEST_INT(_Utf8_CodeLength(code), 0);
-    lost += ! _TEST_INT(_Utf8_Encode(code, buf), _UTF8_INVALID);
+    lost += ! _TEST_INT(_Utf8_GetCodeLength(code), 0);
+    lost += ! _TEST_INT(_Utf8_EncodeCode(code, buf), _UTF8_INVALID);
     lost += ! _TEST_MEM(buf, want, SIZE);
     return lost == 0;
 }

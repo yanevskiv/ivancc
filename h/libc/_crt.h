@@ -31,6 +31,6 @@ extern char *_Crt_Argv0;
 extern char **_Crt_Envp;
 
 // Exit
-extern int (*_Crt_Flush)(void);
+extern int (*_Crt_FlushStreams)(void);
 
 #endif // _CRT_H

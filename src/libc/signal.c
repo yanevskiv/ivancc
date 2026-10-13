@@ -45,9 +45,9 @@ void (*signal(int sig, void (*func)(int)))(int)
     }
     act.sa_handler = func;
     act.sa_flags = _SYS_SA_RESTORER | _SYS_SA_RESTART;
-    act.sa_restorer = _Sys_RestoreRt;
+    act.sa_restorer = _Sys_InvokeRtSigreturn;
     act.sa_mask = 1UL << (sig - _SYS_SIGNAL_FIRST);
-    ret = _Sys_RtSigaction(sig, &act, &old);
+    ret = _Sys_InvokeRtSigaction(sig, &act, &old);
     if (ret < 0) {
         errno = (int) -ret;
         return SIG_ERR;
@@ -58,7 +58,7 @@ void (*signal(int sig, void (*func)(int)))(int)
 // Send the signal sig to the program.
 int raise(int sig)
 {
-    long ret = _Sys_Kill(_Sys_Getpid(), sig);
+    long ret = _Sys_InvokeKill(_Sys_InvokeGetpid(), sig);
 
     if (ret < 0) {
         errno = (int) -ret;

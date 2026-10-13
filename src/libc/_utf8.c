@@ -29,8 +29,8 @@
 // Whether LC_CTYPE's locale encodes in UTF-8, "C"'s ASCII at startup.
 _Bool _Utf8_Enabled;
 
-// Give the length of the sequence lead begins, or 0 for none.
-int _Utf8_LeadLength(unsigned int lead)
+// Get the length of the sequence lead begins, or 0 for none.
+int _Utf8_GetLeadLength(unsigned int lead)
 {
     int len = 1;
 
@@ -46,8 +46,8 @@ int _Utf8_LeadLength(unsigned int lead)
     return len <= _UTF8_MAX ? len : 0;
 }
 
-// Give the length of the shortest sequence that encodes code, or 0 for none.
-int _Utf8_CodeLength(unsigned int code)
+// Get the length of the shortest sequence that encodes code, or 0 for none.
+int _Utf8_GetCodeLength(unsigned int code)
 {
     int len = 2;
 
@@ -64,7 +64,7 @@ int _Utf8_CodeLength(unsigned int code)
 }
 
 // Decode the sequence in the n bytes at str into *code, and give its length.
-int _Utf8_Decode(const unsigned char *str, unsigned long n, unsigned int *code)
+int _Utf8_DecodeSequence(const unsigned char *str, unsigned long n, unsigned int *code)
 {
     unsigned int value;
     int len;
@@ -73,7 +73,7 @@ int _Utf8_Decode(const unsigned char *str, unsigned long n, unsigned int *code)
     if (n == 0) {
         return _UTF8_INCOMPLETE;
     }
-    len = _Utf8_LeadLength(str[0]);
+    len = _Utf8_GetLeadLength(str[0]);
     if (len == 0) {
         return _UTF8_INVALID;
     }
@@ -87,7 +87,7 @@ int _Utf8_Decode(const unsigned char *str, unsigned long n, unsigned int *code)
     if ((unsigned long) len > n) {
         return _UTF8_INCOMPLETE;
     }
-    if (_Utf8_CodeLength(value) != len) {
+    if (_Utf8_GetCodeLength(value) != len) {
         return _UTF8_INVALID;
     }
     *code = value;
@@ -95,9 +95,9 @@ int _Utf8_Decode(const unsigned char *str, unsigned long n, unsigned int *code)
 }
 
 // Encode code at str, and give the length of its sequence.
-int _Utf8_Encode(unsigned int code, unsigned char *str)
+int _Utf8_EncodeCode(unsigned int code, unsigned char *str)
 {
-    int len = _Utf8_CodeLength(code);
+    int len = _Utf8_GetCodeLength(code);
     int i;
 
     if (len == 0) {

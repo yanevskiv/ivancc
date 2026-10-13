@@ -77,7 +77,7 @@ _Bool _Locale_IsName(const char *known, const char *str, _Locale_SizeType len)
     return strlen(known) == len && strncmp(known, str, len) == 0;
 }
 
-// Return the index of the locale name the len characters of str spell, or -1.
+// Find the index of the locale name the len characters of str spell, or -1.
 int _Locale_FindName(const char *str, _Locale_SizeType len)
 {
     for (int i = 0; i < _LOCALE_NAMES; i++) {
@@ -88,7 +88,7 @@ int _Locale_FindName(const char *str, _Locale_SizeType len)
     return -1;
 }
 
-// Return the category the len characters of str name, or -1.
+// Find the category the len characters of str name, or -1.
 int _Locale_FindCategory(const char *str, _Locale_SizeType len)
 {
     for (int i = 0; i < _LOCALE_CATEGORIES; i++) {
@@ -99,8 +99,8 @@ int _Locale_FindCategory(const char *str, _Locale_SizeType len)
     return -1;
 }
 
-// Read the composite name locale into selected, which must name every category.
-_Bool _Locale_Parse(const char *locale, int *selected)
+// Parse the composite name locale into selected, naming every category.
+_Bool _Locale_ParseComposite(const char *locale, int *selected)
 {
     const char *ptr = locale;
 
@@ -139,7 +139,7 @@ _Bool _Locale_Parse(const char *locale, int *selected)
     return 1;
 }
 
-// Write src into str at len, and return the length after it.
+// Put src into str at len, and return the length after it.
 _Locale_SizeType _Locale_PutString(char *str, _Locale_SizeType len, const char *src)
 {
     _Locale_SizeType size = strlen(src);
@@ -148,8 +148,8 @@ _Locale_SizeType _Locale_PutString(char *str, _Locale_SizeType len, const char *
     return len + size;
 }
 
-// Return the composite name of the categories' locales, as glibc writes it.
-char *_Locale_Composite(void)
+// Format the composite name of the categories' locales, as glibc writes it.
+char *_Locale_FormatComposite(void)
 {
     char *str = _Locale_CompositeName;
     _Locale_SizeType len = 0;
@@ -166,8 +166,8 @@ char *_Locale_Composite(void)
     return str;
 }
 
-// Return the name of category's locale, or of all categories' for LC_ALL.
-char *_Locale_Query(int category)
+// Query the name of category's locale, or of all categories' for LC_ALL.
+char *_Locale_QueryCategory(int category)
 {
     const char *first = _Locale_Names[_Locale_Current[0]].ln_reported;
 
@@ -176,13 +176,13 @@ char *_Locale_Query(int category)
     }
     for (int i = 1; i < _LOCALE_CATEGORIES; i++) {
         if (strcmp(_Locale_Names[_Locale_Current[i]].ln_reported, first) != 0) {
-            return _Locale_Composite();
+            return _Locale_FormatComposite();
         }
     }
     return (char *) first;
 }
 
-// Make the multibyte functions follow the encoding of LC_CTYPE's locale.
+// Apply the encoding of LC_CTYPE's locale to the multibyte functions.
 void _Locale_ApplyCtype(void)
 {
     _Utf8_Enabled = _Locale_Names[_Locale_Current[LC_CTYPE]].ln_utf8;
@@ -198,17 +198,17 @@ char *setlocale(int category, const char *locale)
         return NULL;
     }
     if (locale == NULL) {
-        return _Locale_Query(category);
+        return _Locale_QueryCategory(category);
     }
     if (category == LC_ALL && strchr(locale, _LOCALE_ASSIGN) != NULL) {
-        if (! _Locale_Parse(locale, selected)) {
+        if (! _Locale_ParseComposite(locale, selected)) {
             return NULL;
         }
         for (int i = 0; i < _LOCALE_CATEGORIES; i++) {
             _Locale_Current[i] = selected[i];
         }
         _Locale_ApplyCtype();
-        return _Locale_Query(category);
+        return _Locale_QueryCategory(category);
     }
     if (*locale == '\0') {
         locale = _LOCALE_NATIVE;
@@ -223,7 +223,7 @@ char *setlocale(int category, const char *locale)
         }
     }
     _Locale_ApplyCtype();
-    return _Locale_Query(category);
+    return _Locale_QueryCategory(category);
 }
 
 // Return the numeric and monetary formatting of the current locale.

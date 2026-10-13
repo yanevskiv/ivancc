@@ -121,10 +121,10 @@ int   _Locale_FindName(const char *str, _Locale_SizeType len);
 int   _Locale_FindCategory(const char *str, _Locale_SizeType len);
 
 // Composite names
-_Bool            _Locale_Parse(const char *locale, int *selected);
+_Bool            _Locale_ParseComposite(const char *locale, int *selected);
 _Locale_SizeType _Locale_PutString(char *str, _Locale_SizeType len, const char *src);
-char            *_Locale_Composite(void);
-char            *_Locale_Query(int category);
+char            *_Locale_FormatComposite(void);
+char            *_Locale_QueryCategory(int category);
 
 // Encoding
 void _Locale_ApplyCtype(void);

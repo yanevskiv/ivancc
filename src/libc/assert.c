@@ -42,33 +42,33 @@
 #include <string.h>
 
 // Report a failed assertion and end the program by abort.
-void _Assert_Fail(const char *expr, const char *file, unsigned int line, const char *func)
+void _Assert_ReportFailure(const char *expr, const char *file, unsigned int line, const char *func)
 {
-    const char *program = _Assert_Program();
+    const char *program = _Assert_GetProgramName();
 
     if (*program != '\0') {
-        _Assert_Write(program);
-        _Assert_Write(_ERR_ASSERT_PROGRAM);
+        _Assert_WriteString(program);
+        _Assert_WriteString(_ERR_ASSERT_PROGRAM);
     }
-    _Assert_Write(file);
-    _Assert_Write(_ERR_ASSERT_FILE);
-    _Assert_WriteLine(line);
-    _Assert_Write(_ERR_ASSERT_LINE);
-    _Assert_Write(func);
-    _Assert_Write(_ERR_ASSERT_FUNC);
-    _Assert_Write(expr);
-    _Assert_Write(_ERR_ASSERT_EXPR);
+    _Assert_WriteString(file);
+    _Assert_WriteString(_ERR_ASSERT_FILE);
+    _Assert_WriteLineNumber(line);
+    _Assert_WriteString(_ERR_ASSERT_LINE);
+    _Assert_WriteString(func);
+    _Assert_WriteString(_ERR_ASSERT_FUNC);
+    _Assert_WriteString(expr);
+    _Assert_WriteString(_ERR_ASSERT_EXPR);
     abort();
 }
 
 // Write the string str to standard error.
-void _Assert_Write(const char *str)
+void _Assert_WriteString(const char *str)
 {
-    _Sys_Write(_ASSERT_STDERR, str, strlen(str));
+    _Sys_InvokeWrite(_ASSERT_STDERR, str, strlen(str));
 }
 
 // Write the line number line to standard error.
-void _Assert_WriteLine(unsigned int line)
+void _Assert_WriteLineNumber(unsigned int line)
 {
     char text[_ASSERT_LINE_SIZE];
     char *ptr = text + _ASSERT_LINE_SIZE - 1;
@@ -79,11 +79,11 @@ void _Assert_WriteLine(unsigned int line)
         *ptr = (char) ('0' + line % _ASSERT_LINE_BASE);
         line /= _ASSERT_LINE_BASE;
     } while (line != 0);
-    _Assert_Write(ptr);
+    _Assert_WriteString(ptr);
 }
 
-// Return the program's name as glibc's message gives it, or an empty string.
-const char *_Assert_Program(void)
+// Get the program's name as glibc's message gives it, or an empty string.
+const char *_Assert_GetProgramName(void)
 {
     const char *slash;
 

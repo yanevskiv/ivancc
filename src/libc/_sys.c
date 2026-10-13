@@ -69,11 +69,11 @@ typedef char _Sys_CheckStat[sizeof(_Sys_Stat) == _SYS_STAT_SIZE ? 1 : -1];
 typedef char _Sys_CheckTermios[sizeof(_Sys_Termios) == _SYS_TERMIOS_SIZE ? 1 : -1];
 
 #ifdef __x86_64__
-// Make a syscall with its number and six arguments.
+// Invoke a syscall by its number, with six arguments.
 __asm__(
     "  .text\n"
-    "  .globl _Sys_Syscall\n"
-    "_Sys_Syscall:\n"
+    "  .globl _Sys_InvokeSyscall\n"
+    "_Sys_InvokeSyscall:\n"
     "  mov %rdi, %rax\n"
     "  mov %rsi, %rdi\n"
     "  mov %rdx, %rsi\n"
@@ -88,120 +88,120 @@ __asm__(
 #error "_sys.c: no system calls for this architecture"
 #endif
 
-// Read up to len bytes from the descriptor fd into buf.
-long _Sys_Read(int fd, void *buf, unsigned long len)
+// Invoke read to read up to len bytes from the descriptor fd into buf.
+long _Sys_InvokeRead(int fd, void *buf, unsigned long len)
 {
-    return _Sys_Syscall(_SYS_NR_READ, fd, (long) buf, (long) len, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_READ, fd, (long) buf, (long) len, 0, 0, 0);
 }
 
-// Write len bytes of buf to the descriptor fd.
-long _Sys_Write(int fd, const void *buf, unsigned long len)
+// Invoke write to write len bytes of buf to the descriptor fd.
+long _Sys_InvokeWrite(int fd, const void *buf, unsigned long len)
 {
-    return _Sys_Syscall(_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_WRITE, fd, (long) buf, (long) len, 0, 0, 0);
 }
 
-// Open the file at path as flags say, with the permissions mode if it is made.
-long _Sys_Open(const char *path, int flags, int mode)
+// Invoke open to open the file at path as flags say, mode its permissions.
+long _Sys_InvokeOpen(const char *path, int flags, int mode)
 {
-    return _Sys_Syscall(_SYS_NR_OPEN, (long) path, flags, mode, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_OPEN, (long) path, flags, mode, 0, 0, 0);
 }
 
-// Close the descriptor fd.
-long _Sys_Close(int fd)
+// Invoke close to close the descriptor fd.
+long _Sys_InvokeClose(int fd)
 {
-    return _Sys_Syscall(_SYS_NR_CLOSE, fd, 0, 0, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_CLOSE, fd, 0, 0, 0, 0, 0);
 }
 
-// Fill info with what the file at path is, a link's own and not its target's.
-long _Sys_Lstat(const char *path, _Sys_Stat *info)
+// Invoke lstat to fill info with what the file at path is, a link's own.
+long _Sys_InvokeLstat(const char *path, _Sys_Stat *info)
 {
-    return _Sys_Syscall(_SYS_NR_LSTAT, (long) path, (long) info, 0, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_LSTAT, (long) path, (long) info, 0, 0, 0, 0);
 }
 
-// Move the offset of the descriptor fd by offset from the origin whence.
-long _Sys_Lseek(int fd, long offset, int whence)
+// Invoke lseek to move the descriptor fd's offset by offset from whence.
+long _Sys_InvokeLseek(int fd, long offset, int whence)
 {
-    return _Sys_Syscall(_SYS_NR_LSEEK, fd, offset, whence, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_LSEEK, fd, offset, whence, 0, 0, 0);
 }
 
-// Move the program break to addr, and return where it stands.
-void *_Sys_Brk(void *addr)
+// Invoke brk to move the program break to addr, and return where it stands.
+void *_Sys_InvokeBrk(void *addr)
 {
-    return (void *) _Sys_Syscall(_SYS_NR_BRK, (long) addr, 0, 0, 0, 0, 0);
+    return (void *) _Sys_InvokeSyscall(_SYS_NR_BRK, (long) addr, 0, 0, 0, 0, 0);
 }
 
-// Install act as the action of the signal sig, and store the old one in oact.
-long _Sys_RtSigaction(int sig, const _Sys_Sigaction *act, _Sys_Sigaction *oact)
+// Invoke rt_sigaction to install act for the signal sig, the old one in oact.
+long _Sys_InvokeRtSigaction(int sig, const _Sys_Sigaction *act, _Sys_Sigaction *oact)
 {
-    return _Sys_Syscall(_SYS_NR_RT_SIGACTION, sig, (long) act, (long) oact, _SYS_SIGSET_SIZE, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_RT_SIGACTION, sig, (long) act, (long) oact, _SYS_SIGSET_SIZE, 0, 0);
 }
 
-// Change the signal mask by how and set, and store the old one in oset.
-long _Sys_RtSigprocmask(int how, const unsigned long *set, unsigned long *oset)
+// Invoke rt_sigprocmask to change the mask by how and set, the old in oset.
+long _Sys_InvokeRtSigprocmask(int how, const unsigned long *set, unsigned long *oset)
 {
-    return _Sys_Syscall(_SYS_NR_RT_SIGPROCMASK, how, (long) set, (long) oset, _SYS_SIGSET_SIZE, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_RT_SIGPROCMASK, how, (long) set, (long) oset, _SYS_SIGSET_SIZE, 0, 0);
 }
 
-// Make the device request request of the descriptor fd, with its argument arg.
-long _Sys_Ioctl(int fd, unsigned long request, void *arg)
+// Invoke ioctl to make the request request of the descriptor fd, with arg.
+long _Sys_InvokeIoctl(int fd, unsigned long request, void *arg)
 {
-    return _Sys_Syscall(_SYS_NR_IOCTL, fd, (long) request, (long) arg, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_IOCTL, fd, (long) request, (long) arg, 0, 0, 0);
 }
 
-// Make the descriptor as a copy of the descriptor fd, closing what it was.
-long _Sys_Dup2(int fd, int as)
+// Invoke dup2 to make the descriptor as a copy of fd, closing what it was.
+long _Sys_InvokeDup2(int fd, int as)
 {
-    return _Sys_Syscall(_SYS_NR_DUP2, fd, as, 0, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_DUP2, fd, as, 0, 0, 0, 0);
 }
 
-// Return the program's process ID.
-int _Sys_Getpid(void)
+// Invoke getpid to return the program's process ID.
+int _Sys_InvokeGetpid(void)
 {
-    return (int) _Sys_Syscall(_SYS_NR_GETPID, 0, 0, 0, 0, 0, 0);
+    return (int) _Sys_InvokeSyscall(_SYS_NR_GETPID, 0, 0, 0, 0, 0, 0);
 }
 
-// Send the signal sig to the process pid.
-long _Sys_Kill(int pid, int sig)
+// Invoke kill to send the signal sig to the process pid.
+long _Sys_InvokeKill(int pid, int sig)
 {
-    return _Sys_Syscall(_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_KILL, pid, sig, 0, 0, 0, 0);
 }
 
-// Give the file at from the name to, replacing a file that has it.
-long _Sys_Rename(const char *from, const char *to)
+// Invoke rename to give the file at from the name to, replacing its holder.
+long _Sys_InvokeRename(const char *from, const char *to)
 {
-    return _Sys_Syscall(_SYS_NR_RENAME, (long) from, (long) to, 0, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_RENAME, (long) from, (long) to, 0, 0, 0, 0);
 }
 
-// Remove the empty directory at path.
-long _Sys_Rmdir(const char *path)
+// Invoke rmdir to remove the empty directory at path.
+long _Sys_InvokeRmdir(const char *path)
 {
-    return _Sys_Syscall(_SYS_NR_RMDIR, (long) path, 0, 0, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_RMDIR, (long) path, 0, 0, 0, 0, 0);
 }
 
-// Remove the name path from its file, which goes with its last name and user.
-long _Sys_Unlink(const char *path)
+// Invoke unlink to remove the name path from its file.
+long _Sys_InvokeUnlink(const char *path)
 {
-    return _Sys_Syscall(_SYS_NR_UNLINK, (long) path, 0, 0, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_UNLINK, (long) path, 0, 0, 0, 0, 0);
 }
 
-// Read the clock clock into spec.
-long _Sys_ClockGettime(int clock, _Sys_Timespec *spec)
+// Invoke clock_gettime to read the clock clock into spec.
+long _Sys_InvokeClockGettime(int clock, _Sys_Timespec *spec)
 {
-    return _Sys_Syscall(_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
+    return _Sys_InvokeSyscall(_SYS_NR_CLOCK_GETTIME, clock, (long) spec, 0, 0, 0, 0);
 }
 
-// End the program, every thread of it, with a status.
-void _Sys_ExitGroup(int status)
+// Invoke exit_group to end the program, every thread of it, with a status.
+void _Sys_InvokeExitGroup(int status)
 {
-    _Sys_Syscall(_SYS_NR_EXIT_GROUP, status, 0, 0, 0, 0, 0);
+    _Sys_InvokeSyscall(_SYS_NR_EXIT_GROUP, status, 0, 0, 0, 0, 0);
 }
 
 #ifdef __x86_64__
-// Return from a signal handler to what the signal interrupted.
+// Invoke rt_sigreturn to return from a handler to what the signal interrupted.
 __asm__(
     "  .text\n"
-    "  .globl _Sys_RestoreRt\n"
-    "_Sys_RestoreRt:\n"
+    "  .globl _Sys_InvokeRtSigreturn\n"
+    "_Sys_InvokeRtSigreturn:\n"
     "  mov $" _SYS_NR_RT_SIGRETURN ", %rax\n"
     "  syscall\n"
 );

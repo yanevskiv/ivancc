@@ -57,9 +57,9 @@
 extern _Bool _Utf8_Enabled;
 
 // Coding
-int _Utf8_LeadLength(unsigned int lead);
-int _Utf8_CodeLength(unsigned int code);
-int _Utf8_Decode(const unsigned char *str, unsigned long n, unsigned int *code);
-int _Utf8_Encode(unsigned int code, unsigned char *str);
+int _Utf8_GetLeadLength(unsigned int lead);
+int _Utf8_GetCodeLength(unsigned int code);
+int _Utf8_DecodeSequence(const unsigned char *str, unsigned long n, unsigned int *code);
+int _Utf8_EncodeCode(unsigned int code, unsigned char *str);
 
 #endif // _UTF8_H

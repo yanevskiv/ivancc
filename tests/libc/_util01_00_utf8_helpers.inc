@@ -15,7 +15,7 @@ static _Bool refused(const char *bytes, unsigned long n, int want)
     int lost = 0;
     unsigned int code = UNSET;
 
-    lost += ! _TEST_INT(_Utf8_Decode((const unsigned char *) bytes, n, &code), want);
+    lost += ! _TEST_INT(_Utf8_DecodeSequence((const unsigned char *) bytes, n, &code), want);
     lost += ! _TEST_UINT(code, UNSET);
     return lost == 0;
 }

@@ -35,7 +35,7 @@ char *_String_Next;
 // strerror's text for an unknown error number.
 char _String_Unknown[_STRING_ERROR_SIZE];
 
-// Write strerror's text for the unknown error number errnum.
+// Format strerror's text for the unknown error number errnum.
 char *_String_FormatUnknown(int errnum)
 {
     char *ptr = _String_Unknown + _STRING_ERROR_SIZE - 1;
@@ -321,7 +321,7 @@ void *memset(void *str, int ch, size_t n)
 // Name the error number errnum.
 char *strerror(int errnum)
 {
-    const char *text = _Err_ErrnoText(errnum);
+    const char *text = _Err_FindErrnoText(errnum);
 
     if (text == NULL) {
         return _String_FormatUnknown(errnum);

@@ -165,8 +165,8 @@ const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT] = {
     [_SYS_EHWPOISON]       = _ERR_ERRNO_EHWPOISON
 };
 
-// Return strerror's text for the error number errnum, null for an unknown.
-const char *_Err_ErrnoText(int errnum)
+// Find strerror's text for the error number errnum, null for an unknown.
+const char *_Err_FindErrnoText(int errnum)
 {
     if (errnum < 0 || errnum >= _ERR_ERRNO_COUNT) {
         return _ERR_NULL;

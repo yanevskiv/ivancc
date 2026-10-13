@@ -208,6 +208,6 @@
 extern const char *const _Err_ErrnoTexts[_ERR_ERRNO_COUNT];
 
 // Error numbers
-const char *_Err_ErrnoText(int errnum);
+const char *_Err_FindErrnoText(int errnum);
 
 #endif // _ERR_H

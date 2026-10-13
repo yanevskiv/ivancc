@@ -46,7 +46,7 @@ typedef char _Inttypes_CheckSize[sizeof(_Inttypes_SizeType) == sizeof(size_t) &&
 typedef char _Inttypes_CheckWchar[sizeof(_Inttypes_WcharType) == sizeof(wchar_t) && ((_Inttypes_WcharType) -1 < 0) == ((wchar_t) -1 < 0) ? 1 : -1];
 
 // Read character index of str, a wide string or a narrow one.
-int _Inttypes_CharAt(const void *str, _Inttypes_Text text, _Inttypes_SizeType index)
+int _Inttypes_ReadChar(const void *str, _Inttypes_Text text, _Inttypes_SizeType index)
 {
     if (text == _INTTYPES_TEXT_WIDE) {
         return ((const _Inttypes_WcharType *) str)[index];
@@ -60,8 +60,8 @@ _Bool _Inttypes_IsSpace(int ch)
     return ch >= 0 && ch <= UCHAR_MAX && isspace(ch);
 }
 
-// Give the value of the digit ch, or _INTTYPES_BASE_MAX for none.
-int _Inttypes_Digit(int ch)
+// Convert the digit ch to its value, or _INTTYPES_BASE_MAX for none.
+int _Inttypes_ConvertDigit(int ch)
 {
     if (ch >= '0' && ch <= '9') {
         return ch - '0';
@@ -76,7 +76,7 @@ int _Inttypes_Digit(int ch)
 }
 
 // Convert the number at the start of str to its magnitude, ending at *end.
-uintmax_t _Inttypes_Convert(const void *str, _Inttypes_Text text, _Inttypes_SizeType *end, int base, _Inttypes_Sign *sign, _Inttypes_Range *range)
+uintmax_t _Inttypes_ConvertNumber(const void *str, _Inttypes_Text text, _Inttypes_SizeType *end, int base, _Inttypes_Sign *sign, _Inttypes_Range *range)
 {
     _Inttypes_SizeType i = 0;
     _Inttypes_SizeType start;
@@ -91,25 +91,25 @@ uintmax_t _Inttypes_Convert(const void *str, _Inttypes_Text text, _Inttypes_Size
         errno = _SYS_EINVAL;
         return 0;
     }
-    while (_Inttypes_IsSpace(_Inttypes_CharAt(str, text, i))) {
+    while (_Inttypes_IsSpace(_Inttypes_ReadChar(str, text, i))) {
         i++;
     }
-    ch = _Inttypes_CharAt(str, text, i);
+    ch = _Inttypes_ReadChar(str, text, i);
     if (ch == '+' || ch == '-') {
         *sign = ch == '-' ? _INTTYPES_SIGN_MINUS : _INTTYPES_SIGN_PLUS;
         i++;
     }
     if ((base == 0 || base == _INTTYPES_BASE_HEX)
-        && _Inttypes_CharAt(str, text, i) == '0'
-        && (_Inttypes_CharAt(str, text, i + 1) == 'x' || _Inttypes_CharAt(str, text, i + 1) == 'X')
-        && _Inttypes_Digit(_Inttypes_CharAt(str, text, i + 2)) < _INTTYPES_BASE_HEX) {
+        && _Inttypes_ReadChar(str, text, i) == '0'
+        && (_Inttypes_ReadChar(str, text, i + 1) == 'x' || _Inttypes_ReadChar(str, text, i + 1) == 'X')
+        && _Inttypes_ConvertDigit(_Inttypes_ReadChar(str, text, i + 2)) < _INTTYPES_BASE_HEX) {
         base = _INTTYPES_BASE_HEX;
         i += 2;
     } else if (base == 0) {
-        base = _Inttypes_CharAt(str, text, i) == '0' ? _INTTYPES_BASE_OCTAL : _INTTYPES_BASE_DECIMAL;
+        base = _Inttypes_ReadChar(str, text, i) == '0' ? _INTTYPES_BASE_OCTAL : _INTTYPES_BASE_DECIMAL;
     }
     start = i;
-    while ((digit = _Inttypes_Digit(_Inttypes_CharAt(str, text, i))) < base) {
+    while ((digit = _Inttypes_ConvertDigit(_Inttypes_ReadChar(str, text, i))) < base) {
         if (value > (UINTMAX_MAX - (uintmax_t) digit) / (uintmax_t) base) {
             *range = _INTTYPES_RANGE_OUTSIDE;
         } else {
@@ -123,8 +123,8 @@ uintmax_t _Inttypes_Convert(const void *str, _Inttypes_Text text, _Inttypes_Size
     return value;
 }
 
-// Give the intmax_t of a magnitude, clamped with ERANGE if out of range.
-intmax_t _Inttypes_ToSigned(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range)
+// Make the intmax_t of a magnitude, clamped with ERANGE if out of range.
+intmax_t _Inttypes_MakeIntmax(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range)
 {
     uintmax_t limit = sign == _INTTYPES_SIGN_MINUS ? (uintmax_t) INTMAX_MAX + 1 : (uintmax_t) INTMAX_MAX;
 
@@ -138,8 +138,8 @@ intmax_t _Inttypes_ToSigned(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Rang
     return sign == _INTTYPES_SIGN_MINUS ? -(intmax_t) value : (intmax_t) value;
 }
 
-// Give the uintmax_t of a magnitude, UINTMAX_MAX with ERANGE if too big.
-uintmax_t _Inttypes_ToUnsigned(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range)
+// Make the uintmax_t of a magnitude, UINTMAX_MAX with ERANGE if too big.
+uintmax_t _Inttypes_MakeUintmax(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range)
 {
     if (range == _INTTYPES_RANGE_OUTSIDE) {
         errno = ERANGE;
@@ -170,12 +170,12 @@ intmax_t strtoimax(const char *restrict nptr, char **restrict endptr, int base)
     _Inttypes_Sign sign;
     _Inttypes_Range range;
     _Inttypes_SizeType end;
-    uintmax_t value = _Inttypes_Convert(nptr, _INTTYPES_TEXT_NARROW, &end, base, &sign, &range);
+    uintmax_t value = _Inttypes_ConvertNumber(nptr, _INTTYPES_TEXT_NARROW, &end, base, &sign, &range);
 
     if (endptr != NULL) {
         *endptr = (char *) nptr + end;
     }
-    return _Inttypes_ToSigned(value, sign, range);
+    return _Inttypes_MakeIntmax(value, sign, range);
 }
 
 // Convert the start of the string nptr to a uintmax_t in base.
@@ -184,12 +184,12 @@ uintmax_t strtoumax(const char *restrict nptr, char **restrict endptr, int base)
     _Inttypes_Sign sign;
     _Inttypes_Range range;
     _Inttypes_SizeType end;
-    uintmax_t value = _Inttypes_Convert(nptr, _INTTYPES_TEXT_NARROW, &end, base, &sign, &range);
+    uintmax_t value = _Inttypes_ConvertNumber(nptr, _INTTYPES_TEXT_NARROW, &end, base, &sign, &range);
 
     if (endptr != NULL) {
         *endptr = (char *) nptr + end;
     }
-    return _Inttypes_ToUnsigned(value, sign, range);
+    return _Inttypes_MakeUintmax(value, sign, range);
 }
 
 // Convert the start of the wide string nptr to an intmax_t in base.
@@ -198,12 +198,12 @@ intmax_t wcstoimax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharType
     _Inttypes_Sign sign;
     _Inttypes_Range range;
     _Inttypes_SizeType end;
-    uintmax_t value = _Inttypes_Convert(nptr, _INTTYPES_TEXT_WIDE, &end, base, &sign, &range);
+    uintmax_t value = _Inttypes_ConvertNumber(nptr, _INTTYPES_TEXT_WIDE, &end, base, &sign, &range);
 
     if (endptr != NULL) {
         *endptr = (_Inttypes_WcharType *) nptr + end;
     }
-    return _Inttypes_ToSigned(value, sign, range);
+    return _Inttypes_MakeIntmax(value, sign, range);
 }
 
 // Convert the start of the wide string nptr to a uintmax_t in base.
@@ -212,10 +212,10 @@ uintmax_t wcstoumax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharTyp
     _Inttypes_Sign sign;
     _Inttypes_Range range;
     _Inttypes_SizeType end;
-    uintmax_t value = _Inttypes_Convert(nptr, _INTTYPES_TEXT_WIDE, &end, base, &sign, &range);
+    uintmax_t value = _Inttypes_ConvertNumber(nptr, _INTTYPES_TEXT_WIDE, &end, base, &sign, &range);
 
     if (endptr != NULL) {
         *endptr = (_Inttypes_WcharType *) nptr + end;
     }
-    return _Inttypes_ToUnsigned(value, sign, range);
+    return _Inttypes_MakeUintmax(value, sign, range);
 }

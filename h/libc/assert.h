@@ -39,13 +39,13 @@
 #ifdef NDEBUG
 #define assert(ignore) ((void) 0)
 #else
-#define assert(expression) ((expression) ? (void) 0 : _Assert_Fail(#expression, __FILE__, __LINE__, __func__))
+#define assert(expression) ((expression) ? (void) 0 : _Assert_ReportFailure(#expression, __FILE__, __LINE__, __func__))
 #endif
 
 // Failed assertions
-void _Assert_Fail(const char *expr, const char *file, unsigned int line, const char *func);
+void _Assert_ReportFailure(const char *expr, const char *file, unsigned int line, const char *func);
 
 // Report
-void        _Assert_Write(const char *str);
-void        _Assert_WriteLine(unsigned int line);
-const char *_Assert_Program(void);
+void        _Assert_WriteString(const char *str);
+void        _Assert_WriteLineNumber(unsigned int line);
+const char *_Assert_GetProgramName(void);

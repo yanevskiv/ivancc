@@ -232,12 +232,12 @@ typedef struct {
 } imaxdiv_t;
 
 // Conversion
-int       _Inttypes_CharAt(const void *str, _Inttypes_Text text, _Inttypes_SizeType index);
+int       _Inttypes_ReadChar(const void *str, _Inttypes_Text text, _Inttypes_SizeType index);
 _Bool     _Inttypes_IsSpace(int ch);
-int       _Inttypes_Digit(int ch);
-uintmax_t _Inttypes_Convert(const void *str, _Inttypes_Text text, _Inttypes_SizeType *end, int base, _Inttypes_Sign *sign, _Inttypes_Range *range);
-intmax_t  _Inttypes_ToSigned(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range);
-uintmax_t _Inttypes_ToUnsigned(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range);
+int       _Inttypes_ConvertDigit(int ch);
+uintmax_t _Inttypes_ConvertNumber(const void *str, _Inttypes_Text text, _Inttypes_SizeType *end, int base, _Inttypes_Sign *sign, _Inttypes_Range *range);
+intmax_t  _Inttypes_MakeIntmax(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range);
+uintmax_t _Inttypes_MakeUintmax(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range);
 
 // (S7.8.2) Functions for greatest-width integer types
 intmax_t  imaxabs(intmax_t j);

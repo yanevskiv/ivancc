@@ -36,7 +36,7 @@ char *_Crt_Argv0;
 char **_Crt_Envp;
 
 // What exit flushes the streams by, set by stdio so exit names none of it.
-int (*_Crt_Flush)(void);
+int (*_Crt_FlushStreams)(void);
 
 #ifdef __x86_64__
 #if defined(__linux__)
