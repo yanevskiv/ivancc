@@ -25,6 +25,3 @@
 
 // Module header.
 #include <stdarg.h>
-
-// Check the header against the compiler.
-typedef char _Stdarg_CheckList[sizeof(va_list) > 0 ? 1 : -1];

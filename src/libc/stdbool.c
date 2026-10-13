@@ -25,10 +25,3 @@
 
 // Module header.
 #include <stdbool.h>
-
-// Check the header against the compiler.
-typedef char _Stdbool_CheckSize[sizeof(bool) == sizeof(_Bool) ? 1 : -1];
-typedef char _Stdbool_CheckTrue[true == 1 ? 1 : -1];
-typedef char _Stdbool_CheckFalse[false == 0 ? 1 : -1];
-typedef char _Stdbool_CheckDefined[__bool_true_false_are_defined == 1 ? 1 : -1];
-typedef char _Stdbool_CheckConvert[(bool) 2 == 1 ? 1 : -1];

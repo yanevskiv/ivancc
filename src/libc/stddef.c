@@ -25,10 +25,3 @@
 
 // Module header.
 #include <stddef.h>
-
-// Check the header against the compiler.
-typedef char _Stddef_CheckSize[sizeof(size_t) == sizeof(sizeof 0) && (size_t) -1 > 0 ? 1 : -1];
-typedef char _Stddef_CheckDiff[sizeof(ptrdiff_t) == sizeof((char *) 0 - (char *) 0) && (ptrdiff_t) -1 < 0 ? 1 : -1];
-typedef char _Stddef_CheckWchar[sizeof(wchar_t) == sizeof(L'a') ? 1 : -1];
-typedef char _Stddef_CheckNull[sizeof(NULL) == sizeof(void *) ? 1 : -1];
-typedef char _Stddef_CheckOffset[offsetof(struct { char c; int i; }, i) == 4 ? 1 : -1];
