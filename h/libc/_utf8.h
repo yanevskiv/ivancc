@@ -26,6 +26,9 @@
 #ifndef _UTF8_H
 #define _UTF8_H
 
+// The ranges of each class and the shifts of each case mapping.
+#include <_utf8_table.h>
+
 // The longest sequence and the largest code it encodes, glibc's 31 bits.
 #define _UTF8_MAX      6
 #define _UTF8_CODE_MAX 0x7FFFFFFFU
@@ -58,6 +61,23 @@
 #define _UTF8_INVALID    (-1)
 #define _UTF8_INCOMPLETE (-2)
 
+// The classes a code may be in.
+typedef enum _Utf8_Class _Utf8_Class;
+enum _Utf8_Class {
+    _UTF8_CLASS_ALNUM, // a letter or a decimal digit
+    _UTF8_CLASS_ALPHA, // a letter
+    _UTF8_CLASS_BLANK, // white space that separates words in a line
+    _UTF8_CLASS_CNTRL, // a control code
+    _UTF8_CLASS_DIGIT, // a decimal digit, ASCII's ten alone
+    _UTF8_CLASS_GRAPH, // a code with a visible form
+    _UTF8_CLASS_LOWER, // a lower-case letter
+    _UTF8_CLASS_PRINT, // a code that takes a place when printed
+    _UTF8_CLASS_PUNCT, // a code with a visible form, no letter and no digit
+    _UTF8_CLASS_SPACE, // white space
+    _UTF8_CLASS_UPPER, // an upper-case letter
+    _UTF8_CLASS_XDIGIT // a hex digit, ASCII's alone
+};
+
 // Whether LC_CTYPE's locale encodes in UTF-8.
 extern _Bool _Utf8_Enabled;
 
@@ -66,6 +86,13 @@ int _Utf8_GetLeadLength(unsigned int lead);
 int _Utf8_GetCodeLength(unsigned int code);
 int _Utf8_DecodeSequence(const unsigned char *str, unsigned long n, unsigned int *code);
 int _Utf8_EncodeCode(unsigned int code, unsigned char *str);
+
+// Classes
+_Bool        _Utf8_IsInRanges(const _Utf8_Table_Range *ranges, unsigned long count, unsigned int code);
+_Bool        _Utf8_IsInClass(unsigned int code, _Utf8_Class class);
+unsigned int _Utf8_ToShifted(const _Utf8_Table_Shift *shifts, unsigned long count, unsigned int code);
+unsigned int _Utf8_ToUpper(unsigned int code);
+unsigned int _Utf8_ToLower(unsigned int code);
 
 // Characters
 unsigned long _Utf8_GetCharMax(void);

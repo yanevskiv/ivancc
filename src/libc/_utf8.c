@@ -115,6 +115,106 @@ int _Utf8_EncodeCode(unsigned int code, unsigned char *str)
     return len;
 }
 
+// Check whether code is in one of count ranges, which are in order.
+_Bool _Utf8_IsInRanges(const _Utf8_Table_Range *ranges, unsigned long count, unsigned int code)
+{
+    unsigned long mid;
+    unsigned long low = 0;
+    unsigned long high = count;
+
+    while (low < high) {
+        mid = low + (high - low) / 2;
+        if (ranges[mid].tr_last < code) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    return low < count && ranges[low].tr_first <= code;
+}
+
+// Check whether code is in class, as Unicode has it.
+_Bool _Utf8_IsInClass(unsigned int code, _Utf8_Class class)
+{
+    _Bool found;
+
+    switch (class) {
+        case _UTF8_CLASS_ALNUM: {
+            found = _Utf8_IsInClass(code, _UTF8_CLASS_ALPHA) || _Utf8_IsInClass(code, _UTF8_CLASS_DIGIT);
+        } break;
+        case _UTF8_CLASS_ALPHA: {
+            found = _Utf8_IsInRanges(_Utf8_Table_Alpha, _UTF8_TABLE_ALPHA_COUNT, code);
+        } break;
+        case _UTF8_CLASS_BLANK: {
+            found = _Utf8_IsInRanges(_Utf8_Table_Blank, _UTF8_TABLE_BLANK_COUNT, code);
+        } break;
+        case _UTF8_CLASS_CNTRL: {
+            found = _Utf8_IsInRanges(_Utf8_Table_Cntrl, _UTF8_TABLE_CNTRL_COUNT, code);
+        } break;
+        case _UTF8_CLASS_DIGIT: {
+            found = code >= '0' && code <= '9';
+        } break;
+        case _UTF8_CLASS_GRAPH: {
+            found = _Utf8_IsInRanges(_Utf8_Table_Graph, _UTF8_TABLE_GRAPH_COUNT, code);
+        } break;
+        case _UTF8_CLASS_LOWER: {
+            found = _Utf8_IsInRanges(_Utf8_Table_Lower, _UTF8_TABLE_LOWER_COUNT, code);
+        } break;
+        case _UTF8_CLASS_PRINT: {
+            found = _Utf8_IsInClass(code, _UTF8_CLASS_GRAPH);
+            if (_Utf8_IsInClass(code, _UTF8_CLASS_BLANK)) {
+                found = ! _Utf8_IsInClass(code, _UTF8_CLASS_CNTRL);
+            }
+        } break;
+        case _UTF8_CLASS_PUNCT: {
+            found = _Utf8_IsInClass(code, _UTF8_CLASS_GRAPH) && ! _Utf8_IsInClass(code, _UTF8_CLASS_ALNUM);
+        } break;
+        case _UTF8_CLASS_SPACE: {
+            found = _Utf8_IsInRanges(_Utf8_Table_Space, _UTF8_TABLE_SPACE_COUNT, code);
+        } break;
+        case _UTF8_CLASS_UPPER: {
+            found = _Utf8_IsInRanges(_Utf8_Table_Upper, _UTF8_TABLE_UPPER_COUNT, code);
+        } break;
+        default: {
+            found = (code >= '0' && code <= '9') || (code >= 'A' && code <= 'F') || (code >= 'a' && code <= 'f');
+        } break;
+    }
+    return found;
+}
+
+// Map code by the one of count shifts that holds it, or give it as it is.
+unsigned int _Utf8_ToShifted(const _Utf8_Table_Shift *shifts, unsigned long count, unsigned int code)
+{
+    unsigned long mid;
+    unsigned long low = 0;
+    unsigned long high = count;
+
+    while (low < high) {
+        mid = low + (high - low) / 2;
+        if (shifts[mid].ts_last < code) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    if (low == count || code < shifts[low].ts_first || (code - shifts[low].ts_first) % shifts[low].ts_step != 0) {
+        return code;
+    }
+    return (unsigned int) ((int) code + shifts[low].ts_delta);
+}
+
+// Map a lower-case letter to its upper case, and give any other code as it is.
+unsigned int _Utf8_ToUpper(unsigned int code)
+{
+    return _Utf8_ToShifted(_Utf8_Table_ToUpper, _UTF8_TABLE_TO_UPPER_COUNT, code);
+}
+
+// Map an upper-case letter to its lower case, and give any other code as it is.
+unsigned int _Utf8_ToLower(unsigned int code)
+{
+    return _Utf8_ToShifted(_Utf8_Table_ToLower, _UTF8_TABLE_TO_LOWER_COUNT, code);
+}
+
 // Get the bytes of the longest character in LC_CTYPE's encoding.
 unsigned long _Utf8_GetCharMax(void)
 {
