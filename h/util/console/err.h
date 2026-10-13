@@ -40,8 +40,8 @@
 #define ERR_SOURCE_NONE 0
 
 // The lines shown before and after the line a diagnostic names.
-#define ERR_SOURCE_BEFORE ERR_SOURCE_NONE
-#define ERR_SOURCE_AFTER  ERR_SOURCE_NONE
+#define ERR_SOURCE_BEFORE 2
+#define ERR_SOURCE_AFTER  2
 
 // Raise an error unless a condition holds.
 #define Err_Assert(cond, ...)                     \
