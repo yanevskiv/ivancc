@@ -115,6 +115,13 @@ typedef unsigned long size_t;
 typedef int wchar_t;
 #endif
 
+// The characters a text to convert is made of.
+typedef enum _Stdlib_Text _Stdlib_Text;
+enum _Stdlib_Text {
+    _STDLIB_TEXT_NARROW,
+    _STDLIB_TEXT_WIDE
+};
+
 // A floating type: its mantissa's bits, its exponents' range, and an explicit leading bit.
 typedef struct _Stdlib_Format _Stdlib_Format;
 struct _Stdlib_Format {
@@ -199,19 +206,19 @@ extern _Stdlib_Exits _Stdlib_ExitBase;
 extern _Stdlib_Exits *_Stdlib_ExitTop;
 
 // Conversion
-int                _Stdlib_CharAt(const void *str, _Bool wide, size_t index);
+int                _Stdlib_CharAt(const void *str, _Stdlib_Text text, size_t index);
 _Bool              _Stdlib_IsSpace(int ch);
 int                _Stdlib_HexDigit(int ch);
-size_t             _Stdlib_Match(const void *str, _Bool wide, size_t index, const char *word);
-size_t             _Stdlib_Exponent(const void *str, _Bool wide, size_t index, int letter, long *exp);
-unsigned long long _Stdlib_Payload(const void *str, _Bool wide, size_t index, size_t stop);
-size_t             _Stdlib_NotANumber(const void *str, _Bool wide, size_t index, unsigned long long *payload);
-size_t             _Stdlib_ScanDecimal(const void *str, _Bool wide, size_t index, int point, _Stdlib_Decimal *dec);
-void               _Stdlib_ConvertDecimal(const void *str, _Bool wide, int point, const _Stdlib_Decimal *dec, _Stdlib_Unrounded *value);
-size_t             _Stdlib_Hex(const void *str, _Bool wide, size_t index, int point, _Stdlib_Unrounded *value);
+size_t             _Stdlib_Match(const void *str, _Stdlib_Text text, size_t index, const char *word);
+size_t             _Stdlib_Exponent(const void *str, _Stdlib_Text text, size_t index, int letter, long *exp);
+unsigned long long _Stdlib_Payload(const void *str, _Stdlib_Text text, size_t index, size_t stop);
+size_t             _Stdlib_NotANumber(const void *str, _Stdlib_Text text, size_t index, unsigned long long *payload);
+size_t             _Stdlib_ScanDecimal(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Decimal *dec);
+void               _Stdlib_ConvertDecimal(const void *str, _Stdlib_Text text, int point, const _Stdlib_Decimal *dec, _Stdlib_Unrounded *value);
+size_t             _Stdlib_Hex(const void *str, _Stdlib_Text text, size_t index, int point, _Stdlib_Unrounded *value);
 void               _Stdlib_Shift(_Stdlib_Unrounded *value, long bits);
 void               _Stdlib_Round(const _Stdlib_Unrounded *value, const _Stdlib_Format *fmt, _Stdlib_Real *real);
-size_t             _Stdlib_ToReal(const void *str, _Bool wide, const _Stdlib_Format *fmt, _Stdlib_Real *real);
+size_t             _Stdlib_ToReal(const void *str, _Stdlib_Text text, const _Stdlib_Format *fmt, _Stdlib_Real *real);
 
 // Heap
 size_t          _Stdlib_BlockSize(size_t size);

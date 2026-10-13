@@ -204,6 +204,27 @@
 typedef unsigned long _Inttypes_SizeType;
 typedef int _Inttypes_WcharType;
 
+// The characters a text to convert is made of.
+typedef enum _Inttypes_Text _Inttypes_Text;
+enum _Inttypes_Text {
+    _INTTYPES_TEXT_NARROW,
+    _INTTYPES_TEXT_WIDE
+};
+
+// The sign a number was written with.
+typedef enum _Inttypes_Sign _Inttypes_Sign;
+enum _Inttypes_Sign {
+    _INTTYPES_SIGN_PLUS,
+    _INTTYPES_SIGN_MINUS
+};
+
+// Where a number's magnitude lies, of what uintmax_t holds.
+typedef enum _Inttypes_Range _Inttypes_Range;
+enum _Inttypes_Range {
+    _INTTYPES_RANGE_INSIDE,
+    _INTTYPES_RANGE_OUTSIDE
+};
+
 // (S7.8) Format conversion of integer types
 typedef struct {
     intmax_t quot;
@@ -211,12 +232,12 @@ typedef struct {
 } imaxdiv_t;
 
 // Conversion
-int       _Inttypes_CharAt(const void *str, _Bool wide, _Inttypes_SizeType index);
+int       _Inttypes_CharAt(const void *str, _Inttypes_Text text, _Inttypes_SizeType index);
 _Bool     _Inttypes_IsSpace(int ch);
 int       _Inttypes_Digit(int ch);
-uintmax_t _Inttypes_Convert(const void *str, _Bool wide, _Inttypes_SizeType *end, int base, _Bool *negative, _Bool *overflow);
-intmax_t  _Inttypes_ToSigned(uintmax_t value, _Bool negative, _Bool overflow);
-uintmax_t _Inttypes_ToUnsigned(uintmax_t value, _Bool negative, _Bool overflow);
+uintmax_t _Inttypes_Convert(const void *str, _Inttypes_Text text, _Inttypes_SizeType *end, int base, _Inttypes_Sign *sign, _Inttypes_Range *range);
+intmax_t  _Inttypes_ToSigned(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range);
+uintmax_t _Inttypes_ToUnsigned(uintmax_t value, _Inttypes_Sign sign, _Inttypes_Range range);
 
 // (S7.8.2) Functions for greatest-width integer types
 intmax_t  imaxabs(intmax_t j);

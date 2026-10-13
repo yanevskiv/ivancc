@@ -766,7 +766,7 @@ _Bool _Stdio_ParseOctal(const char *format, _Stdio_VaList *list, size_t *len, in
 }
 
 // Parse a %x or %X directive with its argument.
-_Bool _Stdio_ParseHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Bool *upper)
+_Bool _Stdio_ParseHex(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, _Stdio_UintmaxType *value, _Stdio_Case *letters)
 {
     int length;
     size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
@@ -776,7 +776,7 @@ _Bool _Stdio_ParseHex(const char *format, _Stdio_VaList *list, size_t *len, int 
     }
     _Stdio_TakeHead(list, flags, width, precision);
     *value = _Stdio_TakeUnsigned(list, length);
-    *upper = format[at] == 'X';
+    *letters = format[at] == 'X' ? _STDIO_CASE_UPPER : _STDIO_CASE_LOWER;
     *len = at + 1;
     return 1;
 }
@@ -814,7 +814,7 @@ _Bool _Stdio_ParseCount(const char *format, _Stdio_VaList *list, size_t *len, in
 }
 
 // Parse a %f or %F directive with its argument.
-_Bool _Stdio_ParseFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Bool *upper)
+_Bool _Stdio_ParseFixed(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
 {
     int length;
     size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
@@ -827,13 +827,13 @@ _Bool _Stdio_ParseFixed(const char *format, _Stdio_VaList *list, size_t *len, in
     }
     _Stdio_TakeHead(list, flags, width, precision);
     *value = length == _STDIO_LENGTH_LDOUBLE ? va_arg(*list, long double) : va_arg(*list, double);
-    *upper = format[at] == 'F';
+    *letters = format[at] == 'F' ? _STDIO_CASE_UPPER : _STDIO_CASE_LOWER;
     *len = at + 1;
     return 1;
 }
 
 // Parse a %e or %E directive with its argument.
-_Bool _Stdio_ParseExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Bool *upper)
+_Bool _Stdio_ParseExponential(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
 {
     int length;
     size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
@@ -846,13 +846,13 @@ _Bool _Stdio_ParseExponential(const char *format, _Stdio_VaList *list, size_t *l
     }
     _Stdio_TakeHead(list, flags, width, precision);
     *value = length == _STDIO_LENGTH_LDOUBLE ? va_arg(*list, long double) : va_arg(*list, double);
-    *upper = format[at] == 'E';
+    *letters = format[at] == 'E' ? _STDIO_CASE_UPPER : _STDIO_CASE_LOWER;
     *len = at + 1;
     return 1;
 }
 
 // Parse a %g or %G directive with its argument.
-_Bool _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Bool *upper)
+_Bool _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, int *flags, int *width, int *precision, long double *value, _Stdio_Case *letters)
 {
     int length;
     size_t at = _Stdio_ParseHead(format, flags, width, precision, &length);
@@ -865,7 +865,7 @@ _Bool _Stdio_ParseGeneral(const char *format, _Stdio_VaList *list, size_t *len, 
     }
     _Stdio_TakeHead(list, flags, width, precision);
     *value = length == _STDIO_LENGTH_LDOUBLE ? va_arg(*list, long double) : va_arg(*list, double);
-    *upper = format[at] == 'G';
+    *letters = format[at] == 'G' ? _STDIO_CASE_UPPER : _STDIO_CASE_LOWER;
     *len = at + 1;
     return 1;
 }
@@ -940,7 +940,7 @@ void _Stdio_Exact(long double value, _Stdio_Numeral *num)
     biased = top & ones;
     exp = (int) (biased != 0 ? biased : 1) - (LDBL_MAX_EXP - 1) - (LDBL_MANT_DIG - 1);
     num->sn_kind = _STDIO_REAL_FINITE;
-    num->sn_negative = top > ones;
+    num->sn_sign = top > ones ? _STDIO_SIGN_MINUS : _STDIO_SIGN_PLUS;
     num->sn_len = 0;
     num->sn_exp = 0;
     if (biased == ones) {
@@ -1101,28 +1101,28 @@ void _Stdio_EmitField(_Stdio_Sink *sink, int flags, int width, const char *data,
 }
 
 // Give the sink what leads a number, and return the spaces to follow it.
-size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Bool negative, const char *prefix, size_t len)
+size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Stdio_Sign sign, const char *prefix, size_t len)
 {
     size_t pad;
     size_t lead;
-    const char *sign = "";
+    const char *text = "";
 
-    if (negative) {
-        sign = "-";
+    if (sign == _STDIO_SIGN_MINUS) {
+        text = "-";
     } else if (flags & _STDIO_FLAG_SIGN) {
-        sign = "+";
+        text = "+";
     } else if (flags & _STDIO_FLAG_SPACE) {
-        sign = " ";
+        text = " ";
     }
     if (flags & _STDIO_FLAG_LEFT) {
         flags &= ~_STDIO_FLAG_ZERO;
     }
-    lead = strlen(sign) + strlen(prefix);
+    lead = strlen(text) + strlen(prefix);
     pad = (size_t) width > lead + len ? (size_t) width - lead - len : 0;
     if (! (flags & (_STDIO_FLAG_LEFT | _STDIO_FLAG_ZERO))) {
         _Stdio_EmitPad(sink, ' ', pad);
     }
-    _Stdio_Emit(sink, sign, strlen(sign));
+    _Stdio_Emit(sink, text, strlen(text));
     _Stdio_Emit(sink, prefix, strlen(prefix));
     if (flags & _STDIO_FLAG_ZERO) {
         _Stdio_EmitPad(sink, '0', pad);
@@ -1131,7 +1131,7 @@ size_t _Stdio_EmitLead(_Stdio_Sink *sink, int flags, int width, _Bool negative, 
 }
 
 // Give the sink an integer's digits in a width, its precision the fewest.
-void _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, _Bool negative, const char *prefix, const char *digits, size_t len)
+void _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_Sign sign, const char *prefix, const char *digits, size_t len)
 {
     size_t rest;
     size_t zeros;
@@ -1142,7 +1142,7 @@ void _Stdio_EmitInteger(_Stdio_Sink *sink, int flags, int width, int precision, 
         flags &= ~_STDIO_FLAG_ZERO;
     }
     zeros = (size_t) precision > len ? (size_t) precision - len : 0;
-    rest = _Stdio_EmitLead(sink, flags, width, negative, prefix, zeros + len);
+    rest = _Stdio_EmitLead(sink, flags, width, sign, prefix, zeros + len);
     _Stdio_EmitPad(sink, '0', zeros);
     _Stdio_Emit(sink, digits, len);
     _Stdio_EmitPad(sink, ' ', rest);
@@ -1183,7 +1183,7 @@ void _Stdio_EmitNumeral(_Stdio_Sink *sink, int flags, int width, const _Stdio_Nu
     size_t zeros = count < _STDIO_EXPONENT_MIN ? _STDIO_EXPONENT_MIN - count : 0;
     size_t tail = powered ? strlen(mark) + 1 + zeros + count : 0;
 
-    rest = _Stdio_EmitLead(sink, flags, width, num->sn_negative, "", whole + dot + frac + tail);
+    rest = _Stdio_EmitLead(sink, flags, width, num->sn_sign, "", whole + dot + frac + tail);
     _Stdio_EmitSpan(sink, num, high, whole);
     _Stdio_Emit(sink, &point, dot);
     _Stdio_EmitSpan(sink, num, high - (long) whole, frac);
@@ -1197,15 +1197,15 @@ void _Stdio_EmitNumeral(_Stdio_Sink *sink, int flags, int width, const _Stdio_Nu
 }
 
 // Give the sink an infinity or a NaN in a width, a sign and a text, no zeros.
-void _Stdio_EmitSpecial(_Stdio_Sink *sink, int flags, int width, const _Stdio_Numeral *num, _Bool upper)
+void _Stdio_EmitSpecial(_Stdio_Sink *sink, int flags, int width, const _Stdio_Numeral *num, _Stdio_Case letters)
 {
     size_t rest;
-    const char *inf = upper ? _ERR_STDIO_INF_UPPER : _ERR_STDIO_INF;
-    const char *nan = upper ? _ERR_STDIO_NAN_UPPER : _ERR_STDIO_NAN;
+    const char *inf = letters == _STDIO_CASE_UPPER ? _ERR_STDIO_INF_UPPER : _ERR_STDIO_INF;
+    const char *nan = letters == _STDIO_CASE_UPPER ? _ERR_STDIO_NAN_UPPER : _ERR_STDIO_NAN;
     const char *text = num->sn_kind == _STDIO_REAL_NAN ? nan : inf;
 
     flags &= ~_STDIO_FLAG_ZERO;
-    rest = _Stdio_EmitLead(sink, flags, width, num->sn_negative, "", strlen(text));
+    rest = _Stdio_EmitLead(sink, flags, width, num->sn_sign, "", strlen(text));
     _Stdio_Emit(sink, text, strlen(text));
     _Stdio_EmitPad(sink, ' ', rest);
 }
@@ -1241,7 +1241,7 @@ void _Stdio_EmitDecimal(_Stdio_Sink *sink, int flags, int width, int precision, 
     _Stdio_UintmaxType magnitude = value < 0 ? -(_Stdio_UintmaxType) value : (_Stdio_UintmaxType) value;
     size_t len = _Stdio_Digits(text + sizeof(text), magnitude, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
 
-    _Stdio_EmitInteger(sink, flags, width, precision, value < 0, "", text + sizeof(text) - len, len);
+    _Stdio_EmitInteger(sink, flags, width, precision, value < 0 ? _STDIO_SIGN_MINUS : _STDIO_SIGN_PLUS, "", text + sizeof(text) - len, len);
 }
 
 // Give the sink an unsigned integer as %u converts it.
@@ -1251,7 +1251,7 @@ void _Stdio_EmitUnsigned(_Stdio_Sink *sink, int flags, int width, int precision,
     size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_DECIMAL, _STDIO_DIGITS_LOWER);
 
     flags &= ~(_STDIO_FLAG_SIGN | _STDIO_FLAG_SPACE);
-    _Stdio_EmitInteger(sink, flags, width, precision, 0, "", text + sizeof(text) - len, len);
+    _Stdio_EmitInteger(sink, flags, width, precision, _STDIO_SIGN_PLUS, "", text + sizeof(text) - len, len);
 }
 
 // Give the sink an unsigned integer as %o converts it.
@@ -1266,21 +1266,22 @@ void _Stdio_EmitOctal(_Stdio_Sink *sink, int flags, int width, int precision, _S
         prefix = "0";
     }
     flags &= ~(_STDIO_FLAG_SIGN | _STDIO_FLAG_SPACE);
-    _Stdio_EmitInteger(sink, flags, width, precision, 0, prefix, text + sizeof(text) - len, len);
+    _Stdio_EmitInteger(sink, flags, width, precision, _STDIO_SIGN_PLUS, prefix, text + sizeof(text) - len, len);
 }
 
 // Give the sink an unsigned integer as %x and %X convert it.
-void _Stdio_EmitHex(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value, _Bool upper)
+void _Stdio_EmitHex(_Stdio_Sink *sink, int flags, int width, int precision, _Stdio_UintmaxType value, _Stdio_Case letters)
 {
     char text[_STDIO_DIGITS_MAX];
     const char *prefix = "";
-    size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_HEX, upper ? _STDIO_DIGITS_UPPER : _STDIO_DIGITS_LOWER);
+    const char *digits = letters == _STDIO_CASE_UPPER ? _STDIO_DIGITS_UPPER : _STDIO_DIGITS_LOWER;
+    size_t len = _Stdio_Digits(text + sizeof(text), value, _STDIO_BASE_HEX, digits);
 
     if ((flags & _STDIO_FLAG_ALT) && value != 0) {
-        prefix = upper ? "0X" : "0x";
+        prefix = letters == _STDIO_CASE_UPPER ? "0X" : "0x";
     }
     flags &= ~(_STDIO_FLAG_SIGN | _STDIO_FLAG_SPACE);
-    _Stdio_EmitInteger(sink, flags, width, precision, 0, prefix, text + sizeof(text) - len, len);
+    _Stdio_EmitInteger(sink, flags, width, precision, _STDIO_SIGN_PLUS, prefix, text + sizeof(text) - len, len);
 }
 
 // Give the sink a pointer as glibc does: a null one a text, another by %#lx.
@@ -1293,17 +1294,17 @@ void _Stdio_EmitPointer(_Stdio_Sink *sink, int flags, int width, int precision, 
         _Stdio_EmitField(sink, flags, width, _ERR_STDIO_NIL, sizeof(_ERR_STDIO_NIL) - 1);
         return;
     }
-    _Stdio_EmitInteger(sink, flags, width, precision, 0, "0x", text + sizeof(text) - len, len);
+    _Stdio_EmitInteger(sink, flags, width, precision, _STDIO_SIGN_PLUS, "0x", text + sizeof(text) - len, len);
 }
 
 // Give the sink a floating value as %f and %F convert it.
-void _Stdio_EmitFixed(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Bool upper)
+void _Stdio_EmitFixed(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters)
 {
     _Stdio_Numeral num;
 
     _Stdio_Exact(value, &num);
     if (num.sn_kind != _STDIO_REAL_FINITE) {
-        _Stdio_EmitSpecial(sink, flags, width, &num, upper);
+        _Stdio_EmitSpecial(sink, flags, width, &num, letters);
         return;
     }
     if (precision == _STDIO_PRECISION_NONE) {
@@ -1314,24 +1315,24 @@ void _Stdio_EmitFixed(_Stdio_Sink *sink, int flags, int width, int precision, lo
 }
 
 // Give the sink a floating value as %e and %E convert it.
-void _Stdio_EmitExponential(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Bool upper)
+void _Stdio_EmitExponential(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters)
 {
     _Stdio_Numeral num;
 
     _Stdio_Exact(value, &num);
     if (num.sn_kind != _STDIO_REAL_FINITE) {
-        _Stdio_EmitSpecial(sink, flags, width, &num, upper);
+        _Stdio_EmitSpecial(sink, flags, width, &num, letters);
         return;
     }
     if (precision == _STDIO_PRECISION_NONE) {
         precision = _STDIO_REAL_PRECISION;
     }
     _Stdio_Round(&num, (long) precision + 1);
-    _Stdio_EmitNumeral(sink, flags, width, &num, (size_t) precision, upper ? "E" : "e");
+    _Stdio_EmitNumeral(sink, flags, width, &num, (size_t) precision, letters == _STDIO_CASE_UPPER ? "E" : "e");
 }
 
 // Give the sink a floating value as %g and %G convert it.
-void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Bool upper)
+void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, long double value, _Stdio_Case letters)
 {
     long frac;
     _Bool powered;
@@ -1340,7 +1341,7 @@ void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, 
 
     _Stdio_Exact(value, &num);
     if (num.sn_kind != _STDIO_REAL_FINITE) {
-        _Stdio_EmitSpecial(sink, flags, width, &num, upper);
+        _Stdio_EmitSpecial(sink, flags, width, &num, letters);
         return;
     }
     if (precision == _STDIO_PRECISION_NONE) {
@@ -1352,7 +1353,7 @@ void _Stdio_EmitGeneral(_Stdio_Sink *sink, int flags, int width, int precision, 
     powered = num.sn_exp < _STDIO_GENERAL_MIN || num.sn_exp >= precision;
     frac = (flags & _STDIO_FLAG_ALT ? precision : (long) num.sn_len) - 1;
     if (powered) {
-        mark = upper ? "E" : "e";
+        mark = letters == _STDIO_CASE_UPPER ? "E" : "e";
     } else {
         frac -= num.sn_exp;
     }
@@ -1368,12 +1369,12 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
     int length;
     size_t len;
     void *dest;
-    _Bool upper;
     va_list list;
     int precision;
     const char *str;
     const void *ptr;
     long double fval;
+    _Stdio_Case letters;
     _Stdio_IntmaxType sval;
     _Stdio_UintmaxType uval;
 
@@ -1393,18 +1394,18 @@ int _Stdio_EmitFormat(_Stdio_Sink *sink, const char *format, _Stdio_VaList args)
             _Stdio_EmitUnsigned(sink, flags, width, precision, uval);
         } else if (_Stdio_ParseOctal(format + i, &list, &len, &flags, &width, &precision, &uval)) {
             _Stdio_EmitOctal(sink, flags, width, precision, uval);
-        } else if (_Stdio_ParseHex(format + i, &list, &len, &flags, &width, &precision, &uval, &upper)) {
-            _Stdio_EmitHex(sink, flags, width, precision, uval, upper);
+        } else if (_Stdio_ParseHex(format + i, &list, &len, &flags, &width, &precision, &uval, &letters)) {
+            _Stdio_EmitHex(sink, flags, width, precision, uval, letters);
         } else if (_Stdio_ParsePointer(format + i, &list, &len, &flags, &width, &precision, &ptr)) {
             _Stdio_EmitPointer(sink, flags, width, precision, ptr);
         } else if (_Stdio_ParseCount(format + i, &list, &len, &length, &dest)) {
             _Stdio_StoreCount(dest, length, sink->ss_count);
-        } else if (_Stdio_ParseFixed(format + i, &list, &len, &flags, &width, &precision, &fval, &upper)) {
-            _Stdio_EmitFixed(sink, flags, width, precision, fval, upper);
-        } else if (_Stdio_ParseExponential(format + i, &list, &len, &flags, &width, &precision, &fval, &upper)) {
-            _Stdio_EmitExponential(sink, flags, width, precision, fval, upper);
-        } else if (_Stdio_ParseGeneral(format + i, &list, &len, &flags, &width, &precision, &fval, &upper)) {
-            _Stdio_EmitGeneral(sink, flags, width, precision, fval, upper);
+        } else if (_Stdio_ParseFixed(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
+            _Stdio_EmitFixed(sink, flags, width, precision, fval, letters);
+        } else if (_Stdio_ParseExponential(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
+            _Stdio_EmitExponential(sink, flags, width, precision, fval, letters);
+        } else if (_Stdio_ParseGeneral(format + i, &list, &len, &flags, &width, &precision, &fval, &letters)) {
+            _Stdio_EmitGeneral(sink, flags, width, precision, fval, letters);
         } else {
             len = 1;
             _Stdio_Emit(sink, format + i, len);
