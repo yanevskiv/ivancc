@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc02_00_stdbool_helpers.inc"
 
-// (S7.16p3) true and __bool_true_false_are_defined should be 1, false 0.
+// [C99 S7.16p3] true and __bool_true_false_are_defined should be 1, false 0.
 #define DIRECTIVE 0
 #if (true == 1) \
     && (false == 0) \
@@ -13,7 +13,7 @@
 #define DIRECTIVE 1
 #endif
 
-// (S7.16p3) The three macros should be the int constants 1, 0 and 1.
+// [C99 S7.16p3] The three macros should be the int constants 1, 0 and 1.
 static void Test_StdboolMacros(void)
 {
     _TEST_INT(true, 1);

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// (S7.24.4.3) A concatenation should write past a string's end, a null after.
+// [C99 S7.24.4.3] A concatenation should write past a string's end, a null after.
 static void Test_WcharConcatenation(void)
 {
     wchar_t buf[SIZE];

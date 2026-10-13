@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.1p8) %c should write its argument as an unsigned char.
+// [C99 S7.19.6.1p8] %c should write its argument as an unsigned char.
 static void Test_StdioCharacter(void)
 {
     char got[SMALL];

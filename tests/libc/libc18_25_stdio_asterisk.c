@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.1p5) An asterisk should take a width or a precision from an int.
+// [C99 S7.19.6.1p5] An asterisk should take a width or a precision from an int.
 static void Test_StdioAsterisk(void)
 {
     _TEST_TRUE(prints("  abc", "%*s", 5, "abc"));

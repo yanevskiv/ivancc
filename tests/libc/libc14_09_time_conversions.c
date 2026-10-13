@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// (S7.23.3.5p7) strftime should write each conversion as the "C" locale does.
+// [C99 S7.23.3.5p7] strftime should write each conversion as the "C" locale does.
 static void Test_TimeConversions(void)
 {
     _TEST_TRUE(formats(LAST_1999, "%a|%A|%b|%B|%c|%C|%d|%D|%e|%F|%g|%G|%h|%H|%I|%j|%m", "Fri|Friday|Dec|December|Fri Dec 31 23:59:58 1999|19|31|12/31/99|31|1999-12-31|99|1999|Dec|23|11|365|12"));

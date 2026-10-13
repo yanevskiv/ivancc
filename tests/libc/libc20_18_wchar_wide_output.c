@@ -7,7 +7,7 @@
 #define NAME "wide.tmp"
 #define UTF8 "C.UTF-8"
 
-// (S7.24.3.3) A wide character put should be the stream's next bytes.
+// [C99 S7.24.3.3] A wide character put should be the stream's next bytes.
 static void Test_WcharWideOutput(void)
 {
     FILE *file = fopen(NAME, "wb");
@@ -28,7 +28,7 @@ static void Test_WcharWideOutput(void)
     _TEST_INT(remove(NAME), 0);
 }
 
-// (S7.24.3.3) In UTF-8 a wide character put should be its sequence of bytes.
+// [C99 S7.24.3.3] In UTF-8 a wide character put should be its sequence of bytes.
 static void Test_WcharWideOutputUtf8(void)
 {
     FILE *file;
@@ -53,7 +53,7 @@ static void Test_WcharWideOutputUtf8(void)
     _TEST_TRUE(setlocale(LC_CTYPE, "C") != NULL);
 }
 
-// (S7.24.3.3p3) A wide character put in a stream not to write should fail.
+// [C99 S7.24.3.3p3] A wide character put in a stream not to write should fail.
 static void Test_WcharWideOutputErrors(void)
 {
     FILE *file = holding(NAME, "abc", 3);

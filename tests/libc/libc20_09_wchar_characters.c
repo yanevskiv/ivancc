@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// (S7.24.6.2.1) mbsinit should hold of no state and of a zeroed one.
+// [C99 S7.24.6.2.1] mbsinit should hold of no state and of a zeroed one.
 static void Test_WcharStateInitial(void)
 {
     mbstate_t state;
@@ -15,7 +15,7 @@ static void Test_WcharStateInitial(void)
     _TEST_TRUE((mbsinit)(&state) != 0);
 }
 
-// (S7.24.6.3.2) mbrtowc should give a character and its length, 0 for a null.
+// [C99 S7.24.6.3.2] mbrtowc should give a character and its length, 0 for a null.
 static void Test_WcharDecoding(void)
 {
     mbstate_t state;
@@ -44,7 +44,7 @@ static void Test_WcharDecoding(void)
     _TEST_INT(wc, L'G');
 }
 
-// (S7.24.6.3.1) mbrlen should give what mbrtowc would, and store nothing.
+// [C99 S7.24.6.3.1] mbrlen should give what mbrtowc would, and store nothing.
 static void Test_WcharLength(void)
 {
     mbstate_t state;
@@ -59,7 +59,7 @@ static void Test_WcharLength(void)
     _TEST_TRUE(mbsinit(&state) != 0);
 }
 
-// (S7.24.6.3.3) wcrtomb should give a character's bytes, one for no buffer.
+// [C99 S7.24.6.3.3] wcrtomb should give a character's bytes, one for no buffer.
 static void Test_WcharEncoding(void)
 {
     mbstate_t state;
@@ -82,7 +82,7 @@ static void Test_WcharEncoding(void)
     _TEST_INT(bytes[0], 'D');
 }
 
-// (S7.24.6.3) A character "C" has none of should be an error, EILSEQ in errno.
+// [C99 S7.24.6.3] A character "C" has none of should be an error, EILSEQ in errno.
 static void Test_WcharCharacterErrors(void)
 {
     mbstate_t state;

@@ -27,7 +27,7 @@ static int rest(int count, ...)
     return copied == total ? total : MISMATCH;
 }
 
-// (S7.15.1.2p2) va_copy's list should stand where its source does, and apart.
+// [C99 S7.15.1.2p2] va_copy's list should stand where its source does, and apart.
 static void Test_StdargCopy(void)
 {
     _TEST_INT(rest(1, 1), 0);

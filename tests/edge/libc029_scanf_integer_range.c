@@ -9,7 +9,7 @@
 // | 1 18446744073709551615
 // | 1 9223372036854775807
 // Non-standard: scanf should clamp an integer as strtol and store its low bits.
-// Liberty: (S7.19.6.2p10) a result its object cannot hold is undefined.
+// Liberty: [C99 S7.19.6.2p10] a result its object cannot hold is undefined.
 
 #include <stdio.h>
 

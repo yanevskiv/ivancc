@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// (S7.1.4p1) A pointer and a call in parentheses should reach each function.
+// [C99 S7.1.4p1] A pointer and a call in parentheses should reach each function.
 static void Test_TimeCalls(void)
 {
     time_t when = 0;

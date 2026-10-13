@@ -8,7 +8,7 @@
 
 static char filebuf[SMALL];
 
-// (S7.19.6.2p9) fscanf should leave unread what follows each item it reads.
+// [C99 S7.19.6.2p9] fscanf should leave unread what follows each item it reads.
 static bool feeds(int kind)
 {
     FILE *file;
@@ -49,7 +49,7 @@ static bool feeds(int kind)
     return lost == 0;
 }
 
-// (S7.19.6.2p2) fscanf should read a stream the same however buffered.
+// [C99 S7.19.6.2p2] fscanf should read a stream the same however buffered.
 static void Test_StdioFscanf(void)
 {
     _TEST_TRUE(feeds(_IOFBF));

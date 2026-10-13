@@ -4,8 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.2p12) %a, %e and %g should read a floating number as %f does.
-// (S7.19.6.2p14) %A, %E, %F and %G should behave as %a, %e, %f and %g.
+// [C99 S7.19.6.2p12] %a, %e and %g should read a floating number as %f does.
+// [C99 S7.19.6.2p14] %A, %E, %F and %G should behave as %a, %e, %f and %g.
 static void Test_StdioScanRealSpecifiers(void)
 {
     const char *format[] = {"%a", "%e", "%f", "%g", "%A", "%E", "%F", "%G"};

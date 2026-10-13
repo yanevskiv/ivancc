@@ -7,7 +7,7 @@
 // | [0x1p+4|0xep+0|0x1.0p+4] 24
 // | [0x1p+16384] 12
 // Non-standard: %a should keep its power when rounding carries into its digit.
-// Liberty: (S7.19.6.1p8) which nonzero digit comes first is unspecified.
+// Liberty: [C99 S7.19.6.1p8] which nonzero digit comes first is unspecified.
 
 #include <stdio.h>
 #include <float.h>

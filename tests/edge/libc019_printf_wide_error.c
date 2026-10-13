@@ -6,7 +6,7 @@
 // | 1|s| -1
 // | ab[x] 5
 // Non-standard: printf should write a format up to the directive that fails.
-// Liberty: (S7.19.6.1p14) C99 says only that the value returned is negative.
+// Liberty: [C99 S7.19.6.1p14] C99 says only that the value returned is negative.
 
 #include <stdio.h>
 #include <stddef.h>

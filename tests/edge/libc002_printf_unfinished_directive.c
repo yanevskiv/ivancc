@@ -6,7 +6,7 @@
 // | [%.3 4
 // | [%ll 4
 // Non-standard: printf should write a directive its format ends in as text.
-// Liberty: (S7.19.6.1p9) an invalid conversion is undefined behaviour.
+// Liberty: [C99 S7.19.6.1p9] an invalid conversion is undefined behaviour.
 
 #include <stdio.h>
 

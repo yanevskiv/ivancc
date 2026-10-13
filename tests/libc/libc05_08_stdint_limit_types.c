@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// (S7.18.2p2) A limit should have the type its own type promotes to.
+// [C99 S7.18.2p2] A limit should have the type its own type promotes to.
 static void Test_StdintLimitTypes(void)
 {
     _TEST_UINT(sizeof(INT8_MIN), sizeof(int));

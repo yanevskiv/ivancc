@@ -9,7 +9,7 @@
 // | 1
 // | [abcde##]
 // Standard: scanf should fail a %c of a width the input ends inside.
-// Unlike: (S7.19.6.2p12) glibc stores what it has, so no libc test holds this.
+// Unlike: [C99 S7.19.6.2p12] glibc stores what it has, so no libc test holds this.
 
 #include <stdio.h>
 

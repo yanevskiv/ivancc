@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.2p12) %c should store a width's characters and no null after them.
+// [C99 S7.19.6.2p12] %c should store a width's characters and no null after them.
 static bool takes(const char *input, const char *format, const char *want)
 {
     int lost = 0;
@@ -18,7 +18,7 @@ static bool takes(const char *input, const char *format, const char *want)
     return lost == 0;
 }
 
-// (S7.19.6.2p12) %c should match exactly its width of characters, 1 if none.
+// [C99 S7.19.6.2p12] %c should match exactly its width of characters, 1 if none.
 static void Test_StdioScanCharacter(void)
 {
     char a = FILL;

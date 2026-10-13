@@ -6,7 +6,7 @@
 
 #define ZEROED 256
 
-// (S7.20.3.1p2) calloc should give zeroed memory, of a block freed too.
+// [C99 S7.20.3.1p2] calloc should give zeroed memory, of a block freed too.
 static void Test_StdlibCalloc(void)
 {
     unsigned char *ptr = malloc(ZEROED);

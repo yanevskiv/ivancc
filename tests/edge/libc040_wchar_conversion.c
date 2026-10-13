@@ -7,7 +7,7 @@
 // refused at its last byte alone, and a sequence of five bytes and a code
 // past Unicode's last be refused, which glibc takes; a string conversion
 // that fails should leave *src at the character it failed on.
-// Liberty: (S7.24.6p3) the encoding is the locale's, and (S7.24.6.4) what
+// Liberty: [C99 S7.24.6p3] the encoding is the locale's, and [C99 S7.24.6.4] what
 // *src holds after an encoding error is not said.
 
 #include <locale.h>

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// (S7.8.1p1) Each PRI macro should be its type's length modifier and letter.
+// [C99 S7.8.1p1] Each PRI macro should be its type's length modifier and letter.
 static void Test_InttypesPrint(void)
 {
     _TEST_STR(PRId8, "d");

@@ -10,7 +10,7 @@
 // The sizes of the blocks that live together, either side of a power of two.
 static const size_t sizes[SIZES] = {1, 15, 16, 17, 31, 32, 33, 100, 1000, 4096};
 
-// (S7.20.3p1) Each size should get an aligned block: return the first without.
+// [C99 S7.20.3p1] Each size should get an aligned block: return the first without.
 static long allocate(void)
 {
     size_t i;
@@ -41,7 +41,7 @@ static long release(void)
     return changed;
 }
 
-// (S7.20.3.3p2) malloc should give aligned blocks that keep their bytes.
+// [C99 S7.20.3.3p2] malloc should give aligned blocks that keep their bytes.
 static void Test_StdlibMalloc(void)
 {
     void *empty;

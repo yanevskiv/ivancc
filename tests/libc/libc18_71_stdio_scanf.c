@@ -9,7 +9,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.4p2) scanf should read standard input as fscanf reads a stream.
+// [C99 S7.19.6.4p2] scanf should read standard input as fscanf reads a stream.
 static void Test_StdioScanf(void)
 {
     int n = NONE;

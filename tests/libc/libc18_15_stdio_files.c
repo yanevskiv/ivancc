@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.4.2p2) A removed or renamed file should open by its old name no more.
+// [C99 S7.19.4.2p2] A removed or renamed file should open by its old name no more.
 static void Test_StdioFiles(void)
 {
     _TEST_TRUE(remove("missing") != 0);

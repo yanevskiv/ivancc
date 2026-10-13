@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc16_00_locale_helpers.inc"
 
-// (S7.11.1.1p6) A locale setlocale lacks should be refused, the locale kept.
+// [C99 S7.11.1.1p6] A locale setlocale lacks should be refused, the locale kept.
 static void Test_LocaleLacking(void)
 {
     if (! _TEST_TRUE(keep(start, LC_ALL))) {

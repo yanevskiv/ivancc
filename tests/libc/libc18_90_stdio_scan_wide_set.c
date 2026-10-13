@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.2p12) %l[ should read a scanset's characters into wide ones and a
+// [C99 S7.19.6.2p12] %l[ should read a scanset's characters into wide ones and a
 // null, and fail if the first character is not of the scanset.
 static void Test_StdioScanWideSet(void)
 {

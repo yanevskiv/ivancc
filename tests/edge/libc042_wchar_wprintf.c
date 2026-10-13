@@ -9,8 +9,8 @@
 // does, where glibc writes WEOF; a wide string too small should hold what
 // fits and a null, and errno be left alone; a wide character with no bytes
 // should fail when it is put in a stream, what came before it written.
-// Liberty: (S7.24.2.1p14) an encoding error is a failure, which %c's
-// conversion as by btowc is not said to be, and (S7.24.2.3p3) a string too
+// Liberty: [C99 S7.24.2.1p14] an encoding error is a failure, which %c's
+// conversion as by btowc is not said to be, and [C99 S7.24.2.3p3] a string too
 // small is left unsaid.
 
 #include <errno.h>

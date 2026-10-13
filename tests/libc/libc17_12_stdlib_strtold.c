@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// (S7.20.1.3p4) strtold should read a string as a value, bit for bit, and stop.
+// [C99 S7.20.1.3p4] strtold should read a string as a value, bit for bit, and stop.
 static bool reads_long(const char *str, long double value, long end)
 {
     int lost = 0;
@@ -16,7 +16,7 @@ static bool reads_long(const char *str, long double value, long end)
     return lost == 0;
 }
 
-// (S7.20.1.3p10) strtold should read to the nearest long double, to its limits.
+// [C99 S7.20.1.3p10] strtold should read to the nearest long double, to its limits.
 static void Test_StdlibStrtold(void)
 {
     _TEST_TRUE(reads_long("1.5", 1.5L, 3));

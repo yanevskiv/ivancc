@@ -6,7 +6,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.14p2) vsscanf should read a string as sscanf does, by a list.
+// [C99 S7.19.6.14p2] vsscanf should read a string as sscanf does, by a list.
 static int reads_string(const char *str, const char *format, ...)
 {
     int n;
@@ -18,7 +18,7 @@ static int reads_string(const char *str, const char *format, ...)
     return n;
 }
 
-// (S7.19.6.9p2) vfscanf should read a stream as fscanf does, by a list.
+// [C99 S7.19.6.9p2] vfscanf should read a stream as fscanf does, by a list.
 static int reads_stream(FILE *file, const char *format, ...)
 {
     int n;
@@ -30,7 +30,7 @@ static int reads_stream(FILE *file, const char *format, ...)
     return n;
 }
 
-// (S7.19.6.11p2) vscanf should read standard input as scanf does, by a list.
+// [C99 S7.19.6.11p2] vscanf should read standard input as scanf does, by a list.
 static int reads_input(const char *format, ...)
 {
     int n;
@@ -42,7 +42,7 @@ static int reads_input(const char *format, ...)
     return n;
 }
 
-// (S7.19.6.9p2) Each function taking a list should read as its fellow does.
+// [C99 S7.19.6.9p2] Each function taking a list should read as its fellow does.
 static void Test_StdioVscanf(void)
 {
     FILE *file;

@@ -9,7 +9,7 @@
 // | 1 [g] 1
 // | 1 [h] 1
 // Non-standard: scanf should stop at an integer's L, or a %p's length.
-// Liberty: (S7.19.6.2p11) such a length modifier is undefined behaviour.
+// Liberty: [C99 S7.19.6.2p11] such a length modifier is undefined behaviour.
 
 #include <stdio.h>
 

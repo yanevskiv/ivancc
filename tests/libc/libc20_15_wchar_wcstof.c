@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// (S7.24.4.1.1p4) wcstof should read a wide string as a value, and stop.
+// [C99 S7.24.4.1.1p4] wcstof should read a wide string as a value, and stop.
 static bool reads_float(const wchar_t *str, float value, long end)
 {
     int lost = 0;
@@ -16,7 +16,7 @@ static bool reads_float(const wchar_t *str, float value, long end)
     return lost == 0;
 }
 
-// (S7.24.4.1.1p4) wcstold should read a wide string as a value, and stop.
+// [C99 S7.24.4.1.1p4] wcstold should read a wide string as a value, and stop.
 static bool reads_long(const wchar_t *str, long double value, long end)
 {
     int lost = 0;
@@ -28,7 +28,7 @@ static bool reads_long(const wchar_t *str, long double value, long end)
     return lost == 0;
 }
 
-// (S7.24.4.1.1p10) wcstof should read to the nearest float, and range.
+// [C99 S7.24.4.1.1p10] wcstof should read to the nearest float, and range.
 static void Test_WcharWcstof(void)
 {
     _TEST_TRUE(reads_float(L"1.5", 1.5F, 3));
@@ -45,7 +45,7 @@ static void Test_WcharWcstof(void)
     _TEST_TRUE((wcstof)(L"2.5x", NULL) == 2.5F);
 }
 
-// (S7.24.4.1.1p10) wcstold should read to the nearest long double, and range.
+// [C99 S7.24.4.1.1p10] wcstold should read to the nearest long double, and range.
 static void Test_WcharWcstold(void)
 {
     _TEST_TRUE(reads_long(L"1.5", 1.5L, 3));

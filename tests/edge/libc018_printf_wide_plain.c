@@ -6,7 +6,7 @@
 // | [ -1
 // | [|ab] 5
 // Non-standard: printf should hold "C" to ASCII, and write a tag as no byte.
-// Liberty: (S5.2.1p1) a locale's extended characters are locale-specific.
+// Liberty: [C99 S5.2.1p1] a locale's extended characters are locale-specific.
 
 #include <stdio.h>
 #include <stddef.h>

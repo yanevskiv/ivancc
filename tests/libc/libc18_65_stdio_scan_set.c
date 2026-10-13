@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.2p12) %[ should store a run of its scanset and a null after it.
+// [C99 S7.19.6.2p12] %[ should store a run of its scanset and a null after it.
 static void Test_StdioScanSet(void)
 {
     char first[SMALL];

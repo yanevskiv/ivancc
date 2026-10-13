@@ -26,7 +26,7 @@
 #ifndef _SIGNAL_H
 #define _SIGNAL_H
 
-// (S7.14) Signal handling
+// [C99 S7.14] Signal handling
 #define SIG_DFL ((void (*)(int)) 0)
 #define SIG_ERR ((void (*)(int)) -1)
 #define SIG_IGN ((void (*)(int)) 1)
@@ -40,10 +40,10 @@
 
 typedef int sig_atomic_t;
 
-// (S7.14.1) Specify signal handling
+// [C99 S7.14.1] Specify signal handling
 void (*signal(int sig, void (*func)(int)))(int);
 
-// (S7.14.2) Send signal
+// [C99 S7.14.2] Send signal
 int raise(int sig);
 
 #endif // _SIGNAL_H

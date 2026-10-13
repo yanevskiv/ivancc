@@ -8,7 +8,7 @@
 
 static char filebuf[SMALL];
 
-// (S7.19.6.2p9) The first character after a number's item should stay unread.
+// [C99 S7.19.6.2p9] The first character after a number's item should stay unread.
 static bool leaves(int kind)
 {
     FILE *file;
@@ -60,7 +60,7 @@ static bool leaves(int kind)
     return lost == 0;
 }
 
-// (S7.19.6.2p9) A number's item should end alike however a stream is buffered.
+// [C99 S7.19.6.2p9] A number's item should end alike however a stream is buffered.
 static void Test_StdioScanRealUnread(void)
 {
     _TEST_TRUE(leaves(_IOFBF));

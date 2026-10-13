@@ -65,7 +65,7 @@ static long halves(const char *kinds, ...)
     return (long) (total * HALVES);
 }
 
-// (S7.15.1.1p2) va_arg should yield an argument of any type, as promoted.
+// [C99 S7.15.1.1p2] va_arg should yield an argument of any type, as promoted.
 static void Test_StdargKinds(void)
 {
     struct Wide wide = {{1, 2, 3}};

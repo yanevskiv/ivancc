@@ -6,7 +6,7 @@
 // | [x    |str  ] 13
 // | [x|x] 5
 // Non-standard: printf should ignore a flag or precision its conversion lacks.
-// Liberty: (S7.19.6.1p4, p6) # on %d %u %c %s, 0 and .3 on %c are undefined.
+// Liberty: [C99 S7.19.6.1p4, p6] # on %d %u %c %s, 0 and .3 on %c are undefined.
 
 #include <stdio.h>
 

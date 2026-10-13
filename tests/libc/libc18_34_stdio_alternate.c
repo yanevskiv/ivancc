@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// (S7.19.6.1p6) A # flag should lead octal with a zero and hexadecimal with 0x.
+// [C99 S7.19.6.1p6] A # flag should lead octal with a zero and hexadecimal with 0x.
 static void Test_StdioAlternate(void)
 {
     _TEST_TRUE(prints("010", "%#o", 8U));

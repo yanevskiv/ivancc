@@ -9,7 +9,7 @@
 // | 2 0 [x]
 // | 2 0 [x]
 // Standard: scanf should fail an integer that is 0x with no digit after it.
-// Unlike: (S7.19.6.2p10) glibc stores it as 0, so no libc test holds this.
+// Unlike: [C99 S7.19.6.2p10] glibc stores it as 0, so no libc test holds this.
 
 #include <stdio.h>
 

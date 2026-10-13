@@ -65,7 +65,7 @@ static bool is(const struct tm *tm, int year, int mon, int mday, int hour, int m
     return lost == 0;
 }
 
-// (S7.23.3.5p3) strftime should format a time in UTC as the text given.
+// [C99 S7.23.3.5p3] strftime should format a time in UTC as the text given.
 static bool formats(time_t when, const char *format, const char *want)
 {
     int lost = 0;

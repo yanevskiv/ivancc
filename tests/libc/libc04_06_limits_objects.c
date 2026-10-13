@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc04_00_limits_helpers.inc"
 
-// (S5.2.4.2.1p1) An object of each type should hold both of its limits.
+// [C99 S5.2.4.2.1p1] An object of each type should hold both of its limits.
 static void Test_LimitsObjects(void)
 {
     int ints[2] = {INT_MIN, INT_MAX};

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// (S7.20.1.3p10) strtod should read all of a string as too large, of its sign.
+// [C99 S7.20.1.3p10] strtod should read all of a string as too large, of its sign.
 static bool overflows(const char *str, int sign)
 {
     int lost = 0;
@@ -21,7 +21,7 @@ static bool overflows(const char *str, int sign)
     return lost == 0;
 }
 
-// (S7.20.1.3p10) strtod should read all of a string as too small, of its sign.
+// [C99 S7.20.1.3p10] strtod should read all of a string as too small, of its sign.
 static bool underflows(const char *str, int sign)
 {
     int lost = 0;
@@ -33,7 +33,7 @@ static bool underflows(const char *str, int sign)
     return lost == 0;
 }
 
-// (S7.20.1.3p10) strtod should read a number out of range as huge or tiny.
+// [C99 S7.20.1.3p10] strtod should read a number out of range as huge or tiny.
 static void Test_StdlibStrtodRange(void)
 {
     _TEST_TRUE(overflows("1e400", 1));

@@ -6,7 +6,7 @@
 
 #define ZEROS "0000000000000000000000000000000000000000000000000000000000000000"
 
-// (S7.19.6.2p12) %d should read a decimal integer, signed or not, as strtol.
+// [C99 S7.19.6.2p12] %d should read a decimal integer, signed or not, as strtol.
 static void Test_StdioScanDecimal(void)
 {
     int first = NONE;

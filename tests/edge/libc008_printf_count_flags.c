@@ -6,7 +6,7 @@
 // | abcdef[|7] 10 7
 // | abcdefg[|7] 11 8
 // Non-standard: %n should take flags, a width and a precision, and ignore them.
-// Liberty: (S7.19.6.1p8) %n with any of them is undefined behaviour.
+// Liberty: [C99 S7.19.6.1p8] %n with any of them is undefined behaviour.
 
 #include <stdio.h>
 

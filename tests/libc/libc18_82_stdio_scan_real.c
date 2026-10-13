@@ -6,7 +6,7 @@
 
 #define ZEROS "0000000000000000000000000000000000000000000000000000000000000000"
 
-// (S7.19.6.2p12) %f should read a floating number, signed or not, as strtod.
+// [C99 S7.19.6.2p12] %f should read a floating number, signed or not, as strtod.
 static void Test_StdioScanReal(void)
 {
     float first = NONE;
