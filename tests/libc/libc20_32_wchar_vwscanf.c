@@ -8,7 +8,8 @@
 
 #define NAME "wide.tmp"
 
-// [C99:7.24.2.8p2] vswscanf should read a wide string as swscanf does, by a list.
+// vswscanf should read a wide string as swscanf does, by a list.
+// [C99:7.24.2.8p2]: vswscanf
 static int reads_string(const wchar_t *str, const wchar_t *format, ...)
 {
     int n;
@@ -20,7 +21,8 @@ static int reads_string(const wchar_t *str, const wchar_t *format, ...)
     return n;
 }
 
-// [C99:7.24.2.6p2] vfwscanf should read a stream as fwscanf does, by a list.
+// vfwscanf should read a stream as fwscanf does, by a list.
+// [C99:7.24.2.6p2]: vfwscanf
 static int reads_stream(FILE *file, const wchar_t *format, ...)
 {
     int n;
@@ -32,7 +34,8 @@ static int reads_stream(FILE *file, const wchar_t *format, ...)
     return n;
 }
 
-// [C99:7.24.2.10p2] vwscanf should read standard input as wscanf does, by a list.
+// vwscanf should read standard input as wscanf does, by a list.
+// [C99:7.24.2.10p2]: vwscanf
 static int reads_input(const wchar_t *format, ...)
 {
     int n;
@@ -44,7 +47,8 @@ static int reads_input(const wchar_t *format, ...)
     return n;
 }
 
-// [C99:7.24.2.6p2] Each function taking a list should read as its fellow does.
+// Each function taking a list should read as its fellow does.
+// [C99:7.24.2.6p2]: vfwscanf
 static void Test_WcharVwscanf(void)
 {
     int i = 0;
@@ -72,7 +76,8 @@ static void Test_WcharVwscanf(void)
     _TEST_INT(remove(NAME), 0);
 }
 
-// [C99:7.24.2.12p2] wscanf and vwscanf should read standard input.
+// wscanf and vwscanf should read standard input.
+// [C99:7.24.2.12p2]: wscanf, as fwscanf from stdin
 static void Test_WcharWscanf(void)
 {
     int i = 0;

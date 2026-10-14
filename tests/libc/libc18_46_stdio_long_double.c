@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p7] L should give a long double argument, and l change nothing.
+// L should give a long double argument, and l change nothing.
+// [C99:7.19.6.1p7]: printf's length modifiers
 static void Test_StdioLongDouble(void)
 {
     _TEST_TRUE(prints("1.500000", "%Lf", 1.5L));

@@ -6,7 +6,8 @@
 
 #define PAIR 2
 
-// [C99:7.19.6.2p11] %n should store through the type its length modifier names.
+// %n should store through the type its length modifier names.
+// [C99:7.19.6.2p11]: scanf's length modifiers
 static void Test_StdioScanLengths(void)
 {
     size_t z = 0;

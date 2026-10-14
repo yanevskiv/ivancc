@@ -8,7 +8,8 @@
 #define CUT  ((size_t) -2)
 #define BAD  ((size_t) -1)
 
-// [C99:7.24.6.4.1] mbsrtowcs should count wide characters, and stop between two.
+// mbsrtowcs should count wide characters, and stop between two.
+// [C99:7.24.6.4.1]: mbsrtowcs
 static void Test_WcharStringsUtf8Decoding(void)
 {
     mbstate_t state;
@@ -40,7 +41,8 @@ static void Test_WcharStringsUtf8Decoding(void)
     _TEST_TRUE(src == text);
 }
 
-// [C99:7.24.6.4.1p2] mbsrtowcs should begin in the state *ps describes.
+// mbsrtowcs should begin in the state *ps describes.
+// [C99:7.24.6.4.1p2]: mbsrtowcs, stopping at a null character or after len
 static void Test_WcharStringsUtf8Begun(void)
 {
     mbstate_t state;
@@ -57,7 +59,8 @@ static void Test_WcharStringsUtf8Begun(void)
     _TEST_TRUE(mbsinit(&state) != 0);
 }
 
-// [C99:7.24.6.4.2] wcsrtombs should count bytes, and stop between two characters.
+// wcsrtombs should count bytes, and stop between two characters.
+// [C99:7.24.6.4.2]: wcsrtombs
 static void Test_WcharStringsUtf8Encoding(void)
 {
     mbstate_t state;
@@ -93,7 +96,8 @@ static void Test_WcharStringsUtf8Encoding(void)
     _TEST_TRUE(src == text);
 }
 
-// [C99:7.24.6.4] What is no character should be an error, EILSEQ in errno.
+// What is no character should be an error, EILSEQ in errno.
+// [C99:7.24.6.4]: mbsrtowcs and wcsrtombs
 static void Test_WcharStringsUtf8Errors(void)
 {
     mbstate_t state;

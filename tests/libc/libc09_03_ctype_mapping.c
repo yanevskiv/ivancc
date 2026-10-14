@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc09_00_ctype_helpers.inc"
 
-// [C99:7.4.2] A mapping should take one set to another: return the first to err.
+// A mapping should take one set to another: return the first to err.
+// [C99:7.4.2]: tolower and toupper
 static int mismapped(int (*map)(int), const char *from, const char *to)
 {
     int at;
@@ -19,7 +20,8 @@ static int mismapped(int (*map)(int), const char *from, const char *to)
     return NONE;
 }
 
-// [C99:7.4.2] A mapping should give a letter's other case and leave any other.
+// A mapping should give a letter's other case and leave any other.
+// [C99:7.4.2]: tolower and toupper
 static void Test_CtypeMapping(void)
 {
     _TEST_INT(mismapped(tolower, UPPER, LOWER), NONE);

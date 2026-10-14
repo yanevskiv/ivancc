@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc10_00_string_helpers.inc"
 
-// [C99:7.21.5] A search should point at what it finds or nothing, and count spans.
+// A search should point at what it finds or nothing, and count spans.
+// [C99:7.21.5]: memchr, strchr, strcspn, strpbrk, strrchr, strspn, strstr and strtok
 static void Test_StringSearch(void)
 {
     char buf[SIZE];

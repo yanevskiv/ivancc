@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// [C99:7.18.3p2] The other types' limits should be those their sizes give.
+// The other types' limits should be those their sizes give.
+// [C99:7.18.3p2]: the other limits' types, as the integer promotions give
 static void Test_StdintOther(void)
 {
     _TEST_INT(PTRDIFF_MIN, least(sizeof(ptrdiff_t)));

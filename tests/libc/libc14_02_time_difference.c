@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// [C99:7.23.2.2p3] difftime should give the seconds between two times, far apart.
+// difftime should give the seconds between two times, far apart.
+// [C99:7.23.2.2p3]: difftime, in seconds as a double
 static void Test_TimeDifference(void)
 {
     _TEST_FLOAT(difftime(10, 4), 6.0);

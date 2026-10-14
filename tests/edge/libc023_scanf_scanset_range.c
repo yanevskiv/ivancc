@@ -9,7 +9,8 @@
 // | 1 [%+-]
 // | 1 []^_`a]
 // Non-standard: scanf should read a - between two in order as a range.
-// Liberty: [C99:7.19.6.2p12] such a - in a scanlist is implementation-defined.
+// Liberty: such a - in a scanlist is implementation-defined.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
 
 #include <stdio.h>
 

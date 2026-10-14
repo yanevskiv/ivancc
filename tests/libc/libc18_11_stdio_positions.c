@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.9.4p2] A binary stream's position should count characters.
+// A binary stream's position should count characters.
+// [C99:7.19.9.4p2]: ftell, a binary stream's count of characters
 static void Test_StdioPositions(void)
 {
     fpos_t pos;

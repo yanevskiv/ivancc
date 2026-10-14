@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc06_00_float_helpers.inc"
 
-// [C99:5.2.4.2.2p11] An epsilon should be the step from 1 to the next value.
+// An epsilon should be the step from 1 to the next value.
+// [C99:5.2.4.2.2p11]: the floating maxima of FLT_EPSILON and FLT_MIN and their kin
 static void Test_FloatEpsilon(void)
 {
     float one = 1;

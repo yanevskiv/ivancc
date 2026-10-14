@@ -16,7 +16,8 @@ static int get(void)
     return errno;
 }
 
-// [C99:7.5p2] errno should be an int that keeps what the program stores in it.
+// errno should be an int that keeps what the program stores in it.
+// [C99:7.5p2]: EDOM, EILSEQ, ERANGE and errno
 static void Test_ErrnoLvalue(void)
 {
     int *where = &errno;

@@ -6,7 +6,8 @@
 
 #define AFTER 77
 
-// [C99:7.13p2] A jmp_buf should be an array, and take a jump in a struct too.
+// A jmp_buf should be an array, and take a jump in a struct too.
+// [C99:7.13p2]: jmp_buf, an array type
 static void Test_SetjmpType(void)
 {
     jmp_buf many[BUFS];

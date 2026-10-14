@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc06_00_float_helpers.inc"
 
-// [C99:5.2.4.2.2p6] long double should have the x87's 80-bit format in #if.
+// long double should have the x87's 80-bit format in #if.
+// [C99:5.2.4.2.2p6]: <float.h>'s values, constant expressions, most fit for #if
 #define DIRECTIVE_LDBL 0
 #if (LDBL_MANT_DIG == 64) \
     && (LDBL_DIG == 18) \
@@ -25,7 +26,8 @@ static const long double extended_max = LDBL_MAX;
 static const long double extended_min = LDBL_MIN;
 static const long double extended_epsilon = LDBL_EPSILON;
 
-// [C99:5.2.4.2.2p9] long double should be the x87's extended format, 64 bits.
+// long double should be the x87's extended format, 64 bits.
+// [C99:5.2.4.2.2p9]: the floating minima of FLT_RADIX to LDBL_MAX_10_EXP
 static void Test_FloatLongDouble(void)
 {
     _TEST_INT(LDBL_MANT_DIG, 64);

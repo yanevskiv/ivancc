@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc02_00_stdbool_helpers.inc"
 
-// [C99:7.16p3] true and __bool_true_false_are_defined should be 1, false 0.
+// true and __bool_true_false_are_defined should be 1, false 0.
+// [C99:7.16p3]: true 1, false 0 and __bool_true_false_are_defined 1, fit for #if
 #define DIRECTIVE 0
 #if (true == 1) \
     && (false == 0) \
@@ -13,7 +14,8 @@
 #define DIRECTIVE 1
 #endif
 
-// [C99:7.16p3] The three macros should be the int constants 1, 0 and 1.
+// The three macros should be the int constants 1, 0 and 1.
+// [C99:7.16p3]: true 1, false 0 and __bool_true_false_are_defined 1, fit for #if
 static void Test_StdboolMacros(void)
 {
     _TEST_INT(true, 1);

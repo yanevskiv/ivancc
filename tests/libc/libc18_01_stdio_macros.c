@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.1p3] The macros should be distinct and within their limits in #if.
+// The macros should be distinct and within their limits in #if.
+// [C99:7.19.1p3]: <stdio.h>'s macros, NULL to stdout
 #define DIRECTIVE 0
 #if defined(NULL) \
     && (_IOFBF != _IOLBF) \
@@ -23,7 +24,8 @@
 #define DIRECTIVE 1
 #endif
 
-// [C99:7.19.1p3] File streams stderr, stdin and stdout should be macros.
+// File streams stderr, stdin and stdout should be macros.
+// [C99:7.19.1p3]: <stdio.h>'s macros, NULL to stdout
 #define STREAMS 0
 #if defined(stderr) \
     && defined(stdin) \
@@ -32,7 +34,8 @@
 #define STREAMS 1
 #endif
 
-// [C99:7.19.1p3] The macros should be defined and within their limits.
+// The macros should be defined and within their limits.
+// [C99:7.19.1p3]: <stdio.h>'s macros, NULL to stdout
 static void Test_StdioMacros(void)
 {
     _TEST_INT(DIRECTIVE, 1);

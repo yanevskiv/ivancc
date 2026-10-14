@@ -40,7 +40,8 @@ static int churned(void)
     return 1;
 }
 
-// [C99:7.13.2.1p3] Six values a caller took before a jump should be unchanged.
+// Six values a caller took before a jump should be unchanged.
+// [C99:7.13.2.1p3]: the objects longjmp leaves as they were, bar some locals
 static bool unchanged(long k1, long k2, long k3, long k4, long k5, long k6)
 {
     int lost = 0;
@@ -77,7 +78,8 @@ static bool keep(void)
 // Called through a volatile pointer, so keep has registers of its own.
 static bool (*volatile kept)(void) = keep;
 
-// [C99:7.13.2.1p3] A jump should leave volatile objects and unchanged locals.
+// A jump should leave volatile objects and unchanged locals.
+// [C99:7.13.2.1p3]: the objects longjmp leaves as they were, bar some locals
 static void Test_SetjmpLocals(void)
 {
     long k1 = seed + 1;

@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] %ls should write the whole characters a precision's bytes hold.
+// %ls should write the whole characters a precision's bytes hold.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioWidePartial(void)
 {
     const wchar_t open[2] = {0xe9, 0x20ac};

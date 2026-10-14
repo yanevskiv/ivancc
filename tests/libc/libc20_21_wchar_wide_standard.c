@@ -10,7 +10,8 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:7.24.3.7] getwchar and putwchar should be getwc and putwc of the two.
+// getwchar and putwchar should be getwc and putwc of the two.
+// [C99:7.24.3.7]: getwchar
 static void Test_WcharWideStandard(void)
 {
     wchar_t line[SIZE];

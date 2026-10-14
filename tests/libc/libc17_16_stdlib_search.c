@@ -6,7 +6,8 @@
 
 #define STRIDE 7
 
-// [C99:7.20.5.1p2] bsearch should find each int: return the first place it fails.
+// bsearch should find each int: return the first place it fails.
+// [C99:7.20.5.1p2]: bsearch
 static int unfound(void)
 {
     int i;
@@ -21,7 +22,8 @@ static int unfound(void)
     return NONE;
 }
 
-// [C99:7.20.5.1p2] bsearch should find an element of the sorted ints, no other.
+// bsearch should find an element of the sorted ints, no other.
+// [C99:7.20.5.1p2]: bsearch
 static void Test_StdlibSearch(void)
 {
     int i;

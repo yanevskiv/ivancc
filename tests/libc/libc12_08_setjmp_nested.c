@@ -21,7 +21,8 @@ static int inner(void)
     return count;
 }
 
-// [C99:7.13.2.1p2] A jump should land at its own buffer's setjmp, among others.
+// A jump should land at its own buffer's setjmp, among others.
+// [C99:7.13.2.1p2]: longjmp, restoring setjmp's environment
 static void Test_SetjmpNested(void)
 {
     jmp_buf local;

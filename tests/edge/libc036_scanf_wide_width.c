@@ -6,8 +6,9 @@
 // | 1 68 e9 0 3 [l]
 // | 1 20ac 0 23 3 [e]
 // Standard: scanf should count a wide conversion's width in bytes.
-// Unlike: [C99:7.19.6.2p12] footnote 252 has the field's extent set byte by
+// Unlike: footnote 252 has the field's extent set byte by
 // byte, and glibc counts wide characters, so no libc test holds this.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
 
 #include <locale.h>
 #include <stddef.h>

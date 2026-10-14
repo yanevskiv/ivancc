@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc12_00_setjmp_helpers.inc"
 
-// [C99:7.13.1.1p4] setjmp should take a jump in each context C99 allows it.
+// setjmp should take a jump in each context C99 allows it.
+// [C99:7.13.1.1p4]: the contexts setjmp may appear in
 static void Test_SetjmpContexts(void)
 {
     volatile int count = 0;

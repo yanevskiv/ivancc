@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc15_00_signal_helpers.inc"
 
-// [C99:7.14.1.1p8] signal should return the handler it replaces.
+// signal should return the handler it replaces.
+// [C99:7.14.1.1p8]: signal's previous handler, or SIG_ERR and a positive errno
 static void Test_SignalInstalls(void)
 {
     void (*first)(int) = signal(SIGTERM, on_signal);

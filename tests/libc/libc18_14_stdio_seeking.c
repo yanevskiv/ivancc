@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.9.2p2] fseek should move within a stream's buffer and past it.
+// fseek should move within a stream's buffer and past it.
+// [C99:7.19.9.2p2]: fseek
 static void Test_StdioSeeking(void)
 {
     FILE *file;

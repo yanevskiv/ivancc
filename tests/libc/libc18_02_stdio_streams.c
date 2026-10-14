@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.3p7] The three standard streams should be three streams.
+// The three standard streams should be three streams.
+// [C99:7.19.3p7]: stdin, stdout and stderr at program startup
 static void Test_StdioStreams(void)
 {
     FILE *in = stdin;

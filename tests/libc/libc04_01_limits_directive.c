@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc04_00_limits_helpers.inc"
 
-// [C99:5.2.4.2.1p1] The character types' limits should be x86-64 Linux's in #if.
+// The character types' limits should be x86-64 Linux's in #if.
+// [C99:5.2.4.2.1p1]: the integer limits' least magnitudes, and their types
 #define DIRECTIVE_CHAR 0
 #if (CHAR_BIT == 8) \
     && (SCHAR_MIN == -128) \
@@ -17,7 +18,8 @@
 #define DIRECTIVE_CHAR 1
 #endif
 
-// [C99:5.2.4.2.1p1] The limits of short and int should be x86-64 Linux's in #if.
+// The limits of short and int should be x86-64 Linux's in #if.
+// [C99:5.2.4.2.1p1]: the integer limits' least magnitudes, and their types
 #define DIRECTIVE_INT 0
 #if (SHRT_MIN == -32768) \
     && (SHRT_MAX == 32767) \
@@ -29,7 +31,8 @@
 #define DIRECTIVE_INT 1
 #endif
 
-// [C99:5.2.4.2.1p1] The limits of long should be x86-64 Linux's in #if.
+// The limits of long should be x86-64 Linux's in #if.
+// [C99:5.2.4.2.1p1]: the integer limits' least magnitudes, and their types
 #define DIRECTIVE_LONG 0
 #if (LONG_MIN == -9223372036854775807L - 1) \
     && (LONG_MAX == 9223372036854775807L) \
@@ -38,7 +41,8 @@
 #define DIRECTIVE_LONG 1
 #endif
 
-// [C99:5.2.4.2.1p1] The limits of long long should be x86-64 Linux's in #if.
+// The limits of long long should be x86-64 Linux's in #if.
+// [C99:5.2.4.2.1p1]: the integer limits' least magnitudes, and their types
 #define DIRECTIVE_LLONG 0
 #if (LLONG_MIN == -9223372036854775807LL - 1) \
     && (LLONG_MAX == 9223372036854775807LL) \
@@ -47,7 +51,8 @@
 #define DIRECTIVE_LLONG 1
 #endif
 
-// [C99:5.2.4.2.1p1] Every limit should hold in a directive as in an expression.
+// Every limit should hold in a directive as in an expression.
+// [C99:5.2.4.2.1p1]: the integer limits' least magnitudes, and their types
 static void Test_LimitsDirective(void)
 {
     _TEST_INT(DIRECTIVE_CHAR, 1);

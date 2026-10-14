@@ -2,8 +2,9 @@
 // (Test) Output:
 // | 8 8
 // Non-standard: NULL should be a pointer to void and never an integer zero.
-// Liberty: [C99:7.17p3] which null pointer constant NULL expands to is
+// Liberty: which null pointer constant NULL expands to is
 // implementation-defined.
+// [C99:7.17p3]: NULL and offsetof
 
 #include <stdio.h>
 #include <stddef.h>

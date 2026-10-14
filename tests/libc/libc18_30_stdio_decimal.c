@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] %d and %i should write an int in decimal, a minus if negative.
+// %d and %i should write an int in decimal, a minus if negative.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioDecimal(void)
 {
     _TEST_TRUE(prints("0", "%d", 0));

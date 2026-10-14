@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc01_00_iso646_helpers.inc"
 
-// [C99:7.9p1] bitand, bitor, xor and compl should work on their operands' bits.
+// bitand, bitor, xor and compl should work on their operands' bits.
+// [C99:7.9p1]: the eleven macros spelling operators, and to xor_eq
 static void Test_Iso646Bitwise(void)
 {
     _TEST_INT(SIX bitand THREE, 2);

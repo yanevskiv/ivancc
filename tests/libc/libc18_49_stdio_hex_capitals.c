@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] %A should write what %a does, each of its letters a capital.
+// %A should write what %a does, each of its letters a capital.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static bool capital(const char *lower, const char *upper, double value)
 {
     size_t k;
@@ -20,7 +21,8 @@ static bool capital(const char *lower, const char *upper, double value)
     return lost == 0;
 }
 
-// [C99:7.19.6.1p8] %A should write X, P and ABCDEF for %a's x, p and abcdef.
+// %A should write X, P and ABCDEF for %a's x, p and abcdef.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioHexCapitals(void)
 {
     char got[HOLD];

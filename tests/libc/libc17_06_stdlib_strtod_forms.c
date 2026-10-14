@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:7.20.1.3p3] strtod should read each decimal and hexadecimal form alone.
+// strtod should read each decimal and hexadecimal form alone.
+// [C99:7.20.1.3p3]: strtod's subject sequence
 static void Test_StdlibStrtodForms(void)
 {
     _TEST_TRUE(reads("1.5", 1.5, 3));

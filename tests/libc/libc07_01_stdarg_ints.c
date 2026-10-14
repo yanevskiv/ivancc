@@ -19,7 +19,8 @@ static int sum(int count, ...)
     return total;
 }
 
-// [C99:7.15.1.1p2] va_arg should yield each int in turn, in registers or not.
+// va_arg should yield each int in turn, in registers or not.
+// [C99:7.15.1.1p2]: va_arg, the next argument as the type given
 static void Test_StdargInts(void)
 {
     _TEST_INT(sum(0), 0);

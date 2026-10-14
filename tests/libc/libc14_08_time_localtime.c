@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// [C99:7.23.3.4p2] localtime should break a time down into fields within range.
+// localtime should break a time down into fields within range.
+// [C99:7.23.3.4p2]: localtime
 static void Test_TimeLocaltime(void)
 {
     time_t now = time(NULL);

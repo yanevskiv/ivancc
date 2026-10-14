@@ -8,7 +8,8 @@
 // | [+0x1234| 0x1234] 17
 // | [     (nil)|(nil)     ] 23
 // Non-standard: printf should write a pointer as 0x and hex, a null one (nil).
-// Liberty: [C99:7.19.6.1p8] %p's characters are implementation-defined.
+// Liberty: %p's characters are implementation-defined.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 
 #include <stdio.h>
 

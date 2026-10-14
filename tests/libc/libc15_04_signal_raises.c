@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc15_00_signal_helpers.inc"
 
-// [C99:7.14.2.1p2] raise should run a signal's handler once, with its number.
+// raise should run a signal's handler once, with its number.
+// [C99:7.14.2.1p2]: raise, returning after the handler
 static bool raises(int sig)
 {
     int lost = 0;
@@ -20,7 +21,8 @@ static bool raises(int sig)
     return lost == 0;
 }
 
-// [C99:7.14.2.1p2] raise should run the handler of each signal C99 names.
+// raise should run the handler of each signal C99 names.
+// [C99:7.14.2.1p2]: raise, returning after the handler
 static void Test_SignalRaises(void)
 {
     _TEST_TRUE(raises(SIGABRT));

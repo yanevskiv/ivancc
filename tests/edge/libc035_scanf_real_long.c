@@ -4,8 +4,9 @@
 // | 1 1e-3999 10006 [,]
 // | 1 inf 10004 [,]
 // Non-standard: scanf should read a number of ten thousand digits whole.
-// Liberty: [C99:7.19.6.2p9] an item has no greatest length, and an
+// Liberty: an item has no greatest length, and an
 // implementation may run out of room for one.
+// [C99:7.19.6.2p9]: an input item, the longest prefix of a matching sequence
 
 #include <stdio.h>
 #include <string.h>

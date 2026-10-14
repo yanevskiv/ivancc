@@ -13,7 +13,8 @@
 
 static char inbuf[SMALL];
 
-// [C99:7.19.3p3] Each input function should read through a small buffer.
+// Each input function should read through a small buffer.
+// [C99:7.19.3p3]: unbuffered, fully buffered and line buffered streams
 static void Test_StdioInput(void)
 {
     char line[LINE];

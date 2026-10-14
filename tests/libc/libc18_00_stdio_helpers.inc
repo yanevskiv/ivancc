@@ -42,7 +42,8 @@ static const unsigned char bytes[BYTES] = {0, UCHAR_MAX, '\n', '\r', '\n', CTRL_
 // Objects.
 static unsigned char wide[WIDE];
 
-// [C99:7.19.5.3p3] A file opened in a mode should take a string and close.
+// A file opened in a mode should take a string and close.
+// [C99:7.19.5.3p3]: fopen's modes
 static bool put(const char *name, const char *mode, const char *str)
 {
     int lost = 0;
@@ -76,7 +77,8 @@ static bool holds(const char *name, const char *str)
     return lost == 0;
 }
 
-// [C99:7.19.7.2p2] fgets should read a stream's next line, or what is left.
+// fgets should read a stream's next line, or what is left.
+// [C99:7.19.7.2p2]: fgets, at most n - 1 characters through a new-line
 static bool reads(FILE *file, const char *want)
 {
     int lost = 0;
@@ -98,7 +100,8 @@ static void pattern(void)
     }
 }
 
-// [C99:7.19.6.12p3] A format should give its text and return the text's length.
+// A format should give its text and return the text's length.
+// [C99:7.19.6.12p3]: vsnprintf's count, as if n were large enough
 static bool prints(const char *want, const char *format, ...)
 {
     int n;
@@ -114,7 +117,8 @@ static bool prints(const char *want, const char *format, ...)
     return lost == 0;
 }
 
-// [C99:7.19.6.7p3] A format should assign a count of items, the first a string.
+// A format should assign a count of items, the first a string.
+// [C99:7.19.6.7p3]: sscanf's count of items assigned, or EOF
 static bool scans(const char *input, const char *format, int count, const char *want)
 {
     int lost = 0;
@@ -129,7 +133,8 @@ static bool scans(const char *input, const char *format, int count, const char *
     return lost == 0;
 }
 
-// [C99:7.19.6.7p3] A format should assign a count of items, the first an int.
+// A format should assign a count of items, the first an int.
+// [C99:7.19.6.7p3]: sscanf's count of items assigned, or EOF
 static bool scans_int(const char *input, const char *format, int count, int want)
 {
     int lost = 0;
@@ -140,7 +145,8 @@ static bool scans_int(const char *input, const char *format, int count, int want
     return lost == 0;
 }
 
-// [C99:7.19.6.7p3] A format should assign a count of items, the first unsigned.
+// A format should assign a count of items, the first unsigned.
+// [C99:7.19.6.7p3]: sscanf's count of items assigned, or EOF
 static bool scans_unsigned(const char *input, const char *format, int count, unsigned int want)
 {
     int lost = 0;
@@ -151,7 +157,8 @@ static bool scans_unsigned(const char *input, const char *format, int count, uns
     return lost == 0;
 }
 
-// [C99:7.19.6.7p3] A format should assign a count of items, the first a float.
+// A format should assign a count of items, the first a float.
+// [C99:7.19.6.7p3]: sscanf's count of items assigned, or EOF
 static bool scans_float(const char *input, const char *format, int count, float want)
 {
     int lost = 0;
@@ -162,7 +169,8 @@ static bool scans_float(const char *input, const char *format, int count, float 
     return lost == 0;
 }
 
-// [C99:7.19.6.7p3] A format should assign a count of items, the first a double.
+// A format should assign a count of items, the first a double.
+// [C99:7.19.6.7p3]: sscanf's count of items assigned, or EOF
 static bool scans_double(const char *input, const char *format, int count, double want)
 {
     int lost = 0;
@@ -173,7 +181,8 @@ static bool scans_double(const char *input, const char *format, int count, doubl
     return lost == 0;
 }
 
-// [C99:7.19.6.7p3] A format should assign a count, the first a long double.
+// A format should assign a count, the first a long double.
+// [C99:7.19.6.7p3]: sscanf's count of items assigned, or EOF
 static bool scans_long_double(const char *input, const char *format, int count, long double want)
 {
     int lost = 0;
@@ -184,8 +193,9 @@ static bool scans_long_double(const char *input, const char *format, int count, 
     return lost == 0;
 }
 
-// [C99:7.19.6.7p3] A format should assign a count of items, the first len wide
+// A format should assign a count of items, the first len wide
 // characters, with nothing stored after them.
+// [C99:7.19.6.7p3]: sscanf's count of items assigned, or EOF
 static bool scans_wide(const char *input, const char *format, int count, const wchar_t *want, size_t len)
 {
     int lost = 0;

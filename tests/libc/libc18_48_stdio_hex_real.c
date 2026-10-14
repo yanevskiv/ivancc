@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] %a's text should be [-]0xh.hhhhp(+-)d, and give its value back.
+// %a's text should be [-]0xh.hhhhp(+-)d, and give its value back.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static bool exact(double value)
 {
     int n;
@@ -40,7 +41,8 @@ static bool exact(double value)
     return lost == 0;
 }
 
-// [C99:7.19.6.1p8] %a with no precision should write a double exactly, in hex.
+// %a with no precision should write a double exactly, in hex.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioHexReal(void)
 {
     char got[HOLD];

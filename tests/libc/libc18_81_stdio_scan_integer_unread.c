@@ -6,7 +6,8 @@
 
 static char filebuf[SMALL];
 
-// [C99:7.19.6.2p9] The first character after an integer's item should stay unread.
+// The first character after an integer's item should stay unread.
+// [C99:7.19.6.2p9]: an input item, the longest prefix of a matching sequence
 static bool leaves(int kind)
 {
     FILE *file;
@@ -47,7 +48,8 @@ static bool leaves(int kind)
     return lost == 0;
 }
 
-// [C99:7.19.6.2p2] fscanf should read integers the same however buffered.
+// fscanf should read integers the same however buffered.
+// [C99:7.19.6.2p2]: fscanf, its format and the arguments it assigns
 static void Test_StdioScanIntegerUnread(void)
 {
     _TEST_TRUE(leaves(_IOFBF));

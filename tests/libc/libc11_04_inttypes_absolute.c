@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// [C99:7.8.2.1p2] imaxabs should give a number without its sign.
+// imaxabs should give a number without its sign.
+// [C99:7.8.2.1p2]: imaxabs
 static void Test_InttypesAbsolute(void)
 {
     _TEST_INT(imaxabs(0), 0);

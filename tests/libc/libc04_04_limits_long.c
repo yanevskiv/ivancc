@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc04_00_limits_helpers.inc"
 
-// [C99:5.2.4.2.1p1] long and long long should have 64 bits.
+// long and long long should have 64 bits.
+// [C99:5.2.4.2.1p1]: the integer limits' least magnitudes, and their types
 static void Test_LimitsLong(void)
 {
     _TEST_INT(LONG_MIN, -9223372036854775807L - 1);

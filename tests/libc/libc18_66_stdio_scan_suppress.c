@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p10] An asterisk should convert, assign nothing and count nothing.
+// An asterisk should convert, assign nothing and count nothing.
+// [C99:7.19.6.2p10]: a conversion's input item, and a matching failure
 static void Test_StdioScanSuppress(void)
 {
     int n = NONE;

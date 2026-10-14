@@ -7,7 +7,8 @@
 #define TEXT(token)  #token
 #define SPELL(token) TEXT(token)
 
-// [C99:7.9p1] Each macro should expand to its operator's token and no more.
+// Each macro should expand to its operator's token and no more.
+// [C99:7.9p1]: the eleven macros spelling operators, and to xor_eq
 static void Test_Iso646Spellings(void)
 {
     _TEST_STR(SPELL(and), "&&");

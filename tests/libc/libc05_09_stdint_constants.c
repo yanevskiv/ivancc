@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// [C99:7.18.4p3] A constant macro should keep its argument's value in any base.
+// A constant macro should keep its argument's value in any base.
+// [C99:7.18.4p3]: the constant macros' expansions, fit for #if
 static void Test_StdintConstants(void)
 {
     _TEST_INT(INT8_C(127), 127);

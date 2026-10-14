@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.5.4p2] freopen should give a stream another file, indicators cleared.
+// freopen should give a stream another file, indicators cleared.
+// [C99:7.19.5.4p2]: freopen
 static void Test_StdioFreopen(void)
 {
     FILE *file = fopen("file", "w");

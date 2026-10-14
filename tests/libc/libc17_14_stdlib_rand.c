@@ -8,7 +8,8 @@
 
 static int draws[DRAWS];
 
-// [C99:7.20.2.1p2] rand should draw within its range: return the first place out.
+// rand should draw within its range: return the first place out.
+// [C99:7.20.2.1p2]: rand, from 0 to RAND_MAX
 static int draw(void)
 {
     int i;
@@ -23,7 +24,8 @@ static int draw(void)
     return out;
 }
 
-// [C99:7.20.2.2p2] rand should draw the same again: return the first place off.
+// rand should draw the same again: return the first place off.
+// [C99:7.20.2.2p2]: srand, the same seed the same sequence
 static int redrawn(void)
 {
     int i;
@@ -37,7 +39,8 @@ static int redrawn(void)
     return out;
 }
 
-// [C99:7.20.2.2p2] rand should draw within its range, and again after its seed.
+// rand should draw within its range, and again after its seed.
+// [C99:7.20.2.2p2]: srand, the same seed the same sequence
 static void Test_StdlibRand(void)
 {
     _TEST_INT(draw(), NONE);

@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc04_00_limits_helpers.inc"
 
-// [C99:5.2.4.2.1p2] A character should have 8 bits, and char its type's limits.
+// A character should have 8 bits, and char its type's limits.
+// [C99:5.2.4.2.1p2]: CHAR_MIN and CHAR_MAX, as a signed or an unsigned char's
 static void Test_LimitsChar(void)
 {
     _TEST_INT(CHAR_BIT, 8);

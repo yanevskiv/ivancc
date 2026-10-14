@@ -6,7 +6,8 @@
 
 #define SPINS 100000
 
-// [C99:7.23.2.1p3] The processor time should be known, and never run back.
+// The processor time should be known, and never run back.
+// [C99:7.23.2.1p3]: clock, or (clock_t)(-1)
 static void Test_TimeClock(void)
 {
     clock_t start = clock();

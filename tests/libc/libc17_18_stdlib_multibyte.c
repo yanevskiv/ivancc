@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:7.20.7p1] In the "C" locale a multibyte character should be one byte.
+// In the "C" locale a multibyte character should be one byte.
+// [C99:7.20.7p1]: the multibyte functions, by LC_CTYPE
 static void Test_StdlibMultibyte(void)
 {
     wchar_t wc = L'?';

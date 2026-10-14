@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc12_00_setjmp_helpers.inc"
 
-// [C99:7.1.4p1] A pointer and a call in parentheses should reach longjmp.
+// A pointer and a call in parentheses should reach longjmp.
+// [C99:7.1.4p1]: a library function's arguments, and its macro forms
 static void Test_SetjmpCalls(void)
 {
     volatile int count = 0;

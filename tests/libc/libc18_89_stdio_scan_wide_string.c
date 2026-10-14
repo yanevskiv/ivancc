@@ -4,8 +4,10 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p12] %ls should read a word into wide characters and a null.
-// [C99:7.19.6.2p8] %ls should skip the white space before the word.
+// %ls should read a word into wide characters and a null.
+// %ls should skip the white space before the word.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
+// [C99:7.19.6.2p8]:  white space skipped but for [, c and n
 static void Test_StdioScanWideString(void)
 {
     int n = NONE;

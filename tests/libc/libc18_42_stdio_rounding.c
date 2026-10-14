@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p13] A floating conversion should round its value correctly.
+// A floating conversion should round its value correctly.
+// [C99:7.19.6.1p13]: %e, %f and %g correctly rounded within DECIMAL_DIG digits
 static void Test_StdioRounding(void)
 {
     _TEST_TRUE(prints("0", "%.0f", 0.5));

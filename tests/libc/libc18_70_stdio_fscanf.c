@@ -8,7 +8,8 @@
 
 static char filebuf[SMALL];
 
-// [C99:7.19.6.2p9] fscanf should leave unread what follows each item it reads.
+// fscanf should leave unread what follows each item it reads.
+// [C99:7.19.6.2p9]: an input item, the longest prefix of a matching sequence
 static bool feeds(int kind)
 {
     FILE *file;
@@ -49,7 +50,8 @@ static bool feeds(int kind)
     return lost == 0;
 }
 
-// [C99:7.19.6.2p2] fscanf should read a stream the same however buffered.
+// fscanf should read a stream the same however buffered.
+// [C99:7.19.6.2p2]: fscanf, its format and the arguments it assigns
 static void Test_StdioFscanf(void)
 {
     _TEST_TRUE(feeds(_IOFBF));

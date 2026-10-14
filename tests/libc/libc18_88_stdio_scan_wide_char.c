@@ -4,8 +4,10 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p12] %lc should read characters into wide ones, adding no null.
-// [C99:7.19.6.2p8] %lc should skip no white space.
+// %lc should read characters into wide ones, adding no null.
+// %lc should skip no white space.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
+// [C99:7.19.6.2p8]:  white space skipped but for [, c and n
 static void Test_StdioScanWideChar(void)
 {
     char ch = FILL;

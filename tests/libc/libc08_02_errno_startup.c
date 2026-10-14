@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc08_00_errno_helpers.inc"
 
-// [C99:7.5p3] errno should be zero before the program stores anything in it.
+// errno should be zero before the program stores anything in it.
+// [C99:7.5p3]: errno, zero at program startup
 static void Test_ErrnoStartup(void)
 {
     _TEST_INT(errno, 0);

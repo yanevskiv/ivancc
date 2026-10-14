@@ -6,7 +6,8 @@
 
 #define UTF8 "C.UTF-8"
 
-// [C99:7.24.6.1] A basic character should be one byte and the same wide, each way.
+// A basic character should be one byte and the same wide, each way.
+// [C99:7.24.6.1]: btowc and wctob
 static void Test_WcharSingleByte(void)
 {
     int i;
@@ -26,7 +27,8 @@ static void Test_WcharSingleByte(void)
     _TEST_INT((wctob)(L'b'), 'b');
 }
 
-// [C99:7.24.6.1] In UTF-8 a byte of a longer character should be no character.
+// In UTF-8 a byte of a longer character should be no character.
+// [C99:7.24.6.1]: btowc and wctob
 static void Test_WcharSingleByteUtf8(void)
 {
     if (! _TEST_TRUE(setlocale(LC_CTYPE, UTF8) != NULL)) {

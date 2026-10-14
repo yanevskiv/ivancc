@@ -13,7 +13,8 @@ static int decimal(int binary)
     return binary * LOG_NUMERATOR / LOG_DENOMINATOR;
 }
 
-// [C99:5.2.4.2.2p9] The decimal digits and exponents should follow the binary.
+// The decimal digits and exponents should follow the binary.
+// [C99:5.2.4.2.2p9]: the floating minima of FLT_RADIX to LDBL_MAX_10_EXP
 static void Test_FloatDecimal(void)
 {
     _TEST_INT(FLT_DIG, decimal(FLT_MANT_DIG - 1));

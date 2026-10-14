@@ -6,7 +6,8 @@
 
 static char names[NAMES][L_tmpnam];
 
-// [C99:7.19.4.4p3] tmpnam should give NAMES new names: return the first not new.
+// tmpnam should give NAMES new names: return the first not new.
+// [C99:7.19.4.4p3]: tmpnam's different string at each call
 static int unnamed(void)
 {
     int k;
@@ -33,7 +34,8 @@ static int unnamed(void)
     return NONE;
 }
 
-// [C99:7.19.4.4p3] tmpnam should give a new name each call, one a file can take.
+// tmpnam should give a new name each call, one a file can take.
+// [C99:7.19.4.4p3]: tmpnam's different string at each call
 static void Test_StdioTmpnam(void)
 {
     _TEST_INT(unnamed(), NONE);

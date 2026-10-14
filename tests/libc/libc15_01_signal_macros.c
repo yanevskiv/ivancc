@@ -10,7 +10,8 @@
 // The signals C99 names.
 static const int sigs[SIGNALS] = {SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM};
 
-// [C99:7.14p3] Each signal should be positive: return the first that is not.
+// Each signal should be positive: return the first that is not.
+// [C99:7.14p3]: SIG_DFL, SIG_ERR, SIG_IGN and the six signal numbers
 static int nonpositive(void)
 {
     int i;
@@ -23,7 +24,8 @@ static int nonpositive(void)
     return NONE;
 }
 
-// [C99:7.14p3] The signals should be distinct: return the first to repeat.
+// The signals should be distinct: return the first to repeat.
+// [C99:7.14p3]: SIG_DFL, SIG_ERR, SIG_IGN and the six signal numbers
 static int repeated(void)
 {
     int i;
@@ -39,7 +41,8 @@ static int repeated(void)
     return NONE;
 }
 
-// [C99:7.14p3] The signals should be distinct, the three handlers no function's.
+// The signals should be distinct, the three handlers no function's.
+// [C99:7.14p3]: SIG_DFL, SIG_ERR, SIG_IGN and the six signal numbers
 static void Test_SignalMacros(void)
 {
     _TEST_INT(nonpositive(), NONE);

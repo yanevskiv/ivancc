@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// [C99:7.8.2.4p2] wcstoumax should give the number, the end and the error given.
+// wcstoumax should give the number, the end and the error given.
+// [C99:7.8.2.4p2]: wcstoimax and wcstoumax, as wcstol to intmax_t
 static bool wide_to_unsigned(const wchar_t *str, int base, uintmax_t want, long used, int error)
 {
     int lost = 0;
@@ -21,7 +22,8 @@ static bool wide_to_unsigned(const wchar_t *str, int base, uintmax_t want, long 
     return lost == 0;
 }
 
-// [C99:7.8.2.4p2] wcstoumax should take what strtoumax does.
+// wcstoumax should take what strtoumax does.
+// [C99:7.8.2.4p2]: wcstoimax and wcstoumax, as wcstol to intmax_t
 static void Test_InttypesWideUnsigned(void)
 {
     _TEST_TRUE(wide_to_unsigned(L"-1", 10, UINTMAX_MAX, 2, 0));

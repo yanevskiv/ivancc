@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:7.24.4.1.2p5] wcstol should read a wide string in a base, and stop.
+// wcstol should read a wide string in a base, and stop.
+// [C99:7.24.4.1.2p5]: wcstol's bases, 0 taking the constant's own
 static bool converts(const wchar_t *str, int base, long value, long end)
 {
     int lost = 0;
@@ -16,7 +17,8 @@ static bool converts(const wchar_t *str, int base, long value, long end)
     return lost == 0;
 }
 
-// [C99:7.24.4.1.2p8] wcstol and its kin should read any base, a limit past range.
+// wcstol and its kin should read any base, a limit past range.
+// [C99:7.24.4.1.2p8]: wcstol's value, or the limit and ERANGE
 static void Test_WcharIntegers(void)
 {
     wchar_t *stop = NULL;
@@ -64,7 +66,8 @@ static void Test_WcharIntegers(void)
     _TEST_INT(errno, ERANGE);
 }
 
-// [C99:7.1.4p1] A call in parentheses should reach each function.
+// A call in parentheses should reach each function.
+// [C99:7.1.4p1]: a library function's arguments, and its macro forms
 static void Test_WcharIntegerCalls(void)
 {
     wchar_t *stop = NULL;

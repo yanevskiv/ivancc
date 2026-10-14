@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:7.24.2.2p12] Each conversion of a number should read as fscanf's does.
+// Each conversion of a number should read as fscanf's does.
+// [C99:7.24.2.2p12]: fwscanf's conversion specifiers
 static void Test_WcharSwscanfNumbers(void)
 {
     int i = 0;
@@ -59,7 +60,8 @@ static void Test_WcharSwscanfNumbers(void)
     _TEST_TRUE(p == (void *) &object);
 }
 
-// [C99:7.24.2.2p5] A format's white space and wide characters should match input.
+// A format's white space and wide characters should match input.
+// [C99:7.24.2.2p5]: a white-space directive
 static void Test_WcharSwscanfText(void)
 {
     int i = 0;
@@ -93,7 +95,8 @@ static void Test_WcharSwscanfText(void)
     _TEST_INT(ln, 5);
 }
 
-// [C99:7.24.2.4p3] swscanf should return EOF for no input, else the items stored.
+// swscanf should return EOF for no input, else the items stored.
+// [C99:7.24.2.4p3]: swscanf's count of items assigned, or EOF
 static void Test_WcharSwscanfFailures(void)
 {
     int i = NONE;

@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc13_00_assert_helpers.inc"
 
-// [C99:7.2.1.1p2] assert should take a true scalar of any type, over lines too.
+// assert should take a true scalar of any type, over lines too.
+// [C99:7.2.1.1p2]: assert's message and abort
 static void Test_AssertScalars(void)
 {
     int i = -1;

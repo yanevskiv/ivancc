@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:7.1.4p1] A pointer and a call in parentheses should reach each function.
+// A pointer and a call in parentheses should reach each function.
+// [C99:7.1.4p1]: a library function's arguments, and its macro forms
 static void Test_WcharCalls(void)
 {
     wchar_t buf[SIZE];

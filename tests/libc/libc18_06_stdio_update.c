@@ -9,7 +9,8 @@
 // fopen's modes, the last of which leaves its file empty.
 static const char *const modes[MODES] = {"r", "rb", "r+", "rb+", "r+b", "a", "ab", "a+", "ab+", "a+b", "w", "wb", "w+", "wb+", "w+b"};
 
-// [C99:7.19.5.3p3] A file should open in each mode: return the first it does not.
+// A file should open in each mode: return the first it does not.
+// [C99:7.19.5.3p3]: fopen's modes
 static int unopened(void)
 {
     int k;
@@ -24,7 +25,8 @@ static int unopened(void)
     return NONE;
 }
 
-// [C99:7.19.5.3p6] Update streams should write after a flush or a read to the end.
+// Update streams should write after a flush or a read to the end.
+// [C99:7.19.5.3p6]: update mode, and a flush or seek between output and input
 static void Test_StdioUpdate(void)
 {
     FILE *file;

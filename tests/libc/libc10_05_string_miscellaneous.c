@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc10_00_string_helpers.inc"
 
-// [C99:7.21.6] memset should fill, strerror name a number, strlen count to null.
+// memset should fill, strerror name a number, strlen count to null.
+// [C99:7.21.6]: memset, strerror and strlen
 static void Test_StringMiscellaneous(void)
 {
     char buf[SIZE];

@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p6] A 0 flag should pad with zeros, after any sign or base.
+// A 0 flag should pad with zeros, after any sign or base.
+// [C99:7.19.6.1p6]: printf's flags: -, +, space, # and 0
 static void Test_StdioZero(void)
 {
     _TEST_TRUE(prints("00042", "%05d", 42));

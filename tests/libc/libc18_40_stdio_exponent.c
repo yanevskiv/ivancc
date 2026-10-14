@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] %e and %E should write one digit, a point, six and an exponent.
+// %e and %E should write one digit, a point, six and an exponent.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioExponent(void)
 {
     _TEST_TRUE(prints("0.000000e+00", "%e", 0.0));

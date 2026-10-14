@@ -6,7 +6,8 @@
 
 static volatile double nought = 0.0;
 
-// [C99:7.24.4.1.1p4] wcstod should read a wide string as a value, and stop.
+// wcstod should read a wide string as a value, and stop.
+// [C99:7.24.4.1.1p4]: wcstod's decimal and hexadecimal forms, infinity and NaN
 static bool reads(const wchar_t *str, double value, long end)
 {
     int lost = 0;
@@ -18,7 +19,8 @@ static bool reads(const wchar_t *str, double value, long end)
     return lost == 0;
 }
 
-// [C99:7.24.4.1.1p3] wcstod should read each decimal and hexadecimal form alone.
+// wcstod should read each decimal and hexadecimal form alone.
+// [C99:7.24.4.1.1p3]: wcstod's subject sequence
 static void Test_WcharWcstodForms(void)
 {
     _TEST_TRUE(reads(L"1.5", 1.5, 3));
@@ -50,7 +52,8 @@ static void Test_WcharWcstodForms(void)
     _TEST_TRUE(reads(L"\x10031", 0.0, 0));
 }
 
-// [C99:7.24.4.1.1p3] wcstod should read an infinity and a NaN, in any case.
+// wcstod should read an infinity and a NaN, in any case.
+// [C99:7.24.4.1.1p3]: wcstod's subject sequence
 static void Test_WcharWcstodSpecials(void)
 {
     double invalid = nought / nought;
@@ -69,7 +72,8 @@ static void Test_WcharWcstodSpecials(void)
     _TEST_TRUE(reads(L"nan(-1)", invalid, 3));
 }
 
-// [C99:7.24.4.1.1p10] wcstod should round to nearest, and range with ERANGE.
+// wcstod should round to nearest, and range with ERANGE.
+// [C99:7.24.4.1.1p10]: wcstod's value, or HUGE_VAL or zero and ERANGE
 static void Test_WcharWcstodRange(void)
 {
     wchar_t *stop = NULL;

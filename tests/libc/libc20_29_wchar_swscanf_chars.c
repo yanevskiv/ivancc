@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:7.24.2.2p12] %c, %s and %[ should store wide characters as bytes.
+// %c, %s and %[ should store wide characters as bytes.
+// [C99:7.24.2.2p12]: fwscanf's conversion specifiers
 static void Test_WcharSwscanfBytes(void)
 {
     int n = NONE;
@@ -36,7 +37,8 @@ static void Test_WcharSwscanfBytes(void)
     _TEST_STR(out, "kept");
 }
 
-// [C99:7.24.2.2p11] An l before c, s or [ should store wide characters.
+// An l before c, s or [ should store wide characters.
+// [C99:7.24.2.2p11]: fwscanf's length modifiers
 static void Test_WcharSwscanfWide(void)
 {
     int n = NONE;

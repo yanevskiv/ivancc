@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.9.2p4] A text stream should return to where ftell said it was.
+// A text stream should return to where ftell said it was.
+// [C99:7.19.9.2p4]: fseek on a text stream, an offset ftell gave
 static void Test_StdioTextPositions(void)
 {
     long at;

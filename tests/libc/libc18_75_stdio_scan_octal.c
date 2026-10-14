@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p12] %o should read an octal integer as strtoul does in base 8.
+// %o should read an octal integer as strtoul does in base 8.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
 static void Test_StdioScanOctal(void)
 {
     char ch = FILL;

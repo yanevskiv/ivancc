@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:7.24.4.5] A search should point at what it finds or nothing, or count.
+// A search should point at what it finds or nothing, or count.
+// [C99:7.24.4.5]: wcschr, wcscspn, wcspbrk, wcsrchr, wcsspn, wcsstr, wcstok and wmemchr
 static void Test_WcharSearch(void)
 {
     const wchar_t *word = L"abcabc";
@@ -51,7 +52,8 @@ static void Test_WcharSearch(void)
     _TEST_INT(offset(wides, wmemchr(wides, 0x100 + L'b', 6)), NONE);
 }
 
-// [C99:7.24.4.5.7] wcstok should split tokens off, keeping its place in *ptr.
+// wcstok should split tokens off, keeping its place in *ptr.
+// [C99:7.24.4.5.7]: wcstok
 static void Test_WcharTokens(void)
 {
     static wchar_t text[] = L"?a???b,,,#c";

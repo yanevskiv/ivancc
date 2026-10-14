@@ -6,7 +6,8 @@
 
 #define ZEROS "0000000000000000000000000000000000000000000000000000000000000000"
 
-// [C99:7.19.6.2p12] %d should read a decimal integer, signed or not, as strtol.
+// %d should read a decimal integer, signed or not, as strtol.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
 static void Test_StdioScanDecimal(void)
 {
     int first = NONE;

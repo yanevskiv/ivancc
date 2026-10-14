@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// [C99:7.8.2.2p2] imaxdiv should give the quotient and the remainder given.
+// imaxdiv should give the quotient and the remainder given.
+// [C99:7.8.2.2p2]: imaxdiv
 static bool divides(intmax_t numer, intmax_t denom, intmax_t quot, intmax_t rem)
 {
     int lost = 0;
@@ -15,7 +16,8 @@ static bool divides(intmax_t numer, intmax_t denom, intmax_t quot, intmax_t rem)
     return lost == 0;
 }
 
-// [C99:7.8.2.2p2] imaxdiv should truncate toward zero, the remainder to match.
+// imaxdiv should truncate toward zero, the remainder to match.
+// [C99:7.8.2.2p2]: imaxdiv
 static void Test_InttypesDivide(void)
 {
     _TEST_TRUE(divides(7, 2, 3, 1));

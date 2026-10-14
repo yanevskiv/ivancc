@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] %u, %o, %x and %X should write an unsigned int in their bases.
+// %u, %o, %x and %X should write an unsigned int in their bases.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioUnsigned(void)
 {
     _TEST_TRUE(prints("0", "%u", 0U));

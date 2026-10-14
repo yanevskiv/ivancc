@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc10_00_string_helpers.inc"
 
-// [C99:7.21.3] A concatenation should write past a string's end, a null after.
+// A concatenation should write past a string's end, a null after.
+// [C99:7.21.3]: strcat and strncat
 static void Test_StringConcatenation(void)
 {
     char buf[SIZE];

@@ -6,7 +6,8 @@
 // | 1|s| -1
 // | ab[x] 5
 // Non-standard: printf should write a format up to the directive that fails.
-// Liberty: [C99:7.19.6.1p14] C99 says only that the value returned is negative.
+// Liberty: C99 says only that the value returned is negative.
+// [C99:7.19.6.1p14]: fprintf's count of characters written, or a negative value
 
 #include <stdio.h>
 #include <stddef.h>

@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc09_00_ctype_helpers.inc"
 
-// [C99:7.1.4p1] A plain call and one past a macro should judge as the function.
+// A plain call and one past a macro should judge as the function.
+// [C99:7.1.4p1]: a library function's arguments, and its macro forms
 static void Test_CtypeCalls(void)
 {
     int ch = '0';

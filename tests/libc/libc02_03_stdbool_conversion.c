@@ -6,7 +6,8 @@
 
 #define LARGE 256
 
-// [C99:6.3.1.2p1] A value unequal to 0 should convert to 1, and one equal to 0.
+// A value unequal to 0 should convert to 1, and one equal to 0.
+// [C99:6.3.1.2p1]: conversion to _Bool, 0 or 1
 static void Test_StdboolConversion(void)
 {
     bool zero = 0;

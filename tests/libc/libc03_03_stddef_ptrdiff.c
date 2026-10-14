@@ -6,7 +6,8 @@
 
 #define AHEAD 2
 
-// [C99:7.17p2] ptrdiff_t should be signed and hold two pointers' difference.
+// ptrdiff_t should be signed and hold two pointers' difference.
+// [C99:7.17p2]: ptrdiff_t, size_t and wchar_t
 static void Test_StddefPtrdiff(void)
 {
     int numbers[TAIL];

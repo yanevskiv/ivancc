@@ -9,7 +9,8 @@
 // | 1
 // | [one]
 // Non-standard: scanf should return EOF if input ends before any assignment.
-// Liberty: [C99:7.19.6.2p16] read as glibc does, a conversion that stores counted.
+// Liberty: read as glibc does, a conversion that stores counted.
+// [C99:7.19.6.2p16]: fscanf's count of items assigned, or EOF
 
 #include <stdio.h>
 

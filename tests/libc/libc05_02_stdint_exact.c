@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// [C99:7.18.1.1p1] An exact-width type should have just its bits and their limits.
+// An exact-width type should have just its bits and their limits.
+// [C99:7.18.1.1p1]: intN_t, of width N, no padding and two's complement
 static void Test_StdintExact(void)
 {
     _TEST_UINT(sizeof(int8_t) * CHAR_BIT, 8);

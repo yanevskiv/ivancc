@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:7.20.1.4p5] strtol should read a string in a base as a value, and stop.
+// strtol should read a string in a base as a value, and stop.
+// [C99:7.20.1.4p5]: strtol's bases, 0 taking the constant's own
 static bool converts(const char *str, int base, long value, long end)
 {
     int lost = 0;
@@ -16,7 +17,8 @@ static bool converts(const char *str, int base, long value, long end)
     return lost == 0;
 }
 
-// [C99:7.20.1.4p8] strtol and its kin should read any base, a limit past range.
+// strtol and its kin should read any base, a limit past range.
+// [C99:7.20.1.4p8]: strtol's value, or the limit and ERANGE
 static void Test_StdlibIntegers(void)
 {
     char *stop = NULL;

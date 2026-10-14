@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p4] A width should pad %lc and %ls with spaces, left or right.
+// A width should pad %lc and %ls with spaces, left or right.
+// [C99:7.19.6.1p4]: a conversion specification: flags, width, precision, length and specifier
 static void Test_StdioWideWidth(void)
 {
     _TEST_TRUE(prints("  a", "%3lc", L'a'));

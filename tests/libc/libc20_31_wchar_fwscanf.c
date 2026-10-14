@@ -7,7 +7,8 @@
 #define NAME "wide.tmp"
 #define UTF8 "C.UTF-8"
 
-// [C99:7.24.2.2p2] fwscanf should read a stream, which it orients wide.
+// fwscanf should read a stream, which it orients wide.
+// [C99:7.24.2.2p2]: fwscanf, its format and the arguments it assigns
 static void Test_WcharFwscanf(void)
 {
     int i = 0;
@@ -36,7 +37,8 @@ static void Test_WcharFwscanf(void)
     _TEST_INT(remove(NAME), 0);
 }
 
-// [C99:7.24.2.2p9] The wide character after an input item should remain unread.
+// The wide character after an input item should remain unread.
+// [C99:7.24.2.2p9]: an input item, the longest prefix of a matching sequence
 static void Test_WcharFwscanfUnread(void)
 {
     int i = 0;
@@ -60,7 +62,8 @@ static void Test_WcharFwscanfUnread(void)
     _TEST_INT(remove(NAME), 0);
 }
 
-// [C99:7.24.2.2p9] In UTF-8 a stream's bytes should be read as wide characters.
+// In UTF-8 a stream's bytes should be read as wide characters.
+// [C99:7.24.2.2p9]: an input item, the longest prefix of a matching sequence
 static void Test_WcharFwscanfUtf8(void)
 {
     int i = 0;

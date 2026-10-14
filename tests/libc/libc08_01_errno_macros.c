@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc08_00_errno_helpers.inc"
 
-// [C99:7.5p2] EDOM, EILSEQ and ERANGE should be positive and distinct in #if.
+// EDOM, EILSEQ and ERANGE should be positive and distinct in #if.
+// [C99:7.5p2]: EDOM, EILSEQ, ERANGE and errno
 #define DIRECTIVE 0
 #if (EDOM > 0) \
     && (EILSEQ > 0) \
@@ -21,7 +22,8 @@
 #define SECOND 2
 #define THIRD  3
 
-// [C99:7.5p2] The three macros should be distinct, as a switch's labels must be.
+// The three macros should be distinct, as a switch's labels must be.
+// [C99:7.5p2]: EDOM, EILSEQ, ERANGE and errno
 static int place(int number)
 {
     switch (number) {
@@ -36,7 +38,8 @@ static int place(int number)
     }
 }
 
-// [C99:7.5p2] The three macros should be distinct positive int constants.
+// The three macros should be distinct positive int constants.
+// [C99:7.5p2]: EDOM, EILSEQ, ERANGE and errno
 static void Test_ErrnoMacros(void)
 {
     _TEST_TRUE(EDOM > 0);

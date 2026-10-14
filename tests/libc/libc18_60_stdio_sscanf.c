@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.7p2] sscanf should read a string as fscanf reads a stream.
+// sscanf should read a string as fscanf reads a stream.
+// [C99:7.19.6.7p2]: sscanf, the string's end as end-of-file
 static void Test_StdioSscanf(void)
 {
     int n = NONE;

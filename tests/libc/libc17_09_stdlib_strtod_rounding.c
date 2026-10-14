@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:7.20.1.3p5] strtod should round to the nearest value, a tie to even.
+// strtod should round to the nearest value, a tie to even.
+// [C99:7.20.1.3p5]: a hexadecimal subject sequence correctly rounded
 static void Test_StdlibStrtodRounding(void)
 {
     _TEST_TRUE(reads("0.1", 0.1, 3));

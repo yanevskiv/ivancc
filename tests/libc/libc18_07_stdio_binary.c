@@ -6,7 +6,8 @@
 
 #define BIG (3 * BUFSIZ + 5)
 
-// [C99:7.19.7.3p3] fputc should write BIG bytes: return the first it fails.
+// fputc should write BIG bytes: return the first it fails.
+// [C99:7.19.7.3p3]: fputc's character written, or EOF
 static long unwritten(FILE *file)
 {
     long k;
@@ -19,7 +20,8 @@ static long unwritten(FILE *file)
     return NONE;
 }
 
-// [C99:7.19.7.1p2] fgetc should read BIG bytes back: return the first to differ.
+// fgetc should read BIG bytes back: return the first to differ.
+// [C99:7.19.7.1p2]: fgetc, a character as an unsigned char
 static long misread(FILE *file)
 {
     long k;
@@ -45,7 +47,8 @@ static long unpatterned(void)
     return NONE;
 }
 
-// [C99:7.19.2p3] A binary stream should keep every byte, past its buffer's size.
+// A binary stream should keep every byte, past its buffer's size.
+// [C99:7.19.2p3]: binary streams, read back as they were written
 static void Test_StdioBinary(void)
 {
     FILE *file = fopen("bytes", "wb");

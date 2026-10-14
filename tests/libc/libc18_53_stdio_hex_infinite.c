@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] Two formats should write one value alike, and return alike.
+// Two formats should write one value alike, and return alike.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static bool alike(const char *hex, const char *fixed, ...)
 {
     int n1;
@@ -26,7 +27,8 @@ static bool alike(const char *hex, const char *fixed, ...)
     return lost == 0;
 }
 
-// [C99:7.19.6.1p8] %a should write an infinity or a NaN as %f does, and %A as %F.
+// %a should write an infinity or a NaN as %f does, and %A as %F.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioHexInfinite(void)
 {
     double inf = strtod("inf", NULL);

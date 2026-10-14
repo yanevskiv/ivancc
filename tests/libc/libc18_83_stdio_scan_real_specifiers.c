@@ -4,8 +4,10 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p12] %a, %e and %g should read a floating number as %f does.
-// [C99:7.19.6.2p14] %A, %E, %F and %G should behave as %a, %e, %f and %g.
+// %a, %e and %g should read a floating number as %f does.
+// %A, %E, %F and %G should behave as %a, %e, %f and %g.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
+// [C99:7.19.6.2p14]: scanf's A, E, F, G and X, as a, e, f, g and x
 static void Test_StdioScanRealSpecifiers(void)
 {
     const char *format[] = {"%a", "%e", "%f", "%g", "%A", "%E", "%F", "%G"};

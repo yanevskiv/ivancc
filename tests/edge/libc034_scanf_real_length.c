@@ -8,7 +8,8 @@
 // | 1 [f] -7
 // | 2 [g] 7
 // Non-standard: scanf should stop at a floating number's h, hh, ll, j, z or t.
-// Liberty: [C99:7.19.6.2p11] such a length modifier is undefined behaviour.
+// Liberty: such a length modifier is undefined behaviour.
+// [C99:7.19.6.2p11]: scanf's length modifiers
 
 #include <stdio.h>
 

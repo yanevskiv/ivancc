@@ -15,7 +15,8 @@ static long distance(const void *whole, const void *member)
     return (const char *) member - (const char *) whole;
 }
 
-// [C99:7.17p3] offsetof should be a member's offset in bytes, a size_t constant.
+// offsetof should be a member's offset in bytes, a size_t constant.
+// [C99:7.17p3]: NULL and offsetof
 static void Test_StddefOffsetof(void)
 {
     char sized[offsetof(struct Pair, pa_tail)];

@@ -7,7 +7,8 @@
 // | [] 2
 // | [        ] 10
 // Non-standard: printf should write a null wide string as %s writes a null one.
-// Liberty: [C99:7.19.6.1p8] %ls shall have an array's pointer, so it is undefined.
+// Liberty: %ls shall have an array's pointer, so it is undefined.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 
 #include <stdio.h>
 #include <stddef.h>

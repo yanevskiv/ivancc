@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc13_00_assert_helpers.inc"
 
-// [C99:7.2p2] assert should be a macro.
+// assert should be a macro.
+// [C99:7.2p2]: assert, a macro and not a function
 #define DEFINED 0
 #if defined(assert)
 #undef DEFINED
@@ -13,14 +14,16 @@
 
 #undef assert
 
-// [C99:6.10.3.5p2] assert should be no macro after #undef.
+// assert should be no macro after #undef.
+// [C99:6.10.3.5p2]: #undef
 #define SURVIVED 0
 #if defined(assert)
 #undef SURVIVED
 #define SURVIVED 1
 #endif
 
-// [C99:7.2p2] assert should be a macro, which #undef removes.
+// assert should be a macro, which #undef removes.
+// [C99:7.2p2]: assert, a macro and not a function
 static void Test_AssertMacro(void)
 {
     _TEST_INT(DEFINED, 1);

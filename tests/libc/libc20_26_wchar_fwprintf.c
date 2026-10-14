@@ -7,7 +7,8 @@
 #define NAME "wide.tmp"
 #define UTF8 "C.UTF-8"
 
-// [C99:7.24.2.1] fwprintf should write to a stream, which it orients wide.
+// fwprintf should write to a stream, which it orients wide.
+// [C99:7.24.2.1]: fwprintf
 static void Test_WcharFwprintf(void)
 {
     FILE *file = fopen(NAME, "wb");
@@ -35,7 +36,8 @@ static void Test_WcharFwprintf(void)
     _TEST_INT(remove(NAME), 0);
 }
 
-// [C99:7.24.2.1p14] In UTF-8 a wide character written should be its bytes.
+// In UTF-8 a wide character written should be its bytes.
+// [C99:7.24.2.1p14]: fwprintf's count of wide characters, or a negative value
 static void Test_WcharFwprintfUtf8(void)
 {
     FILE *file;

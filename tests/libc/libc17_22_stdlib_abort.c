@@ -7,14 +7,16 @@
 static volatile sig_atomic_t aborted;
 static jmp_buf env;
 
-// [C99:7.20.4.1p2] A handler of SIGABRT should be free to leave abort.
+// A handler of SIGABRT should be free to leave abort.
+// [C99:7.20.4.1p2]: abort, unless SIGABRT is caught
 static void on_abort(int sig)
 {
     aborted = sig == SIGABRT;
     longjmp(env, 1);
 }
 
-// [C99:7.20.4.1p2] abort should raise SIGABRT, whose handler may leave it.
+// abort should raise SIGABRT, whose handler may leave it.
+// [C99:7.20.4.1p2]: abort, unless SIGABRT is caught
 static void Test_StdlibAbort(void)
 {
     volatile int returned = 0;

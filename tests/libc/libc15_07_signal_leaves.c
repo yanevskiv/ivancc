@@ -13,7 +13,8 @@ static void on_leave(int sig)
     longjmp(env, 1);
 }
 
-// [C99:7.14.2.1p2] A handler that leaves by longjmp should not return to raise.
+// A handler that leaves by longjmp should not return to raise.
+// [C99:7.14.2.1p2]: raise, returning after the handler
 static void Test_SignalLeaves(void)
 {
     volatile int returned = 0;

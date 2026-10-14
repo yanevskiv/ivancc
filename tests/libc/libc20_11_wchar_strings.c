@@ -6,7 +6,8 @@
 
 #define BAD ((size_t) -1)
 
-// [C99:7.24.6.4.1] mbsrtowcs should convert up to len, and leave *src past them.
+// mbsrtowcs should convert up to len, and leave *src past them.
+// [C99:7.24.6.4.1]: mbsrtowcs
 static void Test_WcharStringsDecoding(void)
 {
     mbstate_t state;
@@ -50,7 +51,8 @@ static void Test_WcharStringsDecoding(void)
     _TEST_TRUE(src == NULL);
 }
 
-// [C99:7.24.6.4.2] wcsrtombs should convert up to len, and leave *src past them.
+// wcsrtombs should convert up to len, and leave *src past them.
+// [C99:7.24.6.4.2]: wcsrtombs
 static void Test_WcharStringsEncoding(void)
 {
     mbstate_t state;
@@ -94,7 +96,8 @@ static void Test_WcharStringsEncoding(void)
     _TEST_TRUE(src == NULL);
 }
 
-// [C99:7.24.6.4] A character "C" has none of should be an error, EILSEQ in errno.
+// A character "C" has none of should be an error, EILSEQ in errno.
+// [C99:7.24.6.4]: mbsrtowcs and wcsrtombs
 static void Test_WcharStringsErrors(void)
 {
     mbstate_t state;

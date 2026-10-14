@@ -7,7 +7,8 @@
 #define NAME "wide.tmp"
 #define UTF8 "C.UTF-8"
 
-// [C99:7.24.3.1] In UTF-8 a wide character got should be a sequence of bytes.
+// In UTF-8 a wide character got should be a sequence of bytes.
+// [C99:7.24.3.1]: fgetwc
 static void Test_WcharWideUtf8Input(void)
 {
     wchar_t line[SIZE];
@@ -39,7 +40,8 @@ static void Test_WcharWideUtf8Input(void)
     _TEST_INT(fclose(file), 0);
 }
 
-// [C99:7.24.3.10] ungetwc should give back a wide character of several bytes.
+// ungetwc should give back a wide character of several bytes.
+// [C99:7.24.3.10]: ungetwc
 static void Test_WcharWideUtf8Pushback(void)
 {
     FILE *file = holding(NAME, "a\xE2\x82\xACz", 5);
@@ -62,7 +64,8 @@ static void Test_WcharWideUtf8Pushback(void)
     _TEST_INT(fclose(file), 0);
 }
 
-// [C99:7.24.3.1p3] Bytes that are no character should be an error, EILSEQ.
+// Bytes that are no character should be an error, EILSEQ.
+// [C99:7.24.3.1p3]: fgetwc's wide character, or WEOF
 static void Test_WcharWideUtf8Errors(void)
 {
     wchar_t line[SIZE];

@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p4] A width should pad a shorter conversion with spaces on a side.
+// A width should pad a shorter conversion with spaces on a side.
+// [C99:7.19.6.1p4]: a conversion specification: flags, width, precision, length and specifier
 static void Test_StdioWidth(void)
 {
     _TEST_TRUE(prints("  abc", "%5s", "abc"));

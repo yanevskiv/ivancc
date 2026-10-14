@@ -6,7 +6,8 @@
 
 #define UTF8 "C.UTF-8"
 
-// [C99:7.24.2.2p12] A wide character stored as bytes should be its multibyte one.
+// A wide character stored as bytes should be its multibyte one.
+// [C99:7.24.2.2p12]: fwscanf's conversion specifiers
 static void Test_WcharSwscanfUtf8Bytes(void)
 {
     int n = NONE;
@@ -28,7 +29,8 @@ static void Test_WcharSwscanfUtf8Bytes(void)
     _TEST_INT(n, 4);
 }
 
-// [C99:7.24.2.2p12] A scanset should hold wide characters, and a width count them.
+// A scanset should hold wide characters, and a width count them.
+// [C99:7.24.2.2p12]: fwscanf's conversion specifiers
 static void Test_WcharSwscanfUtf8Wide(void)
 {
     int n = NONE;
@@ -54,7 +56,8 @@ static void Test_WcharSwscanfUtf8Wide(void)
     _TEST_INT(n, 3);
 }
 
-// [C99:7.24.2.2p8] White space should be what iswspace says it is.
+// White space should be what iswspace says it is.
+// [C99:7.24.2.2p8]: white space skipped but for [, c and n
 static void Test_WcharSwscanfUtf8Space(void)
 {
     int i = 0;

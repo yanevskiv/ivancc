@@ -4,8 +4,9 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p11] l should store a double, L a long double and no length a
+// l should store a double, L a long double and no length a
 // float, each the value strtod, strtold and strtof give.
+// [C99:7.19.6.2p11]: scanf's length modifiers
 static void Test_StdioScanRealLengths(void)
 {
     double pair[2] = {NONE, NONE};

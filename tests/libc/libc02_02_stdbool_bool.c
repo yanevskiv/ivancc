@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc02_00_stdbool_helpers.inc"
 
-// [C99:7.16p2] bool should be _Bool, an unsigned type that holds true and false.
+// bool should be _Bool, an unsigned type that holds true and false.
+// [C99:7.16p2]: bool, expanding to _Bool
 static void Test_StdboolBool(void)
 {
     bool no = false;

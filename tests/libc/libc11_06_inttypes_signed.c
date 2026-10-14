@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// [C99:7.8.2.3p3] strtoimax should give the number, the end and the error given.
+// strtoimax should give the number, the end and the error given.
+// [C99:7.8.2.3p3]: strtoimax's value, or the limit and ERANGE
 static bool to_signed(const char *str, int base, intmax_t want, long used, int error)
 {
     int lost = 0;
@@ -21,7 +22,8 @@ static bool to_signed(const char *str, int base, intmax_t want, long used, int e
     return lost == 0;
 }
 
-// [C99:7.8.2.3p2] strtoimax should take space, a sign, a prefix and digits.
+// strtoimax should take space, a sign, a prefix and digits.
+// [C99:7.8.2.3p2]: strtoimax and strtoumax, as strtol to intmax_t
 static void Test_InttypesSigned(void)
 {
     _TEST_TRUE(to_signed("0", 10, 0, 1, 0));

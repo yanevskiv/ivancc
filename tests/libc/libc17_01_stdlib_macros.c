@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:7.20p3] The macros should be defined, RAND_MAX at least 32767 in #if.
+// The macros should be defined, RAND_MAX at least 32767 in #if.
+// [C99:7.20p3]: NULL, EXIT_FAILURE, EXIT_SUCCESS, RAND_MAX and MB_CUR_MAX
 #define DIRECTIVE 0
 #if defined(EXIT_FAILURE) \
     && defined(EXIT_SUCCESS) \
@@ -14,7 +15,8 @@
 #define DIRECTIVE 1
 #endif
 
-// [C99:7.20p3] The macros should be defined and within their limits.
+// The macros should be defined and within their limits.
+// [C99:7.20p3]: NULL, EXIT_FAILURE, EXIT_SUCCESS, RAND_MAX and MB_CUR_MAX
 static void Test_StdlibMacros(void)
 {
     _TEST_INT(DIRECTIVE, 1);

@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc03_00_stddef_helpers.inc"
 
-// [C99:7.17p2] wchar_t should be a wide character constant's type, and hold it.
+// wchar_t should be a wide character constant's type, and hold it.
+// [C99:7.17p2]: ptrdiff_t, size_t and wchar_t
 static void Test_StddefWchar(void)
 {
     wchar_t null = L'\0';

@@ -4,10 +4,12 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:7.24.1p3] The limits and WEOF should be constants a declaration can use.
+// The limits and WEOF should be constants a declaration can use.
+// [C99:7.24.1p3]: NULL, WCHAR_MIN, WCHAR_MAX and WEOF
 enum { LIMITS = WCHAR_MIN < WCHAR_MAX, CONSTANT = WEOF != 0 };
 
-// [C99:7.24.1p3] wchar_t's limits should be its least and greatest values.
+// wchar_t's limits should be its least and greatest values.
+// [C99:7.24.1p3]: NULL, WCHAR_MIN, WCHAR_MAX and WEOF
 static void Test_WcharLimits(void)
 {
     wchar_t least = WCHAR_MIN;
@@ -22,7 +24,8 @@ static void Test_WcharLimits(void)
     _TEST_TRUE(L'a' >= WCHAR_MIN && L'a' <= WCHAR_MAX);
 }
 
-// [C99:7.24.1p2] wint_t should hold WEOF and any wide character, told apart.
+// wint_t should hold WEOF and any wide character, told apart.
+// [C99:7.24.1p2]: mbstate_t, wint_t and struct tm
 static void Test_WcharWint(void)
 {
     wint_t wc = WEOF;
@@ -38,7 +41,8 @@ static void Test_WcharWint(void)
     _TEST_TRUE(wc != WEOF);
 }
 
-// [C99:7.24.1p2] The header should give NULL, size_t, mbstate_t and struct tm.
+// The header should give NULL, size_t, mbstate_t and struct tm.
+// [C99:7.24.1p2]: mbstate_t, wint_t and struct tm
 static void Test_WcharTypes(void)
 {
     wchar_t *none = NULL;

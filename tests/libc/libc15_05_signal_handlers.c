@@ -13,7 +13,8 @@ static void on_reinstall(int sig)
     count++;
 }
 
-// [C99:7.14.1.1p2] raise should run the handler last installed, none if ignored.
+// raise should run the handler last installed, none if ignored.
+// [C99:7.14.1.1p2]: signal's three dispositions: SIG_DFL, SIG_IGN and a handler
 static void Test_SignalHandlers(void)
 {
     got = 0;

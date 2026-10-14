@@ -8,7 +8,8 @@
 
 static char filebuf[SMALL];
 
-// [C99:7.19.6.1p14] fprintf should count what it sends a stream buffered one way.
+// fprintf should count what it sends a stream buffered one way.
+// [C99:7.19.6.1p14]: fprintf's count of characters written, or a negative value
 static bool sends(int kind)
 {
     int ch;
@@ -43,7 +44,8 @@ static bool sends(int kind)
     return lost == 0;
 }
 
-// [C99:7.19.6.1p2] fprintf should write a stream the same however buffered.
+// fprintf should write a stream the same however buffered.
+// [C99:7.19.6.1p2]: fprintf, its format and the arguments it converts
 static void Test_StdioFprintf(void)
 {
     _TEST_TRUE(sends(_IOFBF));

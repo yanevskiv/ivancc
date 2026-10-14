@@ -6,7 +6,8 @@
 // | [0x0.000000000000001p-16385] 28
 // | [0x4p-16385|0x7.fffffffffffffffp-16385] 39
 // Non-standard: %a should write a subnormal at the least normal value's power.
-// Liberty: [C99:7.19.6.1p8] a value not normalized has its first digit unspecified.
+// Liberty: a value not normalized has its first digit unspecified.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 
 #include <stdio.h>
 #include <float.h>

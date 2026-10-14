@@ -21,7 +21,8 @@ static void last(void)
     puts("atexit's");
 }
 
-// [C99:7.19.3p3] Each output function should write through a smaller buffer.
+// Each output function should write through a smaller buffer.
+// [C99:7.19.3p3]: unbuffered, fully buffered and line buffered streams
 static void Test_StdioOutput(void)
 {
     int bad = 0;

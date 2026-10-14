@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p6] A # flag should keep a decimal point, and %g's trailing zeros.
+// A # flag should keep a decimal point, and %g's trailing zeros.
+// [C99:7.19.6.1p6]: printf's flags: -, +, space, # and 0
 static void Test_StdioPoint(void)
 {
     _TEST_TRUE(prints("3", "%.0f", 3.0));

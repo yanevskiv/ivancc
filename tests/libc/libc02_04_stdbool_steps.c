@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc02_00_stdbool_helpers.inc"
 
-// [C99:6.3.1.2p1] true incremented should stay true, false decremented be true.
+// true incremented should stay true, false decremented be true.
+// [C99:6.3.1.2p1]: conversion to _Bool, 0 or 1
 static void Test_StdboolSteps(void)
 {
     bool flag = false;

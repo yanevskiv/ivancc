@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc19_00_wctype_helpers.inc"
 
-// [C99:7.1.4p1] A call past a macro should judge and map as the function.
+// A call past a macro should judge and map as the function.
+// [C99:7.1.4p1]: a library function's arguments, and its macro forms
 static void Test_WctypeCalls(void)
 {
     wint_t wc = L'0';

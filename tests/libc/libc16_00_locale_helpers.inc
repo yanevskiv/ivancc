@@ -32,7 +32,8 @@ static const int cats[CATEGORIES] = {LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, 
 // The name of the locale the program started in.
 static char start[NAME_SIZE];
 
-// [C99:7.11.1.1p6] Each category should get a name: return the first without.
+// Each category should get a name: return the first without.
+// [C99:7.11.1.1p6]: setlocale's result, a name for the locale or a null pointer
 static int refused(const char *locale)
 {
     int i;
@@ -58,7 +59,8 @@ static bool keep(char *buf, int category)
     return true;
 }
 
-// [C99:7.11p2] localeconv should give the formatting of the "C" locale.
+// localeconv should give the formatting of the "C" locale.
+// [C99:7.11p2]: struct lconv and its members
 static bool plain(void)
 {
     int lost = 0;

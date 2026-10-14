@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc13_00_assert_helpers.inc"
 
-// [C99:7.2.1.1p2] Without NDEBUG, assert should evaluate its argument once.
+// Without NDEBUG, assert should evaluate its argument once.
+// [C99:7.2.1.1p2]: assert's message and abort
 static void Test_AssertActive(void)
 {
     count = 0;

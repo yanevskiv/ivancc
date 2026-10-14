@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] %p should write a pointer as printing characters.
+// %p should write a pointer as printing characters.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static bool shows(const void *ptr, char *text, size_t size)
 {
     int n;
@@ -19,7 +20,8 @@ static bool shows(const void *ptr, char *text, size_t size)
     return lost == 0;
 }
 
-// [C99:7.19.6.2p12] %p should tell two pointers apart, for fscanf to read back.
+// %p should tell two pointers apart, for fscanf to read back.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
 static void Test_StdioPointer(void)
 {
     int one = 0;

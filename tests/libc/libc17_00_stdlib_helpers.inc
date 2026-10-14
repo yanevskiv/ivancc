@@ -83,7 +83,8 @@ static long spoiled(const unsigned char *ptr, size_t n, unsigned char tag)
     return NONE;
 }
 
-// [C99:7.20.1.3p4] strtod should read a string as a value, bit for bit, and stop.
+// strtod should read a string as a value, bit for bit, and stop.
+// [C99:7.20.1.3p4]: strtod's decimal and hexadecimal forms, infinity and NaN
 static bool reads(const char *str, double value, long end)
 {
     int lost = 0;
@@ -104,7 +105,8 @@ static int compare_int(const void *left, const void *right)
     return (x > y) - (x < y);
 }
 
-// [C99:7.20.5.2p2] sorted should ascend: return the first place that descends.
+// sorted should ascend: return the first place that descends.
+// [C99:7.20.5.2p2]: qsort
 static int descent(void)
 {
     int i;

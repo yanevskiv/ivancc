@@ -34,7 +34,8 @@ static int misplaced(void)
     return NONE;
 }
 
-// [C99:7.20.5.2p2] qsort should order by the comparison alone, each element whole.
+// qsort should order by the comparison alone, each element whole.
+// [C99:7.20.5.2p2]: qsort
 static void Test_StdlibSort(void)
 {
     int i;

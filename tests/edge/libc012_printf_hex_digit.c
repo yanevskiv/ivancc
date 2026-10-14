@@ -7,7 +7,8 @@
 // | [0xc.ccccccccccccccdp-7] 24
 // | [0xf.fffffffffffffffp+16380] 28
 // Non-standard: %a should begin a double with 1, a long double with four bits.
-// Liberty: [C99:7.19.6.1p8] which nonzero digit comes first is unspecified.
+// Liberty: which nonzero digit comes first is unspecified.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 
 #include <stdio.h>
 #include <float.h>

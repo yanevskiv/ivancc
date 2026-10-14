@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc19_00_wctype_helpers.inc"
 
-// [C99:7.25.3.1] A mapping should take ASCII as <ctype.h>'s: the first to differ.
+// A mapping should take ASCII as <ctype.h>'s: the first to differ.
+// [C99:7.25.3.1]: towlower and towupper
 static long mismapped(wint_t (*map)(wint_t), int (*basic)(int))
 {
     wint_t wc;
@@ -17,7 +18,8 @@ static long mismapped(wint_t (*map)(wint_t), int (*basic)(int))
     return NONE;
 }
 
-// [C99:7.25.3.1] A mapping should give a letter's other case and leave any other.
+// A mapping should give a letter's other case and leave any other.
+// [C99:7.25.3.1]: towlower and towupper
 static void Test_WctypeMapping(void)
 {
     _TEST_INT(mismapped(towlower, tolower), NONE);
@@ -32,7 +34,8 @@ static void Test_WctypeMapping(void)
     _TEST_TRUE(towupper(L'{') == L'{');
 }
 
-// [C99:7.25.3.1] A mapping should return what is no letter unchanged, WEOF too.
+// A mapping should return what is no letter unchanged, WEOF too.
+// [C99:7.25.3.1]: towlower and towupper
 static void Test_WctypeMappingWeof(void)
 {
     _TEST_TRUE(towlower(WEOF) == WEOF);

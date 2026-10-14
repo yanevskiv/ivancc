@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:7.20.1.3p4] strtod should read either zero and the least and greatest.
+// strtod should read either zero and the least and greatest.
+// [C99:7.20.1.3p4]: strtod's decimal and hexadecimal forms, infinity and NaN
 static void Test_StdlibStrtodLimits(void)
 {
     _TEST_TRUE(reads("0", 0.0, 1));

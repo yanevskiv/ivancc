@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p16] scanf should return EOF only if input ends before an item.
+// scanf should return EOF only if input ends before an item.
+// [C99:7.19.6.2p16]: fscanf's count of items assigned, or EOF
 static void Test_StdioScanFailure(void)
 {
     char ch = FILL;

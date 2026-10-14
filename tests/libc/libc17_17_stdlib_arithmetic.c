@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:7.20.6.2p2] abs should drop a sign, and div truncate toward zero.
+// abs should drop a sign, and div truncate toward zero.
+// [C99:7.20.6.2p2]: div, ldiv and lldiv
 static void Test_StdlibArithmetic(void)
 {
     _TEST_INT(abs(-5), 5);

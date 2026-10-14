@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc04_00_limits_helpers.inc"
 
-// [C99:5.2.4.2.1p1] A limit should have the type its own type promotes to.
+// A limit should have the type its own type promotes to.
+// [C99:5.2.4.2.1p1]: the integer limits' least magnitudes, and their types
 static void Test_LimitsTypes(void)
 {
     _TEST_UINT(sizeof(SCHAR_MIN), sizeof(int));

@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc16_00_locale_helpers.inc"
 
-// [C99:7.11.1.1p8] The name at startup should restore locale and formatting.
+// The name at startup should restore locale and formatting.
+// [C99:7.11.1.1p8]: setlocale's string, restoring the locale it names
 static void Test_LocaleRestored(void)
 {
     if (! _TEST_TRUE(keep(start, LC_ALL))) {

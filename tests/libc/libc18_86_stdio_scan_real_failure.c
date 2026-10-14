@@ -4,8 +4,10 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p10] An item that is no number should be a matching failure.
-// [C99:7.19.6.2p16] Input ending before any conversion should return EOF.
+// An item that is no number should be a matching failure.
+// Input ending before any conversion should return EOF.
+// [C99:7.19.6.2p10]: a conversion's input item, and a matching failure
+// [C99:7.19.6.2p16]: fscanf's count of items assigned, or EOF
 static void Test_StdioScanRealFailure(void)
 {
     int n = NONE;

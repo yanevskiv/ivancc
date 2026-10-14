@@ -7,7 +7,8 @@
 // | [-nan|-nan] 11
 // | [nan|-nan] 10
 // Non-standard: printf should write a NaN as nan, after - if its sign is set.
-// Liberty: [C99:7.19.6.1p8] a NaN's style is implementation-defined.
+// Liberty: a NaN's style is implementation-defined.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 
 #include <stdio.h>
 #include <string.h>

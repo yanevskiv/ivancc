@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc01_00_iso646_helpers.inc"
 
-// [C99:7.9p1] and_eq, or_eq and xor_eq should store their result and yield it.
+// and_eq, or_eq and xor_eq should store their result and yield it.
+// [C99:7.9p1]: the eleven macros spelling operators, and to xor_eq
 static void Test_Iso646Assignment(void)
 {
     int value = SIX;

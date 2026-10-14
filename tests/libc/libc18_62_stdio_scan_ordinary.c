@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p6] An ordinary character should read its like, or fail.
+// An ordinary character should read its like, or fail.
+// [C99:7.19.6.2p6]: an ordinary character directive
 static void Test_StdioScanOrdinary(void)
 {
     int n = NONE;

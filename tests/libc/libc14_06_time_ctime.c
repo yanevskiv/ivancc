@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// [C99:7.23.3.2p2] ctime should write a time as asctime writes its local time.
+// ctime should write a time as asctime writes its local time.
+// [C99:7.23.3.2p2]: ctime, as asctime(localtime(timer))
 static void Test_TimeCtime(void)
 {
     time_t now = time(NULL);

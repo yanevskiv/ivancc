@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] %c should write its argument as an unsigned char.
+// %c should write its argument as an unsigned char.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioCharacter(void)
 {
     char got[SMALL];

@@ -10,8 +10,10 @@
 // part of it; a wide character with no bytes should fail when it is put,
 // not when the stream is flushed; a stream should take back one wide
 // character of any length, and four bytes.
-// Liberty: [C99:7.24.3.1p3] what a stream holds after an encoding error is
-// not said, and [C99:7.19.7.11p3] one character of pushback alone is sure.
+// Liberty: what a stream holds after an encoding error is
+// not said, and one character of pushback alone is sure.
+// [C99:7.24.3.1p3]:  fgetwc's wide character, or WEOF
+// [C99:7.19.7.11p3]: one character of pushback guaranteed
 
 #include <errno.h>
 #include <locale.h>

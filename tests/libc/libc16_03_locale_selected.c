@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc16_00_locale_helpers.inc"
 
-// [C99:7.11.1.1p6] Selecting "C" should give the name the program started with.
+// Selecting "C" should give the name the program started with.
+// [C99:7.11.1.1p6]: setlocale's result, a name for the locale or a null pointer
 static void Test_LocaleSelected(void)
 {
     if (! _TEST_TRUE(keep(start, LC_ALL))) {

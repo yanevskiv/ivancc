@@ -4,8 +4,10 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.2p12] %x should read a hexadecimal integer, 0x before it or not.
-// [C99:7.19.6.2p14] %X should behave the same as %x.
+// %x should read a hexadecimal integer, 0x before it or not.
+// %X should behave the same as %x.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
+// [C99:7.19.6.2p14]: scanf's A, E, F, G and X, as a, e, f, g and x
 static void Test_StdioScanHex(void)
 {
     char ch = FILL;

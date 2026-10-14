@@ -1,7 +1,8 @@
 // (Test) Status: 42
-// [C11:6.5.3.4p3] _Alignof, C11's, as gcc takes it under C99. It yields a
+// _Alignof, C11's, as gcc takes it under C99. It yields a
 // type's alignment requirement, a size_t and an integer constant, its operand
 // not evaluated, and for an array type the alignment of the element type.
+// [C11:6.5.3.4p3]: _Alignof, an array's being its element's
 
 struct Mixed {
     char      mi_small;

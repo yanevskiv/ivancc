@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// [C99:7.8.2.4p2] wcstoimax should give the number, the end and the error given.
+// wcstoimax should give the number, the end and the error given.
+// [C99:7.8.2.4p2]: wcstoimax and wcstoumax, as wcstol to intmax_t
 static bool wide_to_signed(const wchar_t *str, int base, intmax_t want, long used, int error)
 {
     int lost = 0;
@@ -21,7 +22,8 @@ static bool wide_to_signed(const wchar_t *str, int base, intmax_t want, long use
     return lost == 0;
 }
 
-// [C99:7.8.2.4p2] wcstoimax should take what strtoimax does, in ASCII alone.
+// wcstoimax should take what strtoimax does, in ASCII alone.
+// [C99:7.8.2.4p2]: wcstoimax and wcstoumax, as wcstol to intmax_t
 static void Test_InttypesWideSigned(void)
 {
     _TEST_TRUE(wide_to_signed(L" -0x1Fz", 0, -31, 6, 0));

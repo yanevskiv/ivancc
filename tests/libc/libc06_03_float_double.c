@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc06_00_float_helpers.inc"
 
-// [C99:5.2.4.2.2p6] double should have IEC 60559's double format in #if.
+// double should have IEC 60559's double format in #if.
+// [C99:5.2.4.2.2p6]: <float.h>'s values, constant expressions, most fit for #if
 #define DIRECTIVE_DBL 0
 #if (DBL_MANT_DIG == 53) \
     && (DBL_DIG == 15) \
@@ -24,7 +25,8 @@ static const double double_max = DBL_MAX;
 static const double double_min = DBL_MIN;
 static const double double_epsilon = DBL_EPSILON;
 
-// [C99:5.2.4.2.2p9] double should be IEC 60559's double format, 53 bits precise.
+// double should be IEC 60559's double format, 53 bits precise.
+// [C99:5.2.4.2.2p9]: the floating minima of FLT_RADIX to LDBL_MAX_10_EXP
 static void Test_FloatDouble(void)
 {
     _TEST_INT(DBL_MANT_DIG, 53);

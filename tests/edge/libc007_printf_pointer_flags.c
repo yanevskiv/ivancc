@@ -6,7 +6,9 @@
 // | [    0x00001234] 16
 // | [(nil)|     (nil)|(nil)] 24
 // Non-standard: %p should take 0 and a precision as %#x does, and ignore #.
-// Liberty: [C99:7.19.6.1p4, p6] a precision, # and 0 on %p are undefined.
+// Liberty: a precision, # and 0 on %p are undefined.
+// [C99:7.19.6.1p4]: a conversion specification: flags, width, precision, length and specifier
+// [C99:7.19.6.1p6]: printf's flags: -, +, space, # and 0
 
 #include <stdio.h>
 

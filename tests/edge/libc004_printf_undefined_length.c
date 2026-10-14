@@ -7,7 +7,8 @@
 // | [%hf|%hhe|%llf|%jg|%zf|%tE|7] 29
 // | [%l%|7] 7
 // Non-standard: printf should write a length its conversion has not as text.
-// Liberty: [C99:7.19.6.1p7] such a length modifier is undefined behaviour.
+// Liberty: such a length modifier is undefined behaviour.
+// [C99:7.19.6.1p7]: printf's length modifiers
 
 #include <stdio.h>
 

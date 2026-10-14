@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc06_00_float_helpers.inc"
 
-// [C99:5.2.4.2.2p6] float should have IEC 60559's single format in #if.
+// float should have IEC 60559's single format in #if.
+// [C99:5.2.4.2.2p6]: <float.h>'s values, constant expressions, most fit for #if
 #define DIRECTIVE_FLT 0
 #if (FLT_MANT_DIG == 24) \
     && (FLT_DIG == 6) \
@@ -24,7 +25,8 @@ static const float float_max = FLT_MAX;
 static const float float_min = FLT_MIN;
 static const float float_epsilon = FLT_EPSILON;
 
-// [C99:5.2.4.2.2p9] float should be IEC 60559's single format, 24 bits precise.
+// float should be IEC 60559's single format, 24 bits precise.
+// [C99:5.2.4.2.2p9]: the floating minima of FLT_RADIX to LDBL_MAX_10_EXP
 static void Test_FloatFloat(void)
 {
     _TEST_INT(FLT_MANT_DIG, 24);

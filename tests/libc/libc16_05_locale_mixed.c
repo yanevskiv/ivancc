@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc16_00_locale_helpers.inc"
 
-// [C99:7.11.1.1p8] LC_ALL's name should restore categories of two locales.
+// LC_ALL's name should restore categories of two locales.
+// [C99:7.11.1.1p8]: setlocale's string, restoring the locale it names
 static void Test_LocaleMixed(void)
 {
     char mixed[NAME_SIZE];

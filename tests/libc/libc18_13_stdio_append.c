@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.5.3p5] An append stream should write at its file's end, wherever set.
+// An append stream should write at its file's end, wherever set.
+// [C99:7.19.5.3p5]: append mode, writing at the end of the file
 static void Test_StdioAppend(void)
 {
     FILE *file;

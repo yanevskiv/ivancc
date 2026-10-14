@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:7.20.4.5p2] getenv should give a variable's value, none for no other.
+// getenv should give a variable's value, none for no other.
+// [C99:7.20.4.5p2]: getenv
 static void Test_StdlibEnvironment(void)
 {
     const char *value = getenv("IVANCC_TEST");

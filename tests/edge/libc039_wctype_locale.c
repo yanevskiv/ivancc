@@ -7,8 +7,10 @@
 // Non-standard: a wide character past ASCII should be in no class and have
 // no other case in "C", and Unicode's classes and cases in "C.UTF-8"; WEOF
 // and a class no name describes should hold of nothing.
-// Liberty: [C99:7.25.2.1.2p2] the letters past the basic ones are a set each
-// locale chooses, as are the other classes and [C99:7.25.3.1] the cases.
+// Liberty: the letters past the basic ones are a set each
+// locale chooses, as are the other classes and the cases.
+// [C99:7.25.2.1.2p2]: iswalpha
+// [C99:7.25.3.1]:     towlower and towupper
 
 #include <locale.h>
 #include <stdio.h>

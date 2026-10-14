@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:7.24.4.4p1] A comparison should take the sign of its first differing pair.
+// A comparison should take the sign of its first differing pair.
+// [C99:7.24.4.4p1]: wide characters ordered as wchar_t's integers
 static void Test_WcharComparison(void)
 {
     _TEST_INT(wcscmp(L"abc", L"abc"), 0);
@@ -32,7 +33,8 @@ static void Test_WcharComparison(void)
     _TEST_INT(sign(wmemcmp(L"\x20AC", L"a", 1)), 1);
 }
 
-// [C99:7.24.4.4p1] A comparison should order the least wchar_t below the greatest.
+// A comparison should order the least wchar_t below the greatest.
+// [C99:7.24.4.4p1]: wide characters ordered as wchar_t's integers
 static void Test_WcharComparisonLimits(void)
 {
     static const wchar_t least[] = {L'a', WCHAR_MIN, L'\0'};
@@ -47,7 +49,8 @@ static void Test_WcharComparisonLimits(void)
     _TEST_INT(wmemcmp(least, most, 1), 0);
 }
 
-// [C99:7.24.4.4.2] wcscoll should order, and wcsxfrm give what wcscmp orders so.
+// wcscoll should order, and wcsxfrm give what wcscmp orders so.
+// [C99:7.24.4.4.2]: wcscoll
 static void Test_WcharCollation(void)
 {
     size_t len;

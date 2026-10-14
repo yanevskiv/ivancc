@@ -4,7 +4,8 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:7.19.6.1p8] A precision should be the fewest digits, zeros making them up.
+// A precision should be the fewest digits, zeros making them up.
+// [C99:7.19.6.1p8]: printf's conversion specifiers
 static void Test_StdioDigits(void)
 {
     _TEST_TRUE(prints("005", "%.3d", 5));

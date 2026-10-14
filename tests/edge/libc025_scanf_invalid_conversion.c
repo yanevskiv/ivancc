@@ -9,7 +9,8 @@
 // | 1 [i] [#]
 // | 1 [k] [#]
 // Non-standard: scanf should stop at a directive of no conversion, EOF never.
-// Liberty: [C99:7.19.6.2p13] an invalid conversion is undefined behaviour.
+// Liberty: an invalid conversion is undefined behaviour.
+// [C99:7.19.6.2p13]: an invalid conversion specification, undefined
 
 #include <stdio.h>
 

@@ -8,7 +8,8 @@
 // | 1 -7
 // | 0
 // Non-standard: scanf should stop at a %n with an asterisk or a width.
-// Liberty: [C99:7.19.6.2p12] either with %n is undefined behaviour.
+// Liberty: either with %n is undefined behaviour.
+// [C99:7.19.6.2p12]: scanf's conversion specifiers
 
 #include <stdio.h>
 

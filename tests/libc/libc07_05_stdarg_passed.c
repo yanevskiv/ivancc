@@ -51,7 +51,8 @@ static long shared(int count, ...)
     return digits;
 }
 
-// [C99:7.15p3] Another function should walk a list it is passed, by pointer too.
+// Another function should walk a list it is passed, by pointer too.
+// [C99:7.15p3]: va_list
 static void Test_StdargPassed(void)
 {
     _TEST_INT(forward(0), 0);

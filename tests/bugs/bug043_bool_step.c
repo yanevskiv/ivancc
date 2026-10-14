@@ -2,7 +2,8 @@
 // bug043. A postfix ++ or -- stored a _Bool's old value and one more or less
 // as it was, so `flag++` on a true flag left 2 and `flag--` on a false one 255,
 // and a step or a compound assignment of a _Bool bit-field kept the low bit of
-// the sum, so `bits += 2` left 0. gcc converts each to 0 or 1 [C99:6.3.1.2p1].
+// the sum, so `bits += 2` left 0. gcc converts each to 0 or 1.
+// [C99:6.3.1.2p1]: conversion to _Bool, 0 or 1
 
 struct holder {
     _Bool flag;
