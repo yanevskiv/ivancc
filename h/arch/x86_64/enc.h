@@ -77,22 +77,25 @@ enum Enc_x86_64_Sib {
 };
 
 // Opcode extensions carried in the ModRM reg field by the group opcodes.
+// [Amd64-Vol3:A.1.1]: each group's ModRM.reg extensions, in Tables A-6 and A-7
 typedef enum Enc_x86_64_Grp Enc_x86_64_Grp;
 enum Enc_x86_64_Grp {
-    ENC_X86_64_GRP_ADD  = 0, // /0 of group 1
-    ENC_X86_64_GRP_OR   = 1, // /1 of group 1
-    ENC_X86_64_GRP_NOT  = 2, // /2 of group 3
-    ENC_X86_64_GRP_NEG  = 3, // /3 of group 3
-    ENC_X86_64_GRP_AND  = 4, // /4 of group 1
-    ENC_X86_64_GRP_SHL  = 4, // /4 of group 2
-    ENC_X86_64_GRP_SUB  = 5, // /5 of group 1
-    ENC_X86_64_GRP_XOR  = 6, // /6 of group 1
-    ENC_X86_64_GRP_SHR  = 5, // /5 of group 2
-    ENC_X86_64_GRP_DIV  = 6, // /6 of group 3
-    ENC_X86_64_GRP_CMP  = 7, // /7 of group 1
-    ENC_X86_64_GRP_IDIV = 7, // /7 of group 3
-    ENC_X86_64_GRP_SAR  = 7, // /7 of group 2
-    ENC_X86_64_GRP_CALL = 2  // /2 of group 5
+    ENC_X86_64_GRP_ADD     = 0, // /0 of group 1
+    ENC_X86_64_GRP_OR      = 1, // /1 of group 1
+    ENC_X86_64_GRP_NOT     = 2, // /2 of group 3
+    ENC_X86_64_GRP_NEG     = 3, // /3 of group 3
+    ENC_X86_64_GRP_AND     = 4, // /4 of group 1
+    ENC_X86_64_GRP_SHL     = 4, // /4 of group 2
+    ENC_X86_64_GRP_SUB     = 5, // /5 of group 1
+    ENC_X86_64_GRP_XOR     = 6, // /6 of group 1
+    ENC_X86_64_GRP_SHR     = 5, // /5 of group 2
+    ENC_X86_64_GRP_DIV     = 6, // /6 of group 3
+    ENC_X86_64_GRP_CMP     = 7, // /7 of group 1
+    ENC_X86_64_GRP_IDIV    = 7, // /7 of group 3
+    ENC_X86_64_GRP_SAR     = 7, // /7 of group 2
+    ENC_X86_64_GRP_CALL    = 2, // /2 of group 5
+    ENC_X86_64_GRP_LDMXCSR = 2, // /2 of group 15
+    ENC_X86_64_GRP_STMXCSR = 3  // /3 of group 15
 };
 
 // Primary opcode bytes, named as the Intel tables list them.
@@ -130,6 +133,7 @@ enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_X87_DD        = 0xDD, // x87 on 64-bit memory
     ENC_X86_64_OPCODE_X87_DE        = 0xDE, // x87 arithmetic that pops
     ENC_X86_64_OPCODE_X87_DF        = 0xDF, // x87 on 64-bit integers
+    ENC_X86_64_OPCODE_FWAIT         = 0x9B, // FWAIT
     ENC_X86_64_OPCODE_ESCAPE        = 0x0F  // introduces a two-byte opcode
 };
 
@@ -163,10 +167,12 @@ enum Enc_x86_64_Opcode2 {
     ENC_X86_64_OPCODE2_SUBS         = 0x5C, // SUBSD or SUBSS xmm, xmm/m
     ENC_X86_64_OPCODE2_DIVS         = 0x5E, // DIVSD or DIVSS xmm, xmm/m
     ENC_X86_64_OPCODE2_MOVQ_XMM_RM  = 0x6E, // MOVQ xmm, r/m64
-    ENC_X86_64_OPCODE2_MOVQ_RM_XMM  = 0x7E  // MOVQ r/m64, xmm
+    ENC_X86_64_OPCODE2_MOVQ_RM_XMM  = 0x7E, // MOVQ r/m64, xmm
+    ENC_X86_64_OPCODE2_GRP15        = 0xAE  // ldmxcsr or stmxcsr, by digit
 };
 
 // Opcode extensions an x87 memory form carries in the ModRM reg field.
+// [Amd64-Vol5:2]: each x87 instruction's opcode bytes
 typedef enum Enc_x86_64_X87Digit Enc_x86_64_X87Digit;
 enum Enc_x86_64_X87Digit {
     ENC_X86_64_X87_FLD_M32    = 0, // after 0xD9
@@ -176,19 +182,27 @@ enum Enc_x86_64_X87Digit {
     ENC_X86_64_X87_FLD_M64    = 0, // after 0xDD
     ENC_X86_64_X87_FISTTP_M64 = 1, // after 0xDD
     ENC_X86_64_X87_FSTP_M64   = 3, // after 0xDD
-    ENC_X86_64_X87_FILD_M64   = 5  // after 0xDF
+    ENC_X86_64_X87_FILD_M64   = 5, // after 0xDF
+    ENC_X86_64_X87_FLDENV     = 4, // after 0xD9
+    ENC_X86_64_X87_FLDCW      = 5, // after 0xD9
+    ENC_X86_64_X87_FNSTENV    = 6, // after 0xD9
+    ENC_X86_64_X87_FNSTCW     = 7, // after 0xD9
+    ENC_X86_64_X87_FNSTSW_M16 = 7  // after 0xDD
 };
 
 // Second bytes of the x87 register forms, before the stack register is added.
+// [Amd64-Vol5:2]: each x87 instruction's opcode bytes
 typedef enum Enc_x86_64_X87Reg Enc_x86_64_X87Reg;
 enum Enc_x86_64_X87Reg {
-    ENC_X86_64_X87_FADDP   = 0xC0, // after 0xDE
-    ENC_X86_64_X87_FMULP   = 0xC8, // after 0xDE
-    ENC_X86_64_X87_FSUBRP  = 0xE8, // after 0xDE
-    ENC_X86_64_X87_FDIVRP  = 0xF8, // after 0xDE
-    ENC_X86_64_X87_FUCOMIP = 0xE8, // after 0xDF
-    ENC_X86_64_X87_FSTP    = 0xD8, // after 0xDD
-    ENC_X86_64_X87_FCHS    = 0xE0  // after 0xD9
+    ENC_X86_64_X87_FADDP     = 0xC0, // after 0xDE
+    ENC_X86_64_X87_FMULP     = 0xC8, // after 0xDE
+    ENC_X86_64_X87_FSUBRP    = 0xE8, // after 0xDE
+    ENC_X86_64_X87_FDIVRP    = 0xF8, // after 0xDE
+    ENC_X86_64_X87_FUCOMIP   = 0xE8, // after 0xDF
+    ENC_X86_64_X87_FSTP      = 0xD8, // after 0xDD
+    ENC_X86_64_X87_FCHS      = 0xE0, // after 0xD9
+    ENC_X86_64_X87_FNCLEX    = 0xE2, // after 0xDB, naming no register
+    ENC_X86_64_X87_FNSTSW_AX = 0xE0  // after 0xDF, naming no register
 };
 
 // The mandatory prefix and second opcode byte of one SSE operation.
@@ -259,6 +273,7 @@ void Enc_x86_64_EmitMov(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitSseRR(Enc_x86_64_Opcode prefix, Asm_x86_64_Width width, Enc_x86_64_Opcode2 opcode, uint8_t reg, uint8_t rm);
 void Enc_x86_64_EmitSse(const Asm_x86_64_Item *item);
 void Enc_x86_64_EmitX87(const Asm_x86_64_Item *item);
+void Enc_x86_64_EmitGrp15(Enc_x86_64_Grp grp, Asm_x86_64_Reg base, int32_t disp);
 void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item);
 
 // Symbols, sections and relocations

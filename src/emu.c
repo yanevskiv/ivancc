@@ -551,10 +551,11 @@ void Emu_x86_64_WriteFlags(Cpu_x86_64_State *cpu, uint64_t flags)
 // Store the x87 and SSE registers as FXSAVE lays them out.
 void Emu_x86_64_SaveFpu(Cpu_x86_64_State *cpu, uint8_t *area)
 {
-    Emu_Put(area + EMU_X86_64_FXSAVE_FCW_OFF, EMU_X86_64_FCW_DEFAULT, sizeof(uint16_t));
-    Emu_Put(area + EMU_X86_64_FXSAVE_FSW_OFF, (uint64_t) cpu->cs_top << EMU_X86_64_FSW_TOP_SHIFT, sizeof(uint16_t));
-    Emu_Put(area + EMU_X86_64_FXSAVE_MXCSR_OFF, EMU_X86_64_MXCSR_DEFAULT, sizeof(uint32_t));
-    Emu_Put(area + EMU_X86_64_FXSAVE_MXCSR_MASK_OFF, EMU_X86_64_MXCSR_MASK, sizeof(uint32_t));
+    Emu_Put(area + EMU_X86_64_FXSAVE_FCW_OFF, cpu->cs_fcw, sizeof(uint16_t));
+    Emu_Put(area + EMU_X86_64_FXSAVE_FSW_OFF, Cpu_x86_64_ReadFsw(cpu), sizeof(uint16_t));
+    Emu_Put(area + EMU_X86_64_FXSAVE_FTW_OFF, cpu->cs_full, sizeof(uint8_t));
+    Emu_Put(area + EMU_X86_64_FXSAVE_MXCSR_OFF, cpu->cs_mxcsr, sizeof(uint32_t));
+    Emu_Put(area + EMU_X86_64_FXSAVE_MXCSR_MASK_OFF, CPU_X86_64_MXCSR_MASK, sizeof(uint32_t));
     for (int32_t i = 0; i < CPU_X86_64_ST_COUNT; i++) {
         Fp_EncodeExtended(*Cpu_x86_64_St(cpu, i), area + EMU_X86_64_FXSAVE_ST_OFF + i * EMU_X86_64_FXSAVE_REG_SIZE);
     }
@@ -568,7 +569,10 @@ void Emu_x86_64_SaveFpu(Cpu_x86_64_State *cpu, uint8_t *area)
 // Load the x87 and SSE registers from an FXSAVE area.
 void Emu_x86_64_RestoreFpu(Cpu_x86_64_State *cpu, const uint8_t *area)
 {
-    cpu->cs_top = (int32_t) (Emu_Get(area + EMU_X86_64_FXSAVE_FSW_OFF, sizeof(uint16_t)) >> EMU_X86_64_FSW_TOP_SHIFT) & CPU_X86_64_ST_MASK;
+    Cpu_x86_64_WriteFcw(cpu, (uint16_t) Emu_Get(area + EMU_X86_64_FXSAVE_FCW_OFF, sizeof(uint16_t)));
+    Cpu_x86_64_WriteFsw(cpu, (uint16_t) Emu_Get(area + EMU_X86_64_FXSAVE_FSW_OFF, sizeof(uint16_t)));
+    cpu->cs_full = (uint8_t) Emu_Get(area + EMU_X86_64_FXSAVE_FTW_OFF, sizeof(uint8_t));
+    cpu->cs_mxcsr = (uint32_t) Emu_Get(area + EMU_X86_64_FXSAVE_MXCSR_OFF, sizeof(uint32_t)) & CPU_X86_64_MXCSR_MASK;
     for (int32_t i = 0; i < CPU_X86_64_ST_COUNT; i++) {
         *Cpu_x86_64_St(cpu, i) = Fp_DecodeExtended(area + EMU_X86_64_FXSAVE_ST_OFF + i * EMU_X86_64_FXSAVE_REG_SIZE);
     }
@@ -579,7 +583,7 @@ void Emu_x86_64_RestoreFpu(Cpu_x86_64_State *cpu, const uint8_t *area)
     }
 }
 
-// Put the x87 and SSE registers in the state a handler starts with.
+// Put the x87 and SSE registers as a process or a handler starts with them.
 void Emu_x86_64_ResetFpu(Cpu_x86_64_State *cpu)
 {
     memset(cpu->cs_xmm, 0, sizeof(cpu->cs_xmm));
@@ -587,6 +591,10 @@ void Emu_x86_64_ResetFpu(Cpu_x86_64_State *cpu)
         cpu->cs_st[i] = 0;
     }
     cpu->cs_top = 0;
+    cpu->cs_full = 0;
+    cpu->cs_fcw = EMU_X86_64_FCW_DEFAULT;
+    cpu->cs_fsw = 0;
+    cpu->cs_mxcsr = EMU_X86_64_MXCSR_DEFAULT;
 }
 
 // Set and return a signal's disposition as Linux's rt_sigaction does.
@@ -789,6 +797,10 @@ void Emu_x86_64_Linux_Fault(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu
             sig = SIGILL;
             info.ei_code = EMU_LINUX_ILL_ILLOPN;
         } break;
+        case CPU_X86_64_VECTOR_GP: {
+            info.ei_code = EMU_LINUX_SI_KERNEL;
+            info.ei_addr = 0;
+        } break;
         default: {
             guest->eg_err = cpu->cs_pf_err;
             info.ei_code = EMU_LINUX_SEGV_MAPERR;
@@ -924,6 +936,7 @@ int32_t Emu_x86_64_Linux_Run(Load_Image *img, Emu_Trace trace, int32_t *sig)
     Cpu_x86_64_State cpu;
 
     Cpu_x86_64_Init(&cpu, &bus, img->li_entry, img->li_stack);
+    Emu_x86_64_ResetFpu(&cpu);
     Emu_Linux_Inherit(&guest);
     while (! guest.eg_halted) {
         uint64_t rip = cpu.cs_rip;

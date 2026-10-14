@@ -306,10 +306,13 @@ enum Err_Code {
     ERR_CPU_GROUP2_NOT_IMPLEMENTED,        // can't run a group 2 operation the CPU does not implement
     ERR_CPU_GROUP3_NOT_IMPLEMENTED,        // can't run a group 3 operation the CPU does not implement
     ERR_CPU_GROUP5_NOT_IMPLEMENTED,        // can't run a group 5 operation the CPU does not implement
+    ERR_CPU_GROUP15_NOT_IMPLEMENTED,       // can't run a group 15 operation the CPU does not implement
+    ERR_CPU_MXCSR_RESERVED,                // can't load MXCSR with a reserved bit set
     ERR_CPU_SSE_DOUBLE_NOT_IMPLEMENTED,    // can't run a scalar double SSE operation the CPU does not implement
     ERR_CPU_SSE_SINGLE_NOT_IMPLEMENTED,    // can't run a scalar single SSE operation the CPU does not implement
     ERR_CPU_X87_MEM_NOT_IMPLEMENTED,       // can't run an x87 memory operation the CPU does not implement
     ERR_CPU_X87_D9_NOT_IMPLEMENTED,        // can't run a D9 x87 operation the CPU does not implement
+    ERR_CPU_X87_DB_NOT_IMPLEMENTED,        // can't run a DB x87 operation the CPU does not implement
     ERR_CPU_X87_DE_NOT_IMPLEMENTED,        // can't run a DE x87 operation the CPU does not implement
     ERR_CPU_X87_DF_NOT_IMPLEMENTED,        // can't run a DF x87 operation the CPU does not implement
     ERR_CPU_X87_DD_NOT_IMPLEMENTED,        // can't run a DD x87 operation the CPU does not implement

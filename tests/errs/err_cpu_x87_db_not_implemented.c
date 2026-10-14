@@ -1,6 +1,6 @@
 // (Test) Status: 132
-// (Test) Emulator error: [ERR_CPU_X87_NOT_IMPLEMENTED]
-// Can't run an x87 opcode the CPU does not implement.
+// (Test) Emulator error: [ERR_CPU_X87_DB_NOT_IMPLEMENTED]
+// Can't run a DB x87 operation the CPU does not implement.
 // Note: DB F8 is reserved, so the hardware raises #UD too.
 
 int main(void)

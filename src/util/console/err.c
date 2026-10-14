@@ -1647,6 +1647,20 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: [instruction address]
+    [ERR_CPU_GROUP15_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_GROUP15_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented group 15 operation at 0x%llx"
+    },
+
+    // Args: [value, instruction address]
+    [ERR_CPU_MXCSR_RESERVED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_MXCSR_RESERVED",
+        .ee_format = "ldmxcsr of 0x%llx, which sets a reserved bit, from %%rip = 0x%llx"
+    },
+
+    // Args: [instruction address]
     [ERR_CPU_SSE_DOUBLE_NOT_IMPLEMENTED] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_CPU_SSE_DOUBLE_NOT_IMPLEMENTED",
@@ -1672,6 +1686,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_CPU_X87_D9_NOT_IMPLEMENTED",
         .ee_format = "unimplemented D9 x87 operation at 0x%llx"
+    },
+
+    // Args: [instruction address]
+    [ERR_CPU_X87_DB_NOT_IMPLEMENTED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_X87_DB_NOT_IMPLEMENTED",
+        .ee_format = "unimplemented DB x87 operation at 0x%llx"
     },
 
     // Args: [instruction address]

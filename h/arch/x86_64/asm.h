@@ -158,6 +158,15 @@ enum Asm_x86_64_Op {
     ASM_X86_64_OP_FCHS,      // negate %st
     ASM_X86_64_OP_FUCOMIP,   // compare %st with %st(1), then pop
     ASM_X86_64_OP_FSTP,      // pop %st
+    ASM_X86_64_OP_FNSTCW,    // store the x87 control word
+    ASM_X86_64_OP_FLDCW,     // load the x87 control word
+    ASM_X86_64_OP_FNSTSW,    // store the x87 status word, to memory or %ax
+    ASM_X86_64_OP_FNCLEX,    // clear the x87 exception flags
+    ASM_X86_64_OP_FNSTENV,   // store the x87 environment, mask its exceptions
+    ASM_X86_64_OP_FLDENV,    // load the x87 environment
+    ASM_X86_64_OP_FWAIT,     // take pending unmasked x87 exceptions
+    ASM_X86_64_OP_STMXCSR,   // store MXCSR
+    ASM_X86_64_OP_LDMXCSR,   // load MXCSR
     ASM_X86_64_OP_COUNT      // number of operations
 };
 

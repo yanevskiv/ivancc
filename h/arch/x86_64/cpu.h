@@ -79,6 +79,59 @@
 // The ModRM bits an x87 register form carries around its digit and register.
 #define CPU_X86_64_X87_REG_FORM 0xC0
 
+// The MXCSR a reset leaves: every exception masked, rounding to nearest.
+// [Amd64-Vol1:4.2.2]: MXCSR's fields and the values a reset gives them
+#define CPU_X86_64_MXCSR_INIT 0x1F80
+
+// The MXCSR bits the CPU keeps, so the ones LDMXCSR may set.
+// [Amd64-Vol4:LDMXCSR]: a nonzero reserved bit raises #GP
+#define CPU_X86_64_MXCSR_MASK 0xFFFF
+
+// The x87 control word FNINIT leaves: every exception masked, rounding to
+// nearest, at double-extended precision.
+// [Amd64-Vol1:6.2.3]: the x87 control word's fields, and 037Fh
+#define CPU_X86_64_FCW_INIT 0x037F
+
+// The x87 control word's bits a load sets, and its reserved bit that reads
+// as one, as in 037Fh; the other reserved bits read as zero.
+// [Amd64-Vol1:6.2.3]: all bits but the reserved can be read and written
+#define CPU_X86_64_FCW_WRITABLE 0x1F3F
+#define CPU_X86_64_FCW_FIXED    0x0040
+
+// The exception flags of the x87 status word, and their masks in the
+// control word.
+// [Amd64-Vol1:6.2.2]: the x87 status word's fields
+#define CPU_X86_64_X87_EXCEPTIONS 0x3F
+
+// The flags of the x87 status word FNCLEX clears beside the exceptions: the
+// stack fault, the exception summary and busy.
+// [Amd64-Vol5:FCLEX]: the flags FNCLEX clears
+#define CPU_X86_64_FSW_SF 0x0040
+#define CPU_X86_64_FSW_ES 0x0080
+#define CPU_X86_64_FSW_B  0x8000
+
+// The place of TOP in the x87 status word.
+#define CPU_X86_64_FSW_TOP_SHIFT 11
+#define CPU_X86_64_FSW_TOP_MASK  0x3800
+
+// Bits of one register's tag in the x87 tag word.
+// [Amd64-Vol1:6.2.4]: the x87 tag word, two bits a physical register
+#define CPU_X86_64_TAG_BITS 2
+#define CPU_X86_64_TAG_MASK 3
+
+// The layout of the x87 environment FNSTENV and FLDENV move, its pointers
+// and opcode stored as zero, since the CPU does not keep them.
+// [Amd64-Vol5:FSTENV]:   a 28-byte area at 32- and 64-bit operand sizes
+// [Amd64-Vol2:11.4.4.2]: the environment, laid out as the FNSAVE image opens
+// [Amd64-Vol2:11.4.4.1]: Figure 11-4, the FNSAVE image in protected mode
+#define CPU_X86_64_ENV_FCW_OFF 0
+#define CPU_X86_64_ENV_FSW_OFF 4
+#define CPU_X86_64_ENV_FTW_OFF 8
+#define CPU_X86_64_ENV_SIZE    28
+
+// A dword of the x87 environment, each field in the low half of one.
+#define CPU_X86_64_ENV_SLOT 4
+
 // The bits of a #PF's error code: a write, from user mode, and a fetch.
 #define CPU_X86_64_PF_WRITE 0x2
 #define CPU_X86_64_PF_USER  0x4
@@ -146,9 +199,20 @@ enum Cpu_x86_64_Trap {
 // Exception vectors a step can raise, numbered as the hardware numbers them.
 typedef enum Cpu_x86_64_Vector Cpu_x86_64_Vector;
 enum Cpu_x86_64_Vector {
-    CPU_X86_64_VECTOR_DE = 0, // #DE, a divide error
-    CPU_X86_64_VECTOR_UD = 6, // #UD, an opcode the CPU cannot run
-    CPU_X86_64_VECTOR_PF = 14 // #PF, an address the bus refused
+    CPU_X86_64_VECTOR_DE = 0,  // #DE, a divide error
+    CPU_X86_64_VECTOR_UD = 6,  // #UD, an opcode the CPU cannot run
+    CPU_X86_64_VECTOR_GP = 13, // #GP, an operand the instruction refuses
+    CPU_X86_64_VECTOR_PF = 14  // #PF, an address the bus refused
+};
+
+// What the x87 tag word says of a physical register, by its contents.
+// [Amd64-Vol2:11.5.10.1]: Table 11-8, each tag from the register's contents
+typedef enum Cpu_x86_64_Tag Cpu_x86_64_Tag;
+enum Cpu_x86_64_Tag {
+    CPU_X86_64_TAG_VALID   = 0, // a normal number
+    CPU_X86_64_TAG_ZERO    = 1, // a zero
+    CPU_X86_64_TAG_SPECIAL = 2, // a NaN, an infinity, a denormal or unsupported
+    CPU_X86_64_TAG_EMPTY   = 3  // no value
 };
 
 // How an instruction reaches its r/m operand.
@@ -201,6 +265,10 @@ struct Cpu_x86_64_State {
     Cpu_x86_64_XmmLanes   cs_xmm[CPU_X86_64_XMM_COUNT]; // the SSE registers
     long double           cs_st[CPU_X86_64_ST_COUNT]; // the x87 registers
     int32_t               cs_top;    // the x87 register %st names
+    uint8_t               cs_full;   // the full x87 registers, a bit each
+    uint16_t              cs_fcw;    // the x87 control word
+    uint16_t              cs_fsw;    // the x87 status word, but TOP, ES and B
+    uint32_t              cs_mxcsr;  // the SSE control and status register
     Cpu_x86_64_Trap       cs_trap;   // what stopped the last step, or CPU_X86_64_TRAP_NONE
     Cpu_x86_64_Vector     cs_vector; // the exception a CPU_X86_64_TRAP_EXCEPTION raised
     char                 *cs_fault;  // the diagnostic of the last exception
@@ -233,6 +301,15 @@ void           Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *
 long double   *Cpu_x86_64_St(Cpu_x86_64_State *cpu, int32_t i);
 void           Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, long double value);
 long double    Cpu_x86_64_StPop(Cpu_x86_64_State *cpu);
+void           Cpu_x86_64_WriteFcw(Cpu_x86_64_State *cpu, uint16_t fcw);
+uint16_t       Cpu_x86_64_ReadFsw(const Cpu_x86_64_State *cpu);
+void           Cpu_x86_64_WriteFsw(Cpu_x86_64_State *cpu, uint16_t fsw);
+Cpu_x86_64_Tag Cpu_x86_64_ClassifyTag(long double value);
+uint16_t       Cpu_x86_64_ReadFtw(const Cpu_x86_64_State *cpu);
+void           Cpu_x86_64_WriteFtw(Cpu_x86_64_State *cpu, uint16_t ftw);
+void           Cpu_x86_64_StoreEnv(Cpu_x86_64_State *cpu, uint64_t addr);
+void           Cpu_x86_64_LoadEnv(Cpu_x86_64_State *cpu, uint64_t addr);
+void           Cpu_x86_64_StepGrp15(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void           Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void           Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 uint64_t       Cpu_x86_64_DivideLong(uint64_t hi, uint64_t lo, uint64_t d, Cpu_x86_64_OperandWidth width, uint64_t *rem);

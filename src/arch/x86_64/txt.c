@@ -127,17 +127,21 @@
 
 // The operands Enc_x86_64_EmitX87 encodes.
 #define TXT_X86_64_PATTERN_X87 \
-    "^(fldt|fstpt|fldl|fstpl|flds|fstps|fildq|fisttpq)" S MEM "$" \
+    "^(fldt|fstpt|fldl|fstpl|flds|fstps|fildq|fisttpq|fnstcw|fldcw|fnstsw|fnstenv|fldenv)" S MEM "$" \
     "|^(faddp|fmulp|fsubrp|fdivrp)" S ST0 C ST "$" \
     "|^(fucomip)" S ST C ST0 "$" \
     "|^(fstp)" S ST "$" \
-    "|^(fchs)$"
+    "|^(fnstsw)" S "(%ax)$" \
+    "|^(fchs|fnclex)$"
+
+// The operands Enc_x86_64_EmitGrp15 encodes.
+#define TXT_X86_64_PATTERN_GRP15 "^(stmxcsr|ldmxcsr)" S MEM "$"
 
 // The operand Enc_x86_64_EmitInstr encodes for an indirect call.
 #define TXT_X86_64_PATTERN_CALL_REG "^(call)q?" S "\\*" R64 "$"
 
 // The instructions Enc_x86_64_EmitInstr encodes without operands.
-#define TXT_X86_64_PATTERN_BARE "^(cqo|syscall)$|^(ret)q?$"
+#define TXT_X86_64_PATTERN_BARE "^(cqo|syscall|fwait)$|^(ret)q?$"
 
 // A label's name, which may open with `$`.
 #define LABEL "[._$a-zA-Z][._$a-zA-Z0-9]*"
@@ -421,7 +425,16 @@ static const char *Txt_x86_64_OpName[ASM_X86_64_OP_COUNT] = {
     [ASM_X86_64_OP_FDIVRP]  = "fdivrp",
     [ASM_X86_64_OP_FCHS]    = "fchs",
     [ASM_X86_64_OP_FUCOMIP] = "fucomip",
-    [ASM_X86_64_OP_FSTP]    = "fstp"
+    [ASM_X86_64_OP_FSTP]    = "fstp",
+    [ASM_X86_64_OP_FNSTCW]  = "fnstcw",
+    [ASM_X86_64_OP_FLDCW]   = "fldcw",
+    [ASM_X86_64_OP_FNSTSW]  = "fnstsw",
+    [ASM_X86_64_OP_FNCLEX]  = "fnclex",
+    [ASM_X86_64_OP_FNSTENV] = "fnstenv",
+    [ASM_X86_64_OP_FLDENV]  = "fldenv",
+    [ASM_X86_64_OP_FWAIT]   = "fwait",
+    [ASM_X86_64_OP_STMXCSR] = "stmxcsr",
+    [ASM_X86_64_OP_LDMXCSR] = "ldmxcsr"
 };
 
 // The patterns, by Txt_x86_64_RegexIndex.
@@ -440,6 +453,7 @@ static const char *Txt_x86_64_Pattern[TXT_X86_64_REGEX_COUNT] = {
     [TXT_X86_64_REGEX_MOV_RR]        = TXT_X86_64_PATTERN_MOV_RR,
     [TXT_X86_64_REGEX_SSE]           = TXT_X86_64_PATTERN_SSE,
     [TXT_X86_64_REGEX_X87]           = TXT_X86_64_PATTERN_X87,
+    [TXT_X86_64_REGEX_GRP15]         = TXT_X86_64_PATTERN_GRP15,
     [TXT_X86_64_REGEX_CALL_REG]      = TXT_X86_64_PATTERN_CALL_REG,
     [TXT_X86_64_REGEX_BARE]          = TXT_X86_64_PATTERN_BARE,
     [TXT_X86_64_REGEX_REG]           = TXT_X86_64_PATTERN_REG,
@@ -801,6 +815,8 @@ void Txt_x86_64_Att_ReadInstr(const char *line)
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_SSE], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_X87], line, match)) {
+        Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
+    } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_GRP15], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, Txt_x86_64_Att_FieldOp(line, match, 0));
     } else if (Str_RegexMatch(&Txt_x86_64_Regex[TXT_X86_64_REGEX_CALL_REG], line, match)) {
         Txt_x86_64_Att_NewInstr(line, match, ASM_X86_64_OP_CALL_REG);

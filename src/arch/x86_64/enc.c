@@ -77,7 +77,13 @@ static const Enc_x86_64_X87Form Enc_x86_64_X87Forms[ASM_X86_64_OP_COUNT] = {
     [ASM_X86_64_OP_FDIVRP]  = { ENC_X86_64_OPCODE_X87_DE, ENC_X86_64_X87_FDIVRP },
     [ASM_X86_64_OP_FCHS]    = { ENC_X86_64_OPCODE_X87_D9, ENC_X86_64_X87_FCHS },
     [ASM_X86_64_OP_FUCOMIP] = { ENC_X86_64_OPCODE_X87_DF, ENC_X86_64_X87_FUCOMIP },
-    [ASM_X86_64_OP_FSTP]    = { ENC_X86_64_OPCODE_X87_DD, ENC_X86_64_X87_FSTP }
+    [ASM_X86_64_OP_FSTP]    = { ENC_X86_64_OPCODE_X87_DD, ENC_X86_64_X87_FSTP },
+    [ASM_X86_64_OP_FNSTCW]  = { ENC_X86_64_OPCODE_X87_D9, ENC_X86_64_X87_FNSTCW },
+    [ASM_X86_64_OP_FLDCW]   = { ENC_X86_64_OPCODE_X87_D9, ENC_X86_64_X87_FLDCW },
+    [ASM_X86_64_OP_FNSTSW]  = { ENC_X86_64_OPCODE_X87_DD, ENC_X86_64_X87_FNSTSW_M16 },
+    [ASM_X86_64_OP_FNCLEX]  = { ENC_X86_64_OPCODE_X87_DB, ENC_X86_64_X87_FNCLEX },
+    [ASM_X86_64_OP_FNSTENV] = { ENC_X86_64_OPCODE_X87_D9, ENC_X86_64_X87_FNSTENV },
+    [ASM_X86_64_OP_FLDENV]  = { ENC_X86_64_OPCODE_X87_D9, ENC_X86_64_X87_FLDENV }
 };
 
 // Append one byte to the current section.
@@ -452,10 +458,24 @@ void Enc_x86_64_EmitX87(const Asm_x86_64_Item *item)
         Enc_x86_64_EmitMem(form->ef_ext, item->ai_dst.ao_reg, item->ai_dst.ao_disp);
         return;
     }
+    if (item->ai_op == ASM_X86_64_OP_FNSTSW) {
+        Enc_x86_64_Emit8(ENC_X86_64_OPCODE_X87_DF);
+        Enc_x86_64_Emit8(ENC_X86_64_X87_FNSTSW_AX);
+        return;
+    }
 
     int32_t st = item->ai_op == ASM_X86_64_OP_FUCOMIP ? item->ai_src.ao_st : item->ai_dst.ao_st;
     Enc_x86_64_Emit8(form->ef_opcode);
     Enc_x86_64_Emit8((uint8_t) (form->ef_ext + st));
+}
+
+// Emit a group 15 operation on disp(%base).
+void Enc_x86_64_EmitGrp15(Enc_x86_64_Grp grp, Asm_x86_64_Reg base, int32_t disp)
+{
+    Enc_x86_64_EmitRex(ASM_X86_64_WIDTH_32, 0, base);
+    Enc_x86_64_Emit8(ENC_X86_64_OPCODE_ESCAPE);
+    Enc_x86_64_Emit8(ENC_X86_64_OPCODE2_GRP15);
+    Enc_x86_64_EmitMem(grp, base, disp);
 }
 
 // Encode one instruction item into the current section.
@@ -637,8 +657,23 @@ void Enc_x86_64_EmitInstr(const Asm_x86_64_Item *item)
         case ASM_X86_64_OP_FDIVRP:
         case ASM_X86_64_OP_FCHS:
         case ASM_X86_64_OP_FUCOMIP:
-        case ASM_X86_64_OP_FSTP: {
+        case ASM_X86_64_OP_FSTP:
+        case ASM_X86_64_OP_FNSTCW:
+        case ASM_X86_64_OP_FLDCW:
+        case ASM_X86_64_OP_FNSTSW:
+        case ASM_X86_64_OP_FNCLEX:
+        case ASM_X86_64_OP_FNSTENV:
+        case ASM_X86_64_OP_FLDENV: {
             Enc_x86_64_EmitX87(item);
+        } break;
+        case ASM_X86_64_OP_FWAIT: {
+            Enc_x86_64_Emit8(ENC_X86_64_OPCODE_FWAIT);
+        } break;
+        case ASM_X86_64_OP_STMXCSR: {
+            Enc_x86_64_EmitGrp15(ENC_X86_64_GRP_STMXCSR, dst, item->ai_dst.ao_disp);
+        } break;
+        case ASM_X86_64_OP_LDMXCSR: {
+            Enc_x86_64_EmitGrp15(ENC_X86_64_GRP_LDMXCSR, dst, item->ai_dst.ao_disp);
         } break;
         case ASM_X86_64_OP_COUNT: {
             // empty

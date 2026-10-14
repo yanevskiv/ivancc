@@ -126,8 +126,11 @@
 #define EMU_X86_64_RFLAGS_OF    0x800
 
 // The layout of the FXSAVE area a frame's fpstate points to.
+// [Amd64-Vol2:11.4.4.3]:  Figure 11-9, the FXSAVE image in 64-bit mode
+// [Amd64-Vol2:11.5.10.1]: FTW's byte, a bit a physical register, set if full
 #define EMU_X86_64_FXSAVE_FCW_OFF        0
 #define EMU_X86_64_FXSAVE_FSW_OFF        2
+#define EMU_X86_64_FXSAVE_FTW_OFF        4
 #define EMU_X86_64_FXSAVE_MXCSR_OFF      24
 #define EMU_X86_64_FXSAVE_MXCSR_MASK_OFF 28
 #define EMU_X86_64_FXSAVE_ST_OFF         32
@@ -135,13 +138,10 @@
 #define EMU_X86_64_FXSAVE_REG_SIZE       16
 #define EMU_X86_64_FXSAVE_SIZE           512
 
-// The x87 and SSE control words a handler starts with.
+// The x87 and SSE control words a process and a handler start with.
+// [Amd64-SysV:3.4.1]: the control words at process startup, Tables 3.4 and 3.5
 #define EMU_X86_64_FCW_DEFAULT   0x037F
 #define EMU_X86_64_MXCSR_DEFAULT 0x1F80
-#define EMU_X86_64_MXCSR_MASK    0xFFFF
-
-// The place of the x87 stack's top in its status word.
-#define EMU_X86_64_FSW_TOP_SHIFT 11
 
 // The x86_64 Linux syscall numbers the emulator answers.
 #define EMU_X86_64_LINUX_SYSCALL_READ           0

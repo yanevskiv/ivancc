@@ -69,6 +69,7 @@ enum Txt_x86_64_RegexIndex {
     TXT_X86_64_REGEX_MOV_RR,        // a move between general registers
     TXT_X86_64_REGEX_SSE,           // a scalar SSE operation
     TXT_X86_64_REGEX_X87,           // an x87 operation
+    TXT_X86_64_REGEX_GRP15,         // a load or store of MXCSR
     TXT_X86_64_REGEX_CALL_REG,      // a call through a register
     TXT_X86_64_REGEX_BARE,          // an instruction with no operand
     TXT_X86_64_REGEX_REG,           // a general register operand
