@@ -46,8 +46,8 @@ enum Link_Trace {
 // One -place request: load the named section at a fixed address.
 typedef struct Link_Place Link_Place;
 struct Link_Place {
-    const char *lp_name;
-    uint64_t    lp_addr;
+    const char *lp_name; // the section's name
+    uint64_t    lp_addr; // the address it is loaded at
 };
 
 // Options controlling a link.

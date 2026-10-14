@@ -243,9 +243,9 @@ struct Ast_Type {
 
 // One member of a struct or union, at the offset layout gave it.
 struct Ast_Member {
-    Ast_Member *am_next;
+    Ast_Member *am_next;     // the member declared after it
     char       *am_name;     // NULL for a bitfield declared only to pad
-    Ast_Type   *am_type;
+    Ast_Type   *am_type;     // the member's type
     Ast_Type   *am_owner;    // aggregate the member was declared in
     int32_t     am_offset;   // bytes from the start of the enclosing aggregate
     Ast_Line    am_line;     // source line the member was declared on
@@ -283,25 +283,25 @@ struct Ast_Var {
 // A struct, union or enum tag.
 typedef struct Ast_Tag Ast_Tag;
 struct Ast_Tag {
-    Ast_Tag  *ag_next;
-    char     *ag_name;
-    Ast_Type *ag_type;
+    Ast_Tag  *ag_next; // the tag declared before it in its scope
+    char     *ag_name; // the tag's name
+    Ast_Type *ag_type; // the type it names
 };
 
 // An enumeration constant: an int that answers to a name.
 typedef struct Ast_EnumConst Ast_EnumConst;
 struct Ast_EnumConst {
-    Ast_EnumConst *ae_next;
-    char          *ae_name;
-    int64_t        ae_value;
+    Ast_EnumConst *ae_next;  // the constant declared before it in its scope
+    char          *ae_name;  // the constant's name
+    int64_t        ae_value; // the int it stands for
 };
 
 // A name a typedef declaration bound to a type.
 typedef struct Ast_Typedef Ast_Typedef;
 struct Ast_Typedef {
-    Ast_Typedef *ad_next;
-    char        *ad_name;
-    Ast_Type    *ad_type;
+    Ast_Typedef *ad_next; // the typedef declared before it in its scope
+    char        *ad_name; // the name bound
+    Ast_Type    *ad_type; // the type it stands for
 };
 
 // The scope of one variably modified name, inside those declared before it.

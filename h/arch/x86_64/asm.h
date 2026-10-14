@@ -192,7 +192,7 @@ enum Asm_x86_64_ItemKind {
 // A single instruction operand.
 typedef struct Asm_x86_64_Operand Asm_x86_64_Operand;
 struct Asm_x86_64_Operand {
-    Asm_x86_64_OperandKind ao_kind;
+    Asm_x86_64_OperandKind ao_kind;   // which fields below it uses
     Asm_x86_64_Reg         ao_reg;    // REG, or base of MEM
     int64_t                ao_imm;    // IMM
     int32_t                ao_disp;   // MEM displacement
@@ -205,8 +205,8 @@ struct Asm_x86_64_Operand {
 // One node in the ordered instruction list.
 typedef struct Asm_x86_64_Item Asm_x86_64_Item;
 struct Asm_x86_64_Item {
-    Asm_x86_64_Item     *ai_next;
-    Asm_x86_64_ItemKind  ai_kind;
+    Asm_x86_64_Item     *ai_next;     // the item after it
+    Asm_x86_64_ItemKind  ai_kind;     // which fields below it uses
     Asm_x86_64_Op        ai_op;       // INSTR
     Asm_x86_64_Operand   ai_dst;      // INSTR
     Asm_x86_64_Operand   ai_src;      // INSTR

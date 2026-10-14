@@ -137,15 +137,15 @@ enum Par_Base {
 // An integer literal.
 typedef struct Par_Num Par_Num;
 struct Par_Num {
-    int64_t   pn_val;
-    Ast_Type *pn_type;
+    int64_t   pn_val;  // its value
+    Ast_Type *pn_type; // its type, from its value and suffix
 };
 
 // A floating literal.
 typedef struct Par_FNum Par_FNum;
 struct Par_FNum {
-    long double pf_val;
-    Ast_Type   *pf_type;
+    long double pf_val;  // its value
+    Ast_Type   *pf_type; // its type, from its suffix
 };
 
 // The specifiers and qualifiers one declaration wrote.
@@ -165,9 +165,9 @@ struct Par_Specs {
 // A parameter list as the grammar collects it.
 typedef struct Par_ParamList Par_ParamList;
 struct Par_ParamList {
-    Ast_Var      *pl_head;
-    Ast_Var      *pl_tail;
-    int32_t       pl_count;
+    Ast_Var      *pl_head;  // the first parameter
+    Ast_Var      *pl_tail;  // the last parameter
+    int32_t       pl_count; // parameters in the list
     Ast_TypeVa    pl_va;    // the list ended in `...`
     Ast_TypeProto pl_proto; // written `()`
 };
@@ -175,8 +175,8 @@ struct Par_ParamList {
 // One derivation and the operands its kind needs.
 typedef struct Par_Deriv Par_Deriv;
 struct Par_Deriv {
-    Par_Deriv     *pd_next;
-    Par_DerivKind  pd_kind;
+    Par_Deriv     *pd_next;   // the derivation outward of it
+    Par_DerivKind  pd_kind;   // pointer, array or function
     Ast_Qual       pd_qual;   // qualifiers written after a POINTER's star
     int64_t        pd_len;    // element count of an ARRAY
     Ast_Node      *pd_vlen;   // run-time element count of an ARRAY, or NULL
@@ -184,18 +184,18 @@ struct Par_Deriv {
     bool           pd_star;   // the ARRAY was written `[*]`
     Par_ArrayDecor pd_decor;  // what the ARRAY's brackets carried besides a length
     Par_ParamList  pd_params; // parameter list of a FUNCTION
-    Ast_Line       pd_line;
+    Ast_Line       pd_line;   // source line it was written on
 };
 
 // A declarator.
 typedef struct Par_Decl Par_Decl;
 struct Par_Decl {
-    char      *pc_name;
-    Par_Deriv *pc_head;
-    Par_Deriv *pc_tail;
+    char      *pc_name;     // the name declared, or NULL for an abstract one
+    Par_Deriv *pc_head;     // the derivation nearest the name
+    Par_Deriv *pc_tail;     // the derivation farthest from it
     Par_Decl  *pc_next;     // next declarator of a comma-separated member declaration
     Ast_Node  *pc_bits;     // width of a bit-field, or NULL
-    Ast_Line   pc_line;
+    Ast_Line   pc_line;     // source line it was written on
 };
 
 // Shared declaration state

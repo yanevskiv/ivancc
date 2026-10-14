@@ -59,7 +59,7 @@ enum Ar_Op {
 // What the letters ask for.
 typedef struct Ar_Options Ar_Options;
 struct Ar_Options {
-    Ar_Op ao_op;
+    Ar_Op ao_op;    // the operation the first letter names
     bool  ao_quiet; // c: create the archive without saying so
     bool  ao_index; // s: write the symbol index
 };

@@ -108,18 +108,18 @@ enum Cc_DependMode {
 // How a run writes its dependency rule.
 typedef struct Cc_Depend Cc_Depend;
 struct Cc_Depend {
-    Cc_DependMode cd_mode;
+    Cc_DependMode cd_mode;     // whether a rule is written, and with a compile
     const char   *cd_file;     // --MF or --MD file
     char        **cd_targets;  // escaped for make
-    size_t        cd_ntargets;
-    Pp_Headers    cd_headers;
-    Pp_Phony      cd_phony;
+    size_t        cd_ntargets; // count of cd_targets
+    Pp_Headers    cd_headers;  // whether system headers are named
+    Pp_Phony      cd_phony;    // whether each header gets an empty rule
 };
 
 // A runtime target: the macros it predefines and the files it links.
 typedef struct Cc_Target Cc_Target;
 struct Cc_Target {
-    const char        *ct_name;
+    const char        *ct_name;     // the name -mtarget takes
     const char *const *ct_macros;   // NULL-terminated
     const char *const *ct_runtime;  // NULL-terminated, in link order
 };

@@ -242,16 +242,16 @@ enum Emu_Source {
 // A signal's disposition as rt_sigaction sets it.
 typedef struct Emu_Linux_Action Emu_Linux_Action;
 struct Emu_Linux_Action {
-    uint64_t ea_handler; // the handler's address, EMU_LINUX_SIG_DFL or EMU_LINUX_SIG_IGN
-    uint64_t ea_flags;
-    uint64_t ea_restorer;
-    uint64_t ea_mask;    // the signals blocked while the handler runs
+    uint64_t ea_handler;  // its address, EMU_LINUX_SIG_DFL or EMU_LINUX_SIG_IGN
+    uint64_t ea_flags;    // its SA_* flags
+    uint64_t ea_restorer; // the address the handler returns to
+    uint64_t ea_mask;     // the signals blocked while the handler runs
 };
 
 // What a pending signal's siginfo says.
 typedef struct Emu_Linux_Info Emu_Linux_Info;
 struct Emu_Linux_Info {
-    Emu_Source ei_source;
+    Emu_Source ei_source; // what sent it
     int32_t    ei_code;  // si_code
     uint64_t   ei_addr;  // the address a fault names
 };
@@ -259,11 +259,11 @@ struct Emu_Linux_Info {
 // A running program: its image, its signals and how it stopped.
 typedef struct Emu_x86_64_Linux_Guest Emu_x86_64_Linux_Guest;
 struct Emu_x86_64_Linux_Guest {
-    Load_Image      *eg_img;
+    Load_Image      *eg_img;                              // its loaded image
     bool             eg_halted;                           // the program exited or a signal ended it
     int32_t          eg_status;                           // the status it exited with
     int32_t          eg_signal;                           // the signal that ended it, or 0
-    Emu_Linux_Action eg_action[EMU_LINUX_SIGNAL_MAX + 1];
+    Emu_Linux_Action eg_action[EMU_LINUX_SIGNAL_MAX + 1]; // dispositions
     Emu_Linux_Info   eg_info[EMU_LINUX_SIGNAL_MAX + 1];   // what sent each pending signal
     uint32_t         eg_queued[EMU_LINUX_SIGNAL_MAX + 1]; // the instances of each signal pending
     uint64_t         eg_pending;                          // the signals with an instance pending

@@ -111,7 +111,7 @@ struct Gen_x86_64_SysV_Cursor {
 // Where the ABI places one argument.
 typedef struct Gen_x86_64_SysV_Loc Gen_x86_64_SysV_Loc;
 struct Gen_x86_64_SysV_Loc {
-    Gen_x86_64_SysV_Class gl_class[GEN_X86_64_SYSV_MAX_EIGHTBYTES];
+    Gen_x86_64_SysV_Class gl_class[GEN_X86_64_SYSV_MAX_EIGHTBYTES]; // classes
     int32_t               gl_count; // eightbytes the argument occupies
     int32_t               gl_gpr;   // first general-purpose register it takes
     int32_t               gl_sse;   // first SSE register it takes

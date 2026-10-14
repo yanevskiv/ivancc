@@ -22,9 +22,9 @@
 
 // The storage behind a Buf.
 struct Buf {
-    char  *buf_data;
-    size_t buf_len;
-    size_t buf_cap;
+    char  *buf_data; // the bytes
+    size_t buf_len;  // bytes in use
+    size_t buf_cap;  // bytes allocated
 };
 
 // Start an empty buffer.

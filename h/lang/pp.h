@@ -82,46 +82,46 @@
 #define PP_VALUE_TRUE  1
 #define PP_VALUE_FALSE 0
 
-// [C99:5.2.1.1p1] Trigraph keys and the characters they stand for.
+// Trigraph keys and the characters they stand for [C99:5.2.1.1p1].
 #define PP_TRIGRAPH_KEYS   "=(/)'<!>-"
 #define PP_TRIGRAPH_VALUES "#[\\]^{|}~"
 
-// [C99:5.2.4.1p1] Deepest nesting of includes.
+// Deepest nesting of includes [C99:5.2.4.1p1].
 #define PP_INCLUDE_DEPTH_MAX 200
 
-// [C99:6.4.6p1] Longest punctuator spelling.
+// Longest punctuator spelling [C99:6.4.6p1].
 #define PP_PUNCT_MAX_LEN 4
 
-// [C99:6.4.8p1] Letters that start a pp-number's signed exponent.
+// Letters that start a pp-number's signed exponent [C99:6.4.8p1].
 #define PP_EXPONENT_CHARS "eEpP"
 
-// [C99:6.10.1p1] Name of the operator that asks whether a macro is defined.
+// Name of the operator that asks whether a macro is defined [C99:6.10.1p1].
 #define PP_DEFINED "defined"
 
-// [C99:6.10.1p1] Spellings of the answers defined gives.
+// Spellings of the answers defined gives [C99:6.10.1p1].
 #define PP_TEXT_TRUE  "1"
 #define PP_TEXT_FALSE "0"
 
-// [C99:6.10.1p4] Bits in the value of an #if expression.
+// Bits in the value of an #if expression [C99:6.10.1p4].
 #define PP_VALUE_BITS (sizeof(uintmax_t) * CHAR_BIT)
 
-// [C99:6.10.3.1p2] Name a variadic macro's body gives its extra arguments.
+// Name a variadic macro's body gives its extra arguments [C99:6.10.3.1p2].
 #define PP_VA_ARGS "__VA_ARGS__"
 
-// [C99:6.10.4p2] Number of a file's first line.
+// Number of a file's first line [C99:6.10.4p2].
 #define PP_LINE_FIRST 1
 
-// [C99:6.10.4p3] Largest line number #line may give.
+// Largest line number #line may give [C99:6.10.4p3].
 #define PP_LINE_MAX 2147483647
 
-// [C99:6.10.8p1] strftime formats of the -D arguments for __DATE__ and __TIME__.
+// strftime formats of the -D arguments for __DATE__ and __TIME__ [C99:6.10.8p1].
 #define PP_DATE_FORMAT "__DATE__=\"%b %e %Y\""
 #define PP_TIME_FORMAT "__TIME__=\"%H:%M:%S\""
 
-// [C99:6.10.9p1] Name of the operator that runs a string as a pragma.
+// Name of the operator that runs a string as a pragma [C99:6.10.9p1].
 #define PP_PRAGMA_OPERATOR "_Pragma"
 
-// [C99:6.10.9p1] Text a _Pragma operand is run after.
+// Text a _Pragma operand is run after [C99:6.10.9p1].
 #define PP_PRAGMA_DIRECTIVE "#pragma "
 
 // Forward declaration: a token's hide set is a list of these.
@@ -231,7 +231,7 @@ enum Pp_Prec {
     PP_PREC_COUNT
 };
 
-// [C99:6.4p1] Kinds of preprocessing token.
+// Kinds of preprocessing token [C99:6.4p1].
 typedef enum Pp_TokenKind Pp_TokenKind;
 enum Pp_TokenKind {
     PP_TOKEN_EOF,
@@ -249,7 +249,7 @@ enum Pp_TokenKind {
     PP_TOKEN_KIND_COUNT
 };
 
-// [C99:6.10.3] Kinds of macro.
+// Kinds of macro [C99:6.10.3].
 typedef enum Pp_MacroKind Pp_MacroKind;
 enum Pp_MacroKind {
     PP_MACRO_OBJECT,
@@ -262,7 +262,7 @@ enum Pp_MacroKind {
 typedef struct Pp_Options Pp_Options;
 struct Pp_Options {
     const char *const *po_dirs;    // -I directories, in the order given
-    size_t             po_ndirs;
+    size_t             po_ndirs;   // count of po_dirs
     const char        *po_sysdir;  // system include directory
     const char        *po_cmdline; // -D, -U and --include as directives
 };
@@ -270,31 +270,31 @@ struct Pp_Options {
 // One preprocessing token.
 typedef struct Pp_Token Pp_Token;
 struct Pp_Token {
-    Pp_TokenKind pt_kind;
-    const char  *pt_text; // spelling without a NUL
-    size_t       pt_len;
-    Pp_Flags     pt_flags;
-    uint32_t     pt_file; // index into the opened-file list
-    Ast_Line     pt_line;
-    Pp_HideSet  *pt_hide; // macros this token came out of
-    Pp_Token    *pt_next; // next token of an expansion
+    Pp_TokenKind pt_kind;  // what sort of token it is
+    const char  *pt_text;  // spelling without a NUL
+    size_t       pt_len;   // bytes in pt_text
+    Pp_Flags     pt_flags; // what stood before it
+    uint32_t     pt_file;  // index into the opened-file list
+    Ast_Line     pt_line;  // its line in that file
+    Pp_HideSet  *pt_hide;  // macros this token came out of
+    Pp_Token    *pt_next;  // next token of an expansion
 };
 
 // One macro in a hide set.
 struct Pp_HideSet {
-    const Pp_Macro *ph_macro;
-    Pp_HideSet     *ph_next;
+    const Pp_Macro *ph_macro; // the macro hidden
+    Pp_HideSet     *ph_next;  // the set's next macro
 };
 
 // One macro definition.
 struct Pp_Macro {
-    char            *ma_name;
-    Pp_MacroKind     ma_kind;
+    char            *ma_name;     // the name it is defined under
+    Pp_MacroKind     ma_kind;     // object-like, function-like or builtin
     const Pp_Token **ma_params;   // names, then ... if variadic
-    size_t           ma_nparams;
-    bool             ma_variadic;
+    size_t           ma_nparams;  // count of ma_params
+    bool             ma_variadic; // its last parameter is ...
     const Pp_Token  *ma_body;     // replacement list, inside its file's tokens
-    size_t           ma_nbody;
+    size_t           ma_nbody;    // tokens in ma_body
     Pp_Builtin       ma_builtin;  // which builtin a PP_MACRO_BUILTIN is
     Pp_Macro        *ma_next;     // next macro in its bucket
 };
@@ -302,14 +302,14 @@ struct Pp_Macro {
 // One source file, read and tokenized.
 typedef struct Pp_File Pp_File;
 struct Pp_File {
-    char           *pf_path;
+    char           *pf_path;    // path it was opened under
     uint32_t        pf_index;   // position in the opened-file list
     uint32_t        pf_dir;     // search-list index it was found under
     bool            pf_system;  // found in the system include directory
     char           *pf_text;    // text after the pre-pass
-    size_t          pf_len;
+    size_t          pf_len;     // bytes in pf_text
     Pp_Token       *pf_tokens;  // ending in a PP_TOKEN_EOF
-    size_t          pf_ntokens;
+    size_t          pf_ntokens; // count of pf_tokens
     const Pp_Token *pf_guard;   // macro whose definition empties the file
     bool            pf_once;    // ran #pragma once
 };
@@ -317,9 +317,9 @@ struct Pp_File {
 // A token stream over a range of a file, with expansions pushed in front.
 typedef struct Pp_Reader Pp_Reader;
 struct Pp_Reader {
-    const Pp_File *rd_file;
-    size_t         rd_pos;
-    size_t         rd_end;
+    const Pp_File *rd_file;    // file whose tokens it reads
+    size_t         rd_pos;     // index of the next token in it
+    size_t         rd_end;     // index it stops at
     Pp_Token      *rd_pending; // expansion tokens read before rd_pos
     Pp_Flags       rd_carry;   // flags of a macro that expanded to nothing
 };
@@ -330,7 +330,7 @@ struct Pp_MapEntry {
     Ast_Line    pm_output; // first output line of the stretch
     const char *pm_name;   // file name, as #line gives it
     Ast_Line    pm_source; // source line of its first line
-    Pp_Move     pm_move;
+    Pp_Move     pm_move;   // flag its line marker carries
 };
 
 // Where the file being read is, as #line presents it.
@@ -343,7 +343,7 @@ struct Pp_Place {
 // Where the printer has got to.
 typedef struct Pp_Printer Pp_Printer;
 struct Pp_Printer {
-    Buf            *pr_out;
+    Buf            *pr_out;    // text printed so far
     Ast_Line        pr_line;   // output line being printed
     uint32_t        pr_file;   // file the output line comes from
     Ast_Line        pr_source; // source line the output line comes from
@@ -367,14 +367,14 @@ struct Pp_Expr {
     Ast_Line        pe_line; // line of the directive
 };
 
-// [C99:6.10.1p4] The value of an #if expression.
+// The value of an #if expression [C99:6.10.1p4].
 typedef struct Pp_Value Pp_Value;
 struct Pp_Value {
-    uintmax_t pv_bits;
+    uintmax_t pv_bits;     // its bits, read by pv_unsigned's type
     bool      pv_unsigned; // a uintmax_t rather than an intmax_t
 };
 
-// [C99:6.10.3.1p1] One argument of a macro call.
+// One argument of a macro call [C99:6.10.3.1p1].
 typedef struct Pp_Arg Pp_Arg;
 struct Pp_Arg {
     Pp_Token *pa_raw;      // tokens as written
@@ -439,12 +439,12 @@ bool   Pp_IsDependency(const Pp_File *file, Pp_Headers headers);
 size_t Pp_WriteName(FILE *out, const char *name, size_t col);
 void   Pp_WriteDepend(FILE *out, const char *const *targets, size_t ntargets, Pp_Headers headers, Pp_Phony phony);
 
-// [C99:5.1.1.2] Translation phases 1 to 3
+// Translation phases 1 to 3 [C99:5.1.1.2]
 void Pp_ReplaceTrigraphs(Buf *out, const char *text, size_t len);
 void Pp_DeleteSplices(Buf *out, const char *text, size_t len);
 void Pp_Tokenize(Pp_File *file);
 
-// [C99:6.10.1] Conditional inclusion
+// Conditional inclusion [C99:6.10.1]
 bool      Pp_OpensCond(const Pp_Token *name);
 size_t    Pp_RunIf(const Pp_File *file, size_t pos);
 size_t    Pp_RunElif(const Pp_File *file, size_t pos);
@@ -458,7 +458,7 @@ bool      Pp_EvalLine(const Pp_File *file, size_t pos);
 Pp_Token *Pp_ExpandCondition(const Pp_File *file, size_t start, size_t end);
 Pp_Token *Pp_ReadDefined(Pp_Reader *rd, const Pp_Token *op);
 
-// [C99:6.10.1p4] Controlling expressions
+// Controlling expressions [C99:6.10.1p4]
 Pp_Value Pp_EvalComma(Pp_Expr *ex, Pp_Eval mode);
 Pp_Value Pp_EvalCond(Pp_Expr *ex, Pp_Eval mode);
 Pp_Value Pp_EvalBinary(Pp_Expr *ex, Pp_Prec min, Pp_Eval mode);
@@ -473,7 +473,7 @@ Pp_Value Pp_Divide(Pp_Op op, Pp_Value a, Pp_Value b, Pp_Eval mode, Ast_Line line
 Pp_Value Pp_Shift(Pp_Op op, Pp_Value val, Pp_Value count);
 bool     Pp_IsTrue(Pp_Value val);
 
-// [C99:6.10.2] Source file inclusion
+// Source file inclusion [C99:6.10.2]
 void      Pp_SetDirs(const Pp_Options *opts);
 char     *Pp_DirName(const char *path);
 char     *Pp_JoinPath(const char *dir, const char *name);
@@ -482,7 +482,7 @@ char     *Pp_FindInclude(const Pp_File *from, const Pp_Token *operand, Pp_Includ
 bool      Pp_FileExists(const char *path);
 void      Pp_RunInclude(Pp_Printer *pr, const Pp_File *from, size_t pos, Pp_Include kind);
 
-// [C99:6.10.3] Macro replacement
+// Macro replacement [C99:6.10.3]
 bool            Pp_IsMacroName(const Pp_Token *tok);
 const Pp_Token *Pp_MacroNameAt(const Pp_File *file, size_t pos);
 uint32_t        Pp_HashName(const char *text, size_t len);
@@ -494,18 +494,18 @@ void            Pp_RunDefine(const Pp_File *file, size_t pos);
 size_t          Pp_ReadParams(const Pp_File *file, size_t pos, size_t end, Pp_Macro *def);
 void            Pp_CheckBody(const Pp_Macro *def, Ast_Line line);
 
-// [C99:6.10.3.1] Argument substitution
+// Argument substitution [C99:6.10.3.1]
 Pp_Arg   *Pp_ReadArgs(Pp_Reader *rd, const Pp_Macro *macro, const Pp_Token *name, const Pp_Token **close);
 Pp_Token *Pp_ExpandArg(Pp_Arg *arg);
 Pp_Token *Pp_Substitute(const Pp_Macro *macro, Pp_Arg *args, const Pp_Token *name);
 
-// [C99:6.10.3.2] The # operator
+// The # operator [C99:6.10.3.2]
 Pp_Token *Pp_Stringize(const Pp_Token *list, const Pp_Token *hash);
 
-// [C99:6.10.3.3] The ## operator
+// The ## operator [C99:6.10.3.3]
 void Pp_PasteTokens(Pp_Token *left, const Pp_Token *right, Ast_Line line);
 
-// [C99:6.10.3.4] Rescanning and further replacement
+// Rescanning and further replacement [C99:6.10.3.4]
 bool            Pp_HideSetHas(const Pp_HideSet *set, const Pp_Macro *macro);
 Pp_HideSet     *Pp_HideSetAdd(Pp_HideSet *set, const Pp_Macro *macro);
 Pp_HideSet     *Pp_HideSetIntersect(const Pp_HideSet *a, const Pp_HideSet *b);
@@ -517,25 +517,25 @@ const Pp_Token *Pp_ReadExpanded(Pp_Reader *rd);
 Pp_Token       *Pp_ExpandAll(Pp_Reader *rd);
 Pp_Token       *Pp_ExpandRange(const Pp_File *file, size_t start, size_t end);
 
-// [C99:6.10.3.5] Scope of macro definitions
+// Scope of macro definitions [C99:6.10.3.5]
 void Pp_UndefMacro(const Pp_Token *name);
 void Pp_RunUndef(const Pp_File *file, size_t pos);
 
-// [C99:6.10.4] Line control
+// Line control [C99:6.10.4]
 void     Pp_RunLine(Pp_Printer *pr, const Pp_File *file, size_t pos);
 Ast_Line Pp_ReadLineNumber(const Pp_Token *tok, Ast_Line line);
 
-// [C99:6.10.5] Error directive
+// Error directive [C99:6.10.5]
 void Pp_RunError(const Pp_File *file, size_t pos);
 
-// [C99:6.10.6] Pragma directive
+// Pragma directive [C99:6.10.6]
 void Pp_RunPragma(const Pp_File *file, const Pp_File *text, size_t pos);
 
-// [C99:6.10.8] Predefined macro names
+// Predefined macro names [C99:6.10.8]
 void      Pp_DefineBuiltins(void);
 Pp_Token *Pp_ExpandBuiltin(const Pp_Macro *macro, const Pp_Token *name);
 
-// [C99:6.10.9] Pragma operator
+// Pragma operator [C99:6.10.9]
 Pp_File *Pp_OpenPragma(const Pp_Token *str, Ast_Line line);
 void     Pp_RunPragmaOperator(Pp_Reader *rd, const Pp_Token *op);
 

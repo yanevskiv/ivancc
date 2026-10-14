@@ -194,33 +194,33 @@ enum Enc_x86_64_X87Reg {
 // The mandatory prefix and second opcode byte of one SSE operation.
 typedef struct Enc_x86_64_SseForm Enc_x86_64_SseForm;
 struct Enc_x86_64_SseForm {
-    Enc_x86_64_Opcode  es_prefix;
-    Enc_x86_64_Opcode2 es_opcode;
+    Enc_x86_64_Opcode  es_prefix; // the mandatory prefix
+    Enc_x86_64_Opcode2 es_opcode; // the byte after 0x0F
 };
 
 // The opcode byte and extension of one x87 operation.
 typedef struct Enc_x86_64_X87Form Enc_x86_64_X87Form;
 struct Enc_x86_64_X87Form {
-    Enc_x86_64_Opcode ef_opcode;
+    Enc_x86_64_Opcode ef_opcode; // the opcode byte
     uint8_t           ef_ext;    // Enc_x86_64_X87Digit for memory, Enc_x86_64_X87Reg otherwise
 };
 
 // A label defined in the stream, awaiting its symbol-table entry.
 typedef struct Enc_x86_64_Label Enc_x86_64_Label;
 struct Enc_x86_64_Label {
-    const char *al_name;
-    Elf_Sec    *al_sec;
-    uint64_t    al_off;
+    const char *al_name; // the label's name
+    Elf_Sec    *al_sec;  // the section it is defined in
+    uint64_t    al_off;  // its offset in that section
 };
 
 // A pending fixup: a site in a section, the symbol it targets and its addend.
 typedef struct Enc_x86_64_Fix Enc_x86_64_Fix;
 struct Enc_x86_64_Fix {
-    Elf_Sec    *af_sec;
-    uint64_t    af_off;
-    const char *af_name;
-    uint32_t    af_type;
-    int64_t     af_addend;
+    Elf_Sec    *af_sec;    // the section the site is in
+    uint64_t    af_off;    // the site's offset in that section
+    const char *af_name;   // the symbol it targets
+    uint32_t    af_type;   // its relocation type, an R_X86_64_*
+    int64_t     af_addend; // what is added to the symbol's address
 };
 
 // Byte output

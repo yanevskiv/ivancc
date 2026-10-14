@@ -92,20 +92,20 @@ enum Lib_ArStatus {
 // One member header, on disk.
 typedef struct Lib_ArHdr Lib_ArHdr;
 struct Lib_ArHdr {
-    char ar_name[16];
-    char ar_date[12];
-    char ar_uid[6];
-    char ar_gid[6];
-    char ar_mode[8];
-    char ar_size[10];
-    char ar_fmag[2];
+    char ar_name[16]; // the member's name, or a slash and a long-name offset
+    char ar_date[12]; // modification time, in decimal
+    char ar_uid[6];   // owner's user ID, in decimal
+    char ar_gid[6];   // owner's group ID, in decimal
+    char ar_mode[8];  // file mode, in octal
+    char ar_size[10]; // bytes of the member, in decimal
+    char ar_fmag[2];  // the header's end, a backquote and a newline
 };
 
 // One member: a file's name and contents.
 typedef struct Lib_ArMember Lib_ArMember;
 struct Lib_ArMember {
     char         *lam_name;    // without the slash that ends it on disk
-    uint8_t      *lam_data;
+    uint8_t      *lam_data;    // the file's contents
     size_t        lam_size;    // bytes lam_data holds
     const char  **lam_globals; // symbols the member defines, NULL-terminated
 };
@@ -121,7 +121,7 @@ struct Lib_Ar {
 // Where a read of an archive stands.
 typedef struct Lib_ArReader Lib_ArReader;
 struct Lib_ArReader {
-    const uint8_t *lar_data;
+    const uint8_t *lar_data;   // the archive's bytes
     size_t         lar_size;   // bytes lar_data holds
     size_t         lar_pos;    // offset of the next member header
     const char    *lar_longs;  // the long-name table, or NULL

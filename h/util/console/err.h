@@ -363,9 +363,9 @@ enum Err_Level {
 // A diagnostic's level, name and message format.
 typedef struct Err_Entry Err_Entry;
 struct Err_Entry {
-    Err_Level   ee_level;
-    const char *ee_name;
-    const char *ee_format;
+    Err_Level   ee_level;  // how severe it is
+    const char *ee_name;   // the code's name, ERR_ and all
+    const char *ee_format; // the message, a printf format of its arguments
 };
 
 // Raising

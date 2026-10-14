@@ -101,75 +101,75 @@ typedef struct Elf_Sec Elf_Sec;
 // The fixed-size ELF file header, on disk.
 typedef struct Elf64_Ehdr Elf64_Ehdr;
 struct Elf64_Ehdr {
-    uint8_t  e_ident[16];
-    uint16_t e_type;
-    uint16_t e_machine;
-    uint32_t e_version;
-    uint64_t e_entry;
-    uint64_t e_phoff;
-    uint64_t e_shoff;
-    uint32_t e_flags;
-    uint16_t e_ehsize;
-    uint16_t e_phentsize;
-    uint16_t e_phnum;
-    uint16_t e_shentsize;
-    uint16_t e_shnum;
-    uint16_t e_shstrndx;
+    uint8_t  e_ident[16]; // magic, class, data encoding and version
+    uint16_t e_type;      // relocatable or executable
+    uint16_t e_machine;   // the architecture
+    uint32_t e_version;   // the format's version
+    uint64_t e_entry;     // the address execution starts at
+    uint64_t e_phoff;     // file offset of the program header table
+    uint64_t e_shoff;     // file offset of the section header table
+    uint32_t e_flags;     // the architecture's flags
+    uint16_t e_ehsize;    // bytes in this header
+    uint16_t e_phentsize; // bytes in one program header
+    uint16_t e_phnum;     // program headers in the table
+    uint16_t e_shentsize; // bytes in one section header
+    uint16_t e_shnum;     // section headers in the table
+    uint16_t e_shstrndx;  // index of the section holding section names
 };
 
 // One program header, describing a segment to load.
 typedef struct Elf64_Phdr Elf64_Phdr;
 struct Elf64_Phdr {
-    uint32_t p_type;
-    uint32_t p_flags;
-    uint64_t p_offset;
-    uint64_t p_vaddr;
-    uint64_t p_paddr;
-    uint64_t p_filesz;
-    uint64_t p_memsz;
-    uint64_t p_align;
+    uint32_t p_type;   // what the segment is, PT_LOAD here
+    uint32_t p_flags;  // read, write and execute permissions
+    uint64_t p_offset; // file offset of its bytes
+    uint64_t p_vaddr;  // address it is loaded at
+    uint64_t p_paddr;  // physical address, the same as p_vaddr
+    uint64_t p_filesz; // bytes it takes in the file
+    uint64_t p_memsz;  // bytes it takes in memory, the rest zero
+    uint64_t p_align;  // alignment of its offset and address
 };
 
 // One section header in the section header table.
 typedef struct Elf64_Shdr Elf64_Shdr;
 struct Elf64_Shdr {
-    uint32_t sh_name;
-    uint32_t sh_type;
-    uint64_t sh_flags;
-    uint64_t sh_addr;
-    uint64_t sh_offset;
-    uint64_t sh_size;
-    uint32_t sh_link;
-    uint32_t sh_info;
-    uint64_t sh_addralign;
-    uint64_t sh_entsize;
+    uint32_t sh_name;      // offset of its name in the section-name table
+    uint32_t sh_type;      // what it holds
+    uint64_t sh_flags;     // whether it is allocated, writable or executable
+    uint64_t sh_addr;      // address it is loaded at, or 0
+    uint64_t sh_offset;    // file offset of its bytes
+    uint64_t sh_size;      // bytes in it
+    uint32_t sh_link;      // index of a section it refers to, by its type
+    uint32_t sh_info;      // more about it, by its type
+    uint64_t sh_addralign; // alignment of its address
+    uint64_t sh_entsize;   // bytes in one entry of a table, or 0
 };
 
 // One entry in an on-disk .symtab.
 typedef struct Elf64_Sym Elf64_Sym;
 struct Elf64_Sym {
-    uint32_t st_name;
-    uint8_t  st_info;
-    uint8_t  st_other;
-    uint16_t st_shndx;
-    uint64_t st_value;
-    uint64_t st_size;
+    uint32_t st_name;  // offset of its name in the string table
+    uint8_t  st_info;  // binding and type
+    uint8_t  st_other; // visibility
+    uint16_t st_shndx; // index of the section it is defined in
+    uint64_t st_value; // its offset, or its address once linked
+    uint64_t st_size;  // bytes the object or function takes
 };
 
 // One entry in an on-disk .rela.* section.
 typedef struct Elf64_Rela Elf64_Rela;
 struct Elf64_Rela {
-    uint64_t r_offset;
-    uint64_t r_info;
-    int64_t  r_addend;
+    uint64_t r_offset; // offset of the site in its section
+    uint64_t r_info;   // symbol index and relocation type
+    int64_t  r_addend; // what is added to the symbol's address
 };
 
 // A growable byte buffer, the only storage primitive here.
 typedef struct Elf_Buffer Elf_Buffer;
 struct Elf_Buffer {
-    uint8_t *eb_data;
-    size_t   eb_len;
-    size_t   eb_cap;
+    uint8_t *eb_data; // the bytes
+    size_t   eb_len;  // bytes in use
+    size_t   eb_cap;  // bytes allocated
 };
 
 // One symbol.

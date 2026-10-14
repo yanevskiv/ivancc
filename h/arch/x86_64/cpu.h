@@ -91,6 +91,9 @@
 // The type a `%llx` conversion takes.
 typedef unsigned long long Cpu_x86_64_TypeULLong;
 
+// One SSE register, as its 64-bit lanes.
+typedef uint64_t Cpu_x86_64_XmmLanes[CPU_X86_64_XMM_LANES];
+
 // Registers, numbered as ModRM and REX number them.
 typedef enum Cpu_x86_64_Reg Cpu_x86_64_Reg;
 enum Cpu_x86_64_Reg {
@@ -160,7 +163,7 @@ struct Cpu_x86_64_Insn {
     int32_t           ci_rep;      // an 0xF2 or 0xF3 prefix selecting an SSE form, or 0
     Cpu_x86_64_Reg    ci_reg;      // ModRM reg field, extended by REX.R
     Cpu_x86_64_Reg    ci_rm;       // r/m register, or the base register of a memory operand
-    Cpu_x86_64_RmKind ci_rmkind;
+    Cpu_x86_64_RmKind ci_rmkind;   // what ModRM's r/m names, if any
     int32_t           ci_disp;     // displacement of a MEM or RIP operand
     int64_t           ci_imm;      // immediate or branch displacement, sign-extended
 };
@@ -179,22 +182,22 @@ struct Cpu_x86_64_Bus {
 // A running CPU: the register file, the flags and the bus they reach.
 typedef struct Cpu_x86_64_State Cpu_x86_64_State;
 struct Cpu_x86_64_State {
-    uint64_t              cs_reg[CPU_X86_64_REG_COUNT];
-    uint64_t              cs_rip;
+    uint64_t              cs_reg[CPU_X86_64_REG_COUNT]; // the general registers
+    uint64_t              cs_rip;    // the next instruction's address
     bool                  cs_zf;     // the result was zero
     bool                  cs_sf;     // the result was negative
     bool                  cs_of;     // the result overflowed a signed operand
     bool                  cs_cf;     // the result carried out of an unsigned operand
     bool                  cs_pf;     // the result's low byte had even parity, or a comparison was unordered
-    uint64_t              cs_xmm[CPU_X86_64_XMM_COUNT][CPU_X86_64_XMM_LANES];
-    long double           cs_st[CPU_X86_64_ST_COUNT];
+    Cpu_x86_64_XmmLanes   cs_xmm[CPU_X86_64_XMM_COUNT]; // the SSE registers
+    long double           cs_st[CPU_X86_64_ST_COUNT]; // the x87 registers
     int32_t               cs_top;    // the x87 register %st names
     Cpu_x86_64_Trap       cs_trap;   // what stopped the last step, or CPU_X86_64_TRAP_NONE
     Cpu_x86_64_Vector     cs_vector; // the exception a CPU_X86_64_TRAP_EXCEPTION raised
     char                 *cs_fault;  // the diagnostic of the last exception
     uint64_t              cs_cr2;    // the address the last #PF could not reach
     uint64_t              cs_pf_err; // the error code of the last #PF
-    const Cpu_x86_64_Bus *cs_bus;
+    const Cpu_x86_64_Bus *cs_bus;    // the memory it reaches
 };
 
 // Running
