@@ -26,7 +26,8 @@
 #ifndef _ISO646_H
 #define _ISO646_H
 
-// [C99:7.9] Alternative spellings
+// Alternative spellings
+// [C99:7.9]: the eleven macros spelling operators, and to xor_eq
 #define and &&
 #define and_eq &=
 #define bitand &

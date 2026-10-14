@@ -26,7 +26,8 @@
 #ifndef _FLOAT_H
 #define _FLOAT_H
 
-// [C99:7.7] Characteristics of floating types
+// Characteristics of floating types
+// [C99:7.7]: <float.h>'s macros, with their values in 5.2.4.2.2
 #define FLT_ROUNDS      1
 #define FLT_EVAL_METHOD 0
 #define FLT_RADIX       2

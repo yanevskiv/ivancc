@@ -40,7 +40,8 @@
 #define _WCHAR_FORMAT_SIZE 4
 #define _WCHAR_FIELD_SIZE  64
 
-// [C99:7.24.1] Introduction
+// Introduction
+// [C99:7.24.1]: NULL, WCHAR_MIN, WCHAR_MAX and WEOF
 #define NULL ((void *) 0)
 
 #define WCHAR_MIN (-2147483647 - 1)
@@ -68,7 +69,8 @@ typedef int wchar_t;
 typedef unsigned int wint_t;
 #endif
 
-// [C99:7.24.1] Introduction
+// Introduction
+// [C99:7.24.1]: mbstate_t and struct tm
 typedef struct {
     unsigned char bytes[_WCHAR_STATE_BYTES]; // a character begun, its bytes
     unsigned char count;                     // how many they are, 0 at first
@@ -87,7 +89,8 @@ extern mbstate_t _Wchar_WcsrtombsState;
 size_t _Wchar_DecodeChar(wchar_t *pwc, const char *str, size_t n, mbstate_t *state);
 size_t _Wchar_EncodeChar(char *str, wchar_t wc, mbstate_t *state);
 
-// [C99:7.24.2] Formatted wide character input/output functions
+// Formatted wide character input/output functions
+// [C99:7.24.2]: the wprintf and wscanf families
 int fwprintf(_File_Stream *restrict stream, const wchar_t *restrict format, ...);
 int fwscanf(_File_Stream *restrict stream, const wchar_t *restrict format, ...);
 int swprintf(wchar_t *restrict str, size_t n, const wchar_t *restrict format, ...);
@@ -101,7 +104,8 @@ int vwscanf(const wchar_t *restrict format, _Wchar_VaList arg);
 int wprintf(const wchar_t *restrict format, ...);
 int wscanf(const wchar_t *restrict format, ...);
 
-// [C99:7.24.3] Wide character input/output functions
+// Wide character input/output functions
+// [C99:7.24.3]: fgetwc to ungetwc, and fwide
 wint_t   fgetwc(_File_Stream *stream);
 wchar_t *fgetws(wchar_t *restrict str, int n, _File_Stream *restrict stream);
 wint_t   fputwc(wchar_t wc, _File_Stream *stream);
@@ -113,7 +117,8 @@ wint_t   putwc(wchar_t wc, _File_Stream *stream);
 wint_t   putwchar(wchar_t wc);
 wint_t   ungetwc(wint_t wc, _File_Stream *stream);
 
-// [C99:7.24.4.1] Wide string numeric conversion functions
+// Wide string numeric conversion functions
+// [C99:7.24.4.1]: wcstod to wcstoull, numbers from wide strings
 double             wcstod(const wchar_t *restrict nptr, wchar_t **restrict endptr);
 float              wcstof(const wchar_t *restrict nptr, wchar_t **restrict endptr);
 long double        wcstold(const wchar_t *restrict nptr, wchar_t **restrict endptr);
@@ -122,24 +127,28 @@ long long          wcstoll(const wchar_t *restrict nptr, wchar_t **restrict endp
 unsigned long      wcstoul(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base);
 unsigned long long wcstoull(const wchar_t *restrict nptr, wchar_t **restrict endptr, int base);
 
-// [C99:7.24.4.2] Wide string copying functions
+// Wide string copying functions
+// [C99:7.24.4.2]: wcscpy, wcsncpy, wmemcpy and wmemmove
 wchar_t *wcscpy(wchar_t *restrict str1, const wchar_t *restrict str2);
 wchar_t *wcsncpy(wchar_t *restrict str1, const wchar_t *restrict str2, size_t n);
 wchar_t *wmemcpy(wchar_t *restrict str1, const wchar_t *restrict str2, size_t n);
 wchar_t *wmemmove(wchar_t *str1, const wchar_t *str2, size_t n);
 
-// [C99:7.24.4.3] Wide string concatenation functions
+// Wide string concatenation functions
+// [C99:7.24.4.3]: wcscat and wcsncat
 wchar_t *wcscat(wchar_t *restrict str1, const wchar_t *restrict str2);
 wchar_t *wcsncat(wchar_t *restrict str1, const wchar_t *restrict str2, size_t n);
 
-// [C99:7.24.4.4] Wide string comparison functions
+// Wide string comparison functions
+// [C99:7.24.4.4]: wcscmp, wcscoll, wcsncmp, wcsxfrm and wmemcmp
 int    wcscmp(const wchar_t *str1, const wchar_t *str2);
 int    wcscoll(const wchar_t *str1, const wchar_t *str2);
 int    wcsncmp(const wchar_t *str1, const wchar_t *str2, size_t n);
 size_t wcsxfrm(wchar_t *restrict str1, const wchar_t *restrict str2, size_t n);
 int    wmemcmp(const wchar_t *str1, const wchar_t *str2, size_t n);
 
-// [C99:7.24.4.5] Wide string search functions
+// Wide string search functions
+// [C99:7.24.4.5]: wcschr, wcscspn, wcspbrk, wcsrchr, wcsspn, wcsstr, wcstok and wmemchr
 wchar_t *wcschr(const wchar_t *str, wchar_t wc);
 size_t   wcscspn(const wchar_t *str1, const wchar_t *str2);
 wchar_t *wcspbrk(const wchar_t *str1, const wchar_t *str2);
@@ -149,26 +158,32 @@ wchar_t *wcsstr(const wchar_t *str1, const wchar_t *str2);
 wchar_t *wcstok(wchar_t *restrict str1, const wchar_t *restrict str2, wchar_t **restrict ptr);
 wchar_t *wmemchr(const wchar_t *str, wchar_t wc, size_t n);
 
-// [C99:7.24.4.6] Miscellaneous functions
+// Miscellaneous functions
+// [C99:7.24.4.6]: wcslen and wmemset
 size_t   wcslen(const wchar_t *str);
 wchar_t *wmemset(wchar_t *str, wchar_t wc, size_t n);
 
-// [C99:7.24.5] Wide character time conversion functions
+// Wide character time conversion functions
+// [C99:7.24.5]: wcsftime
 size_t wcsftime(wchar_t *restrict str, size_t maxsize, const wchar_t *restrict format, const struct tm *restrict timeptr);
 
-// [C99:7.24.6.1] Single-byte/wide character conversion functions
+// Single-byte/wide character conversion functions
+// [C99:7.24.6.1]: btowc and wctob
 wint_t btowc(int ch);
 int    wctob(wint_t wc);
 
-// [C99:7.24.6.2] Conversion state functions
+// Conversion state functions
+// [C99:7.24.6.2]: mbsinit
 int mbsinit(const mbstate_t *ps);
 
-// [C99:7.24.6.3] Restartable multibyte/wide character conversion functions
+// Restartable multibyte/wide character conversion functions
+// [C99:7.24.6.3]: mbrlen, mbrtowc and wcrtomb
 size_t mbrlen(const char *restrict str, size_t n, mbstate_t *restrict ps);
 size_t mbrtowc(wchar_t *restrict pwc, const char *restrict str, size_t n, mbstate_t *restrict ps);
 size_t wcrtomb(char *restrict str, wchar_t wc, mbstate_t *restrict ps);
 
-// [C99:7.24.6.4] Restartable multibyte/wide string conversion functions
+// Restartable multibyte/wide string conversion functions
+// [C99:7.24.6.4]: mbsrtowcs and wcsrtombs
 size_t mbsrtowcs(wchar_t *restrict dst, const char **restrict src, size_t len, mbstate_t *restrict ps);
 size_t wcsrtombs(char *restrict dst, const wchar_t **restrict src, size_t len, mbstate_t *restrict ps);
 

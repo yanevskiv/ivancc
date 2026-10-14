@@ -23,7 +23,8 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-// No guard: [C99:7.2p1] redefines assert at each inclusion.
+// No guard: each inclusion defines assert again.
+// [C99:7.2p1]: assert, redefined at each inclusion of <assert.h>
 #undef assert
 
 // The descriptor of standard error.
@@ -35,7 +36,8 @@
 // The size of a line number's text, UINT_MAX's included.
 #define _ASSERT_LINE_SIZE 16
 
-// [C99:7.2.1.1] The assert macro
+// The assert macro
+// [C99:7.2.1.1]: assert
 #ifdef NDEBUG
 #define assert(ignore) ((void) 0)
 #else

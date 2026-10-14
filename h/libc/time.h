@@ -105,7 +105,8 @@
 #define _TIME_CONVERSIONS_E "cCnprRtTuxXyYzZ%"
 #define _TIME_CONVERSIONS_O "bBCdeghGHIjmMnprRStTuUVwWyzZ%"
 
-// [C99:7.23.1] Components of time
+// Components of time
+// [C99:7.23.1]: NULL, CLOCKS_PER_SEC, clock_t and time_t
 #define NULL           ((void *) 0)
 #define CLOCKS_PER_SEC ((clock_t) 1000000)
 
@@ -125,7 +126,8 @@ struct _Time_Text {
     size_t tt_len;  // the characters written, which may pass the size
 };
 
-// [C99:7.23.1] Components of time
+// Components of time
+// [C99:7.23.1]: struct tm and its members
 struct tm {
     int tm_sec;               // seconds after the minute, 0 to 60
     int tm_min;               // minutes after the hour, 0 to 59
@@ -179,13 +181,15 @@ const char *_Time_ExpandConversion(char conv);
 void        _Time_PutConversion(_Time_Text *text, char conv, const struct tm *tm);
 void        _Time_PutFormat(_Time_Text *text, const char *format, const struct tm *tm);
 
-// [C99:7.23.2] Time manipulation functions
+// Time manipulation functions
+// [C99:7.23.2]: clock, difftime, mktime and time
 clock_t clock(void);
 double  difftime(time_t time1, time_t time0);
 time_t  mktime(struct tm *timeptr);
 time_t  time(time_t *timer);
 
-// [C99:7.23.3] Time conversion functions
+// Time conversion functions
+// [C99:7.23.3]: asctime, ctime, gmtime, localtime and strftime
 char      *asctime(const struct tm *timeptr);
 char      *ctime(const time_t *timer);
 struct tm *gmtime(const time_t *timer);

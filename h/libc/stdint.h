@@ -26,7 +26,8 @@
 #ifndef _STDINT_H
 #define _STDINT_H
 
-// [C99:7.18.2.1] Limits of exact-width integer types
+// Limits of exact-width integer types
+// [C99:7.18.2.1]: INTN_MIN, INTN_MAX and UINTN_MAX
 #define INT8_MIN   (-128)
 #define INT16_MIN  (-32767 - 1)
 #define INT32_MIN  (-2147483647 - 1)
@@ -40,7 +41,8 @@
 #define UINT32_MAX 4294967295U
 #define UINT64_MAX 18446744073709551615UL
 
-// [C99:7.18.2.2] Limits of minimum-width integer types
+// Limits of minimum-width integer types
+// [C99:7.18.2.2]: INT_LEASTN_MIN, INT_LEASTN_MAX and UINT_LEASTN_MAX
 #define INT_LEAST8_MIN   (-128)
 #define INT_LEAST16_MIN  (-32767 - 1)
 #define INT_LEAST32_MIN  (-2147483647 - 1)
@@ -54,7 +56,8 @@
 #define UINT_LEAST32_MAX 4294967295U
 #define UINT_LEAST64_MAX 18446744073709551615UL
 
-// [C99:7.18.2.3] Limits of fastest minimum-width integer types
+// Limits of fastest minimum-width integer types
+// [C99:7.18.2.3]: INT_FASTN_MIN, INT_FASTN_MAX and UINT_FASTN_MAX
 #define INT_FAST8_MIN   (-128)
 #define INT_FAST16_MIN  (-9223372036854775807L - 1)
 #define INT_FAST32_MIN  (-9223372036854775807L - 1)
@@ -68,17 +71,20 @@
 #define UINT_FAST32_MAX 18446744073709551615UL
 #define UINT_FAST64_MAX 18446744073709551615UL
 
-// [C99:7.18.2.4] Limits of integer types capable of holding object pointers
+// Limits of integer types capable of holding object pointers
+// [C99:7.18.2.4]: INTPTR_MIN, INTPTR_MAX and UINTPTR_MAX
 #define INTPTR_MIN  (-9223372036854775807L - 1)
 #define INTPTR_MAX  9223372036854775807L
 #define UINTPTR_MAX 18446744073709551615UL
 
-// [C99:7.18.2.5] Limits of greatest-width integer types
+// Limits of greatest-width integer types
+// [C99:7.18.2.5]: INTMAX_MIN, INTMAX_MAX and UINTMAX_MAX
 #define INTMAX_MIN  (-9223372036854775807L - 1)
 #define INTMAX_MAX  9223372036854775807L
 #define UINTMAX_MAX 18446744073709551615UL
 
-// [C99:7.18.3] Limits of other integer types
+// Limits of other integer types
+// [C99:7.18.3]: the limits of ptrdiff_t, sig_atomic_t, size_t, wchar_t and wint_t
 #define PTRDIFF_MIN    (-9223372036854775807L - 1)
 #define PTRDIFF_MAX    9223372036854775807L
 #define SIG_ATOMIC_MIN (-2147483647 - 1)
@@ -89,7 +95,8 @@
 #define WINT_MIN       0U
 #define WINT_MAX       4294967295U
 
-// [C99:7.18.4.1] Macros for minimum-width integer constants
+// Macros for minimum-width integer constants
+// [C99:7.18.4.1]: INTN_C and UINTN_C
 #define INT8_C(value)   value
 #define INT16_C(value)  value
 #define INT32_C(value)  value
@@ -99,11 +106,13 @@
 #define UINT32_C(value) value ## U
 #define UINT64_C(value) value ## UL
 
-// [C99:7.18.4.2] Macros for greatest-width integer constants
+// Macros for greatest-width integer constants
+// [C99:7.18.4.2]: INTMAX_C and UINTMAX_C
 #define INTMAX_C(value)  value ## L
 #define UINTMAX_C(value) value ## UL
 
-// [C99:7.18.1.1] Exact-width integer types
+// Exact-width integer types
+// [C99:7.18.1.1]: intN_t and uintN_t
 typedef signed char int8_t;
 typedef short int16_t;
 typedef int int32_t;
@@ -113,7 +122,8 @@ typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 typedef unsigned long uint64_t;
 
-// [C99:7.18.1.2] Minimum-width integer types
+// Minimum-width integer types
+// [C99:7.18.1.2]: int_leastN_t and uint_leastN_t
 typedef signed char int_least8_t;
 typedef short int_least16_t;
 typedef int int_least32_t;
@@ -123,7 +133,8 @@ typedef unsigned short uint_least16_t;
 typedef unsigned int uint_least32_t;
 typedef unsigned long uint_least64_t;
 
-// [C99:7.18.1.3] Fastest minimum-width integer types
+// Fastest minimum-width integer types
+// [C99:7.18.1.3]: int_fastN_t and uint_fastN_t
 typedef signed char int_fast8_t;
 typedef long int_fast16_t;
 typedef long int_fast32_t;
@@ -133,11 +144,13 @@ typedef unsigned long uint_fast16_t;
 typedef unsigned long uint_fast32_t;
 typedef unsigned long uint_fast64_t;
 
-// [C99:7.18.1.4] Integer types capable of holding object pointers
+// Integer types capable of holding object pointers
+// [C99:7.18.1.4]: intptr_t and uintptr_t
 typedef long intptr_t;
 typedef unsigned long uintptr_t;
 
-// [C99:7.18.1.5] Greatest-width integer types
+// Greatest-width integer types
+// [C99:7.18.1.5]: intmax_t and uintmax_t
 typedef long intmax_t;
 typedef unsigned long uintmax_t;
 

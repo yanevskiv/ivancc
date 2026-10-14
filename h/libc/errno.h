@@ -26,7 +26,8 @@
 #ifndef _ERRNO_H
 #define _ERRNO_H
 
-// [C99:7.5] Errors
+// Errors
+// [C99:7.5]: EDOM, EILSEQ, ERANGE and errno
 #define EDOM   33
 #define EILSEQ 84
 #define ERANGE 34
