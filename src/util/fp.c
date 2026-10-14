@@ -38,6 +38,15 @@ const Fp_Format Fp_FormatBinary64 = {
     .ff_explicit = false
 };
 
+// The x87's extended format, its integer bit stored.
+const Fp_Format Fp_FormatBinary80 = {
+    .ff_bits     = 80,
+    .ff_mant     = 64,
+    .ff_min      = -16382,
+    .ff_max      = 16383,
+    .ff_explicit = true
+};
+
 // Make a wide integer of its two words.
 Fp_Wide Fp_WideMake(uint64_t hi, uint64_t lo)
 {
@@ -198,6 +207,10 @@ Fp_Value Fp_FormatUnpack(const Fp_Format *fmt, Fp_Wide bits)
     Fp_Wide lead = Fp_WideShl(Fp_WideMake(0, 1), fmt->ff_mant - 1);
     Fp_Value value = Fp_FormatMake(sign, Fp_WideMake(0, 0), 0);
 
+    if (fmt->ff_explicit && biased != 0 && Fp_WideIsZero(Fp_WideAnd(frac, lead))) {
+        value.fv_class = FP_CLASS_UNSUPPORTED;
+        return value;
+    }
     if (biased == all_ones) {
         value.fv_class = FP_CLASS_INFINITY;
         if (! Fp_WideIsZero(fraction)) {
@@ -238,13 +251,14 @@ Fp_Wide Fp_FormatPack(const Fp_Format *fmt, const Fp_Value *value)
             sig = Fp_WideShr(value->fv_mant, FP_WIDE_BITS - (fmt->ff_mant - 1));
             sig = fmt->ff_explicit ? Fp_WideOr(sig, lead) : sig;
         } break;
-        case FP_CLASS_SUBNORMAL: {
-            sig = Fp_WideShr(value->fv_mant, FP_WIDE_BITS - fmt->ff_mant + (fmt->ff_min - value->fv_exp));
-        } break;
         default: {
-            biased = value->fv_exp + fmt->ff_max;
-            sig = Fp_WideShr(value->fv_mant, FP_WIDE_BITS - fmt->ff_mant);
-            sig = fmt->ff_explicit ? sig : Fp_WideAnd(sig, Fp_WideMask(fmt->ff_mant - 1));
+            if (value->fv_exp < fmt->ff_min) {
+                sig = Fp_WideShr(value->fv_mant, FP_WIDE_BITS - fmt->ff_mant + (fmt->ff_min - value->fv_exp));
+            } else {
+                biased = value->fv_exp + fmt->ff_max;
+                sig = Fp_WideShr(value->fv_mant, FP_WIDE_BITS - fmt->ff_mant);
+                sig = fmt->ff_explicit ? sig : Fp_WideAnd(sig, Fp_WideMask(fmt->ff_mant - 1));
+            }
         }
     }
     bits = Fp_WideOr(sig, Fp_WideShl(Fp_WideMake(0, (uint64_t) biased), frac_bits));
@@ -254,10 +268,17 @@ Fp_Wide Fp_FormatPack(const Fp_Format *fmt, const Fp_Value *value)
     return bits;
 }
 
-// Return whether a value is a signalling NaN, its fraction's top bit clear.
+// Return whether a value is no number: a NaN, or an encoding of none.
+bool Fp_FormatIsNan(const Fp_Value *value)
+{
+    return value->fv_class == FP_CLASS_NAN || value->fv_class == FP_CLASS_UNSUPPORTED;
+}
+
+// Return whether a value signals: an SNaN, or an encoding of no number.
 bool Fp_FormatIsSignalling(const Fp_Value *value)
 {
-    return value->fv_class == FP_CLASS_NAN && ! (value->fv_mant.fw_hi & FP_WORD_TOP);
+    return (value->fv_class == FP_CLASS_NAN && ! (value->fv_mant.fw_hi & FP_WORD_TOP))
+           || value->fv_class == FP_CLASS_UNSUPPORTED;
 }
 
 // Return whether the kept bits are to be rounded up, by the context's mode.
@@ -298,6 +319,7 @@ Fp_Value Fp_RoundToBits(const Fp_Value *value, int32_t keep, Fp_Context *ctx)
     }
     if (Fp_RoundIsUp(ctx, value->fv_sign, kept, rest)) {
         kept = Fp_WideAdd(kept, Fp_WideMake(0, 1));
+        ctx->fc_flags |= FP_FLAG_ROUNDED_UP;
     }
     if (rest != FP_ROUND_REST_NONE) {
         ctx->fc_flags |= FP_FLAG_INEXACT;
@@ -313,7 +335,7 @@ Fp_Value Fp_RoundValue(const Fp_Value *exact, const Fp_Format *fmt, Fp_Context *
     bool below = exact->fv_exp < fmt->ff_min;
     bool tiny = below;
 
-    if (exact->fv_class == FP_CLASS_NAN) {
+    if (Fp_FormatIsNan(exact)) {
         ctx->fc_flags |= Fp_FormatIsSignalling(exact) ? FP_FLAG_INVALID : 0;
         return result;
     }
@@ -334,8 +356,10 @@ Fp_Value Fp_RoundValue(const Fp_Value *exact, const Fp_Format *fmt, Fp_Context *
                         || (ctx->fc_mode == FP_ROUND_DOWN && result.fv_sign == FP_SIGN_NEGATIVE);
 
         local.fc_flags |= FP_FLAG_OVERFLOW | FP_FLAG_INEXACT;
+        local.fc_flags &= ~(uint32_t) FP_FLAG_ROUNDED_UP;
         result = Fp_FormatMake(result.fv_sign, Fp_WideMask(fmt->ff_mant), fmt->ff_max - fmt->ff_mant + 1);
         if (infinite) {
+            local.fc_flags |= FP_FLAG_ROUNDED_UP;
             result.fv_class = FP_CLASS_INFINITY;
             result.fv_exp = 0;
             result.fv_mant = Fp_WideMake(0, 0);
@@ -378,7 +402,7 @@ Fp_Value Fp_ArithAdd(const Fp_Value *a, const Fp_Value *b, const Fp_Format *fmt,
     const Fp_Value *small = big == a ? b : a;
     Fp_Value exact;
 
-    if (a->fv_class == FP_CLASS_NAN || b->fv_class == FP_CLASS_NAN) {
+    if (Fp_FormatIsNan(a) || Fp_FormatIsNan(b)) {
         return Fp_ArithNan(a, b, ctx);
     }
     if (a->fv_class == FP_CLASS_INFINITY) {
@@ -431,7 +455,7 @@ Fp_Value Fp_ArithMul(const Fp_Value *a, const Fp_Value *b, const Fp_Format *fmt,
     Fp_Sign sign = a->fv_sign != b->fv_sign ? FP_SIGN_NEGATIVE : FP_SIGN_POSITIVE;
     Fp_Value exact = Fp_FormatMake(sign, Fp_WideMake(0, 0), 0);
 
-    if (a->fv_class == FP_CLASS_NAN || b->fv_class == FP_CLASS_NAN) {
+    if (Fp_FormatIsNan(a) || Fp_FormatIsNan(b)) {
         return Fp_ArithNan(a, b, ctx);
     }
     if (a->fv_class == FP_CLASS_INFINITY || b->fv_class == FP_CLASS_INFINITY) {
@@ -459,7 +483,7 @@ Fp_Value Fp_ArithDiv(const Fp_Value *a, const Fp_Value *b, const Fp_Format *fmt,
     uint64_t divisor = b->fv_mant.fw_hi;
     bool carry = false;
 
-    if (a->fv_class == FP_CLASS_NAN || b->fv_class == FP_CLASS_NAN) {
+    if (Fp_FormatIsNan(a) || Fp_FormatIsNan(b)) {
         return Fp_ArithNan(a, b, ctx);
     }
     if (a->fv_class == FP_CLASS_INFINITY) {
@@ -506,7 +530,7 @@ Fp_Order Fp_ArithCmp(const Fp_Value *a, const Fp_Value *b, Fp_CompareKind kind, 
     int32_t b_side = b->fv_class == FP_CLASS_ZERO ? 0 : b->fv_sign == FP_SIGN_NEGATIVE ? -1 : 1;
     int32_t order = 0;
 
-    if (a->fv_class == FP_CLASS_NAN || b->fv_class == FP_CLASS_NAN) {
+    if (Fp_FormatIsNan(a) || Fp_FormatIsNan(b)) {
         if (kind == FP_COMPARE_SIGNALLING || Fp_FormatIsSignalling(a) || Fp_FormatIsSignalling(b)) {
             ctx->fc_flags |= FP_FLAG_INVALID;
         }
@@ -537,7 +561,7 @@ uint64_t Fp_ToInteger(const Fp_Value *value, int32_t bits, Fp_Context *ctx)
     uint64_t limit = (uint64_t) 1 << (bits - 1);
     uint64_t magnitude = 0;
 
-    if (value->fv_class == FP_CLASS_NAN || value->fv_class == FP_CLASS_INFINITY) {
+    if (Fp_FormatIsNan(value) || value->fv_class == FP_CLASS_INFINITY) {
         ctx->fc_flags |= FP_FLAG_INVALID;
         return 0;
     }
@@ -605,12 +629,13 @@ double Fp_HostDoubleFromBits(uint64_t bits)
     return value;
 }
 
-// Write a value in the x87 extended format.
+// Write a value in the x87 extended format, scaled by halving and doubling.
 void Fp_HostEncodeExtended(long double value, uint8_t *out)
 {
     uint16_t top = signbit(value) ? FP_EXTENDED_SIGN_BIT : 0;
     uint64_t mant = 0;
-    long double mag = fabsl(value);
+    long double mag = signbit(value) ? -value : value;
+    int32_t exp = 0;
 
     if (isnan(value)) {
         top |= FP_EXTENDED_EXP_MAX;
@@ -619,15 +644,18 @@ void Fp_HostEncodeExtended(long double value, uint8_t *out)
         top |= FP_EXTENDED_EXP_MAX;
         mant = FP_EXTENDED_INT_BIT;
     } else if (mag != 0) {
-        int exp = 0;
-        long double frac = frexpl(mag, &exp);
-        int32_t biased = exp - 1 + FP_EXTENDED_BIAS;
-
+        for (; mag >= 2; mag /= 2) {
+            exp++;
+        }
+        for (; mag < 1; mag *= 2) {
+            exp--;
+        }
+        int32_t biased = exp + FP_EXTENDED_BIAS;
+        mant = (uint64_t) (mag * FP_EXTENDED_INT_BIT);
         if (biased > 0) {
             top |= (uint16_t) biased;
-            mant = (uint64_t) ldexpl(frac, FP_EXTENDED_MANT_BITS);
         } else {
-            mant = (uint64_t) ldexpl(mag, FP_EXTENDED_DENORMAL_SHIFT);
+            mant = 1 - biased < FP_WORD_BITS ? mant >> (1 - biased) : 0;
         }
     }
 
@@ -636,26 +664,4 @@ void Fp_HostEncodeExtended(long double value, uint8_t *out)
     }
     out[FP_EXTENDED_TOP_OFF] = (uint8_t) top;
     out[FP_EXTENDED_TOP_OFF + 1] = (uint8_t) (top >> FP_BITS_PER_BYTE);
-}
-
-// Read a value written in the x87 extended format.
-long double Fp_HostDecodeExtended(const uint8_t *in)
-{
-    uint64_t mant = 0;
-    uint16_t top = (uint16_t) (in[FP_EXTENDED_TOP_OFF] | in[FP_EXTENDED_TOP_OFF + 1] << FP_BITS_PER_BYTE);
-    int32_t biased = top & FP_EXTENDED_EXP_MAX;
-    long double value;
-
-    for (int32_t i = 0; i < FP_EXTENDED_TOP_OFF; i++) {
-        mant |= (uint64_t) in[i] << (FP_BITS_PER_BYTE * i);
-    }
-
-    if (biased == FP_EXTENDED_EXP_MAX) {
-        value = mant << 1 ? NAN : INFINITY;
-    } else if (biased == 0) {
-        value = ldexpl((long double) mant, -FP_EXTENDED_DENORMAL_SHIFT);
-    } else {
-        value = ldexpl((long double) mant, biased - FP_EXTENDED_BIAS - (FP_EXTENDED_MANT_BITS - 1));
-    }
-    return top & FP_EXTENDED_SIGN_BIT ? -value : value;
 }

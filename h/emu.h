@@ -344,7 +344,7 @@ uint64_t Emu_x86_64_Linux_SigAction(Emu_x86_64_Linux_Guest *guest, int32_t sig, 
 bool     Emu_x86_64_Linux_PushFrame(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu, int32_t sig, const Emu_Linux_Action *action, const Emu_Linux_Info *info);
 uint64_t Emu_x86_64_Linux_SigReturn(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu);
 void     Emu_x86_64_Linux_Deliver(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu);
-int32_t  Emu_x86_64_Linux_SimdCode(uint32_t mxcsr);
+int32_t  Emu_x86_64_Linux_FloatCode(uint32_t unmasked);
 void     Emu_x86_64_Linux_Fault(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu, uint64_t rip);
 
 // x86_64 Linux running

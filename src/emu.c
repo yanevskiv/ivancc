@@ -557,7 +557,9 @@ void Emu_x86_64_SaveFpu(Cpu_x86_64_State *cpu, uint8_t *area)
     Emu_Put(area + EMU_X86_64_FXSAVE_MXCSR_OFF, cpu->cs_mxcsr, sizeof(uint32_t));
     Emu_Put(area + EMU_X86_64_FXSAVE_MXCSR_MASK_OFF, CPU_X86_64_MXCSR_MASK, sizeof(uint32_t));
     for (int32_t i = 0; i < CPU_X86_64_ST_COUNT; i++) {
-        Fp_HostEncodeExtended(*Cpu_x86_64_St(cpu, i), area + EMU_X86_64_FXSAVE_ST_OFF + i * EMU_X86_64_FXSAVE_REG_SIZE);
+        uint8_t *reg = area + EMU_X86_64_FXSAVE_ST_OFF + i * EMU_X86_64_FXSAVE_REG_SIZE;
+        Emu_Put(reg, Cpu_x86_64_St(cpu, i)->fw_lo, sizeof(uint64_t));
+        Emu_Put(reg + CPU_X86_64_X87_TOP_OFF, Cpu_x86_64_St(cpu, i)->fw_hi, sizeof(uint16_t));
     }
     for (int32_t i = 0; i < CPU_X86_64_XMM_COUNT; i++) {
         for (int32_t lane = 0; lane < CPU_X86_64_XMM_LANES; lane++) {
@@ -574,7 +576,8 @@ void Emu_x86_64_RestoreFpu(Cpu_x86_64_State *cpu, const uint8_t *area)
     cpu->cs_full = (uint8_t) Emu_Get(area + EMU_X86_64_FXSAVE_FTW_OFF, sizeof(uint8_t));
     cpu->cs_mxcsr = (uint32_t) Emu_Get(area + EMU_X86_64_FXSAVE_MXCSR_OFF, sizeof(uint32_t)) & CPU_X86_64_MXCSR_MASK;
     for (int32_t i = 0; i < CPU_X86_64_ST_COUNT; i++) {
-        *Cpu_x86_64_St(cpu, i) = Fp_HostDecodeExtended(area + EMU_X86_64_FXSAVE_ST_OFF + i * EMU_X86_64_FXSAVE_REG_SIZE);
+        const uint8_t *reg = area + EMU_X86_64_FXSAVE_ST_OFF + i * EMU_X86_64_FXSAVE_REG_SIZE;
+        *Cpu_x86_64_St(cpu, i) = Fp_WideMake(Emu_Get(reg + CPU_X86_64_X87_TOP_OFF, sizeof(uint16_t)), Emu_Get(reg, sizeof(uint64_t)));
     }
     for (int32_t i = 0; i < CPU_X86_64_XMM_COUNT; i++) {
         for (int32_t lane = 0; lane < CPU_X86_64_XMM_LANES; lane++) {
@@ -588,7 +591,7 @@ void Emu_x86_64_ResetFpu(Cpu_x86_64_State *cpu)
 {
     memset(cpu->cs_xmm, 0, sizeof(cpu->cs_xmm));
     for (int32_t i = 0; i < CPU_X86_64_ST_COUNT; i++) {
-        cpu->cs_st[i] = 0;
+        cpu->cs_st[i] = Fp_WideMake(0, 0);
     }
     cpu->cs_top = 0;
     cpu->cs_full = 0;
@@ -776,11 +779,9 @@ void Emu_x86_64_Linux_Deliver(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *c
     }
 }
 
-// Return the si_code Linux gives #XF, by its first unmasked flag.
-int32_t Emu_x86_64_Linux_SimdCode(uint32_t mxcsr)
+// Return the si_code Linux gives #XF or #MF, by its first unmasked flag.
+int32_t Emu_x86_64_Linux_FloatCode(uint32_t unmasked)
 {
-    uint32_t unmasked = mxcsr & ~(mxcsr >> CPU_X86_64_MXCSR_MASK_SHIFT);
-
     if (unmasked & CPU_X86_64_MXCSR_IE) {
         return EMU_LINUX_FPE_FLTINV;
     }
@@ -815,7 +816,11 @@ void Emu_x86_64_Linux_Fault(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu
         } break;
         case CPU_X86_64_VECTOR_XF: {
             sig = SIGFPE;
-            info.ei_code = Emu_x86_64_Linux_SimdCode(cpu->cs_mxcsr);
+            info.ei_code = Emu_x86_64_Linux_FloatCode(cpu->cs_mxcsr & ~(cpu->cs_mxcsr >> CPU_X86_64_MXCSR_MASK_SHIFT));
+        } break;
+        case CPU_X86_64_VECTOR_MF: {
+            sig = SIGFPE;
+            info.ei_code = Emu_x86_64_Linux_FloatCode(cpu->cs_fsw & ~cpu->cs_fcw);
         } break;
         case CPU_X86_64_VECTOR_UD: {
             sig = SIGILL;

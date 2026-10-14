@@ -1751,6 +1751,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "unmasked SSE exception on a result, MXCSR 0x%llx, at 0x%llx"
     },
 
+    // Args: [FSW, instruction address]
+    [ERR_CPU_X87_FLOAT_UNMASKED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_X87_FLOAT_UNMASKED",
+        .ee_format = "unmasked x87 exception pending, FSW 0x%llx, at 0x%llx"
+    },
+
     // Args: [architecture, supported architecture]
     [ERR_CC_ARCH_NOT_SUPPORTED] = {
         .ee_level  = ERR_LEVEL_FATAL,

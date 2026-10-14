@@ -116,10 +116,56 @@
 #define CPU_X86_64_FCW_WRITABLE 0x1F3F
 #define CPU_X86_64_FCW_FIXED    0x0040
 
+// The x87 control word's precision and rounding controls.
+// [Amd64-Vol1:6.2.3.2]: PC, bits 9:8
+// [Amd64-Vol1:6.2.3.3]: RC, bits 11:10, in MXCSR's order of modes
+#define CPU_X86_64_FCW_PC_SHIFT 8
+#define CPU_X86_64_FCW_RC_SHIFT 10
+#define CPU_X86_64_FCW_FIELD    3
+
+// The precision controls of 24 and 53 bits; 01b, reserved, rounds as 11b.
+// [Amd64-Vol1:6.3.5]: Table 6-11, each PC's precision, the exponent's range kept
+#define CPU_X86_64_FCW_PC_24 0
+#define CPU_X86_64_FCW_PC_53 2
+
 // The exception flags of the x87 status word, and their masks in the
 // control word.
 // [Amd64-Vol1:6.2.2]: the x87 status word's fields
 #define CPU_X86_64_X87_EXCEPTIONS 0x3F
+
+// The x87 status word's flags at MXCSR's bits, as both units place them.
+// [Amd64-Vol1:6.2.2]: IE, DE, ZE, OE, UE and PE, bits 0 to 5
+#define CPU_X86_64_FSW_IE 0x01
+#define CPU_X86_64_FSW_DE 0x02
+#define CPU_X86_64_FSW_ZE 0x04
+#define CPU_X86_64_FSW_OE 0x08
+#define CPU_X86_64_FSW_UE 0x10
+#define CPU_X86_64_FSW_PE 0x20
+
+// The condition code an x87 operation sets: a rounding up, or a push onto a
+// full register beside a stack fault.
+// [Amd64-Vol1:6.2.2.10]: C1, bit 9, the last rounding's direction
+// [Amd64-Vol1:6.2.2.7]:  C1 = 1 for a stack overflow, 0 for an underflow
+#define CPU_X86_64_FSW_C1 0x0200
+
+// The bits of an x87 register: its significand, and its sign and exponent
+// at bits 64 to 79, stored as FXSAVE and FSTP m80 store them.
+// [Amd64-Vol1:6.3.2.1]: Figure 6-8, the double-extended-precision format
+#define CPU_X86_64_X87_REG_SIZE 10
+#define CPU_X86_64_X87_TOP_OFF  8
+#define CPU_X86_64_X87_EXP_MASK 0x7FFF
+#define CPU_X86_64_X87_SIGN_BIT 0x8000
+
+// The x87 floating-point indefinite: a negative QNaN, its fraction's top bit
+// alone set beside the integer bit.
+// [Amd64-Vol1:6.3.4.3]: Table 6-10, the indefinite of each data type
+#define CPU_X86_64_X87_INDEFINITE_HI 0xFFFF
+#define CPU_X86_64_X87_INDEFINITE_LO 0xC000000000000000
+
+// The power of two an x87 result too large or too small for a register is
+// scaled by when OE or UE is unmasked.
+// [Amd64-Vol1:6.8.6.2]: Table 6-22, the unmasked responses, 2^24576
+#define CPU_X86_64_X87_SCALE 24576
 
 // The flags of the x87 status word FNCLEX clears beside the exceptions: the
 // stack fault, the exception summary and busy.
@@ -221,6 +267,7 @@ enum Cpu_x86_64_Vector {
     CPU_X86_64_VECTOR_UD = 6,  // #UD, an opcode the CPU cannot run
     CPU_X86_64_VECTOR_GP = 13, // #GP, an operand the instruction refuses
     CPU_X86_64_VECTOR_PF = 14, // #PF, an address the bus refused
+    CPU_X86_64_VECTOR_MF = 16, // #MF, an unmasked x87 exception pending
     CPU_X86_64_VECTOR_XF = 19  // #XF, an unmasked SSE floating-point exception
 };
 
@@ -232,6 +279,14 @@ enum Cpu_x86_64_Tag {
     CPU_X86_64_TAG_ZERO    = 1, // a zero
     CPU_X86_64_TAG_SPECIAL = 2, // a NaN, an infinity, a denormal or unsupported
     CPU_X86_64_TAG_EMPTY   = 3  // no value
+};
+
+// Where an x87 operation writes, which decides its unmasked responses.
+// [Amd64-Vol1:6.8.6.2]: Table 6-22, OE and UE by the destination
+typedef enum Cpu_x86_64_X87Dest Cpu_x86_64_X87Dest;
+enum Cpu_x86_64_X87Dest {
+    CPU_X86_64_X87_DEST_REG, // an x87 register, or the flags: a result scaled
+    CPU_X86_64_X87_DEST_MEM  // memory: nothing written
 };
 
 // How an instruction reaches its r/m operand.
@@ -282,7 +337,7 @@ struct Cpu_x86_64_State {
     bool                  cs_cf;     // the result carried out of an unsigned operand
     bool                  cs_pf;     // the result's low byte had even parity, or a comparison was unordered
     Cpu_x86_64_XmmLanes   cs_xmm[CPU_X86_64_XMM_COUNT]; // the SSE registers
-    long double           cs_st[CPU_X86_64_ST_COUNT]; // the x87 registers
+    Fp_Wide               cs_st[CPU_X86_64_ST_COUNT]; // the x87 registers, binary80's bits
     int32_t               cs_top;    // the x87 register %st names
     uint8_t               cs_full;   // the full x87 registers, a bit each
     uint16_t              cs_fcw;    // the x87 control word
@@ -297,9 +352,12 @@ struct Cpu_x86_64_State {
 };
 
 // Running
-void           Cpu_x86_64_Init(Cpu_x86_64_State *cpu, const Cpu_x86_64_Bus *bus, uint64_t rip, uint64_t rsp);
-void           Cpu_x86_64_Fault(Cpu_x86_64_State *cpu, Cpu_x86_64_Vector vector, Err_Code code, ...);
-void           Cpu_x86_64_PageFault(Cpu_x86_64_State *cpu, uint64_t addr, uint64_t error);
+void Cpu_x86_64_Init(Cpu_x86_64_State *cpu, const Cpu_x86_64_Bus *bus, uint64_t rip, uint64_t rsp);
+void Cpu_x86_64_Free(Cpu_x86_64_State *cpu);
+void Cpu_x86_64_Fault(Cpu_x86_64_State *cpu, Cpu_x86_64_Vector vector, Err_Code code, ...);
+void Cpu_x86_64_PageFault(Cpu_x86_64_State *cpu, uint64_t addr, uint64_t error);
+
+// Registers and memory
 uint64_t       Cpu_x86_64_ReadReg(const Cpu_x86_64_State *cpu, Cpu_x86_64_Reg reg, Cpu_x86_64_OperandWidth width);
 void           Cpu_x86_64_WriteReg(Cpu_x86_64_State *cpu, Cpu_x86_64_Reg reg, uint64_t value, Cpu_x86_64_OperandWidth width);
 bool           Cpu_x86_64_IsDevice(const Cpu_x86_64_State *cpu, uint64_t addr);
@@ -310,37 +368,68 @@ void           Cpu_x86_64_WriteMem(Cpu_x86_64_State *cpu, uint64_t addr, uint64_
 uint64_t       Cpu_x86_64_RmAddr(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next);
 uint64_t       Cpu_x86_64_ReadRm(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, Cpu_x86_64_OperandWidth width);
 void           Cpu_x86_64_WriteRm(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t value, Cpu_x86_64_OperandWidth width);
-void           Cpu_x86_64_FlagsSub(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
-void           Cpu_x86_64_FlagsAdd(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
-bool           Cpu_x86_64_Parity(uint64_t res);
-void           Cpu_x86_64_FlagsOrder(Cpu_x86_64_State *cpu, Fp_Order order);
-void           Cpu_x86_64_FlagsCompare(Cpu_x86_64_State *cpu, long double a, long double b);
-uint64_t       Cpu_x86_64_Truncate(long double value, Cpu_x86_64_OperandWidth width);
-uint64_t       Cpu_x86_64_ReadSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, Cpu_x86_64_OperandWidth width);
-Fp_Context     Cpu_x86_64_SseContext(const Cpu_x86_64_State *cpu);
-Fp_Value       Cpu_x86_64_SseUnpack(const Cpu_x86_64_State *cpu, const Fp_Format *fmt, uint64_t bits, uint32_t *denormal);
-Fp_Value       Cpu_x86_64_SseQuiet(const Fp_Value *a, const Fp_Value *b);
-bool           Cpu_x86_64_SseSettle(Cpu_x86_64_State *cpu, const Fp_Context *ctx, uint32_t denormal, Fp_Value *result, uint64_t rip);
-void           Cpu_x86_64_SseWrite(uint64_t *dst, const Fp_Format *fmt, const Fp_Value *value);
-void           Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
-long double   *Cpu_x86_64_St(Cpu_x86_64_State *cpu, int32_t i);
-void           Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, long double value);
-long double    Cpu_x86_64_StPop(Cpu_x86_64_State *cpu);
+
+// Flags
+void Cpu_x86_64_FlagsSub(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
+void Cpu_x86_64_FlagsAdd(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
+bool Cpu_x86_64_Parity(uint64_t res);
+void Cpu_x86_64_FlagsOrder(Cpu_x86_64_State *cpu, Fp_Order order);
+
+// SSE
+Fp_RoundMode Cpu_x86_64_RoundMode(uint32_t rc);
+uint64_t     Cpu_x86_64_ReadSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, Cpu_x86_64_OperandWidth width);
+Fp_Context   Cpu_x86_64_SseContext(const Cpu_x86_64_State *cpu);
+Fp_Value     Cpu_x86_64_SseUnpack(const Cpu_x86_64_State *cpu, const Fp_Format *fmt, uint64_t bits, uint32_t *denormal);
+Fp_Value     Cpu_x86_64_SseQuiet(const Fp_Value *a, const Fp_Value *b);
+bool         Cpu_x86_64_SseSettle(Cpu_x86_64_State *cpu, const Fp_Context *ctx, uint32_t denormal, Fp_Value *result, uint64_t rip);
+void         Cpu_x86_64_SseWrite(uint64_t *dst, const Fp_Format *fmt, const Fp_Value *value);
+void         Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
+void         Cpu_x86_64_StepGrp15(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
+
+// x87
+Fp_Wide       *Cpu_x86_64_St(Cpu_x86_64_State *cpu, int32_t i);
+bool           Cpu_x86_64_IsStFull(const Cpu_x86_64_State *cpu, int32_t i);
+void           Cpu_x86_64_StWrite(Cpu_x86_64_State *cpu, int32_t i, Fp_Wide bits);
+void           Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, Fp_Wide bits);
+void           Cpu_x86_64_StPop(Cpu_x86_64_State *cpu);
+void           Cpu_x86_64_X87Status(Cpu_x86_64_State *cpu, uint32_t flags);
+void           Cpu_x86_64_X87Overflow(Cpu_x86_64_State *cpu);
+bool           Cpu_x86_64_X87Underflow(Cpu_x86_64_State *cpu);
+Fp_Context     Cpu_x86_64_X87Context(const Cpu_x86_64_State *cpu);
+Fp_Format      Cpu_x86_64_X87Precision(const Cpu_x86_64_State *cpu);
+Fp_Value       Cpu_x86_64_X87Unpack(Fp_Wide bits, uint32_t *denormal);
+Fp_Value       Cpu_x86_64_X87Quiet(const Fp_Value *a, const Fp_Value *b);
+Fp_Wide        Cpu_x86_64_X87Indefinite(void);
+bool           Cpu_x86_64_X87Settle(Cpu_x86_64_State *cpu, const Fp_Context *ctx, uint32_t denormal, Cpu_x86_64_X87Dest dest);
+Fp_Value       Cpu_x86_64_X87Compute(int32_t form, const Fp_Value *a, const Fp_Value *b, const Fp_Format *fmt, Fp_Context *ctx);
+void           Cpu_x86_64_X87Arith(Cpu_x86_64_State *cpu, int32_t i, int32_t form);
+void           Cpu_x86_64_X87Compare(Cpu_x86_64_State *cpu, int32_t i);
+void           Cpu_x86_64_X87Load(Cpu_x86_64_State *cpu, const Fp_Format *fmt, uint64_t bits);
+void           Cpu_x86_64_X87LoadInteger(Cpu_x86_64_State *cpu, uint64_t bits);
+void           Cpu_x86_64_X87LoadExtended(Cpu_x86_64_State *cpu, uint64_t addr);
+void           Cpu_x86_64_X87Store(Cpu_x86_64_State *cpu, uint64_t addr, const Fp_Format *fmt);
+void           Cpu_x86_64_X87StoreInteger(Cpu_x86_64_State *cpu, uint64_t addr);
+void           Cpu_x86_64_X87StoreExtended(Cpu_x86_64_State *cpu, uint64_t addr);
+void           Cpu_x86_64_X87Copy(Cpu_x86_64_State *cpu, int32_t i);
+void           Cpu_x86_64_X87Negate(Cpu_x86_64_State *cpu);
+bool           Cpu_x86_64_X87Wait(Cpu_x86_64_State *cpu, uint64_t rip);
 void           Cpu_x86_64_WriteFcw(Cpu_x86_64_State *cpu, uint16_t fcw);
 uint16_t       Cpu_x86_64_ReadFsw(const Cpu_x86_64_State *cpu);
 void           Cpu_x86_64_WriteFsw(Cpu_x86_64_State *cpu, uint16_t fsw);
-Cpu_x86_64_Tag Cpu_x86_64_ClassifyTag(long double value);
+Cpu_x86_64_Tag Cpu_x86_64_ClassifyTag(Fp_Wide bits);
 uint16_t       Cpu_x86_64_ReadFtw(const Cpu_x86_64_State *cpu);
 void           Cpu_x86_64_WriteFtw(Cpu_x86_64_State *cpu, uint16_t ftw);
 void           Cpu_x86_64_StoreEnv(Cpu_x86_64_State *cpu, uint64_t addr);
 void           Cpu_x86_64_LoadEnv(Cpu_x86_64_State *cpu, uint64_t addr);
-void           Cpu_x86_64_StepGrp15(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void           Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 void           Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
-uint64_t       Cpu_x86_64_DivideLong(uint64_t hi, uint64_t lo, uint64_t d, Cpu_x86_64_OperandWidth width, uint64_t *rem);
-void           Cpu_x86_64_Divide(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Cpu_x86_64_OperandWidth width);
-void           Cpu_x86_64_Step(Cpu_x86_64_State *cpu);
-void           Cpu_x86_64_Free(Cpu_x86_64_State *cpu);
+
+// Division
+uint64_t Cpu_x86_64_DivideLong(uint64_t hi, uint64_t lo, uint64_t d, Cpu_x86_64_OperandWidth width, uint64_t *rem);
+void     Cpu_x86_64_Divide(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip, Cpu_x86_64_OperandWidth width);
+
+// Stepping
+void Cpu_x86_64_Step(Cpu_x86_64_State *cpu);
 
 // Decoding
 int64_t                 Cpu_x86_64_ReadImm(const uint8_t *p, size_t n);
@@ -357,6 +446,7 @@ const char *Cpu_x86_64_SseMnemonic(const Cpu_x86_64_Insn *insn);
 const char *Cpu_x86_64_X87Mnemonic(const Cpu_x86_64_Insn *insn);
 bool        Cpu_x86_64_IsSse(int32_t op2);
 bool        Cpu_x86_64_IsX87(int32_t op);
+bool        Cpu_x86_64_IsX87NoWait(const Cpu_x86_64_Insn *insn);
 void        Cpu_x86_64_FormatRm(const Cpu_x86_64_Insn *insn, Cpu_x86_64_OperandWidth width, uint64_t next, char *out, size_t n);
 void        Cpu_x86_64_Format(const Cpu_x86_64_Insn *insn, uint64_t rip, char *out, size_t n);
 

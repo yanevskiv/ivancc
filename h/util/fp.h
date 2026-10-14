@@ -49,15 +49,9 @@
 // Offset of the sign and exponent after the significand's bytes.
 #define FP_EXTENDED_TOP_OFF 8
 
-// Bits in the extended format's significand, its integer bit included.
-#define FP_EXTENDED_MANT_BITS 64
-
 // The extended format's exponent bias and its all-ones exponent.
 #define FP_EXTENDED_BIAS    16383
 #define FP_EXTENDED_EXP_MAX 0x7FFF
-
-// The power of two the extended format's smallest denormal digit weighs.
-#define FP_EXTENDED_DENORMAL_SHIFT 16445
 
 // The integer bit, and the quiet bit a NaN carries below it.
 #define FP_EXTENDED_INT_BIT   ((uint64_t) 1 << 63)
@@ -86,11 +80,12 @@ struct Fp_Format {
 // What kind of number a value is.
 typedef enum Fp_Class Fp_Class;
 enum Fp_Class {
-    FP_CLASS_ZERO,      // a zero of either sign
-    FP_CLASS_SUBNORMAL, // finite and below its format's least normal number
-    FP_CLASS_NORMAL,    // finite and nonzero, and not known subnormal
-    FP_CLASS_INFINITY,  // an infinity of either sign
-    FP_CLASS_NAN        // not a number
+    FP_CLASS_ZERO,       // a zero of either sign
+    FP_CLASS_SUBNORMAL,  // finite and below its format's least normal number
+    FP_CLASS_NORMAL,     // finite and nonzero, and not known subnormal
+    FP_CLASS_INFINITY,   // an infinity of either sign
+    FP_CLASS_NAN,        // not a number
+    FP_CLASS_UNSUPPORTED // no number: binary80's integer bit clear
 };
 
 // A number's sign.
@@ -135,15 +130,17 @@ enum Fp_RoundRest {
     FP_ROUND_REST_ABOVE  // more than half
 };
 
-// The flags an operation raises: IEEE 754's five, and tininess.
+// The flags an operation raises: IEEE 754's five, tininess and the rounding's
+// direction.
 typedef enum Fp_Flag Fp_Flag;
 enum Fp_Flag {
-    FP_FLAG_INVALID   = 0x01, // no useful result: a NaN, or 0/0, inf-inf, 0*inf
-    FP_FLAG_DIVIDE    = 0x02, // an exact infinity from finite operands
-    FP_FLAG_OVERFLOW  = 0x04, // a result past the greatest finite number
-    FP_FLAG_UNDERFLOW = 0x08, // a result tiny and inexact
-    FP_FLAG_INEXACT   = 0x10, // a result rounded
-    FP_FLAG_TINY      = 0x20  // a result tiny, exact or not, which a trap wants
+    FP_FLAG_INVALID    = 0x01, // no useful result: a NaN, 0/0, inf-inf, 0*inf
+    FP_FLAG_DIVIDE     = 0x02, // an exact infinity from finite operands
+    FP_FLAG_OVERFLOW   = 0x04, // a result past the greatest finite number
+    FP_FLAG_UNDERFLOW  = 0x08, // a result tiny and inexact
+    FP_FLAG_INEXACT    = 0x10, // a result rounded
+    FP_FLAG_TINY       = 0x20, // a result tiny, exact or not, for a trap
+    FP_FLAG_ROUNDED_UP = 0x40  // a result rounded away from zero, x87's C1
 };
 
 // How an operation rounds, and the flags it raised.
@@ -170,9 +167,12 @@ enum Fp_CompareKind {
     FP_COMPARE_SIGNALLING  // any NaN
 };
 
-// The binary32 and binary64 formats.
+// The binary32 and binary64 formats, and x87's extended format.
+// [Amd64-Vol1:6.3.2.1]: Figure 6-8, the double-extended-precision format
+// [Amd64-Vol1:6.3.4.2]: Table 6-9, the unsupported encodings, its integer bit clear
 extern const Fp_Format Fp_FormatBinary32;
 extern const Fp_Format Fp_FormatBinary64;
+extern const Fp_Format Fp_FormatBinary80;
 
 // Wide integers
 Fp_Wide Fp_WideMake(uint64_t hi, uint64_t lo);
@@ -193,6 +193,7 @@ int32_t Fp_WideCountZeros(Fp_Wide a);
 Fp_Value Fp_FormatMake(Fp_Sign sign, Fp_Wide mant, int32_t low);
 Fp_Value Fp_FormatUnpack(const Fp_Format *fmt, Fp_Wide bits);
 Fp_Wide  Fp_FormatPack(const Fp_Format *fmt, const Fp_Value *value);
+bool     Fp_FormatIsNan(const Fp_Value *value);
 bool     Fp_FormatIsSignalling(const Fp_Value *value);
 
 // Rounding
@@ -220,7 +221,6 @@ float    Fp_HostFloatFromBits(uint32_t bits);
 double   Fp_HostDoubleFromBits(uint64_t bits);
 
 // The host's long double, as the x87 80-bit extended format
-void        Fp_HostEncodeExtended(long double value, uint8_t *out);
-long double Fp_HostDecodeExtended(const uint8_t *in);
+void Fp_HostEncodeExtended(long double value, uint8_t *out);
 
 #endif // FP_H

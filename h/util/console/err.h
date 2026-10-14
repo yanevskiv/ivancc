@@ -321,6 +321,7 @@ enum Err_Code {
     ERR_CPU_QUOTIENT_TOO_LARGE,            // can't divide when the quotient overflows its register
     ERR_CPU_SIMD_FLOAT_OPERAND_UNMASKED,   // can't run an SSE operation whose operands raise an unmasked exception
     ERR_CPU_SIMD_FLOAT_RESULT_UNMASKED,    // can't write an SSE result that raises an unmasked exception
+    ERR_CPU_X87_FLOAT_UNMASKED,            // can't run an x87 instruction past an unmasked exception pending
 
     ERR_CC_ARCH_NOT_SUPPORTED,             // can't target an architecture other than x86_64
     ERR_CC_OUTPUT_NOT_WRITEABLE,           // can't create the compiler's output file

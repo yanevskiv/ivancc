@@ -111,6 +111,13 @@ void Cpu_x86_64_Init(Cpu_x86_64_State *cpu, const Cpu_x86_64_Bus *bus, uint64_t 
     cpu->cs_mxcsr = CPU_X86_64_MXCSR_INIT;
 }
 
+// Release what a CPU holds.
+void Cpu_x86_64_Free(Cpu_x86_64_State *cpu)
+{
+    free(cpu->cs_fault);
+    cpu->cs_fault = NULL;
+}
+
 // Record the first fault of a step and stop the step with its exception.
 void Cpu_x86_64_Fault(Cpu_x86_64_State *cpu, Cpu_x86_64_Vector vector, Err_Code code, ...)
 {
@@ -329,23 +336,13 @@ void Cpu_x86_64_FlagsOrder(Cpu_x86_64_State *cpu, Fp_Order order)
     cpu->cs_of = false;
 }
 
-// Set the flags an unordered comparison of a with b leaves behind.
-void Cpu_x86_64_FlagsCompare(Cpu_x86_64_State *cpu, long double a, long double b)
+// Return the mode a rounding control names, MXCSR's RC and the x87's alike.
+Fp_RoundMode Cpu_x86_64_RoundMode(uint32_t rc)
 {
-    Fp_Order order = a < b ? FP_ORDER_LESS : a > b ? FP_ORDER_GREATER : FP_ORDER_EQUAL;
-
-    Cpu_x86_64_FlagsOrder(cpu, isnan(a) || isnan(b) ? FP_ORDER_UNORDERED : order);
-}
-
-// Truncate a value toward zero into a signed integer of width bits.
-uint64_t Cpu_x86_64_Truncate(long double value, Cpu_x86_64_OperandWidth width)
-{
-    long double limit = ldexpl(1, width - 1);
-
-    if (isnan(value) || value >= limit || value <= -limit - 1) {
-        return width == CPU_X86_64_WIDTH_64 ? CPU_X86_64_INDEFINITE_64 : CPU_X86_64_INDEFINITE_32;
-    }
-    return (uint64_t) (int64_t) value;
+    static const Fp_RoundMode modes[CPU_X86_64_MXCSR_RC_MASK + 1] = {
+        FP_ROUND_NEAREST_EVEN, FP_ROUND_DOWN, FP_ROUND_UP, FP_ROUND_ZERO
+    };
+    return modes[rc & CPU_X86_64_MXCSR_RC_MASK];
 }
 
 // Read an SSE instruction's source, an SSE register's low lane or memory.
@@ -361,11 +358,8 @@ uint64_t Cpu_x86_64_ReadSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, 
 // Return how an SSE operation rounds: MXCSR's mode, tiny after rounding.
 Fp_Context Cpu_x86_64_SseContext(const Cpu_x86_64_State *cpu)
 {
-    static const Fp_RoundMode modes[CPU_X86_64_MXCSR_RC_MASK + 1] = {
-        FP_ROUND_NEAREST_EVEN, FP_ROUND_DOWN, FP_ROUND_UP, FP_ROUND_ZERO
-    };
     Fp_Context ctx = {
-        .fc_mode      = modes[cpu->cs_mxcsr >> CPU_X86_64_MXCSR_RC_SHIFT & CPU_X86_64_MXCSR_RC_MASK],
+        .fc_mode      = Cpu_x86_64_RoundMode(cpu->cs_mxcsr >> CPU_X86_64_MXCSR_RC_SHIFT),
         .fc_tininess  = FP_ROUND_TINY_AFTER,
         .fc_flags     = 0
     };
@@ -545,27 +539,457 @@ void Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint
     }
 }
 
+// Execute a group 15 operation: a load or store of MXCSR.
+void Cpu_x86_64_StepGrp15(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip)
+{
+    int32_t digit = insn->ci_reg & ENC_X86_64_REG_MASK;
+
+    if (insn->ci_rmkind == CPU_X86_64_RM_REG || insn->ci_rep || insn->ci_opsize16
+        || (digit != ENC_X86_64_GRP_LDMXCSR && digit != ENC_X86_64_GRP_STMXCSR)) {
+        Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_GROUP15_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
+        return;
+    }
+
+    uint64_t addr = Cpu_x86_64_RmAddr(cpu, insn, next);
+    if (digit == ENC_X86_64_GRP_STMXCSR) {
+        Cpu_x86_64_WriteMem(cpu, addr, cpu->cs_mxcsr, CPU_X86_64_WIDTH_32);
+        return;
+    }
+
+    uint64_t mxcsr = Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_32);
+    if (cpu->cs_trap != CPU_X86_64_TRAP_NONE) {
+        return;
+    }
+    if (mxcsr & ~(uint64_t) CPU_X86_64_MXCSR_MASK) {
+        Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_GP, ERR_CPU_MXCSR_RESERVED, (Cpu_x86_64_TypeULLong) mxcsr, (Cpu_x86_64_TypeULLong) rip);
+        return;
+    }
+    cpu->cs_mxcsr = (uint32_t) mxcsr;
+}
+
 // Return the x87 register %st(i) names.
-long double *Cpu_x86_64_St(Cpu_x86_64_State *cpu, int32_t i)
+Fp_Wide *Cpu_x86_64_St(Cpu_x86_64_State *cpu, int32_t i)
 {
     return &cpu->cs_st[(cpu->cs_top + i) & CPU_X86_64_ST_MASK];
 }
 
+// Return whether %st(i) holds a value, %st(-1) being the one a push fills.
+bool Cpu_x86_64_IsStFull(const Cpu_x86_64_State *cpu, int32_t i)
+{
+    return (cpu->cs_full >> ((cpu->cs_top + i) & CPU_X86_64_ST_MASK) & 1) != 0;
+}
+
+// Write %st(i), which then holds a value.
+void Cpu_x86_64_StWrite(Cpu_x86_64_State *cpu, int32_t i, Fp_Wide bits)
+{
+    *Cpu_x86_64_St(cpu, i) = bits;
+    cpu->cs_full |= (uint8_t) (1u << ((cpu->cs_top + i) & CPU_X86_64_ST_MASK));
+}
+
 // Push a value onto the x87 stack.
-void Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, long double value)
+void Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, Fp_Wide bits)
 {
     cpu->cs_top = (cpu->cs_top - 1) & CPU_X86_64_ST_MASK;
-    cpu->cs_st[cpu->cs_top] = value;
-    cpu->cs_full |= (uint8_t) (1u << cpu->cs_top);
+    Cpu_x86_64_StWrite(cpu, 0, bits);
 }
 
 // Pop the x87 stack.
-long double Cpu_x86_64_StPop(Cpu_x86_64_State *cpu)
+void Cpu_x86_64_StPop(Cpu_x86_64_State *cpu)
 {
-    long double value = cpu->cs_st[cpu->cs_top];
     cpu->cs_full &= (uint8_t) ~(1u << cpu->cs_top);
     cpu->cs_top = (cpu->cs_top + 1) & CPU_X86_64_ST_MASK;
+}
+
+// Raise an x87 operation's flags in the status word, its C1 among them.
+void Cpu_x86_64_X87Status(Cpu_x86_64_State *cpu, uint32_t flags)
+{
+    cpu->cs_fsw = (uint16_t) ((cpu->cs_fsw & ~CPU_X86_64_FSW_C1) | flags);
+}
+
+// Fault a push onto a full register: IE, SF and C1; masked, the indefinite.
+void Cpu_x86_64_X87Overflow(Cpu_x86_64_State *cpu)
+{
+    Cpu_x86_64_X87Status(cpu, CPU_X86_64_FSW_IE | CPU_X86_64_FSW_SF | CPU_X86_64_FSW_C1);
+    if (cpu->cs_fcw & CPU_X86_64_FSW_IE) {
+        Cpu_x86_64_StPush(cpu, Cpu_x86_64_X87Indefinite());
+    }
+}
+
+// Fault a read of an empty register: IE and SF; return whether IE is masked.
+bool Cpu_x86_64_X87Underflow(Cpu_x86_64_State *cpu)
+{
+    Cpu_x86_64_X87Status(cpu, CPU_X86_64_FSW_IE | CPU_X86_64_FSW_SF);
+    return (cpu->cs_fcw & CPU_X86_64_FSW_IE) != 0;
+}
+
+// Return how an x87 operation rounds: RC's mode, tiny after rounding.
+Fp_Context Cpu_x86_64_X87Context(const Cpu_x86_64_State *cpu)
+{
+    Fp_Context ctx = {
+        .fc_mode      = Cpu_x86_64_RoundMode(cpu->cs_fcw >> CPU_X86_64_FCW_RC_SHIFT),
+        .fc_tininess  = FP_ROUND_TINY_AFTER,
+        .fc_flags     = 0
+    };
+    return ctx;
+}
+
+// Return the format PC rounds arithmetic to: its precision, binary80's range.
+Fp_Format Cpu_x86_64_X87Precision(const Cpu_x86_64_State *cpu)
+{
+    Fp_Format fmt = Fp_FormatBinary80;
+
+    switch (cpu->cs_fcw >> CPU_X86_64_FCW_PC_SHIFT & CPU_X86_64_FCW_FIELD) {
+        case CPU_X86_64_FCW_PC_24: {
+            fmt.ff_mant = Fp_FormatBinary32.ff_mant;
+        } break;
+        case CPU_X86_64_FCW_PC_53: {
+            fmt.ff_mant = Fp_FormatBinary64.ff_mant;
+        } break;
+        default: {
+        }
+    }
+    return fmt;
+}
+
+// Unpack an x87 register's bits, DE noted for a denormal or pseudo-denormal.
+Fp_Value Cpu_x86_64_X87Unpack(Fp_Wide bits, uint32_t *denormal)
+{
+    Fp_Value value = Fp_FormatUnpack(&Fp_FormatBinary80, bits);
+
+    if (value.fv_class == FP_CLASS_SUBNORMAL) {
+        *denormal = CPU_X86_64_FSW_DE;
+    }
     return value;
+}
+
+// Return an x87 operation's NaN: its larger NaN quieted, else the indefinite.
+Fp_Value Cpu_x86_64_X87Quiet(const Fp_Value *a, const Fp_Value *b)
+{
+    Fp_Value nan = Fp_FormatMake(FP_SIGN_NEGATIVE, Fp_WideMake(0, 0), 0);
+
+    if (a->fv_class == FP_CLASS_UNSUPPORTED || b->fv_class == FP_CLASS_UNSUPPORTED) {
+        nan.fv_class = FP_CLASS_NAN;
+    } else if (a->fv_class == FP_CLASS_NAN && b->fv_class == FP_CLASS_NAN) {
+        bool a_quiet = ! Fp_FormatIsSignalling(a);
+        bool b_quiet = ! Fp_FormatIsSignalling(b);
+        int32_t order = a_quiet != b_quiet ? (a_quiet ? 1 : -1) : Fp_WideCmp(a->fv_mant, b->fv_mant);
+
+        nan = order >= 0 ? *a : *b;
+        if (order == 0 && a->fv_sign != b->fv_sign) {
+            nan.fv_sign = FP_SIGN_POSITIVE;
+        }
+    } else if (a->fv_class == FP_CLASS_NAN) {
+        nan = *a;
+    } else if (b->fv_class == FP_CLASS_NAN) {
+        nan = *b;
+    }
+    nan.fv_class = FP_CLASS_NAN;
+    nan.fv_mant.fw_hi |= FP_WORD_TOP;
+    return nan;
+}
+
+// Return the bits of the x87's floating-point indefinite.
+Fp_Wide Cpu_x86_64_X87Indefinite(void)
+{
+    return Fp_WideMake(CPU_X86_64_X87_INDEFINITE_HI, CPU_X86_64_X87_INDEFINITE_LO);
+}
+
+// Settle an x87 operation's flags and C1; return whether it writes its result.
+bool Cpu_x86_64_X87Settle(Cpu_x86_64_State *cpu, const Fp_Context *ctx, uint32_t denormal, Cpu_x86_64_X87Dest dest)
+{
+    uint32_t masks = cpu->cs_fcw & CPU_X86_64_X87_EXCEPTIONS;
+    uint32_t flags = ctx->fc_flags;
+    uint32_t pre = denormal;
+    uint32_t post = flags & FP_FLAG_INEXACT ? CPU_X86_64_FSW_PE : 0;
+    uint32_t c1 = flags & FP_FLAG_ROUNDED_UP ? CPU_X86_64_FSW_C1 : 0;
+
+    if (flags & FP_FLAG_INVALID) {
+        pre = CPU_X86_64_FSW_IE;
+    } else if (flags & FP_FLAG_DIVIDE) {
+        pre = CPU_X86_64_FSW_ZE;
+    }
+    if (pre & ~masks) {
+        Cpu_x86_64_X87Status(cpu, pre);
+        return false;
+    }
+    if (flags & FP_FLAG_OVERFLOW) {
+        post |= CPU_X86_64_FSW_OE;
+    } else if ((flags & FP_FLAG_UNDERFLOW) || ((flags & FP_FLAG_TINY) && ! (masks & CPU_X86_64_FSW_UE))) {
+        post |= CPU_X86_64_FSW_UE;
+    }
+    if (dest == CPU_X86_64_X87_DEST_MEM && (post & (CPU_X86_64_FSW_OE | CPU_X86_64_FSW_UE) & ~masks)) {
+        Cpu_x86_64_X87Status(cpu, post & (CPU_X86_64_FSW_OE | CPU_X86_64_FSW_UE));
+        return false;
+    }
+    Cpu_x86_64_X87Status(cpu, pre | post | c1);
+    return true;
+}
+
+// Compute an x87 arithmetic form's %st(i) op %st, rounded to a format.
+Fp_Value Cpu_x86_64_X87Compute(int32_t form, const Fp_Value *a, const Fp_Value *b, const Fp_Format *fmt, Fp_Context *ctx)
+{
+    switch (form) {
+        case ENC_X86_64_X87_FADDP: {
+            return Fp_ArithAdd(a, b, fmt, ctx);
+        } break;
+        case ENC_X86_64_X87_FMULP: {
+            return Fp_ArithMul(a, b, fmt, ctx);
+        } break;
+        case ENC_X86_64_X87_FSUBRP: {
+            return Fp_ArithSub(a, b, fmt, ctx);
+        } break;
+        default: {
+            return Fp_ArithDiv(a, b, fmt, ctx);
+        }
+    }
+}
+
+// Run an arithmetic form on %st(i) and %st into %st(i), then pop the stack.
+void Cpu_x86_64_X87Arith(Cpu_x86_64_State *cpu, int32_t i, int32_t form)
+{
+    uint32_t masks = cpu->cs_fcw & CPU_X86_64_X87_EXCEPTIONS;
+    Fp_Format fmt = Cpu_x86_64_X87Precision(cpu);
+    Fp_Context ctx = Cpu_x86_64_X87Context(cpu);
+    uint32_t denormal = 0;
+
+    if (! Cpu_x86_64_IsStFull(cpu, 0) || ! Cpu_x86_64_IsStFull(cpu, i)) {
+        if (Cpu_x86_64_X87Underflow(cpu)) {
+            Cpu_x86_64_StWrite(cpu, i, Cpu_x86_64_X87Indefinite());
+            Cpu_x86_64_StPop(cpu);
+        }
+        return;
+    }
+
+    Fp_Value a = Cpu_x86_64_X87Unpack(*Cpu_x86_64_St(cpu, i), &denormal);
+    Fp_Value b = Cpu_x86_64_X87Unpack(*Cpu_x86_64_St(cpu, 0), &denormal);
+    if (Fp_FormatIsNan(&a) || Fp_FormatIsNan(&b)) {
+        denormal = 0;
+    }
+    Fp_Value result = Cpu_x86_64_X87Compute(form, &a, &b, &fmt, &ctx);
+    bool over = (ctx.fc_flags & FP_FLAG_OVERFLOW) && ! (masks & CPU_X86_64_FSW_OE);
+    bool under = (ctx.fc_flags & FP_FLAG_TINY) && ! (masks & CPU_X86_64_FSW_UE);
+
+    if (result.fv_class == FP_CLASS_NAN) {
+        result = Cpu_x86_64_X87Quiet(&a, &b);
+    } else if (over || under) {
+        Fp_Context scaled = Cpu_x86_64_X87Context(cpu);
+        fmt.ff_min -= CPU_X86_64_X87_SCALE;
+        fmt.ff_max += CPU_X86_64_X87_SCALE;
+        result = Cpu_x86_64_X87Compute(form, &a, &b, &fmt, &scaled);
+        result.fv_exp += over ? -CPU_X86_64_X87_SCALE : CPU_X86_64_X87_SCALE;
+        ctx.fc_flags = (ctx.fc_flags & (FP_FLAG_OVERFLOW | FP_FLAG_TINY)) | scaled.fc_flags;
+    }
+    if (Cpu_x86_64_X87Settle(cpu, &ctx, denormal, CPU_X86_64_X87_DEST_REG)) {
+        Cpu_x86_64_StWrite(cpu, i, Fp_FormatPack(&Fp_FormatBinary80, &result));
+        Cpu_x86_64_StPop(cpu);
+    }
+}
+
+// Compare %st with %st(i) into ZF, PF and CF, then pop unless IE or DE traps.
+void Cpu_x86_64_X87Compare(Cpu_x86_64_State *cpu, int32_t i)
+{
+    Fp_Context ctx = Cpu_x86_64_X87Context(cpu);
+    uint32_t denormal = 0;
+
+    if (! Cpu_x86_64_IsStFull(cpu, 0) || ! Cpu_x86_64_IsStFull(cpu, i)) {
+        Cpu_x86_64_FlagsOrder(cpu, FP_ORDER_UNORDERED);
+        if (Cpu_x86_64_X87Underflow(cpu)) {
+            Cpu_x86_64_StPop(cpu);
+        }
+        return;
+    }
+
+    Fp_Value a = Cpu_x86_64_X87Unpack(*Cpu_x86_64_St(cpu, 0), &denormal);
+    Fp_Value b = Cpu_x86_64_X87Unpack(*Cpu_x86_64_St(cpu, i), &denormal);
+    if (Fp_FormatIsNan(&a) || Fp_FormatIsNan(&b)) {
+        denormal = 0;
+    }
+    Cpu_x86_64_FlagsOrder(cpu, Fp_ArithCmp(&a, &b, FP_COMPARE_QUIET, &ctx));
+    if (Cpu_x86_64_X87Settle(cpu, &ctx, denormal, CPU_X86_64_X87_DEST_REG)) {
+        Cpu_x86_64_StPop(cpu);
+    }
+}
+
+// Push a binary32 or binary64 value; DE, even unmasked, still loads it.
+void Cpu_x86_64_X87Load(Cpu_x86_64_State *cpu, const Fp_Format *fmt, uint64_t bits)
+{
+    Fp_Value value = Fp_FormatUnpack(fmt, Fp_WideMake(0, bits));
+    uint32_t flags = value.fv_class == FP_CLASS_SUBNORMAL ? CPU_X86_64_FSW_DE : 0;
+
+    if (cpu->cs_trap != CPU_X86_64_TRAP_NONE) {
+        return;
+    }
+    if (Cpu_x86_64_IsStFull(cpu, -1)) {
+        Cpu_x86_64_X87Overflow(cpu);
+        return;
+    }
+    if (Fp_FormatIsSignalling(&value)) {
+        flags = CPU_X86_64_FSW_IE;
+        if (! (cpu->cs_fcw & CPU_X86_64_FSW_IE)) {
+            Cpu_x86_64_X87Status(cpu, flags);
+            return;
+        }
+    }
+    if (value.fv_class == FP_CLASS_NAN) {
+        value = Cpu_x86_64_X87Quiet(&value, &value);
+    }
+    Cpu_x86_64_X87Status(cpu, flags);
+    Cpu_x86_64_StPush(cpu, Fp_FormatPack(&Fp_FormatBinary80, &value));
+}
+
+// Push a signed 64-bit integer, which the extended format holds exactly.
+void Cpu_x86_64_X87LoadInteger(Cpu_x86_64_State *cpu, uint64_t bits)
+{
+    Fp_Context ctx = Cpu_x86_64_X87Context(cpu);
+
+    if (cpu->cs_trap != CPU_X86_64_TRAP_NONE) {
+        return;
+    }
+    if (Cpu_x86_64_IsStFull(cpu, -1)) {
+        Cpu_x86_64_X87Overflow(cpu);
+        return;
+    }
+
+    Fp_Value value = Fp_ToValue((int64_t) bits, &Fp_FormatBinary80, &ctx);
+    Cpu_x86_64_X87Status(cpu, 0);
+    Cpu_x86_64_StPush(cpu, Fp_FormatPack(&Fp_FormatBinary80, &value));
+}
+
+// Push the extended value at addr as its bits are, whatever they encode.
+void Cpu_x86_64_X87LoadExtended(Cpu_x86_64_State *cpu, uint64_t addr)
+{
+    if (! Cpu_x86_64_ReadAt(cpu, addr, CPU_X86_64_X87_REG_SIZE)) {
+        return;
+    }
+    if (Cpu_x86_64_IsStFull(cpu, -1)) {
+        Cpu_x86_64_X87Overflow(cpu);
+        return;
+    }
+
+    uint64_t lo = Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_64);
+    uint64_t hi = Cpu_x86_64_ReadMem(cpu, addr + CPU_X86_64_X87_TOP_OFF, CPU_X86_64_WIDTH_16);
+    Cpu_x86_64_X87Status(cpu, 0);
+    Cpu_x86_64_StPush(cpu, Fp_WideMake(hi, lo));
+}
+
+// Store %st as binary32 or binary64 at addr in RC's mode, then pop.
+void Cpu_x86_64_X87Store(Cpu_x86_64_State *cpu, uint64_t addr, const Fp_Format *fmt)
+{
+    Cpu_x86_64_OperandWidth width = (Cpu_x86_64_OperandWidth) fmt->ff_bits;
+    Fp_Context ctx = Cpu_x86_64_X87Context(cpu);
+    Fp_Value zero = Fp_FormatMake(FP_SIGN_POSITIVE, Fp_WideMake(0, 0), 0);
+    Fp_Value result = Cpu_x86_64_X87Quiet(&zero, &zero);
+
+    if (! Cpu_x86_64_WriteAt(cpu, addr, (size_t) width / CPU_X86_64_BITS_PER_BYTE)) {
+        return;
+    }
+    if (! Cpu_x86_64_IsStFull(cpu, 0)) {
+        if (Cpu_x86_64_X87Underflow(cpu)) {
+            Cpu_x86_64_WriteMem(cpu, addr, Fp_FormatPack(fmt, &result).fw_lo, width);
+            Cpu_x86_64_StPop(cpu);
+        }
+        return;
+    }
+
+    Fp_Value value = Fp_FormatUnpack(&Fp_FormatBinary80, *Cpu_x86_64_St(cpu, 0));
+    result = Fp_RoundValue(&value, fmt, &ctx);
+    if (Fp_FormatIsNan(&value)) {
+        result = Cpu_x86_64_X87Quiet(&value, &value);
+    }
+    if (Cpu_x86_64_X87Settle(cpu, &ctx, 0, CPU_X86_64_X87_DEST_MEM)) {
+        Cpu_x86_64_WriteMem(cpu, addr, Fp_FormatPack(fmt, &result).fw_lo, width);
+        Cpu_x86_64_StPop(cpu);
+    }
+}
+
+// Store %st at addr truncated to a signed 64-bit integer, then pop.
+void Cpu_x86_64_X87StoreInteger(Cpu_x86_64_State *cpu, uint64_t addr)
+{
+    Fp_Context ctx = Cpu_x86_64_X87Context(cpu);
+    uint64_t integer = CPU_X86_64_INDEFINITE_64;
+
+    if (! Cpu_x86_64_WriteAt(cpu, addr, sizeof(uint64_t))) {
+        return;
+    }
+    if (! Cpu_x86_64_IsStFull(cpu, 0)) {
+        if (Cpu_x86_64_X87Underflow(cpu)) {
+            Cpu_x86_64_WriteMem(cpu, addr, integer, CPU_X86_64_WIDTH_64);
+            Cpu_x86_64_StPop(cpu);
+        }
+        return;
+    }
+
+    Fp_Value value = Fp_FormatUnpack(&Fp_FormatBinary80, *Cpu_x86_64_St(cpu, 0));
+    ctx.fc_mode = FP_ROUND_ZERO;
+    integer = Fp_ToInteger(&value, CPU_X86_64_WIDTH_64, &ctx);
+    if (ctx.fc_flags & FP_FLAG_INVALID) {
+        integer = CPU_X86_64_INDEFINITE_64;
+    }
+    if (Cpu_x86_64_X87Settle(cpu, &ctx, 0, CPU_X86_64_X87_DEST_MEM)) {
+        Cpu_x86_64_WriteMem(cpu, addr, integer, CPU_X86_64_WIDTH_64);
+        Cpu_x86_64_StPop(cpu);
+    }
+}
+
+// Store %st's bits at addr as they are, then pop.
+void Cpu_x86_64_X87StoreExtended(Cpu_x86_64_State *cpu, uint64_t addr)
+{
+    Fp_Wide bits = Cpu_x86_64_X87Indefinite();
+
+    if (! Cpu_x86_64_WriteAt(cpu, addr, CPU_X86_64_X87_REG_SIZE)) {
+        return;
+    }
+    if (! Cpu_x86_64_IsStFull(cpu, 0)) {
+        if (! Cpu_x86_64_X87Underflow(cpu)) {
+            return;
+        }
+    } else {
+        bits = *Cpu_x86_64_St(cpu, 0);
+        Cpu_x86_64_X87Status(cpu, 0);
+    }
+    Cpu_x86_64_WriteMem(cpu, addr, bits.fw_lo, CPU_X86_64_WIDTH_64);
+    Cpu_x86_64_WriteMem(cpu, addr + CPU_X86_64_X87_TOP_OFF, bits.fw_hi, CPU_X86_64_WIDTH_16);
+    Cpu_x86_64_StPop(cpu);
+}
+
+// Copy %st into %st(i), then pop.
+void Cpu_x86_64_X87Copy(Cpu_x86_64_State *cpu, int32_t i)
+{
+    Fp_Wide bits = Cpu_x86_64_X87Indefinite();
+
+    if (! Cpu_x86_64_IsStFull(cpu, 0)) {
+        if (! Cpu_x86_64_X87Underflow(cpu)) {
+            return;
+        }
+    } else {
+        bits = *Cpu_x86_64_St(cpu, 0);
+        Cpu_x86_64_X87Status(cpu, 0);
+    }
+    Cpu_x86_64_StWrite(cpu, i, bits);
+    Cpu_x86_64_StPop(cpu);
+}
+
+// Flip %st's sign bit, whatever it encodes.
+void Cpu_x86_64_X87Negate(Cpu_x86_64_State *cpu)
+{
+    if (! Cpu_x86_64_IsStFull(cpu, 0)) {
+        if (Cpu_x86_64_X87Underflow(cpu)) {
+            Cpu_x86_64_StWrite(cpu, 0, Cpu_x86_64_X87Indefinite());
+        }
+        return;
+    }
+    Cpu_x86_64_St(cpu, 0)->fw_hi ^= CPU_X86_64_X87_SIGN_BIT;
+    Cpu_x86_64_X87Status(cpu, 0);
+}
+
+// Raise #MF for an unmasked x87 exception pending; return whether none is.
+bool Cpu_x86_64_X87Wait(Cpu_x86_64_State *cpu, uint64_t rip)
+{
+    if (! (cpu->cs_fsw & ~cpu->cs_fcw & CPU_X86_64_X87_EXCEPTIONS)) {
+        return true;
+    }
+    Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_MF, ERR_CPU_X87_FLOAT_UNMASKED, (Cpu_x86_64_TypeULLong) Cpu_x86_64_ReadFsw(cpu), (Cpu_x86_64_TypeULLong) rip);
+    return false;
 }
 
 // Set the x87 control word, its reserved bits read as they always do.
@@ -591,20 +1015,14 @@ void Cpu_x86_64_WriteFsw(Cpu_x86_64_State *cpu, uint16_t fsw)
 }
 
 // Classify a value held in an x87 register, as its tag says it.
-Cpu_x86_64_Tag Cpu_x86_64_ClassifyTag(long double value)
+Cpu_x86_64_Tag Cpu_x86_64_ClassifyTag(Fp_Wide bits)
 {
-    uint8_t bytes[FP_EXTENDED_SIZE];
-    uint64_t mant = 0;
+    uint64_t exp = bits.fw_hi & CPU_X86_64_X87_EXP_MASK;
 
-    Fp_HostEncodeExtended(value, bytes);
-    for (int32_t i = 0; i < FP_EXTENDED_TOP_OFF; i++) {
-        mant |= (uint64_t) bytes[i] << (FP_BITS_PER_BYTE * i);
-    }
-    uint32_t exp = (bytes[FP_EXTENDED_TOP_OFF] | (uint32_t) bytes[FP_EXTENDED_TOP_OFF + 1] << FP_BITS_PER_BYTE) & FP_EXTENDED_EXP_MAX;
-    if (exp == 0 && mant == 0) {
+    if (exp == 0 && bits.fw_lo == 0) {
         return CPU_X86_64_TAG_ZERO;
     }
-    if (exp == 0 || exp == FP_EXTENDED_EXP_MAX || ! (mant & FP_EXTENDED_INT_BIT)) {
+    if (exp == 0 || exp == CPU_X86_64_X87_EXP_MASK || ! (bits.fw_lo & FP_WORD_TOP)) {
         return CPU_X86_64_TAG_SPECIAL;
     }
     return CPU_X86_64_TAG_VALID;
@@ -659,34 +1077,6 @@ void Cpu_x86_64_LoadEnv(Cpu_x86_64_State *cpu, uint64_t addr)
     Cpu_x86_64_WriteFtw(cpu, (uint16_t) Cpu_x86_64_ReadMem(cpu, addr + CPU_X86_64_ENV_FTW_OFF, CPU_X86_64_WIDTH_16));
 }
 
-// Execute a group 15 operation: a load or store of MXCSR.
-void Cpu_x86_64_StepGrp15(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip)
-{
-    int32_t digit = insn->ci_reg & ENC_X86_64_REG_MASK;
-
-    if (insn->ci_rmkind == CPU_X86_64_RM_REG || insn->ci_rep || insn->ci_opsize16
-        || (digit != ENC_X86_64_GRP_LDMXCSR && digit != ENC_X86_64_GRP_STMXCSR)) {
-        Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_GROUP15_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
-        return;
-    }
-
-    uint64_t addr = Cpu_x86_64_RmAddr(cpu, insn, next);
-    if (digit == ENC_X86_64_GRP_STMXCSR) {
-        Cpu_x86_64_WriteMem(cpu, addr, cpu->cs_mxcsr, CPU_X86_64_WIDTH_32);
-        return;
-    }
-
-    uint64_t mxcsr = Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_32);
-    if (cpu->cs_trap != CPU_X86_64_TRAP_NONE) {
-        return;
-    }
-    if (mxcsr & ~(uint64_t) CPU_X86_64_MXCSR_MASK) {
-        Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_GP, ERR_CPU_MXCSR_RESERVED, (Cpu_x86_64_TypeULLong) mxcsr, (Cpu_x86_64_TypeULLong) rip);
-        return;
-    }
-    cpu->cs_mxcsr = (uint32_t) mxcsr;
-}
-
 // Execute an x87 load or store of memory.
 void Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip)
 {
@@ -695,36 +1085,28 @@ void Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, u
 
     switch (insn->ci_op << ENC_X86_64_REG_SHIFT | digit) {
         case ENC_X86_64_OPCODE_X87_D9 << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M32: {
-            Cpu_x86_64_StPush(cpu, Fp_HostFloatFromBits((uint32_t) Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_32)));
+            Cpu_x86_64_X87Load(cpu, &Fp_FormatBinary32, Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_32));
         } break;
         case ENC_X86_64_OPCODE_X87_D9 << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M32: {
-            Cpu_x86_64_WriteMem(cpu, addr, Fp_HostFloatBits((float) Cpu_x86_64_StPop(cpu)), CPU_X86_64_WIDTH_32);
+            Cpu_x86_64_X87Store(cpu, addr, &Fp_FormatBinary32);
         } break;
         case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M64: {
-            Cpu_x86_64_StPush(cpu, Fp_HostDoubleFromBits(Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_64)));
+            Cpu_x86_64_X87Load(cpu, &Fp_FormatBinary64, Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_64));
         } break;
         case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M64: {
-            Cpu_x86_64_WriteMem(cpu, addr, Fp_HostDoubleBits((double) Cpu_x86_64_StPop(cpu)), CPU_X86_64_WIDTH_64);
+            Cpu_x86_64_X87Store(cpu, addr, &Fp_FormatBinary64);
         } break;
         case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FISTTP_M64: {
-            Cpu_x86_64_WriteMem(cpu, addr, Cpu_x86_64_Truncate(Cpu_x86_64_StPop(cpu), CPU_X86_64_WIDTH_64), CPU_X86_64_WIDTH_64);
+            Cpu_x86_64_X87StoreInteger(cpu, addr);
         } break;
         case ENC_X86_64_OPCODE_X87_DF << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FILD_M64: {
-            Cpu_x86_64_StPush(cpu, (long double) (int64_t) Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_64));
+            Cpu_x86_64_X87LoadInteger(cpu, Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_64));
         } break;
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M80: {
-            const uint8_t *p = Cpu_x86_64_ReadAt(cpu, addr, FP_EXTENDED_SIZE);
-            if (! p) {
-                return;
-            }
-            Cpu_x86_64_StPush(cpu, Fp_HostDecodeExtended(p));
+            Cpu_x86_64_X87LoadExtended(cpu, addr);
         } break;
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M80: {
-            uint8_t *p = Cpu_x86_64_WriteAt(cpu, addr, FP_EXTENDED_SIZE);
-            if (! p) {
-                return;
-            }
-            Fp_HostEncodeExtended(Cpu_x86_64_StPop(cpu), p);
+            Cpu_x86_64_X87StoreExtended(cpu, addr);
         } break;
         case ENC_X86_64_OPCODE_X87_D9 << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLDCW: {
             uint64_t fcw = Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_16);
@@ -750,9 +1132,12 @@ void Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, u
     }
 }
 
-// Execute an x87 operation.
+// Execute an x87 operation, a waiting one after any exception pending.
 void Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip)
 {
+    if (! Cpu_x86_64_IsX87NoWait(insn) && ! Cpu_x86_64_X87Wait(cpu, rip)) {
+        return;
+    }
     if (insn->ci_rmkind != CPU_X86_64_RM_REG) {
         Cpu_x86_64_StepX87Mem(cpu, insn, next, rip);
         return;
@@ -760,8 +1145,6 @@ void Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint
 
     int32_t i = insn->ci_rm & ENC_X86_64_REG_MASK;
     int32_t form = CPU_X86_64_X87_REG_FORM | (insn->ci_reg & ENC_X86_64_REG_MASK) << ENC_X86_64_REG_SHIFT;
-    long double *top = Cpu_x86_64_St(cpu, 0);
-    long double *sti = Cpu_x86_64_St(cpu, i);
 
     switch (insn->ci_op) {
         case ENC_X86_64_OPCODE_X87_D9: {
@@ -769,7 +1152,7 @@ void Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint
                 Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_X87_D9_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
                 return;
             }
-            *top = -*top;
+            Cpu_x86_64_X87Negate(cpu);
         } break;
         case ENC_X86_64_OPCODE_X87_DB: {
             if (form + i != ENC_X86_64_X87_FNCLEX) {
@@ -779,25 +1162,12 @@ void Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint
             cpu->cs_fsw &= (uint16_t) ~(CPU_X86_64_X87_EXCEPTIONS | CPU_X86_64_FSW_SF);
         } break;
         case ENC_X86_64_OPCODE_X87_DE: {
-            switch (form) {
-                case ENC_X86_64_X87_FADDP: {
-                    *sti = *sti + *top;
-                } break;
-                case ENC_X86_64_X87_FMULP: {
-                    *sti = *sti * *top;
-                } break;
-                case ENC_X86_64_X87_FSUBRP: {
-                    *sti = *sti - *top;
-                } break;
-                case ENC_X86_64_X87_FDIVRP: {
-                    *sti = *sti / *top;
-                } break;
-                default: {
-                    Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_X87_DE_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
-                    return;
-                }
+            if (form != ENC_X86_64_X87_FADDP && form != ENC_X86_64_X87_FMULP
+                && form != ENC_X86_64_X87_FSUBRP && form != ENC_X86_64_X87_FDIVRP) {
+                Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_X87_DE_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
+                return;
             }
-            Cpu_x86_64_StPop(cpu);
+            Cpu_x86_64_X87Arith(cpu, i, form);
         } break;
         case ENC_X86_64_OPCODE_X87_DF: {
             if (form + i == ENC_X86_64_X87_FNSTSW_AX) {
@@ -808,16 +1178,14 @@ void Cpu_x86_64_StepX87(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint
                 Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_X87_DF_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
                 return;
             }
-            Cpu_x86_64_FlagsCompare(cpu, *top, *sti);
-            Cpu_x86_64_StPop(cpu);
+            Cpu_x86_64_X87Compare(cpu, i);
         } break;
         case ENC_X86_64_OPCODE_X87_DD: {
             if (form != ENC_X86_64_X87_FSTP) {
                 Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_X87_DD_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
                 return;
             }
-            *sti = *top;
-            Cpu_x86_64_StPop(cpu);
+            Cpu_x86_64_X87Copy(cpu, i);
         } break;
         default: {
             Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_X87_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
@@ -1152,19 +1520,12 @@ void Cpu_x86_64_Step(Cpu_x86_64_State *cpu)
             Cpu_x86_64_StepX87(cpu, &insn, next, rip);
         } break;
         case ENC_X86_64_OPCODE_FWAIT: {
-            // empty
+            Cpu_x86_64_X87Wait(cpu, rip);
         } break;
         default: {
             Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_OPCODE_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
         }
     }
-}
-
-// Release what a CPU holds.
-void Cpu_x86_64_Free(Cpu_x86_64_State *cpu)
-{
-    free(cpu->cs_fault);
-    cpu->cs_fault = NULL;
 }
 
 // Read a little-endian signed value of n bytes.
@@ -1772,6 +2133,20 @@ bool Cpu_x86_64_IsX87(int32_t op)
 {
     return op == ENC_X86_64_OPCODE_X87_D9 || op == ENC_X86_64_OPCODE_X87_DB || op == ENC_X86_64_OPCODE_X87_DD
         || op == ENC_X86_64_OPCODE_X87_DE || op == ENC_X86_64_OPCODE_X87_DF;
+}
+
+// Return whether an x87 instruction runs past an exception pending, no-wait.
+bool Cpu_x86_64_IsX87NoWait(const Cpu_x86_64_Insn *insn)
+{
+    int32_t digit = insn->ci_reg & ENC_X86_64_REG_MASK;
+    int32_t form = CPU_X86_64_X87_REG_FORM | digit << ENC_X86_64_REG_SHIFT | (insn->ci_rm & ENC_X86_64_REG_MASK);
+
+    if (insn->ci_rmkind != CPU_X86_64_RM_REG) {
+        return (insn->ci_op == ENC_X86_64_OPCODE_X87_D9 && (digit == ENC_X86_64_X87_FNSTCW || digit == ENC_X86_64_X87_FNSTENV))
+               || (insn->ci_op == ENC_X86_64_OPCODE_X87_DD && digit == ENC_X86_64_X87_FNSTSW_M16);
+    }
+    return (insn->ci_op == ENC_X86_64_OPCODE_X87_DB && form == ENC_X86_64_X87_FNCLEX)
+           || (insn->ci_op == ENC_X86_64_OPCODE_X87_DF && form == ENC_X86_64_X87_FNSTSW_AX);
 }
 
 // Write the r/m operand into out, as a register, disp(%base) or disp(%rip).

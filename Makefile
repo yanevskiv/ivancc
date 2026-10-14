@@ -116,7 +116,7 @@ $(LD_BIN): $(LD_OBJS) | $(BUILD)/bin
 	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 $(EMU_BIN): $(EMU_OBJS) | $(BUILD)/bin
-	$(CC) $(CFLAGS) $(WARN) $^ $(LDLIBS) -o $@
+	$(CC) $(CFLAGS) $(WARN) $^ -o $@
 
 # --- test recipes ---
 $(TEST_NAMES): %: tests/%.c $(TEST_DEPS)
