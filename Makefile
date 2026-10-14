@@ -57,12 +57,13 @@ LIBC_OBJS    := $(patsubst src/libc/%.c,$(OUT)/libc/linux/%.o,$(LIBC_SRCS))
 
 TEST_TOOL    := tests/run_test
 SYNTAX_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/syntax/syntax*.c)))
-BUG_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/bug*.c)))
+BUG_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/fixed_bug_*.c tests/bugs/wontfix_bug_*.c)))
+OPEN_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/open_bug_*.c)))
 EDGE_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/edge*.c tests/edge/libc*.c)))
 LIBC_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/*.c)))
 SYS_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/sys/sys*.c)))
 ERROR_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errors/err*.c tests/errors/fake_err*.c)))
-TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(ERROR_NAMES)
+TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(OPEN_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(ERROR_NAMES)
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
