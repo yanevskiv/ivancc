@@ -103,6 +103,39 @@
 // The bits of a sum kept exact below its top, the rest sticky.
 #define _MATH_SUM_WINDOW 320
 
+// The bits a working value keeps, the rest truncated.
+#define _MATH_WORK_BITS 160
+
+// A constant's limbs, 192 bits, the least significant first, each
+// constant's limbs, and the exponent of its lowest bit.
+#define _MATH_CONSTANTS     3
+#define _MATH_CONST_LIMBS   6
+#define _MATH_LN2_LIMBS     0x7298B62DU, 0x40F34326U, 0x03F2F6AFU, 0xC9E3B398U, 0xD1CF79ABU, 0xB17217F7U
+#define _MATH_LN2_UNIT      (-192)
+#define _MATH_LOG2E_LIMBS   0xDD695A58U, 0xEB577AA8U, 0x691D3E88U, 0xBE87FED0U, 0x5C17F0BBU, 0xB8AA3B29U
+#define _MATH_LOG2E_UNIT    (-191)
+#define _MATH_LOG10E_LIMBS  0x45C9A202U, 0x3EE34602U, 0xAD33DC32U, 0x355BAAAFU, 0x37287195U, 0xDE5BD8A9U
+#define _MATH_LOG10E_UNIT   (-193)
+
+// The magnitude past which every exponential overflows or underflows.
+#define _MATH_EXP_CLAMP 0x1p15L
+
+// The halvings of an exponential's reduced argument, and the greatest
+// divisor of its series.
+#define _MATH_EXP_HALVINGS 8
+#define _MATH_EXP_TERMS    15
+
+// The terms of a logarithm's series.
+#define _MATH_LOG_TERMS 34
+
+// The bounds of log1p's argument taken without forming 1 plus it.
+#define _MATH_LOG1P_LOW  (-0.25L)
+#define _MATH_LOG1P_HIGH 0.5L
+
+// Ten, and its greatest power a long double holds exactly.
+#define _MATH_TEN          10U
+#define _MATH_LDOUBLE_TENS 27
+
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
 // [C99:7.12p4]: INFINITY, a constant expression of float
@@ -199,6 +232,22 @@ enum _Math_Root {
     _MATH_ROOT_CUBE   = 3  // cbrt's
 };
 
+// Which base an exponential or a logarithm takes.
+typedef enum _Math_Base _Math_Base;
+enum _Math_Base {
+    _MATH_BASE_E,  // exp's and log's
+    _MATH_BASE_2,  // exp2's and log2's
+    _MATH_BASE_10  // log10's
+};
+
+// Which constant a working value is made of.
+typedef enum _Math_Constant _Math_Constant;
+enum _Math_Constant {
+    _MATH_CONST_LN2,   // the natural logarithm of 2
+    _MATH_CONST_LOG2E, // the base-2 logarithm of e
+    _MATH_CONST_LOG10E // the base-10 logarithm of e
+};
+
 // An unsigned integer of limbs, the least significant first.
 typedef struct _Math_Wide _Math_Wide;
 struct _Math_Wide {
@@ -259,6 +308,8 @@ void               _Math_WideAdd(_Math_Wide *w, const _Math_Wide *add);
 void               _Math_WideSubtract(_Math_Wide *w, const _Math_Wide *sub);
 void               _Math_WideMultiply(_Math_Wide *to, const _Math_Wide *a, const _Math_Wide *b);
 void               _Math_WidePower(_Math_Wide *to, const _Math_Wide *base, int k);
+unsigned int       _Math_WideDivideSmall(_Math_Wide *w, unsigned int d);
+void               _Math_WideDivide(_Math_Wide *to, const _Math_Wide *a, const _Math_Wide *b);
 
 // The correctly rounded functions' exact values and their one rounding.
 void               _Math_MakeExact(_Math_Exact *exact, long double x);
@@ -271,22 +322,66 @@ long double        _Math_TakeRoot(long double x, _Math_Root degree, _Math_Type t
 long double        _Math_TakeHypot(long double x, long double y, _Math_Type type);
 long double        _Math_TakeFma(long double x, long double y, long double z, _Math_Type type);
 
+// The approximated functions' working values, their cores and their errors.
+void        _Math_TrimExact(_Math_Exact *e);
+void        _Math_WorkMultiply(_Math_Exact *product, const _Math_Exact *a, const _Math_Exact *b);
+void        _Math_WorkAdd(_Math_Exact *sum, const _Math_Exact *a, const _Math_Exact *b);
+void        _Math_WorkDivide(_Math_Exact *quotient, const _Math_Exact *a, const _Math_Exact *b);
+void        _Math_WorkDivideSmall(_Math_Exact *e, unsigned int d);
+void        _Math_MakeReciprocal(_Math_Exact *e, unsigned int d);
+void        _Math_MakeConstant(_Math_Exact *e, _Math_Constant which);
+long        _Math_ReadNearest(const _Math_Exact *e);
+long        _Math_ReduceExp(_Math_Exact *r, const _Math_Exact *t);
+void        _Math_ExpM1Exact(_Math_Exact *em1, const _Math_Exact *r);
+int         _Math_SplitLog(_Math_Exact *num, _Math_Exact *den, const _Math_Exact *u);
+void        _Math_LogExact(_Math_Exact *log, const _Math_Exact *num, const _Math_Exact *den, int e);
+_Bool       _Math_IsPowerTen(long double x, long k);
+long double _Math_RaisePole(void);
+long double _Math_RoundRange(const _Math_Exact *value, _Math_Type type);
+long double _Math_TakeExp(long double x, _Math_Base base, _Math_Type type);
+long double _Math_TakeExpm1(long double x, _Math_Type type);
+long double _Math_TakeLog(long double x, _Math_Base base, _Math_Type type);
+long double _Math_TakeLog1p(long double x, _Math_Type type);
+
 // Exponential and logarithmic functions
 // [C99:7.12.1p2]:  a domain error, EDOM and invalid
 // [C99:7.12.1p4]:  an overflow, HUGE_VAL, ERANGE and overflow
 // [C99:7.12.1p5]:  an underflow, ERANGE implementation-defined
+// [C99:7.12.6.1]:  exp, a range error if x's magnitude is too large
+// [C99:7.12.6.2]:  exp2, the same
+// [C99:7.12.6.3]:  expm1, e to x minus 1, a range error if x is too large
 // [C99:7.12.6.4]:  frexp, a fraction in [1/2, 1) or zero, and a power of 2
 // [C99:7.12.6.5]:  ilogb, logb's exponent as an int
 // [C99:7.12.6.6]:  ldexp, x times 2 to exp
+// [C99:7.12.6.7]:  log, a domain error below zero, a range error at zero
+// [C99:7.12.6.8]:  log10, the same
+// [C99:7.12.6.9]:  log1p, of 1 plus x, a domain error below -1
+// [C99:7.12.6.10]: log2, as log
 // [C99:7.12.6.11]: logb, the exponent of x, a subnormal as if normalized
 // [C99:7.12.6.12]: modf, the integral and fractional parts, x's sign each
 // [C99:7.12.6.13]: scalbn and scalbln, x times FLT_RADIX to n
+// [C99:F.9.3.1]:   exp of a zero and an infinity
+// [C99:F.9.3.2]:   exp2, the same
+// [C99:F.9.3.3]:   expm1 of a zero and an infinity
 // [C99:F.9.3.4]:   frexp of a zero, an infinity or a NaN, raising nothing
 // [C99:F.9.3.5]:   ilogb, invalid when the result is outside int
 // [C99:F.9.3.6]:   ldexp, scalbn on a binary system
+// [C99:F.9.3.7]:   log of a zero, 1, a negative and +inf
+// [C99:F.9.3.8]:   log10, the same
+// [C99:F.9.3.9]:   log1p of a zero, -1, below -1 and +inf
+// [C99:F.9.3.10]:  log2, as log
 // [C99:F.9.3.11]:  logb of a zero, -inf and divide-by-zero
 // [C99:F.9.3.12]:  modf of an infinity and a NaN
 // [C99:F.9.3.13]:  scalbn of a zero, an infinity, and by 0
+double      exp(double x);
+float       expf(float x);
+long double expl(long double x);
+double      exp2(double x);
+float       exp2f(float x);
+long double exp2l(long double x);
+double      expm1(double x);
+float       expm1f(float x);
+long double expm1l(long double x);
 double      frexp(double value, int *exp);
 float       frexpf(float value, int *exp);
 long double frexpl(long double value, int *exp);
@@ -296,6 +391,18 @@ int         ilogbl(long double x);
 double      ldexp(double x, int exp);
 float       ldexpf(float x, int exp);
 long double ldexpl(long double x, int exp);
+double      log(double x);
+float       logf(float x);
+long double logl(long double x);
+double      log10(double x);
+float       log10f(float x);
+long double log10l(long double x);
+double      log1p(double x);
+float       log1pf(float x);
+long double log1pl(long double x);
+double      log2(double x);
+float       log2f(float x);
+long double log2l(long double x);
 double      logb(double x);
 float       logbf(float x);
 long double logbl(long double x);

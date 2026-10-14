@@ -453,6 +453,38 @@ void _Math_WidePower(_Math_Wide *to, const _Math_Wide *base, int k)
     }
 }
 
+// Divide w by a nonzero d, returning the remainder.
+unsigned int _Math_WideDivideSmall(_Math_Wide *w, unsigned int d)
+{
+    uint64_t rest = 0;
+
+    for (int i = _MATH_WIDE_LIMBS - 1; i >= 0; i--) {
+        rest = rest << _MATH_LIMB_BITS | w->mw_limb[i];
+        w->mw_limb[i] = (uint32_t) (rest / d);
+        rest %= d;
+    }
+    return (unsigned int) rest;
+}
+
+// Divide a by a nonzero b into to, the quotient truncated.
+void _Math_WideDivide(_Math_Wide *to, const _Math_Wide *a, const _Math_Wide *b)
+{
+    _Math_Wide rest;
+    _Math_Wide quotient;
+
+    _Math_WideSet(&rest, 0);
+    _Math_WideSet(&quotient, 0);
+    for (int i = _Math_WideTop(a); i >= 0; i--) {
+        _Math_WideShiftLeft(&rest, 1);
+        rest.mw_limb[0] |= _Math_WideReadBit(a, i);
+        if (_Math_WideCompare(&rest, b) >= 0) {
+            _Math_WideSubtract(&rest, b);
+            quotient.mw_limb[i / _MATH_LIMB_BITS] |= _MATH_LOW_BIT << (i % _MATH_LIMB_BITS);
+        }
+    }
+    *to = quotient;
+}
+
 // Make the exact value of a finite nonzero long double.
 void _Math_MakeExact(_Math_Exact *exact, long double x)
 {
@@ -729,6 +761,449 @@ long double _Math_TakeFma(long double x, long double y, long double z, _Math_Typ
     return _Math_RoundExact(&sum, type);
 }
 
+// Keep a working value's top bits, the rest truncated and sticky.
+void _Math_TrimExact(_Math_Exact *e)
+{
+    int drop = _Math_WideTop(&e->me_sig) + 1 - _MATH_WORK_BITS;
+
+    if (drop > 0) {
+        e->me_sticky = _Math_WideShiftRight(&e->me_sig, drop) || e->me_sticky;
+        e->me_unit += drop;
+    }
+}
+
+// Multiply working values a and b into product, trimmed.
+void _Math_WorkMultiply(_Math_Exact *product, const _Math_Exact *a, const _Math_Exact *b)
+{
+    _Math_MultiplyExact(product, a, b);
+    _Math_TrimExact(product);
+}
+
+// Add nonzero working values a and b into sum, trimmed.
+void _Math_WorkAdd(_Math_Exact *sum, const _Math_Exact *a, const _Math_Exact *b)
+{
+    _Math_AddExact(sum, a, b);
+    _Math_TrimExact(sum);
+}
+
+// Divide working value a by a nonzero b, a sticky b a unit up, trimmed.
+void _Math_WorkDivide(_Math_Exact *quotient, const _Math_Exact *a, const _Math_Exact *b)
+{
+    int shift;
+    _Math_Wide one;
+    _Math_Exact top = *a;
+    _Math_Exact bottom = *b;
+    _Bool negative = a->me_negative != b->me_negative;
+
+    _Math_TrimExact(&top);
+    _Math_TrimExact(&bottom);
+    if (bottom.me_sticky) {
+        _Math_WideSet(&one, _MATH_LOW_BIT);
+        _Math_WideAdd(&bottom.me_sig, &one);
+    }
+    shift = 2 * _MATH_WORK_BITS - 1 - _Math_WideTop(&top.me_sig);
+    _Math_WideShiftLeft(&top.me_sig, shift);
+    _Math_WideDivide(&quotient->me_sig, &top.me_sig, &bottom.me_sig);
+    quotient->me_unit = top.me_unit - shift - bottom.me_unit;
+    quotient->me_negative = negative;
+    quotient->me_sticky = 0;
+    _Math_TrimExact(quotient);
+}
+
+// Divide working value e by a nonzero d, trimmed.
+void _Math_WorkDivideSmall(_Math_Exact *e, unsigned int d)
+{
+    _Math_WideShiftLeft(&e->me_sig, _MATH_LIMB_BITS);
+    e->me_unit -= _MATH_LIMB_BITS;
+    _Math_WideDivideSmall(&e->me_sig, d);
+    _Math_TrimExact(e);
+}
+
+// Make the reciprocal of a nonzero d as a working value.
+void _Math_MakeReciprocal(_Math_Exact *e, unsigned int d)
+{
+    _Math_WideSet(&e->me_sig, _MATH_LOW_BIT);
+    _Math_WideShiftLeft(&e->me_sig, _MATH_WORK_BITS);
+    e->me_unit = -_MATH_WORK_BITS;
+    e->me_negative = 0;
+    e->me_sticky = 0;
+    _Math_WorkDivideSmall(e, d);
+}
+
+// Make a constant as a value, untrimmed.
+void _Math_MakeConstant(_Math_Exact *e, _Math_Constant which)
+{
+    const unsigned int limbs[_MATH_CONSTANTS][_MATH_CONST_LIMBS] = {{_MATH_LN2_LIMBS}, {_MATH_LOG2E_LIMBS}, {_MATH_LOG10E_LIMBS}};
+    const int units[_MATH_CONSTANTS] = {_MATH_LN2_UNIT, _MATH_LOG2E_UNIT, _MATH_LOG10E_UNIT};
+
+    _Math_WideSet(&e->me_sig, 0);
+    memcpy(e->me_sig.mw_limb, limbs[which], sizeof(limbs[which]));
+    e->me_unit = units[which];
+    e->me_negative = 0;
+    e->me_sticky = 0;
+}
+
+// Read the integer nearest a working value, ties away from zero.
+long _Math_ReadNearest(const _Math_Exact *e)
+{
+    long n;
+    _Math_Wide w = e->me_sig;
+
+    _Math_WideAlign(&w, e->me_unit + 1);
+    n = (long) ((_Math_WideReadLow(&w) + 1) >> 1);
+    return e->me_negative ? -n : n;
+}
+
+// Reduce t to r, t less n times ln 2, returning n.
+long _Math_ReduceExp(_Math_Exact *r, const _Math_Exact *t)
+{
+    long n;
+    _Math_Exact step;
+    _Math_Exact constant;
+
+    _Math_MakeConstant(&constant, _MATH_CONST_LOG2E);
+    _Math_WorkMultiply(&step, t, &constant);
+    n = _Math_ReadNearest(&step);
+    if (n == 0) {
+        *r = *t;
+        return 0;
+    }
+    _Math_MakeExact(&step, (long double) -n);
+    _Math_MakeConstant(&constant, _MATH_CONST_LN2);
+    _Math_MultiplyExact(&step, &step, &constant);
+    _Math_WorkAdd(r, t, &step);
+    return n;
+}
+
+// Take e to r less 1, r reduced, by halvings, a series and doublings.
+void _Math_ExpM1Exact(_Math_Exact *em1, const _Math_Exact *r)
+{
+    _Math_Exact sum;
+    _Math_Exact one;
+    _Math_Exact two;
+    _Math_Exact series;
+    _Math_Exact y = *r;
+
+    y.me_unit -= _MATH_EXP_HALVINGS;
+    _Math_MakeExact(&one, 1.0L);
+    _Math_MakeExact(&two, 2.0L);
+    series = one;
+    for (unsigned int k = _MATH_EXP_TERMS; k >= 2; k--) {
+        _Math_WorkMultiply(&series, &y, &series);
+        _Math_WorkDivideSmall(&series, k);
+        _Math_WorkAdd(&series, &one, &series);
+    }
+    _Math_WorkMultiply(em1, &y, &series);
+    for (int i = 0; i < _MATH_EXP_HALVINGS; i++) {
+        _Math_WorkAdd(&sum, em1, &two);
+        _Math_WorkMultiply(em1, em1, &sum);
+    }
+}
+
+// Split u into m - 1 and m + 1, u being m times 2 to the returned e.
+int _Math_SplitLog(_Math_Exact *num, _Math_Exact *den, const _Math_Exact *u)
+{
+    _Math_Exact m = *u;
+    _Math_Exact one;
+    int top = _Math_WideTop(&m.me_sig);
+    int e = m.me_unit + top;
+
+    if (_Math_WideReadBit(&m.me_sig, top - 1) != 0) {
+        e++;
+    }
+    m.me_unit -= e;
+    _Math_TrimExact(&m);
+    _Math_MakeExact(&one, 1.0L);
+    _Math_WorkAdd(den, &m, &one);
+    one.me_negative = 1;
+    _Math_WorkAdd(num, &m, &one);
+    return e;
+}
+
+// Take e times ln 2 plus 2 atanh of num over den, num over den small.
+void _Math_LogExact(_Math_Exact *log, const _Math_Exact *num, const _Math_Exact *den, int e)
+{
+    _Math_Exact s;
+    _Math_Exact z;
+    _Math_Exact part;
+    _Math_Exact series;
+    _Math_Exact constant;
+
+    if (e != 0) {
+        _Math_MakeExact(&part, (long double) e);
+        _Math_MakeConstant(&constant, _MATH_CONST_LN2);
+        _Math_WorkMultiply(&part, &part, &constant);
+    }
+    if (_Math_WideTop(&num->me_sig) == _MATH_WIDE_NONE) {
+        *log = part;
+        return;
+    }
+    _Math_WorkDivide(&s, num, den);
+    _Math_WorkMultiply(&z, &s, &s);
+    _Math_MakeReciprocal(&series, 2 * _MATH_LOG_TERMS - 1);
+    for (int k = _MATH_LOG_TERMS - 2; k >= 0; k--) {
+        _Math_WorkMultiply(&series, &z, &series);
+        _Math_MakeReciprocal(&constant, (unsigned int) (2 * k + 1));
+        _Math_WorkAdd(&series, &constant, &series);
+    }
+    _Math_WorkMultiply(log, &s, &series);
+    log->me_unit++;
+    if (e != 0) {
+        _Math_WorkAdd(log, &part, log);
+    }
+}
+
+// Find whether x is 10 to the power k, k positive.
+_Bool _Math_IsPowerTen(long double x, long k)
+{
+    int exp;
+    _Math_Wide ten;
+    _Math_Wide value;
+    _Math_Wide power;
+
+    if (k < 1 || k > _MATH_LDOUBLE_TENS) {
+        return 0;
+    }
+    _Math_WideSet(&value, _Math_SplitLDouble(x, &exp));
+    if (_Math_WideAlign(&value, exp - _MATH_LDOUBLE_INT_SHIFT)) {
+        return 0;
+    }
+    _Math_WideSet(&ten, _MATH_TEN);
+    _Math_WidePower(&power, &ten, (int) k);
+    return _Math_WideCompare(&power, &value) == 0;
+}
+
+// Raise the pole error, an exact -inf from a finite argument.
+long double _Math_RaisePole(void)
+{
+    errno = ERANGE;
+    feraiseexcept(FE_DIVBYZERO);
+    return -HUGE_VALL;
+}
+
+// Round a value to type, a range error if it rounds to an infinity or zero.
+long double _Math_RoundRange(const _Math_Exact *value, _Math_Type type)
+{
+    long double result = _Math_RoundExact(value, type);
+
+    if (isinf(result) || result == 0) {
+        errno = ERANGE;
+    }
+    return result;
+}
+
+// Take e or 2 to x, within 2 ulps of type.
+long double _Math_TakeExp(long double x, _Math_Base base, _Math_Type type)
+{
+    long n;
+    _Math_Exact t;
+    _Math_Exact r;
+    _Math_Exact one;
+    _Math_Exact value;
+    _Math_Exact constant;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (isinf(x)) {
+        return x > 0 ? x : 0.0L;
+    }
+    if (x == 0) {
+        return 1.0L;
+    }
+    if (fabsl(x) > _MATH_EXP_CLAMP) {
+        x = copysignl(_MATH_EXP_CLAMP, x);
+    }
+    if (base == _MATH_BASE_2 && x == truncl(x)) {
+        _Math_WideSet(&value.me_sig, _MATH_LOW_BIT);
+        value.me_unit = (int) x;
+        value.me_negative = 0;
+        value.me_sticky = 0;
+        return _Math_RoundRange(&value, type);
+    }
+    _Math_MakeExact(&t, x);
+    if (base == _MATH_BASE_2) {
+        _Math_MakeConstant(&constant, _MATH_CONST_LN2);
+        _Math_WorkMultiply(&t, &t, &constant);
+    }
+    n = _Math_ReduceExp(&r, &t);
+    _Math_ExpM1Exact(&value, &r);
+    _Math_MakeExact(&one, 1.0L);
+    _Math_AddExact(&value, &one, &value);
+    value.me_unit += (int) n;
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take e to x less 1, within 2 ulps of type.
+long double _Math_TakeExpm1(long double x, _Math_Type type)
+{
+    long n;
+    _Math_Exact t;
+    _Math_Exact r;
+    _Math_Exact one;
+    _Math_Exact value;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (isinf(x)) {
+        return x > 0 ? x : -1.0L;
+    }
+    if (x == 0) {
+        return x;
+    }
+    if (fabsl(x) > _MATH_EXP_CLAMP) {
+        x = copysignl(_MATH_EXP_CLAMP, x);
+    }
+    _Math_MakeExact(&t, x);
+    n = _Math_ReduceExp(&r, &t);
+    _Math_ExpM1Exact(&value, &r);
+    if (n != 0) {
+        _Math_MakeExact(&one, 1.0L);
+        _Math_AddExact(&value, &one, &value);
+        value.me_unit += (int) n;
+        one.me_negative = 1;
+        _Math_AddExact(&value, &value, &one);
+    }
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take the logarithm of x to base, within 2 ulps of type.
+long double _Math_TakeLog(long double x, _Math_Base base, _Math_Type type)
+{
+    int e;
+    long k;
+    _Math_Exact u;
+    _Math_Exact num;
+    _Math_Exact den;
+    _Math_Exact value;
+    _Math_Exact constant;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (x < 0) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (x == 0) {
+        return _Math_RaisePole();
+    }
+    if (isinf(x)) {
+        return x;
+    }
+    if (x == 1) {
+        return 0.0L;
+    }
+    _Math_MakeExact(&u, x);
+    if (base == _MATH_BASE_2 && _Math_WideReadLow(&u.me_sig) == _MATH_LDOUBLE_INT_BIT) {
+        return (long double) (u.me_unit + _MATH_LDOUBLE_INT_SHIFT);
+    }
+    e = _Math_SplitLog(&num, &den, &u);
+    _Math_LogExact(&value, &num, &den, e);
+    if (base != _MATH_BASE_E) {
+        _Math_MakeConstant(&constant, base == _MATH_BASE_2 ? _MATH_CONST_LOG2E : _MATH_CONST_LOG10E);
+        _Math_WorkMultiply(&value, &value, &constant);
+    }
+    k = _Math_ReadNearest(&value);
+    if (base == _MATH_BASE_10 && _Math_IsPowerTen(x, k)) {
+        return (long double) k;
+    }
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take the natural logarithm of 1 plus x, within 2 ulps of type.
+long double _Math_TakeLog1p(long double x, _Math_Type type)
+{
+    int e = 0;
+    _Math_Exact u;
+    _Math_Exact one;
+    _Math_Exact num;
+    _Math_Exact den;
+    _Math_Exact value;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (x < -1) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (x == -1) {
+        return _Math_RaisePole();
+    }
+    if (isinf(x) || x == 0) {
+        return x;
+    }
+    _Math_MakeExact(&num, x);
+    _Math_MakeExact(&one, 1.0L);
+    if (x >= _MATH_LOG1P_LOW && x < _MATH_LOG1P_HIGH) {
+        _Math_WorkAdd(&den, &one, &one);
+        _Math_WorkAdd(&den, &den, &num);
+    } else {
+        _Math_AddExact(&u, &one, &num);
+        e = _Math_SplitLog(&num, &den, &u);
+    }
+    _Math_LogExact(&value, &num, &den, e);
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take e to x.
+double exp(double x)
+{
+    return (double) _Math_TakeExp(x, _MATH_BASE_E, _MATH_TYPE_DOUBLE);
+}
+
+// Take e to x.
+float expf(float x)
+{
+    return (float) _Math_TakeExp(x, _MATH_BASE_E, _MATH_TYPE_FLOAT);
+}
+
+// Take e to x.
+long double expl(long double x)
+{
+    return _Math_TakeExp(x, _MATH_BASE_E, _MATH_TYPE_LDOUBLE);
+}
+
+// Take 2 to x.
+double exp2(double x)
+{
+    return (double) _Math_TakeExp(x, _MATH_BASE_2, _MATH_TYPE_DOUBLE);
+}
+
+// Take 2 to x.
+float exp2f(float x)
+{
+    return (float) _Math_TakeExp(x, _MATH_BASE_2, _MATH_TYPE_FLOAT);
+}
+
+// Take 2 to x.
+long double exp2l(long double x)
+{
+    return _Math_TakeExp(x, _MATH_BASE_2, _MATH_TYPE_LDOUBLE);
+}
+
+// Take e to x, less 1.
+double expm1(double x)
+{
+    return (double) _Math_TakeExpm1(x, _MATH_TYPE_DOUBLE);
+}
+
+// Take e to x, less 1.
+float expm1f(float x)
+{
+    return (float) _Math_TakeExpm1(x, _MATH_TYPE_FLOAT);
+}
+
+// Take e to x, less 1.
+long double expm1l(long double x)
+{
+    return _Math_TakeExpm1(x, _MATH_TYPE_LDOUBLE);
+}
+
 // Break value into a fraction and a power of 2.
 double frexp(double value, int *exp)
 {
@@ -799,6 +1274,78 @@ float ldexpf(float x, int exp)
 long double ldexpl(long double x, int exp)
 {
     return scalbnl(x, exp);
+}
+
+// Take the natural logarithm of x.
+double log(double x)
+{
+    return (double) _Math_TakeLog(x, _MATH_BASE_E, _MATH_TYPE_DOUBLE);
+}
+
+// Take the natural logarithm of x.
+float logf(float x)
+{
+    return (float) _Math_TakeLog(x, _MATH_BASE_E, _MATH_TYPE_FLOAT);
+}
+
+// Take the natural logarithm of x.
+long double logl(long double x)
+{
+    return _Math_TakeLog(x, _MATH_BASE_E, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the base-10 logarithm of x.
+double log10(double x)
+{
+    return (double) _Math_TakeLog(x, _MATH_BASE_10, _MATH_TYPE_DOUBLE);
+}
+
+// Take the base-10 logarithm of x.
+float log10f(float x)
+{
+    return (float) _Math_TakeLog(x, _MATH_BASE_10, _MATH_TYPE_FLOAT);
+}
+
+// Take the base-10 logarithm of x.
+long double log10l(long double x)
+{
+    return _Math_TakeLog(x, _MATH_BASE_10, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the natural logarithm of 1 plus x.
+double log1p(double x)
+{
+    return (double) _Math_TakeLog1p(x, _MATH_TYPE_DOUBLE);
+}
+
+// Take the natural logarithm of 1 plus x.
+float log1pf(float x)
+{
+    return (float) _Math_TakeLog1p(x, _MATH_TYPE_FLOAT);
+}
+
+// Take the natural logarithm of 1 plus x.
+long double log1pl(long double x)
+{
+    return _Math_TakeLog1p(x, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the base-2 logarithm of x.
+double log2(double x)
+{
+    return (double) _Math_TakeLog(x, _MATH_BASE_2, _MATH_TYPE_DOUBLE);
+}
+
+// Take the base-2 logarithm of x.
+float log2f(float x)
+{
+    return (float) _Math_TakeLog(x, _MATH_BASE_2, _MATH_TYPE_FLOAT);
+}
+
+// Take the base-2 logarithm of x.
+long double log2l(long double x)
+{
+    return _Math_TakeLog(x, _MATH_BASE_2, _MATH_TYPE_LDOUBLE);
 }
 
 // Extract x's exponent as a floating value.
