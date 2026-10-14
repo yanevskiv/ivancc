@@ -121,7 +121,8 @@ typedef struct Cc_Target Cc_Target;
 struct Cc_Target {
     const char        *ct_name;     // the name -mtarget takes
     const char *const *ct_macros;   // NULL-terminated
-    const char *const *ct_runtime;  // NULL-terminated, in link order
+    const char *const *ct_runtime;  // NULL-terminated, linked before -l's
+    const char *const *ct_libs;     // NULL-terminated, linked after -l's
 };
 
 // Usage
@@ -151,6 +152,7 @@ void  Cc_FreeDepend(Cc_Depend *dep);
 // Writing
 void Cc_x86_64_WriteText(FILE *out, Ast_Func *prog);
 void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog);
-void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target);
+void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target,
+                         const char **libs, size_t nlibs);
 
 #endif // CC_H

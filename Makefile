@@ -23,7 +23,7 @@ BUILD   := build
 
 LINUX_DIR := $(BUILD)/lib/$(TARGET_ARCH)/linux
 EMU_DIR   := $(BUILD)/lib/$(TARGET_ARCH)/ivemu
-RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.a $(EMU_DIR)/crt0.o
+RUNTIME   := $(LINUX_DIR)/crt0.o $(LINUX_DIR)/libc.a $(LINUX_DIR)/libm.a $(EMU_DIR)/crt0.o
 
 CC      := gcc
 CFLAGS  := -std=gnu99 -O2 -Ih -Iout -DTARGET_ARCH=$(TARGET_ARCH)
@@ -34,7 +34,7 @@ LEX     := flex
 YACC    := bison
 
 MAIN_SRCS := src/cc.c src/ld.c src/as.c src/ar.c src/emu.c
-ALL_SRCS  := $(shell find src -path src/libc -prune -o -name '*.c' -print)
+ALL_SRCS  := $(shell find src \( -path src/libc -o -path src/libm \) -prune -o -name '*.c' -print)
 LIB_SRCS  := $(filter-out $(MAIN_SRCS),$(ALL_SRCS))
 LIB_OBJS  := $(patsubst src/%.c,$(OUT)/%.o,$(LIB_SRCS))
 GEN_OBJS  := $(OUT)/lex.yy.o $(OUT)/c.tab.o $(OUT)/pp.yy.o
@@ -51,9 +51,14 @@ LD_OBJS := $(OUT)/ld.o $(ELF_OBJS) $(OUT)/util/object/lib.o $(OUT)/util/object/l
 
 LIBC_HEADERS := $(shell find h/libc -name '*.h')
 LIBC_FLAGS   := -I h/libc
-SYS_HEADERS  := $(patsubst h/libc/%,$(BUILD)/include/%,$(LIBC_HEADERS))
 LIBC_SRCS    := $(filter-out src/libc/_crt.c,$(wildcard src/libc/*.c))
 LIBC_OBJS    := $(patsubst src/libc/%.c,$(OUT)/libc/linux/%.o,$(LIBC_SRCS))
+LIBM_HEADERS := $(shell find h/libm -name '*.h')
+LIBM_FLAGS   := -I h/libm -I h/libc
+LIBM_SRCS    := $(wildcard src/libm/*.c)
+LIBM_OBJS    := $(patsubst src/libm/%.c,$(OUT)/libm/linux/%.o,$(LIBM_SRCS))
+SYS_HEADERS  := $(patsubst h/libc/%,$(BUILD)/include/%,$(LIBC_HEADERS)) \
+                $(patsubst h/libm/%,$(BUILD)/include/%,$(LIBM_HEADERS))
 
 TEST_TOOL    := tests/run_test
 SYNTAX_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/syntax/syntax*.c)))
@@ -62,8 +67,9 @@ OPEN_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/open_bug_*.c
 EDGE_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/edge*.c tests/edge/libc*.c)))
 LIBC_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/*.c)))
 SYS_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/sys/sys*.c)))
+LIBM_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libm/*.c)))
 ERROR_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errors/err*.c tests/errors/fake_err*.c)))
-TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(OPEN_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(ERROR_NAMES)
+TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(OPEN_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(LIBM_NAMES) $(ERROR_NAMES)
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
@@ -79,7 +85,7 @@ all: $(CC_BIN) $(AS_BIN) $(AR_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS
 clean:
 	rm -rf $(BUILD) $(OUT)
 
-tests: test_syntax test_bugs test_edge test_libc test_errors
+tests: test_syntax test_bugs test_edge test_libc test_libm test_errors
 
 test_syntax: $(SYNTAX_NAMES)
 
@@ -88,6 +94,8 @@ test_bugs: $(BUG_NAMES)
 test_edge: $(EDGE_NAMES)
 
 test_libc: $(LIBC_NAMES) $(SYS_NAMES)
+
+test_libm: $(LIBM_NAMES)
 
 test_errors: $(ERROR_NAMES)
 
@@ -143,15 +151,27 @@ $(OUT)/libc/linux/%.o: src/libc/%.c $(CC_BIN) $(LIBC_HEADERS)
 	@mkdir -p $(dir $@)
 	$(CC_BIN) -mtarget=linux $(LIBC_FLAGS) -c $< -o $@
 
+$(OUT)/libm/linux/%.o: src/libm/%.c $(CC_BIN) $(LIBC_HEADERS) $(LIBM_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CC_BIN) -mtarget=linux $(LIBM_FLAGS) -c $< -o $@
+
 $(LINUX_DIR)/libc.a: $(LIBC_OBJS) $(AR_BIN) | $(LINUX_DIR)
 	rm -f $@
 	$(AR_BIN) rcs $@ $(LIBC_OBJS)
+
+$(LINUX_DIR)/libm.a: $(LIBM_OBJS) $(AR_BIN) | $(LINUX_DIR)
+	rm -f $@
+	$(AR_BIN) rcs $@ $(LIBM_OBJS)
 
 $(EMU_DIR)/crt0.o: src/libc/_crt.c $(CC_BIN) $(LIBC_HEADERS) | $(EMU_DIR)
 	$(CC_BIN) -mtarget=ivemu $(LIBC_FLAGS) -c $< -o $@
 
 # --- system header recipes ---
 $(BUILD)/include/%.h: h/libc/%.h
+	@mkdir -p $(dir $@)
+	cp $< $@
+
+$(BUILD)/include/%.h: h/libm/%.h
 	@mkdir -p $(dir $@)
 	cp $< $@
 
@@ -173,4 +193,4 @@ $(EMU_DIR): | $(BUILD)
 
 -include $(shell find $(OUT) -name '*.d' 2>/dev/null)
 
-.PHONY: all clean tests test_syntax test_bugs test_edge test_libc test_errors $(TEST_NAMES)
+.PHONY: all clean tests test_syntax test_bugs test_edge test_libc test_libm test_errors $(TEST_NAMES)

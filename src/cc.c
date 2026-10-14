@@ -24,7 +24,10 @@
 static const char *const Cc_LinuxMacros[] = { "__linux__", "__linux", "__gnu_linux__", "__unix__", "__unix", NULL };
 
 // The runtime files -mtarget=linux links.
-static const char *const Cc_LinuxRuntime[] = { "crt0.o", "libc.a", NULL };
+static const char *const Cc_LinuxRuntime[] = { "crt0.o", NULL };
+
+// The libraries -mtarget=linux links after -l's.
+static const char *const Cc_LinuxLibs[] = { "libc.a", NULL };
 
 // The macros -mtarget=ivemu predefines.
 static const char *const Cc_EmuMacros[] = { "__ivemu__", NULL };
@@ -32,10 +35,13 @@ static const char *const Cc_EmuMacros[] = { "__ivemu__", NULL };
 // The runtime files -mtarget=ivemu links.
 static const char *const Cc_EmuRuntime[] = { "crt0.o", NULL };
 
+// The libraries -mtarget=ivemu links after -l's.
+static const char *const Cc_EmuLibs[] = { NULL };
+
 // Every runtime target -mtarget accepts.
 static const Cc_Target Cc_Targets[] = {
-    { "linux",   Cc_LinuxMacros, Cc_LinuxRuntime },
-    { "ivemu", Cc_EmuMacros,   Cc_EmuRuntime }
+    { "linux", Cc_LinuxMacros, Cc_LinuxRuntime, Cc_LinuxLibs },
+    { "ivemu", Cc_EmuMacros,   Cc_EmuRuntime,   Cc_EmuLibs }
 };
 
 // The output file this run created.
@@ -243,20 +249,32 @@ void Cc_x86_64_WriteObject(FILE *out, Ast_Func *prog)
     Enc_x86_64_Write(out);
 }
 
-// Write the program linked against the runtime as a static executable.
-void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target)
+// Write the program as a static executable, linked with -l's libraries.
+void Cc_x86_64_WriteExec(FILE *out, Ast_Func *prog, const char *prefix, const char *arch, const Cc_Target *target,
+                         const char **libs, size_t nlibs)
 {
     Gen_x86_64_BuildProgram(prog);
     Enc_x86_64_BuildObject();
 
-    size_t nruntime = 0;
-    while (target->ct_runtime[nruntime]) {
-        nruntime++;
+    size_t nstart = 0;
+    while (target->ct_runtime[nstart]) {
+        nstart++;
     }
+    size_t nown = 0;
+    while (target->ct_libs[nown]) {
+        nown++;
+    }
+    size_t nruntime = nstart + nlibs + nown;
     char *libdir = Cc_GetRuntimeDir(prefix, arch, target);
     char **runtime = calloc(nruntime, sizeof(*runtime));
-    for (size_t i = 0; i < nruntime; i++) {
+    for (size_t i = 0; i < nstart; i++) {
         runtime[i] = Str_Format("%s/%s", libdir, target->ct_runtime[i]);
+    }
+    for (size_t i = 0; i < nlibs; i++) {
+        runtime[nstart + i] = Str_Format("%s/lib%s.a", libdir, libs[i]);
+    }
+    for (size_t i = 0; i < nown; i++) {
+        runtime[nstart + nlibs + i] = Str_Format("%s/%s", libdir, target->ct_libs[i]);
     }
 
     Elf *obj = Enc_x86_64_GetObject();
@@ -284,6 +302,8 @@ int main(int argc, char **argv)
     const char *prefix = NULL;
     const char **incdirs = NULL;
     size_t nincdirs = 0;
+    const char **libs = NULL;
+    size_t nlibs = 0;
     Buf *forced = Buf_New();
     Buf *cmdline = Buf_New();
     Cc_Mode mode = CC_MODE_EXEC;
@@ -400,8 +420,11 @@ int main(int argc, char **argv)
             case CC_OPTION_MQ: {
                 Cc_AddTarget(&dep, Pp_EscapeMake(optarg));
             } break;
+            case 'l': {
+                libs = realloc(libs, (nlibs + 1) * sizeof(*libs));
+                libs[nlibs++] = optarg;
+            } break;
             case 'g':
-            case 'l':
             case 'L':
             case 'W':
             case 'f':
@@ -485,9 +508,10 @@ int main(int argc, char **argv)
     } else if (mode == CC_MODE_OBJECT) {
         Cc_x86_64_WriteObject(out, Ast_Program);
     } else {
-        Cc_x86_64_WriteExec(out, Ast_Program, prefix, arch, runtime);
+        Cc_x86_64_WriteExec(out, Ast_Program, prefix, arch, runtime, libs, nlibs);
     }
     Cc_CloseOutput(out);
+    free(libs);
 
     if (mode == CC_MODE_EXEC && ! Str_Equals(output, CC_STDOUT_NAME)) {
         chmod(output, CC_ELF_MODE);

@@ -1,0 +1,48 @@
+/*
+ * C source file for mathematics.
+ *
+ * Copyright (C) 2026 Ivan Janevski
+ *
+ * ivcc is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * ivcc is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * for more details.
+ *
+ * Under Section 7 of GPL version 3, you are granted additional
+ * permissions described in the GCC Runtime Library Exception, version
+ * 3.1, as published by the Free Software Foundation.
+ *
+ * You should have received a copy of the GNU General Public License and
+ * a copy of the GCC Runtime Library Exception along with ivcc; see
+ * the files LICENSE and COPYING.RUNTIME respectively.  If not, see
+ * <https://www.gnu.org/licenses/>.
+ */
+
+// Module header.
+#include <math.h>
+
+// Clear the sign of x.
+double fabs(double x)
+{
+    ((unsigned char *) &x)[_MATH_DOUBLE_SIGN_BYTE] &= _MATH_SIGN_CLEAR;
+    return x;
+}
+
+// Clear the sign of x.
+float fabsf(float x)
+{
+    ((unsigned char *) &x)[_MATH_FLOAT_SIGN_BYTE] &= _MATH_SIGN_CLEAR;
+    return x;
+}
+
+// Clear the sign of x.
+long double fabsl(long double x)
+{
+    ((unsigned char *) &x)[_MATH_LDOUBLE_SIGN_BYTE] &= _MATH_SIGN_CLEAR;
+    return x;
+}
