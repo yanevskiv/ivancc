@@ -7,7 +7,7 @@
 // or without, and an array of 16 bytes or more on a multiple of 16, as the
 // SysV ABI has it.
 // [C99:3.2]:    alignment, the multiple of a byte address an object sits on
-// [SysV:3.1.2]: an array variable of 16 bytes or more, aligned to 16
+// [x86-64-SysV:3.1.2]: an array variable of 16 bytes or more, aligned to 16
 
 struct wide {
     char      wi_small;
