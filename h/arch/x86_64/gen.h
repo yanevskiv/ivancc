@@ -52,6 +52,8 @@
 #define GEN_X86_64_DOUBLE_SIGN INT64_MIN
 
 // The float bits of 2^63 and 2^64, the edges of the unsigned 64-bit range.
+// [C99:6.3.1.4p1]: a floating value converted to an integer, truncated toward zero
+// [C99:6.3.1.4p2]: an integer converted to floating, rounded if inexact
 #define GEN_X86_64_FLOAT_TWO_TO_63 0x5F000000
 #define GEN_X86_64_FLOAT_TWO_TO_64 0x5F800000
 
@@ -145,6 +147,7 @@ void Gen_x86_64_SysV_EmitCallResult(Ast_Node *node);
 void Gen_x86_64_SysV_EmitCall(Ast_Node *node);
 
 // SysV variadic arguments
+// [C99:7.15]: variable arguments
 void Gen_x86_64_SysV_EmitVaSaveArea(void);
 void Gen_x86_64_SysV_CountNamedArgs(const Ast_Func *func, Gen_x86_64_SysV_Cursor *cur);
 void Gen_x86_64_SysV_EmitVaStart(void);
@@ -156,7 +159,9 @@ void Gen_x86_64_SysV_EmitVaAggregate(const Ast_Node *node);
 void Gen_x86_64_SysV_EmitVaArg(const Ast_Node *node);
 
 // Code emission helpers
-// [SysV:3.1.2]: an array variable of 16 bytes or more, aligned to 16
+// [C99:6.3.1.3p2]: a value converted to unsigned, reduced modulo its range
+// [C99:6.3.1.3p3]: a value out of a signed type's range, implementation-defined
+// [SysV:3.1.2]:    an array variable of 16 bytes or more, aligned to 16
 int32_t          Gen_x86_64_Count(void);
 void             Gen_x86_64_EmitPush(void);
 void             Gen_x86_64_EmitPop(Asm_x86_64_Reg reg);
@@ -176,11 +181,17 @@ void             Gen_x86_64_EmitCopy(int32_t size);
 void             Gen_x86_64_EmitZero(int32_t size);
 
 // Bitfields
+// [C99:6.7.2.1p9]: a bit-field, an integer of its width
 const Ast_Member *Gen_x86_64_Bitfield(const Ast_Node *node);
 void              Gen_x86_64_EmitBitfieldLoad(const Ast_Member *member);
 void              Gen_x86_64_EmitBitfieldStore(const Ast_Member *member);
 
 // Floating point
+// [C99:6.3.1.4p1]: a floating value converted to an integer, truncated toward zero
+// [C99:6.3.1.4p2]: an integer converted to floating, rounded if inexact
+// [C99:6.3.1.5p1]: a floating value widened, unchanged
+// [C99:6.5.8p6]:   <, >, <= and >=, 1 or 0
+// [C99:6.5.9p3]:   == and !=, 1 or 0
 bool          Gen_x86_64_ByAddress(const Ast_Type *type);
 bool          Gen_x86_64_IsSse(const Ast_Type *type);
 bool          Gen_x86_64_IsWideUnsigned(const Ast_Type *type);
@@ -198,6 +209,8 @@ void          Gen_x86_64_EmitFloatBinary(Ast_Node *node);
 void          Gen_x86_64_EmitFloatNeg(Ast_Node *node);
 
 // Variable-length arrays
+// [C99:6.2.4p6]:   a variable length array, alive from its declaration to its scope's end
+// [C99:6.7.5.2p5]: its size, evaluated each time its declaration is reached
 void    Gen_x86_64_PushVla(int32_t saved);
 void    Gen_x86_64_EmitVla(const Ast_Node *node);
 void    Gen_x86_64_EmitVlaRestore(int32_t depth);
@@ -206,6 +219,16 @@ void    Gen_x86_64_EmitScoped(Ast_Node *node);
 int32_t Gen_x86_64_MarkLabels(Ast_Node *node, int32_t depth);
 
 // Expressions, statements and data
+// [C99:6.4.5p5]:   a string literal, a static array with a zero appended
+// [C99:6.5.5p6]:   integer division, truncated toward zero
+// [C99:6.5.7p4]:   <<, zeros shifted in
+// [C99:6.5.7p5]:   >>, implementation-defined on a negative value
+// [C99:6.7.8p10]:  an object of static storage, zero unless initialized
+// [C99:6.5.13p4]:  &&, its right operand evaluated only if its left is nonzero
+// [C99:6.5.14p4]:  ||, its right operand evaluated only if its left is zero
+// [C99:6.8.4.2p5]: a switch's cases, converted to its promoted type
+// [C99:6.8.6.2p2]: continue, to the end of the loop body
+// [C99:6.8.6.3p2]: break, out of the innermost switch or loop
 void Gen_x86_64_EmitNarrow(const Ast_Type *type);
 void Gen_x86_64_EmitDivide(Ast_TypeSign sign, Asm_x86_64_Reg reg);
 void Gen_x86_64_EmitShift(Ast_TypeSign sign, Asm_x86_64_Reg reg);
