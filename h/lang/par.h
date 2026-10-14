@@ -39,6 +39,7 @@
 #define PAR_ALIGN_MAX_STATIC 4096 // on an object of static storage
 
 // Name of the array that holds a function's own name.
+// [C99:6.4.2.2p1]: __func__, a static const char array in each function
 #define PAR_FUNC_NAME "__func__"
 
 // The asm qualifiers as a diagnostic names them.
@@ -49,6 +50,8 @@
 #define PAR_BYTE_MASK 0xFF
 
 // Digits an escape sequence may carry.
+// [C99:6.4.4.4p1]: an octal escape's one to three digits
+// [C99:6.4.3p1]:   \u's four hexadecimal digits and \U's eight
 #define PAR_MAX_OCTAL_DIGITS 3
 #define PAR_MAX_HEX_DIGITS   8
 #define PAR_UCN_SHORT_DIGITS 4
@@ -70,6 +73,7 @@
 #define PAR_UTF8_SHIFT 6
 
 // What an array declarator's brackets carry besides a length.
+// [C99:6.7.5.2p1]: static and qualifiers, in a parameter's outermost [] only
 typedef enum Par_ArrayDecor Par_ArrayDecor;
 enum Par_ArrayDecor {
     PAR_ARRAY_NONE   = 0,      // plain brackets
@@ -86,6 +90,7 @@ enum Par_AsmQual {
 };
 
 // One type specifier keyword.
+// [C99:6.7.2p2]: the sets of type specifiers that name a type
 typedef enum Par_Spec Par_Spec;
 enum Par_Spec {
     PAR_SPEC_NONE     = 0,      // no specifier keyword was written
@@ -103,6 +108,9 @@ enum Par_Spec {
 };
 
 // The storage-class and function specifiers a place in the grammar allows.
+// [C99:6.7.2.1p1]: a member's specifiers, a type's and qualifiers only
+// [C99:6.7.4p2]:   inline, on a function only
+// [C99:6.7.5.3p2]: register, a parameter's only storage class
 typedef enum Par_StorageUse Par_StorageUse;
 enum Par_StorageUse {
     PAR_STORAGE_FORBIDDEN, // a member or a type name
@@ -112,6 +120,9 @@ enum Par_StorageUse {
 };
 
 // One step of a declarator, collected walking outward from the name.
+// [C99:6.7.5.1]: pointer declarators
+// [C99:6.7.5.2]: array declarators
+// [C99:6.7.5.3]: function declarators
 typedef enum Par_DerivKind Par_DerivKind;
 enum Par_DerivKind {
     PAR_DERIV_POINTER,  // `*`
@@ -121,6 +132,7 @@ enum Par_DerivKind {
 };
 
 // Whether an initializer list was written with its own braces.
+// [C99:6.7.8p20]: a subaggregate's initializers, braced or from the list around
 typedef enum Par_List Par_List;
 enum Par_List {
     PAR_LIST_UNBRACED, // taking its items from the enclosing list
@@ -136,6 +148,7 @@ enum Par_Base {
 };
 
 // An integer literal.
+// [C99:6.4.4.1p5]: its type, the first of its suffix's list to hold its value
 typedef struct Par_Num Par_Num;
 struct Par_Num {
     int64_t   pn_val;  // its value
@@ -143,6 +156,7 @@ struct Par_Num {
 };
 
 // A floating literal.
+// [C99:6.4.4.2p4]: double, float by f or F, long double by l or L
 typedef struct Par_FNum Par_FNum;
 struct Par_FNum {
     long double pf_val;  // its value
@@ -150,6 +164,8 @@ struct Par_FNum {
 };
 
 // The specifiers and qualifiers one declaration wrote.
+// [C99:6.7.1p2]: one storage-class specifier at most
+// [C99:6.7.3p4]: a qualifier repeated, as if written once
 typedef struct Par_Specs Par_Specs;
 struct Par_Specs {
     Par_Spec    ps_specs;      // the type specifier keywords seen
@@ -164,6 +180,8 @@ struct Par_Specs {
 };
 
 // A parameter list as the grammar collects it.
+// [C99:6.7.5.3p10]: (void), no parameters
+// [C99:6.7.5.3p14]: (), nothing said of the parameters
 typedef struct Par_ParamList Par_ParamList;
 struct Par_ParamList {
     Ast_Var      *pl_head;  // the first parameter
@@ -208,6 +226,12 @@ void Par_ClearParams(Par_ParamList *list);
 void Par_PushParam(Par_ParamList *list, Ast_Var *var);
 
 // Declarators
+// [C99:6.7.5.2p1]: static and qualifiers, in a parameter's outermost [] only
+// [C99:6.7.5.2p2]: a variably modified type, in a block or a prototype only
+// [C99:6.7.5.2p4]: [*], in a prototype only
+// [C99:6.7.5.3p7]: an array parameter adjusted to a pointer
+// [C99:6.7.5.3p8]: a function parameter adjusted to a pointer
+// [C99:6.9.1p6]:   an identifier list's parameters, each declared once
 Par_Decl  *Par_NewDecl(char *name);
 void       Par_NeedName(Par_Decl *decl, Ast_Line line);
 Par_Deriv *Par_AddDeriv(Par_Decl *decl, Par_DerivKind kind, Ast_Line line);
@@ -227,6 +251,11 @@ Ast_Node  *Par_SizeParams(void);
 void       Par_BeginBody(void);
 
 // Literals
+// [C99:6.4.4.1]: integer constants
+// [C99:6.4.4.2]: floating constants
+// [C99:6.4.4.4]: character constants
+// [C99:6.4.5]:   string literals
+// [C99:6.4.5p4]: adjacent string literals joined, wide if any is wide
 Par_Num  Par_NumLiteral(const char *text);
 Par_FNum Par_FloatLiteral(const char *text);
 Par_Num  Par_CharLiteral(const char *body, size_t len, size_t width, Ast_Line line);
@@ -235,6 +264,10 @@ Ast_Str  Par_WidenString(Ast_Str str, size_t width);
 Ast_Str  Par_ConcatStrings(Ast_Str left, Ast_Str right);
 
 // Escape sequences
+// [C99:6.4.3]:     universal character names
+// [C99:6.4.4.4p7]: an octal or hexadecimal escape, the longest it can be
+// [C99:6.4.4.4p8]: \a, \b, \f, \n, \r, \t and \v
+// [C99:6.4.4.4p9]: an escape's value, within the character type
 int32_t  Par_DigitValue(char ch);
 uint64_t Par_ScanDigits(const char *text, size_t len, size_t *pos, Par_Base base, size_t count);
 uint64_t Par_GetElement(const char *data, size_t width);
@@ -244,11 +277,15 @@ void     Par_PutUtf8(char *buf, size_t *len, uint64_t value);
 char    *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *out_len, Ast_Line line);
 
 // Types
-// [C11:6.7.5p2]: where an alignment specifier may not stand
-// [C11:6.7.5p3]: _Alignas's constant, zero or a valid alignment
-// [C11:6.7.5p4]: no alignment weaker than the type's
-// [C11:6.7.5p5]: _Alignas ( type-name ) as _Alignas (_Alignof (type-name))
-// [C11:6.7.5p6]: the strictest alignment specified, zero none
+// [C99:6.7.1p2]:  one storage-class specifier at most
+// [C99:6.7.2p2]:  the sets of type specifiers that name a type
+// [C99:7.15.1.1]: va_arg
+// [C99:7.15.1.2]: va_copy
+// [C11:6.7.5p2]:  where an alignment specifier may not stand
+// [C11:6.7.5p3]:  _Alignas's constant, zero or a valid alignment
+// [C11:6.7.5p4]:  no alignment weaker than the type's
+// [C11:6.7.5p5]:  _Alignas ( type-name ) as _Alignas (_Alignof (type-name))
+// [C11:6.7.5p6]:  the strictest alignment specified, zero none
 void        Par_ClearSpecs(Par_Specs *specs);
 Par_Specs   Par_AlignSpec(const Ast_Node *expr, Ast_Line line);
 Par_Specs   Par_AlignSpecType(Ast_Type *type, Ast_Line line);
@@ -266,6 +303,12 @@ Ast_Node   *Par_VaArg(Ast_Node *ap, Ast_Type *type, Ast_Line line);
 Ast_Node   *Par_VaCopy(Ast_Node *dst, Ast_Node *src, Ast_Line line);
 
 // Aggregates
+// [C99:6.7.2.1p3]: a bit-field's width, a constant within its type's
+// [C99:6.7.2.1p4]: a bit-field's types
+// [C99:6.7.2.2p2]: an enumeration constant's value, an int constant
+// [C99:6.7.2.2p3]: an enumeration constant without =, one past the last
+// [C99:6.7.2.3p1]: a tag's contents, defined once
+// [C99:6.7.2.3p2]: a tag, always struct, union or enum as first written
 Ast_Member *Par_AppendMembers(Ast_Member *head, Ast_Member *tail);
 void        Par_AddBitfield(Ast_Member *member, Ast_Node *width, Ast_Line line);
 Ast_Member *Par_MakeMembers(const Par_Specs *specs, Par_Decl *decls, Ast_Line line);
@@ -275,6 +318,17 @@ Ast_Type   *Par_ReferenceAggregate(Ast_TypeKind kind, const char *tag, Ast_Line 
 void        Par_AddEnumConst(const char *name, Ast_Node *value, Ast_Line line);
 
 // Initializers
+// [C99:6.5.2.5]:  compound literals
+// [C99:6.7.8p2]:  no initializer past the object
+// [C99:6.7.8p3]:  no initializer for a variable length array
+// [C99:6.7.8p6]:  [index] designators, constant
+// [C99:6.7.8p7]:  .member designators
+// [C99:6.7.8p14]: a char array from a string literal
+// [C99:6.7.8p15]: a wchar_t array from a wide string literal
+// [C99:6.7.8p17]: the current object and the order it is filled in
+// [C99:6.7.8p20]: a subaggregate's initializers, braced or from the list around
+// [C99:6.7.8p21]: the members and elements left out, zero
+// [C99:6.7.8p22]: an array of unknown size, sized by its largest index
 Ast_Node *Par_InitStore(Ast_Var *var, int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line);
 Ast_Node *Par_InitAt(int32_t off, Ast_Type *type, Ast_Member *bits, Ast_Node *value, Ast_Line line);
 void      Par_Designate(Ast_Type *type, Ast_Node *desig, int32_t *index, Ast_Member **member, Ast_Line line);
@@ -292,6 +346,14 @@ Ast_Node *Par_InitLocal(Ast_Var *var, Ast_Node *init, Ast_Line line);
 Ast_Node *Par_CompoundLiteral(Ast_Type *type, Ast_Node *items, Ast_Line line);
 
 // Declarations
+// [C99:6.2.2p7]:  one name with internal and external linkage, undefined
+// [C99:6.7p3]:    a name without linkage, declared once in its scope
+// [C99:6.7p4]:    one object's declarations, of compatible types
+// [C99:6.7p7]:    an object without linkage, complete by its declarator's end
+// [C99:6.7.8p5]:  a block-scope extern, without an initializer
+// [C99:6.9.2p2]:  tentative definitions
+// [C11:6.7.10p2]: _Static_assert's constant, nonzero
+// [C11:6.7.10p3]: _Static_assert's message, its string literal
 void      Par_CheckComplete(const char *name, Ast_Type *type, Ast_Line line);
 void      Par_NeedFixedSize(const Ast_Type *type, Ast_Line line);
 Ast_Node *Par_SizeExpr(Ast_Type *type, Ast_Line line);
@@ -306,6 +368,10 @@ void      Par_CompleteTentatives(void);
 void      Par_CheckStaticAssert(const Ast_Node *cond, Ast_Str text, Ast_Line line);
 
 // Functions
+// [C99:6.4.2.2p1]: __func__
+// [C99:6.9p3]:     one definition of a name with internal linkage
+// [C99:6.9p5]:     one definition of a name with external linkage
+// [C99:6.9.1]:     function definitions
 void      Par_AddFunction(Ast_Func *fn, Ast_Line line);
 void      Par_DeclarePrototype(const char *name, Ast_Type *type, Ast_Line line);
 Ast_Func *Par_MakeFunction(Ast_Node *body);
@@ -316,6 +382,10 @@ Ast_Var  *Par_FindFuncName(const char *name, Ast_Line line);
 void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 
 // Expressions
+// [C99:6.5.1p2]:   an identifier, an object or a function
+// [C99:6.5.2.2]:   function calls
+// [C99:6.5.3.4p1]: sizeof, not of an incomplete type
+// [C99:7.17p3]:    offsetof
 // [C11:6.5.3.4p3]: _Alignof, an array's being its element's
 Ast_Node *Par_Designator(char *name, Ast_Line line);
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line);
@@ -325,11 +395,14 @@ Ast_Node *Par_AddOffsetStep(Ast_Node *head, char *name, Ast_Node *index, Ast_Lin
 Ast_Node *Par_OffsetOf(Ast_Type *type, Ast_Node *steps, Ast_Line line);
 
 // Statements
+// [C99:6.8.6]: goto, continue, break and return
 Ast_Node   *Par_NewJump(Ast_NodeKind kind, Ast_Line line);
 Par_AsmQual Par_AddAsmQual(Par_AsmQual quals, Par_AsmQual qual, Ast_Line line);
 Ast_Node   *Par_NewAsm(Ast_Str text, Ast_Line line);
 
 // Parsing
+// [C99:A.1]: the lexical grammar
+// [C99:A.2]: the phrase structure grammar
 void Par_ParseText(const char *text, size_t len);
 
 #endif // PAR_H
