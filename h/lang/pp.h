@@ -166,7 +166,7 @@ enum Pp_TokenKind {
 typedef enum Pp_Flags Pp_Flags;
 enum Pp_Flags {
     PP_FLAG_NONE  = 0,      // neither below
-    PP_FLAG_BOL  = 1 << 0, // first token on its line
+    PP_FLAG_BOL   = 1 << 0, // first token on its line
     PP_FLAG_SPACE = 1 << 1  // whitespace before it
 };
 
@@ -231,7 +231,7 @@ enum Pp_Phony {
 typedef enum Pp_Eval Pp_Eval;
 enum Pp_Eval {
     PP_EVAL_COMPUTE, // its value is computed
-    PP_EVAL_SKIP    // parsed for its type alone
+    PP_EVAL_SKIP     // parsed for its type alone
 };
 
 // Binary operators of an #if expression.

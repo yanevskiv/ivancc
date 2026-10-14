@@ -39,11 +39,11 @@ typedef const char *(*Log_LineLocator)(uint32_t line, uint32_t *source);
 // Kinds of message.
 typedef enum Log_Severity Log_Severity;
 enum Log_Severity {
-    LOG_SEVERITY_ERROR,
-    LOG_SEVERITY_WARNING,
-    LOG_SEVERITY_INFO,
-    LOG_SEVERITY_DEBUG,
-    LOG_SEVERITY_COUNT
+    LOG_SEVERITY_ERROR,   // error:
+    LOG_SEVERITY_WARNING, // warning:
+    LOG_SEVERITY_INFO,    // info:
+    LOG_SEVERITY_DEBUG,   // debug:
+    LOG_SEVERITY_COUNT    // number of severities
 };
 
 // Setup

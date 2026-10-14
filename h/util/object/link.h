@@ -38,9 +38,9 @@
 // How much a link reports of its inputs, as GNU ld's -t given once or twice.
 typedef enum Link_Trace Link_Trace;
 enum Link_Trace {
-    LINK_TRACE_NONE,
-    LINK_TRACE_FILES,   // each file named, as it is read
-    LINK_TRACE_MEMBERS  // and each archive member pulled in
+    LINK_TRACE_NONE,   // nothing reported
+    LINK_TRACE_FILES,  // each file named, as it is read
+    LINK_TRACE_MEMBERS // and each archive member pulled in
 };
 
 // One -place request: load the named section at a fixed address.

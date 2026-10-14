@@ -47,13 +47,13 @@
 // Operations the letters name.
 typedef enum Ar_Op Ar_Op;
 enum Ar_Op {
-    AR_OP_NONE,
+    AR_OP_NONE,    // no letter given
     AR_OP_INDEX,   // s alone, as ranlib
-    AR_OP_DELETE,
-    AR_OP_REPLACE,
-    AR_OP_LIST,
-    AR_OP_EXTRACT,
-    AR_OP_COUNT
+    AR_OP_DELETE,  // d
+    AR_OP_REPLACE, // r
+    AR_OP_LIST,    // t
+    AR_OP_EXTRACT, // x
+    AR_OP_COUNT    // number of operations
 };
 
 // What the letters ask for.

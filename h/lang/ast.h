@@ -51,21 +51,21 @@ typedef struct Ast_Node Ast_Node;
 // The kind of a type, the integer and floating kinds in rank order.
 typedef enum Ast_TypeKind Ast_TypeKind;
 enum Ast_TypeKind {
-    AST_TYPE_KIND_VOID,
-    AST_TYPE_KIND_BOOL,
-    AST_TYPE_KIND_CHAR,
-    AST_TYPE_KIND_SHORT,
-    AST_TYPE_KIND_INT,
-    AST_TYPE_KIND_LONG,
-    AST_TYPE_KIND_LLONG,
-    AST_TYPE_KIND_FLOAT,
-    AST_TYPE_KIND_DOUBLE,
-    AST_TYPE_KIND_LDOUBLE,
-    AST_TYPE_KIND_PTR,
-    AST_TYPE_KIND_ARRAY,
-    AST_TYPE_KIND_FUNC,
-    AST_TYPE_KIND_STRUCT,
-    AST_TYPE_KIND_UNION,
+    AST_TYPE_KIND_VOID,                               // void
+    AST_TYPE_KIND_BOOL,                               // _Bool
+    AST_TYPE_KIND_CHAR,                               // char
+    AST_TYPE_KIND_SHORT,                              // short
+    AST_TYPE_KIND_INT,                                // int
+    AST_TYPE_KIND_LONG,                               // long
+    AST_TYPE_KIND_LLONG,                              // long long
+    AST_TYPE_KIND_FLOAT,                              // float
+    AST_TYPE_KIND_DOUBLE,                             // double
+    AST_TYPE_KIND_LDOUBLE,                            // long double
+    AST_TYPE_KIND_PTR,                                // a pointer
+    AST_TYPE_KIND_ARRAY,                              // an array
+    AST_TYPE_KIND_FUNC,                               // a function
+    AST_TYPE_KIND_STRUCT,                             // a struct
+    AST_TYPE_KIND_UNION,                              // a union
     AST_TYPE_KIND_COUNT,                              // number of kinds
     AST_TYPE_KIND_FIRST_INT   = AST_TYPE_KIND_BOOL,   // narrowest integer kind
     AST_TYPE_KIND_LAST_INT    = AST_TYPE_KIND_LLONG,  // widest integer kind
@@ -76,137 +76,137 @@ enum Ast_TypeKind {
 // The target ABI's sizes in bytes.
 typedef enum Ast_TypeSize Ast_TypeSize;
 enum Ast_TypeSize {
-    AST_TYPE_SIZE_VOID    = 1,
-    AST_TYPE_SIZE_BOOL    = 1,
-    AST_TYPE_SIZE_CHAR    = 1,
-    AST_TYPE_SIZE_SHORT   = 2,
-    AST_TYPE_SIZE_INT     = 4,
-    AST_TYPE_SIZE_LONG    = 8,
-    AST_TYPE_SIZE_LLONG   = 8,
-    AST_TYPE_SIZE_FLOAT   = 4,
-    AST_TYPE_SIZE_DOUBLE  = 8,
+    AST_TYPE_SIZE_VOID    = 1,  // gcc's
+    AST_TYPE_SIZE_BOOL    = 1,  // _Bool
+    AST_TYPE_SIZE_CHAR    = 1,  // char
+    AST_TYPE_SIZE_SHORT   = 2,  // short
+    AST_TYPE_SIZE_INT     = 4,  // int
+    AST_TYPE_SIZE_LONG    = 8,  // long
+    AST_TYPE_SIZE_LLONG   = 8,  // long long
+    AST_TYPE_SIZE_FLOAT   = 4,  // float
+    AST_TYPE_SIZE_DOUBLE  = 8,  // double
     AST_TYPE_SIZE_LDOUBLE = 16, // ten bytes of x87 extended, padded
-    AST_TYPE_SIZE_PTR     = 8,
+    AST_TYPE_SIZE_PTR     = 8,  // any pointer
     AST_TYPE_SIZE_FUNC    = 1   // C gives a function no size; gcc answers 1
 };
 
 // The target ABI's alignments in bytes.
 typedef enum Ast_TypeAlign Ast_TypeAlign;
 enum Ast_TypeAlign {
-    AST_TYPE_ALIGN_VOID    = 1,
-    AST_TYPE_ALIGN_BOOL    = 1,
-    AST_TYPE_ALIGN_CHAR    = 1,
-    AST_TYPE_ALIGN_SHORT   = 2,
-    AST_TYPE_ALIGN_INT     = 4,
-    AST_TYPE_ALIGN_LONG    = 8,
-    AST_TYPE_ALIGN_LLONG   = 8,
-    AST_TYPE_ALIGN_FLOAT   = 4,
-    AST_TYPE_ALIGN_DOUBLE  = 8,
-    AST_TYPE_ALIGN_LDOUBLE = 16,
-    AST_TYPE_ALIGN_PTR     = 8,
-    AST_TYPE_ALIGN_FUNC    = 1
+    AST_TYPE_ALIGN_VOID    = 1,  // gcc's
+    AST_TYPE_ALIGN_BOOL    = 1,  // _Bool
+    AST_TYPE_ALIGN_CHAR    = 1,  // char
+    AST_TYPE_ALIGN_SHORT   = 2,  // short
+    AST_TYPE_ALIGN_INT     = 4,  // int
+    AST_TYPE_ALIGN_LONG    = 8,  // long
+    AST_TYPE_ALIGN_LLONG   = 8,  // long long
+    AST_TYPE_ALIGN_FLOAT   = 4,  // float
+    AST_TYPE_ALIGN_DOUBLE  = 8,  // double
+    AST_TYPE_ALIGN_LDOUBLE = 16, // long double
+    AST_TYPE_ALIGN_PTR     = 8,  // any pointer
+    AST_TYPE_ALIGN_FUNC    = 1   // gcc's
 };
 
 // Whether a function's parameter list ended in `...`.
 typedef enum Ast_TypeVa Ast_TypeVa;
 enum Ast_TypeVa {
-    AST_TYPE_FIXED,
-    AST_TYPE_VA
+    AST_TYPE_FIXED, // no `...`
+    AST_TYPE_VA     // ending in `...`
 };
 
 // Whether a function was declared with a prototype.
 typedef enum Ast_TypeProto Ast_TypeProto;
 enum Ast_TypeProto {
     AST_TYPE_NOPROTO, // written `int f()`
-    AST_TYPE_PROTO
+    AST_TYPE_PROTO    // written with its parameter types
 };
 
 // Whether an integer type holds negative values.
 typedef enum Ast_TypeSign Ast_TypeSign;
 enum Ast_TypeSign {
-    AST_TYPE_SIGNED,
-    AST_TYPE_UNSIGNED
+    AST_TYPE_SIGNED,  // holding negative values
+    AST_TYPE_UNSIGNED // holding none
 };
 
 // The qualifiers a declaration may carry.
 typedef enum Ast_Qual Ast_Qual;
 enum Ast_Qual {
-    AST_QUAL_CONST    = 1,
-    AST_QUAL_VOLATILE = 2,
-    AST_QUAL_RESTRICT = 4
+    AST_QUAL_CONST    = 1, // const
+    AST_QUAL_VOLATILE = 2, // volatile
+    AST_QUAL_RESTRICT = 4  // restrict
 };
 
 // Whether a type's members have been seen.
 typedef enum Ast_TypeComplete Ast_TypeComplete;
 enum Ast_TypeComplete {
-    AST_TYPE_INCOMPLETE,
-    AST_TYPE_COMPLETE
+    AST_TYPE_INCOMPLETE, // members not yet seen
+    AST_TYPE_COMPLETE    // members seen
 };
 
 // The kind of an AST node.
 typedef enum Ast_NodeKind Ast_NodeKind;
 enum Ast_NodeKind {
-    AST_NODE_KIND_NUM,       // integer literal
-    AST_NODE_KIND_FNUM,      // floating literal
-    AST_NODE_KIND_STR,       // string literal
-    AST_NODE_KIND_VAR,       // a reference to a local variable
-    AST_NODE_KIND_ADD,       // lhs + rhs
-    AST_NODE_KIND_SUB,       // lhs - rhs
-    AST_NODE_KIND_MUL,       // lhs * rhs
-    AST_NODE_KIND_DIV,       // lhs / rhs
-    AST_NODE_KIND_MOD,       // lhs % rhs
-    AST_NODE_KIND_NEG,       // -lhs
-    AST_NODE_KIND_NOT,       // !lhs
-    AST_NODE_KIND_BITNOT,    // ~lhs
-    AST_NODE_KIND_BITAND,    // lhs & rhs
-    AST_NODE_KIND_BITOR,     // lhs | rhs
-    AST_NODE_KIND_BITXOR,    // lhs ^ rhs
-    AST_NODE_KIND_SHL,       // lhs << rhs
-    AST_NODE_KIND_SHR,       // lhs >> rhs, arithmetic on a signed operand
-    AST_NODE_KIND_ADDR,      // &lhs
-    AST_NODE_KIND_DEREF,     // *lhs
-    AST_NODE_KIND_MEMBER,    // lhs.an_member
-    AST_NODE_KIND_CAST,      // (type) lhs
-    AST_NODE_KIND_SIZEOF,    // sizeof lhs
-    AST_NODE_KIND_EQ,        // lhs == rhs
-    AST_NODE_KIND_NE,        // lhs != rhs
-    AST_NODE_KIND_LT,        // lhs <  rhs   (> is LT reversed)
-    AST_NODE_KIND_LE,        // lhs <= rhs   (>= is LE reversed)
-    AST_NODE_KIND_AND,       // lhs && rhs
-    AST_NODE_KIND_OR,        // lhs || rhs
-    AST_NODE_KIND_ASSIGN,    // lhs = rhs
-    AST_NODE_KIND_OPASSIGN,  // lhs an_op= rhs
-    AST_NODE_KIND_POSTINC,   // lhs++ or lhs--, stepping by an_step
-    AST_NODE_KIND_COND,      // cond ? then : els
-    AST_NODE_KIND_COMMA,     // lhs, rhs
-    AST_NODE_KIND_INIT,      // an initializer item, or a flattened one
-    AST_NODE_KIND_INITLIST,  // a braced initializer, its items in an_items
-    AST_NODE_KIND_DESIGNATOR,// `[an_index]` or `.an_memname` aiming an item, or an offsetof's `[an_lhs]`
-    AST_NODE_KIND_ZERO,      // zero an_size bytes at the address an_lhs
-    AST_NODE_KIND_COMPOUND,  // (type){...}
-    AST_NODE_KIND_CALL,      // lhs(args), a FUNCADDR lhs when direct
-    AST_NODE_KIND_FUNCADDR,  // a function named as a value
-    AST_NODE_KIND_VA_START,  // __builtin_va_start(lhs, last)
-    AST_NODE_KIND_VA_ARG,    // __builtin_va_arg(lhs, T)
-    AST_NODE_KIND_RETURN,    // return lhs;
-    AST_NODE_KIND_IF,        // if (cond) then; else els;
-    AST_NODE_KIND_FOR,       // for (init; cond; inc) body;
-    AST_NODE_KIND_DO,        // do body; while (cond);
-    AST_NODE_KIND_SWITCH,    // switch (cond) body;
-    AST_NODE_KIND_CASE,      // case cond: body;
-    AST_NODE_KIND_DEFAULT,   // default: body;
-    AST_NODE_KIND_GOTO,      // goto an_labelname;
-    AST_NODE_KIND_LABEL,     // an_labelname: body;
-    AST_NODE_KIND_BREAK,     // break;
-    AST_NODE_KIND_CONTINUE,  // continue;
-    AST_NODE_KIND_BLOCK,     // { ... }
-    AST_NODE_KIND_DECL,      // the statements one declaration becomes
-    AST_NODE_KIND_VLA,       // allocate an_var, an array of an_lhs bytes
-    AST_NODE_KIND_VSIZE,     // an_var = an_lhs elements of an_rhs bytes
-    AST_NODE_KIND_EXPR_STMT, // expression used as a statement
-    AST_NODE_KIND_ASM,       // __asm__ (an_asm);
-    AST_NODE_KIND_NOP,       // empty statement / bare declaration
-    AST_NODE_KIND_COUNT      // number of kinds
+    AST_NODE_KIND_NUM,        // integer literal
+    AST_NODE_KIND_FNUM,       // floating literal
+    AST_NODE_KIND_STR,        // string literal
+    AST_NODE_KIND_VAR,        // a reference to a local variable
+    AST_NODE_KIND_ADD,        // lhs + rhs
+    AST_NODE_KIND_SUB,        // lhs - rhs
+    AST_NODE_KIND_MUL,        // lhs * rhs
+    AST_NODE_KIND_DIV,        // lhs / rhs
+    AST_NODE_KIND_MOD,        // lhs % rhs
+    AST_NODE_KIND_NEG,        // -lhs
+    AST_NODE_KIND_NOT,        // !lhs
+    AST_NODE_KIND_BITNOT,     // ~lhs
+    AST_NODE_KIND_BITAND,     // lhs & rhs
+    AST_NODE_KIND_BITOR,      // lhs | rhs
+    AST_NODE_KIND_BITXOR,     // lhs ^ rhs
+    AST_NODE_KIND_SHL,        // lhs << rhs
+    AST_NODE_KIND_SHR,        // lhs >> rhs, arithmetic on a signed operand
+    AST_NODE_KIND_ADDR,       // &lhs
+    AST_NODE_KIND_DEREF,      // *lhs
+    AST_NODE_KIND_MEMBER,     // lhs.an_member
+    AST_NODE_KIND_CAST,       // (type) lhs
+    AST_NODE_KIND_SIZEOF,     // sizeof lhs
+    AST_NODE_KIND_EQ,         // lhs == rhs
+    AST_NODE_KIND_NE,         // lhs != rhs
+    AST_NODE_KIND_LT,         // lhs <  rhs   (> is LT reversed)
+    AST_NODE_KIND_LE,         // lhs <= rhs   (>= is LE reversed)
+    AST_NODE_KIND_AND,        // lhs && rhs
+    AST_NODE_KIND_OR,         // lhs || rhs
+    AST_NODE_KIND_ASSIGN,     // lhs = rhs
+    AST_NODE_KIND_OPASSIGN,   // lhs an_op= rhs
+    AST_NODE_KIND_POSTINC,    // lhs++ or lhs--, stepping by an_step
+    AST_NODE_KIND_COND,       // cond ? then : els
+    AST_NODE_KIND_COMMA,      // lhs, rhs
+    AST_NODE_KIND_INIT,       // an initializer item, or a flattened one
+    AST_NODE_KIND_INITLIST,   // a braced initializer, its items in an_items
+    AST_NODE_KIND_DESIGNATOR, // `[an_index]` or `.an_memname`, offsetof's too
+    AST_NODE_KIND_ZERO,       // zero an_size bytes at the address an_lhs
+    AST_NODE_KIND_COMPOUND,   // (type){...}
+    AST_NODE_KIND_CALL,       // lhs(args), a FUNCADDR lhs when direct
+    AST_NODE_KIND_FUNCADDR,   // a function named as a value
+    AST_NODE_KIND_VA_START,   // __builtin_va_start(lhs, last)
+    AST_NODE_KIND_VA_ARG,     // __builtin_va_arg(lhs, T)
+    AST_NODE_KIND_RETURN,     // return lhs;
+    AST_NODE_KIND_IF,         // if (cond) then; else els;
+    AST_NODE_KIND_FOR,        // for (init; cond; inc) body;
+    AST_NODE_KIND_DO,         // do body; while (cond);
+    AST_NODE_KIND_SWITCH,     // switch (cond) body;
+    AST_NODE_KIND_CASE,       // case cond: body;
+    AST_NODE_KIND_DEFAULT,    // default: body;
+    AST_NODE_KIND_GOTO,       // goto an_labelname;
+    AST_NODE_KIND_LABEL,      // an_labelname: body;
+    AST_NODE_KIND_BREAK,      // break;
+    AST_NODE_KIND_CONTINUE,   // continue;
+    AST_NODE_KIND_BLOCK,      // { ... }
+    AST_NODE_KIND_DECL,       // the statements one declaration becomes
+    AST_NODE_KIND_VLA,        // allocate an_var, an array of an_lhs bytes
+    AST_NODE_KIND_VSIZE,      // an_var = an_lhs elements of an_rhs bytes
+    AST_NODE_KIND_EXPR_STMT,  // expression used as a statement
+    AST_NODE_KIND_ASM,        // __asm__ (an_asm);
+    AST_NODE_KIND_NOP,        // empty statement / bare declaration
+    AST_NODE_KIND_COUNT       // number of kinds
 };
 
 // What a declaration's storage class asks for.

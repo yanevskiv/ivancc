@@ -55,63 +55,63 @@ enum Txt_x86_64_Terminate {
 // The regexes the reader matches, in the order txt.c defines their patterns.
 typedef enum Txt_x86_64_RegexIndex Txt_x86_64_RegexIndex;
 enum Txt_x86_64_RegexIndex {
-    TXT_X86_64_REGEX_RR,
-    TXT_X86_64_REGEX_GRP_IMM,
-    TXT_X86_64_REGEX_MOV_IMM,
-    TXT_X86_64_REGEX_MEM_FORM,
-    TXT_X86_64_REGEX_MOVSX,
-    TXT_X86_64_REGEX_MOVZX,
-    TXT_X86_64_REGEX_LEA_RIP,
-    TXT_X86_64_REGEX_GRP_UNARY,
-    TXT_X86_64_REGEX_SHIFT,
-    TXT_X86_64_REGEX_SETCC,
-    TXT_X86_64_REGEX_BRANCH,
-    TXT_X86_64_REGEX_MOV_RR,
-    TXT_X86_64_REGEX_SSE,
-    TXT_X86_64_REGEX_X87,
-    TXT_X86_64_REGEX_CALL_REG,
-    TXT_X86_64_REGEX_BARE,
-    TXT_X86_64_REGEX_REG,
-    TXT_X86_64_REGEX_IMM,
-    TXT_X86_64_REGEX_MEM,
-    TXT_X86_64_REGEX_RIP,
-    TXT_X86_64_REGEX_LABEL,
-    TXT_X86_64_REGEX_XMM,
-    TXT_X86_64_REGEX_ST,
-    TXT_X86_64_REGEX_OCTAL,
-    TXT_X86_64_REGEX_HEX,
-    TXT_X86_64_REGEX_ESCAPE,
-    TXT_X86_64_REGEX_PLAIN,
-    TXT_X86_64_REGEX_NUMBER,
-    TXT_X86_64_REGEX_ADDRESS,
-    TXT_X86_64_REGEX_SECTION_SHORT,
-    TXT_X86_64_REGEX_SECTION,
-    TXT_X86_64_REGEX_GLOBL,
-    TXT_X86_64_REGEX_BYTE,
-    TXT_X86_64_REGEX_WORD,
-    TXT_X86_64_REGEX_LONG,
-    TXT_X86_64_REGEX_QUAD,
-    TXT_X86_64_REGEX_ZERO,
-    TXT_X86_64_REGEX_ALIGN,
-    TXT_X86_64_REGEX_ASCII,
-    TXT_X86_64_REGEX_ASCIZ,
-    TXT_X86_64_REGEX_IGNORED,
-    TXT_X86_64_REGEX_LEADING,
-    TXT_X86_64_REGEX_TRAILING,
-    TXT_X86_64_REGEX_BLANK,
-    TXT_X86_64_REGEX_LABEL_DEF,
-    TXT_X86_64_REGEX_DIRECTIVE,
-    TXT_X86_64_REGEX_SEPARATED,
-    TXT_X86_64_REGEX_COMMENTED,
-    TXT_X86_64_REGEX_STATEMENT,
-    TXT_X86_64_REGEX_COUNT
+    TXT_X86_64_REGEX_RR,            // two general registers
+    TXT_X86_64_REGEX_GRP_IMM,       // an immediate and a register
+    TXT_X86_64_REGEX_MOV_IMM,       // an immediate moved to a register
+    TXT_X86_64_REGEX_MEM_FORM,      // a load, a store or lea
+    TXT_X86_64_REGEX_MOVSX,         // a sign-extending move
+    TXT_X86_64_REGEX_MOVZX,         // a zero-extending move
+    TXT_X86_64_REGEX_LEA_RIP,       // lea of a RIP-relative address
+    TXT_X86_64_REGEX_GRP_UNARY,     // one general register
+    TXT_X86_64_REGEX_SHIFT,         // a shift by %cl
+    TXT_X86_64_REGEX_SETCC,         // a setcc on a byte register
+    TXT_X86_64_REGEX_BRANCH,        // a jump or a call to a label
+    TXT_X86_64_REGEX_MOV_RR,        // a move between general registers
+    TXT_X86_64_REGEX_SSE,           // a scalar SSE operation
+    TXT_X86_64_REGEX_X87,           // an x87 operation
+    TXT_X86_64_REGEX_CALL_REG,      // a call through a register
+    TXT_X86_64_REGEX_BARE,          // an instruction with no operand
+    TXT_X86_64_REGEX_REG,           // a general register operand
+    TXT_X86_64_REGEX_IMM,           // an immediate operand
+    TXT_X86_64_REGEX_MEM,           // a memory operand
+    TXT_X86_64_REGEX_RIP,           // a RIP-relative operand
+    TXT_X86_64_REGEX_LABEL,         // a branch target operand
+    TXT_X86_64_REGEX_XMM,           // an SSE register operand
+    TXT_X86_64_REGEX_ST,            // an x87 stack register operand
+    TXT_X86_64_REGEX_OCTAL,         // an octal escape
+    TXT_X86_64_REGEX_HEX,           // a hex escape
+    TXT_X86_64_REGEX_ESCAPE,        // an escape naming a byte
+    TXT_X86_64_REGEX_PLAIN,         // a run of unescaped bytes
+    TXT_X86_64_REGEX_NUMBER,        // a number in a data list
+    TXT_X86_64_REGEX_ADDRESS,       // a symbol and its addend in a data list
+    TXT_X86_64_REGEX_SECTION_SHORT, // .text, .data or .rodata
+    TXT_X86_64_REGEX_SECTION,       // .section with its flags and type
+    TXT_X86_64_REGEX_GLOBL,         // .globl or .global
+    TXT_X86_64_REGEX_BYTE,          // .byte
+    TXT_X86_64_REGEX_WORD,          // .word, .short or .value
+    TXT_X86_64_REGEX_LONG,          // .long or .int
+    TXT_X86_64_REGEX_QUAD,          // .quad
+    TXT_X86_64_REGEX_ZERO,          // .zero, .skip or .space
+    TXT_X86_64_REGEX_ALIGN,         // .align
+    TXT_X86_64_REGEX_ASCII,         // .ascii
+    TXT_X86_64_REGEX_ASCIZ,         // .asciz or .string
+    TXT_X86_64_REGEX_IGNORED,       // .file, .ident, .type or .size
+    TXT_X86_64_REGEX_LEADING,       // the blanks opening a statement
+    TXT_X86_64_REGEX_TRAILING,      // the blanks closing a statement
+    TXT_X86_64_REGEX_BLANK,         // an empty statement
+    TXT_X86_64_REGEX_LABEL_DEF,     // a label before its statement
+    TXT_X86_64_REGEX_DIRECTIVE,     // any directive
+    TXT_X86_64_REGEX_SEPARATED,     // a statement ended by `;`
+    TXT_X86_64_REGEX_COMMENTED,     // a statement ended by `#`
+    TXT_X86_64_REGEX_STATEMENT,     // a statement ended by its line
+    TXT_X86_64_REGEX_COUNT          // number of regexes
 };
 
 // The bases a string escape is written in.
 typedef enum Txt_x86_64_Base Txt_x86_64_Base;
 enum Txt_x86_64_Base {
-    TXT_X86_64_BASE_OCTAL = 8,
-    TXT_X86_64_BASE_HEX   = 16
+    TXT_X86_64_BASE_OCTAL = 8, // `\ooo`
+    TXT_X86_64_BASE_HEX   = 16 // `\x`
 };
 
 // Regex matches

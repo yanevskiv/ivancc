@@ -42,17 +42,17 @@
 // REX prefix bits: 64-bit operand (W) and high-register extensions (R/B).
 typedef enum Enc_x86_64_Rex Enc_x86_64_Rex;
 enum Enc_x86_64_Rex {
-    ENC_X86_64_REX_BASE = 0x40,
-    ENC_X86_64_REX_W    = 0x08,
-    ENC_X86_64_REX_R    = 0x04,
-    ENC_X86_64_REX_B    = 0x01
+    ENC_X86_64_REX_BASE = 0x40, // 0100 in the high nibble
+    ENC_X86_64_REX_W    = 0x08, // a 64-bit operand
+    ENC_X86_64_REX_R    = 0x04, // extends ModRM reg
+    ENC_X86_64_REX_B    = 0x01  // extends ModRM r/m or the opcode's register
 };
 
 // Whether a register number needs the REX extension bit.
 typedef enum Enc_x86_64_RegExt Enc_x86_64_RegExt;
 enum Enc_x86_64_RegExt {
-    ENC_X86_64_REG_LOW,  // %rax through %rdi
-    ENC_X86_64_REG_HIGH  // %r8 through %r15
+    ENC_X86_64_REG_LOW, // %rax through %rdi
+    ENC_X86_64_REG_HIGH // %r8 through %r15
 };
 
 // ModRM mod field.
@@ -73,51 +73,51 @@ enum Enc_x86_64_Rm {
 // SIB byte selecting %rsp as base with no index.
 typedef enum Enc_x86_64_Sib Enc_x86_64_Sib;
 enum Enc_x86_64_Sib {
-    ENC_X86_64_SIB_BASE_RSP = 0x24
+    ENC_X86_64_SIB_BASE_RSP = 0x24 // scale 1, no index, base %rsp
 };
 
 // Opcode extensions carried in the ModRM reg field by the group opcodes.
 typedef enum Enc_x86_64_Grp Enc_x86_64_Grp;
 enum Enc_x86_64_Grp {
-    ENC_X86_64_GRP_ADD  = 0,
-    ENC_X86_64_GRP_OR   = 1,
-    ENC_X86_64_GRP_NOT  = 2,
-    ENC_X86_64_GRP_NEG  = 3,
-    ENC_X86_64_GRP_AND  = 4,
-    ENC_X86_64_GRP_SHL  = 4,
-    ENC_X86_64_GRP_SUB  = 5,
-    ENC_X86_64_GRP_XOR  = 6,
-    ENC_X86_64_GRP_SHR  = 5,
-    ENC_X86_64_GRP_DIV  = 6,
-    ENC_X86_64_GRP_CMP  = 7,
-    ENC_X86_64_GRP_IDIV = 7,
-    ENC_X86_64_GRP_SAR  = 7,
-    ENC_X86_64_GRP_CALL = 2
+    ENC_X86_64_GRP_ADD  = 0, // /0 of group 1
+    ENC_X86_64_GRP_OR   = 1, // /1 of group 1
+    ENC_X86_64_GRP_NOT  = 2, // /2 of group 3
+    ENC_X86_64_GRP_NEG  = 3, // /3 of group 3
+    ENC_X86_64_GRP_AND  = 4, // /4 of group 1
+    ENC_X86_64_GRP_SHL  = 4, // /4 of group 2
+    ENC_X86_64_GRP_SUB  = 5, // /5 of group 1
+    ENC_X86_64_GRP_XOR  = 6, // /6 of group 1
+    ENC_X86_64_GRP_SHR  = 5, // /5 of group 2
+    ENC_X86_64_GRP_DIV  = 6, // /6 of group 3
+    ENC_X86_64_GRP_CMP  = 7, // /7 of group 1
+    ENC_X86_64_GRP_IDIV = 7, // /7 of group 3
+    ENC_X86_64_GRP_SAR  = 7, // /7 of group 2
+    ENC_X86_64_GRP_CALL = 2  // /2 of group 5
 };
 
 // Primary opcode bytes, named as the Intel tables list them.
 typedef enum Enc_x86_64_Opcode Enc_x86_64_Opcode;
 enum Enc_x86_64_Opcode {
-    ENC_X86_64_OPCODE_ADD_RM_R      = 0x01,
-    ENC_X86_64_OPCODE_OR_RM_R       = 0x09,
-    ENC_X86_64_OPCODE_AND_RM_R      = 0x21,
-    ENC_X86_64_OPCODE_SUB_RM_R      = 0x29,
-    ENC_X86_64_OPCODE_XOR_RM_R      = 0x31,
-    ENC_X86_64_OPCODE_CMP_RM_R      = 0x39,
+    ENC_X86_64_OPCODE_ADD_RM_R      = 0x01, // ADD r/m64, r64
+    ENC_X86_64_OPCODE_OR_RM_R       = 0x09, // OR r/m64, r64
+    ENC_X86_64_OPCODE_AND_RM_R      = 0x21, // AND r/m64, r64
+    ENC_X86_64_OPCODE_SUB_RM_R      = 0x29, // SUB r/m64, r64
+    ENC_X86_64_OPCODE_XOR_RM_R      = 0x31, // XOR r/m64, r64
+    ENC_X86_64_OPCODE_CMP_RM_R      = 0x39, // CMP r/m64, r64
     ENC_X86_64_OPCODE_PUSH_R        = 0x50, // + the low 3 bits of the register
     ENC_X86_64_OPCODE_POP_R         = 0x58, // + the low 3 bits of the register
-    ENC_X86_64_OPCODE_MOVSXD_R_RM32 = 0x63,
-    ENC_X86_64_OPCODE_MOV_RM8_R8    = 0x88,
-    ENC_X86_64_OPCODE_MOV_RM_R      = 0x89,
-    ENC_X86_64_OPCODE_MOV_R_RM      = 0x8B,
-    ENC_X86_64_OPCODE_LEA_R_M       = 0x8D,
-    ENC_X86_64_OPCODE_CQO           = 0x99,
+    ENC_X86_64_OPCODE_MOVSXD_R_RM32 = 0x63, // MOVSXD r64, r/m32
+    ENC_X86_64_OPCODE_MOV_RM8_R8    = 0x88, // MOV r/m8, r8
+    ENC_X86_64_OPCODE_MOV_RM_R      = 0x89, // MOV r/m64, r64
+    ENC_X86_64_OPCODE_MOV_R_RM      = 0x8B, // MOV r64, r/m64
+    ENC_X86_64_OPCODE_LEA_R_M       = 0x8D, // LEA r64, m
+    ENC_X86_64_OPCODE_CQO           = 0x99, // CQO
     ENC_X86_64_OPCODE_MOV_R8_IMM8   = 0xB0, // + the low 3 bits of the register
     ENC_X86_64_OPCODE_MOV_R_IMM64   = 0xB8, // + the low 3 bits of the register
-    ENC_X86_64_OPCODE_RET           = 0xC3,
-    ENC_X86_64_OPCODE_MOV_RM_IMM32  = 0xC7,
-    ENC_X86_64_OPCODE_CALL_REL32    = 0xE8,
-    ENC_X86_64_OPCODE_JMP_REL32     = 0xE9,
+    ENC_X86_64_OPCODE_RET           = 0xC3, // RET
+    ENC_X86_64_OPCODE_MOV_RM_IMM32  = 0xC7, // MOV r/m64, imm32
+    ENC_X86_64_OPCODE_CALL_REL32    = 0xE8, // CALL rel32
+    ENC_X86_64_OPCODE_JMP_REL32     = 0xE9, // JMP rel32
     ENC_X86_64_OPCODE_GRP1_RM_IMM32 = 0x81, // add/sub/cmp, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_GRP2_RM_CL    = 0xD3, // shl/sar by %cl, selected by Enc_x86_64_Grp
     ENC_X86_64_OPCODE_GRP3_RM       = 0xF7, // neg/not/idiv, selected by Enc_x86_64_Grp
@@ -126,44 +126,44 @@ enum Enc_x86_64_Opcode {
     ENC_X86_64_OPCODE_SSE_DOUBLE    = 0xF2, // selects the scalar-double SSE form
     ENC_X86_64_OPCODE_SSE_SINGLE    = 0xF3, // selects the scalar-single SSE form
     ENC_X86_64_OPCODE_X87_D9        = 0xD9, // x87, selected by Enc_x86_64_X87Digit or a second byte
-    ENC_X86_64_OPCODE_X87_DB        = 0xDB,
-    ENC_X86_64_OPCODE_X87_DD        = 0xDD,
-    ENC_X86_64_OPCODE_X87_DE        = 0xDE,
-    ENC_X86_64_OPCODE_X87_DF        = 0xDF,
+    ENC_X86_64_OPCODE_X87_DB        = 0xDB, // x87 on 80-bit memory
+    ENC_X86_64_OPCODE_X87_DD        = 0xDD, // x87 on 64-bit memory
+    ENC_X86_64_OPCODE_X87_DE        = 0xDE, // x87 arithmetic that pops
+    ENC_X86_64_OPCODE_X87_DF        = 0xDF, // x87 on 64-bit integers
     ENC_X86_64_OPCODE_ESCAPE        = 0x0F  // introduces a two-byte opcode
 };
 
 // Second bytes of the two-byte opcodes.
 typedef enum Enc_x86_64_Opcode2 Enc_x86_64_Opcode2;
 enum Enc_x86_64_Opcode2 {
-    ENC_X86_64_OPCODE2_SYSCALL     = 0x05,
-    ENC_X86_64_OPCODE2_JE_REL32    = 0x84,
-    ENC_X86_64_OPCODE2_JNE_REL32   = 0x85,
-    ENC_X86_64_OPCODE2_SETE        = 0x94,
-    ENC_X86_64_OPCODE2_SETNE       = 0x95,
-    ENC_X86_64_OPCODE2_SETL        = 0x9C,
-    ENC_X86_64_OPCODE2_SETB        = 0x92,
-    ENC_X86_64_OPCODE2_SETBE       = 0x96,
-    ENC_X86_64_OPCODE2_SETLE       = 0x9E,
-    ENC_X86_64_OPCODE2_IMUL_R_RM   = 0xAF,
-    ENC_X86_64_OPCODE2_MOVZX_R_RM8  = 0xB6,
-    ENC_X86_64_OPCODE2_MOVZX_R_RM16 = 0xB7,
-    ENC_X86_64_OPCODE2_MOVSX_R_RM8  = 0xBE,
-    ENC_X86_64_OPCODE2_MOVSX_R_RM16 = 0xBF,
-    ENC_X86_64_OPCODE2_SETA        = 0x97,
-    ENC_X86_64_OPCODE2_SETAE       = 0x93,
-    ENC_X86_64_OPCODE2_SETP        = 0x9A,
-    ENC_X86_64_OPCODE2_SETNP       = 0x9B,
-    ENC_X86_64_OPCODE2_CVTSI2S     = 0x2A,
-    ENC_X86_64_OPCODE2_CVTTS2SI    = 0x2C,
-    ENC_X86_64_OPCODE2_UCOMIS      = 0x2E,
-    ENC_X86_64_OPCODE2_ADDS        = 0x58,
-    ENC_X86_64_OPCODE2_MULS        = 0x59,
-    ENC_X86_64_OPCODE2_CVTS2S      = 0x5A,
-    ENC_X86_64_OPCODE2_SUBS        = 0x5C,
-    ENC_X86_64_OPCODE2_DIVS        = 0x5E,
-    ENC_X86_64_OPCODE2_MOVQ_XMM_RM = 0x6E,
-    ENC_X86_64_OPCODE2_MOVQ_RM_XMM = 0x7E
+    ENC_X86_64_OPCODE2_SYSCALL      = 0x05, // SYSCALL
+    ENC_X86_64_OPCODE2_JE_REL32     = 0x84, // JE rel32
+    ENC_X86_64_OPCODE2_JNE_REL32    = 0x85, // JNE rel32
+    ENC_X86_64_OPCODE2_SETE         = 0x94, // SETE r/m8
+    ENC_X86_64_OPCODE2_SETNE        = 0x95, // SETNE r/m8
+    ENC_X86_64_OPCODE2_SETL         = 0x9C, // SETL r/m8
+    ENC_X86_64_OPCODE2_SETB         = 0x92, // SETB r/m8
+    ENC_X86_64_OPCODE2_SETBE        = 0x96, // SETBE r/m8
+    ENC_X86_64_OPCODE2_SETLE        = 0x9E, // SETLE r/m8
+    ENC_X86_64_OPCODE2_IMUL_R_RM    = 0xAF, // IMUL r64, r/m64
+    ENC_X86_64_OPCODE2_MOVZX_R_RM8  = 0xB6, // MOVZX r64, r/m8
+    ENC_X86_64_OPCODE2_MOVZX_R_RM16 = 0xB7, // MOVZX r64, r/m16
+    ENC_X86_64_OPCODE2_MOVSX_R_RM8  = 0xBE, // MOVSX r64, r/m8
+    ENC_X86_64_OPCODE2_MOVSX_R_RM16 = 0xBF, // MOVSX r64, r/m16
+    ENC_X86_64_OPCODE2_SETA         = 0x97, // SETA r/m8
+    ENC_X86_64_OPCODE2_SETAE        = 0x93, // SETAE r/m8
+    ENC_X86_64_OPCODE2_SETP         = 0x9A, // SETP r/m8
+    ENC_X86_64_OPCODE2_SETNP        = 0x9B, // SETNP r/m8
+    ENC_X86_64_OPCODE2_CVTSI2S      = 0x2A, // CVTSI2SD or CVTSI2SS xmm, r/m64
+    ENC_X86_64_OPCODE2_CVTTS2SI     = 0x2C, // CVTTSD2SI or CVTTSS2SI r64, xmm/m
+    ENC_X86_64_OPCODE2_UCOMIS       = 0x2E, // UCOMISD or UCOMISS xmm, xmm/m
+    ENC_X86_64_OPCODE2_ADDS         = 0x58, // ADDSD or ADDSS xmm, xmm/m
+    ENC_X86_64_OPCODE2_MULS         = 0x59, // MULSD or MULSS xmm, xmm/m
+    ENC_X86_64_OPCODE2_CVTS2S       = 0x5A, // CVTSD2SS or CVTSS2SD xmm, xmm/m
+    ENC_X86_64_OPCODE2_SUBS         = 0x5C, // SUBSD or SUBSS xmm, xmm/m
+    ENC_X86_64_OPCODE2_DIVS         = 0x5E, // DIVSD or DIVSS xmm, xmm/m
+    ENC_X86_64_OPCODE2_MOVQ_XMM_RM  = 0x6E, // MOVQ xmm, r/m64
+    ENC_X86_64_OPCODE2_MOVQ_RM_XMM  = 0x7E  // MOVQ r/m64, xmm
 };
 
 // Opcode extensions an x87 memory form carries in the ModRM reg field.

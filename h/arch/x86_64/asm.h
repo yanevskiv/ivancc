@@ -35,136 +35,136 @@
 // Registers
 typedef enum Asm_x86_64_Reg Asm_x86_64_Reg;
 enum Asm_x86_64_Reg {
-    ASM_X86_64_REG_RAX = 0,
-    ASM_X86_64_REG_RCX,
-    ASM_X86_64_REG_RDX,
-    ASM_X86_64_REG_RBX,
-    ASM_X86_64_REG_RSP,
-    ASM_X86_64_REG_RBP,
-    ASM_X86_64_REG_RSI,
-    ASM_X86_64_REG_RDI,
-    ASM_X86_64_REG_R8,
-    ASM_X86_64_REG_R9,
-    ASM_X86_64_REG_R10,
-    ASM_X86_64_REG_R11,
-    ASM_X86_64_REG_R12,
-    ASM_X86_64_REG_R13,
-    ASM_X86_64_REG_R14,
-    ASM_X86_64_REG_R15,
-    ASM_X86_64_REG_COUNT // number of registers
+    ASM_X86_64_REG_RAX = 0, // %rax
+    ASM_X86_64_REG_RCX,     // %rcx
+    ASM_X86_64_REG_RDX,     // %rdx
+    ASM_X86_64_REG_RBX,     // %rbx
+    ASM_X86_64_REG_RSP,     // %rsp
+    ASM_X86_64_REG_RBP,     // %rbp
+    ASM_X86_64_REG_RSI,     // %rsi
+    ASM_X86_64_REG_RDI,     // %rdi
+    ASM_X86_64_REG_R8,      // %r8
+    ASM_X86_64_REG_R9,      // %r9
+    ASM_X86_64_REG_R10,     // %r10
+    ASM_X86_64_REG_R11,     // %r11
+    ASM_X86_64_REG_R12,     // %r12
+    ASM_X86_64_REG_R13,     // %r13
+    ASM_X86_64_REG_R14,     // %r14
+    ASM_X86_64_REG_R15,     // %r15
+    ASM_X86_64_REG_COUNT    // number of registers
 };
 
 // The width in bits of a register operand, and so of the access it makes.
 typedef enum Asm_x86_64_Width Asm_x86_64_Width;
 enum Asm_x86_64_Width {
-    ASM_X86_64_WIDTH_NONE = 0, // the operand is not a register
-    ASM_X86_64_WIDTH_8    = 8,
-    ASM_X86_64_WIDTH_16   = 16,
-    ASM_X86_64_WIDTH_32   = 32,
-    ASM_X86_64_WIDTH_64   = 64
+    ASM_X86_64_WIDTH_NONE = 0,  // the operand is not a register
+    ASM_X86_64_WIDTH_8    = 8,  // %al
+    ASM_X86_64_WIDTH_16   = 16, // %ax
+    ASM_X86_64_WIDTH_32   = 32, // %eax
+    ASM_X86_64_WIDTH_64   = 64  // %rax
 };
 
 // SSE registers
 typedef enum Asm_x86_64_Xmm Asm_x86_64_Xmm;
 enum Asm_x86_64_Xmm {
-    ASM_X86_64_XMM0 = 0,
-    ASM_X86_64_XMM1,
-    ASM_X86_64_XMM2,
-    ASM_X86_64_XMM3,
-    ASM_X86_64_XMM4,
-    ASM_X86_64_XMM5,
-    ASM_X86_64_XMM6,
-    ASM_X86_64_XMM7,
-    ASM_X86_64_XMM8,
-    ASM_X86_64_XMM9,
-    ASM_X86_64_XMM10,
-    ASM_X86_64_XMM11,
-    ASM_X86_64_XMM12,
-    ASM_X86_64_XMM13,
-    ASM_X86_64_XMM14,
-    ASM_X86_64_XMM15,
+    ASM_X86_64_XMM0 = 0, // %xmm0
+    ASM_X86_64_XMM1,     // %xmm1
+    ASM_X86_64_XMM2,     // %xmm2
+    ASM_X86_64_XMM3,     // %xmm3
+    ASM_X86_64_XMM4,     // %xmm4
+    ASM_X86_64_XMM5,     // %xmm5
+    ASM_X86_64_XMM6,     // %xmm6
+    ASM_X86_64_XMM7,     // %xmm7
+    ASM_X86_64_XMM8,     // %xmm8
+    ASM_X86_64_XMM9,     // %xmm9
+    ASM_X86_64_XMM10,    // %xmm10
+    ASM_X86_64_XMM11,    // %xmm11
+    ASM_X86_64_XMM12,    // %xmm12
+    ASM_X86_64_XMM13,    // %xmm13
+    ASM_X86_64_XMM14,    // %xmm14
+    ASM_X86_64_XMM15,    // %xmm15
     ASM_X86_64_XMM_COUNT // number of registers
 };
 
 // Opcodes
 typedef enum Asm_x86_64_Op Asm_x86_64_Op;
 enum Asm_x86_64_Op {
-    ASM_X86_64_OP_MOV = 0,
-    ASM_X86_64_OP_MOVSX,
-    ASM_X86_64_OP_LEA,
-    ASM_X86_64_OP_PUSH,
-    ASM_X86_64_OP_POP,
-    ASM_X86_64_OP_ADD,
-    ASM_X86_64_OP_SUB,
-    ASM_X86_64_OP_IMUL,
-    ASM_X86_64_OP_IDIV,
-    ASM_X86_64_OP_DIV,
-    ASM_X86_64_OP_AND,
-    ASM_X86_64_OP_OR,
-    ASM_X86_64_OP_XOR,
-    ASM_X86_64_OP_NOT,
-    ASM_X86_64_OP_SHL,
-    ASM_X86_64_OP_SAR,
-    ASM_X86_64_OP_SHR,
-    ASM_X86_64_OP_CQO,
-    ASM_X86_64_OP_NEG,
-    ASM_X86_64_OP_CMP,
-    ASM_X86_64_OP_SETE,
-    ASM_X86_64_OP_SETNE,
-    ASM_X86_64_OP_SETL,
-    ASM_X86_64_OP_SETLE,
-    ASM_X86_64_OP_SETB,
-    ASM_X86_64_OP_SETBE,
-    ASM_X86_64_OP_MOVZX,
-    ASM_X86_64_OP_JMP,
-    ASM_X86_64_OP_JE,
-    ASM_X86_64_OP_JNE,
-    ASM_X86_64_OP_CALL,
-    ASM_X86_64_OP_CALL_REG,
-    ASM_X86_64_OP_RET,
-    ASM_X86_64_OP_SYSCALL,
-    ASM_X86_64_OP_SETA,
-    ASM_X86_64_OP_SETAE,
-    ASM_X86_64_OP_SETP,
-    ASM_X86_64_OP_SETNP,
-    ASM_X86_64_OP_ADDSD,
-    ASM_X86_64_OP_ADDSS,
-    ASM_X86_64_OP_SUBSD,
-    ASM_X86_64_OP_SUBSS,
-    ASM_X86_64_OP_MULSD,
-    ASM_X86_64_OP_MULSS,
-    ASM_X86_64_OP_DIVSD,
-    ASM_X86_64_OP_DIVSS,
-    ASM_X86_64_OP_UCOMISD,
-    ASM_X86_64_OP_UCOMISS,
-    ASM_X86_64_OP_CVTSS2SD,
-    ASM_X86_64_OP_CVTSD2SS,
+    ASM_X86_64_OP_MOV = 0,   // copy
+    ASM_X86_64_OP_MOVSX,     // copy sign-extended
+    ASM_X86_64_OP_LEA,       // load an address
+    ASM_X86_64_OP_PUSH,      // push onto the stack
+    ASM_X86_64_OP_POP,       // pop off the stack
+    ASM_X86_64_OP_ADD,       // add
+    ASM_X86_64_OP_SUB,       // subtract
+    ASM_X86_64_OP_IMUL,      // signed multiply
+    ASM_X86_64_OP_IDIV,      // signed divide of %rdx:%rax
+    ASM_X86_64_OP_DIV,       // unsigned divide of %rdx:%rax
+    ASM_X86_64_OP_AND,       // bitwise and
+    ASM_X86_64_OP_OR,        // bitwise or
+    ASM_X86_64_OP_XOR,       // bitwise exclusive or
+    ASM_X86_64_OP_NOT,       // bitwise complement
+    ASM_X86_64_OP_SHL,       // shift left
+    ASM_X86_64_OP_SAR,       // signed shift right
+    ASM_X86_64_OP_SHR,       // unsigned shift right
+    ASM_X86_64_OP_CQO,       // sign-extend %rax into %rdx
+    ASM_X86_64_OP_NEG,       // negate
+    ASM_X86_64_OP_CMP,       // compare
+    ASM_X86_64_OP_SETE,      // set a byte if equal
+    ASM_X86_64_OP_SETNE,     // set a byte if not equal
+    ASM_X86_64_OP_SETL,      // set a byte if signed less
+    ASM_X86_64_OP_SETLE,     // set a byte if signed less or equal
+    ASM_X86_64_OP_SETB,      // set a byte if unsigned below
+    ASM_X86_64_OP_SETBE,     // set a byte if unsigned below or equal
+    ASM_X86_64_OP_MOVZX,     // copy zero-extended
+    ASM_X86_64_OP_JMP,       // jump
+    ASM_X86_64_OP_JE,        // jump if equal
+    ASM_X86_64_OP_JNE,       // jump if not equal
+    ASM_X86_64_OP_CALL,      // call a label
+    ASM_X86_64_OP_CALL_REG,  // call through a register
+    ASM_X86_64_OP_RET,       // return
+    ASM_X86_64_OP_SYSCALL,   // enter the kernel
+    ASM_X86_64_OP_SETA,      // set a byte if unsigned above
+    ASM_X86_64_OP_SETAE,     // set a byte if unsigned above or equal
+    ASM_X86_64_OP_SETP,      // set a byte if unordered
+    ASM_X86_64_OP_SETNP,     // set a byte if ordered
+    ASM_X86_64_OP_ADDSD,     // add doubles
+    ASM_X86_64_OP_ADDSS,     // add floats
+    ASM_X86_64_OP_SUBSD,     // subtract doubles
+    ASM_X86_64_OP_SUBSS,     // subtract floats
+    ASM_X86_64_OP_MULSD,     // multiply doubles
+    ASM_X86_64_OP_MULSS,     // multiply floats
+    ASM_X86_64_OP_DIVSD,     // divide doubles
+    ASM_X86_64_OP_DIVSS,     // divide floats
+    ASM_X86_64_OP_UCOMISD,   // compare doubles
+    ASM_X86_64_OP_UCOMISS,   // compare floats
+    ASM_X86_64_OP_CVTSS2SD,  // float to double
+    ASM_X86_64_OP_CVTSD2SS,  // double to float
     ASM_X86_64_OP_CVTSI2SD,  // from a 64-bit register
     ASM_X86_64_OP_CVTSI2SS,  // from a 64-bit register
     ASM_X86_64_OP_CVTTSD2SI, // into a 64-bit register
     ASM_X86_64_OP_CVTTSS2SI, // into a 64-bit register
-    ASM_X86_64_OP_FLDT,
-    ASM_X86_64_OP_FSTPT,
-    ASM_X86_64_OP_FLDL,
-    ASM_X86_64_OP_FSTPL,
-    ASM_X86_64_OP_FLDS,
-    ASM_X86_64_OP_FSTPS,
-    ASM_X86_64_OP_FILDQ,
-    ASM_X86_64_OP_FISTTPQ,
+    ASM_X86_64_OP_FLDT,      // push a long double
+    ASM_X86_64_OP_FSTPT,     // pop a long double to memory
+    ASM_X86_64_OP_FLDL,      // push a double
+    ASM_X86_64_OP_FSTPL,     // pop a double to memory
+    ASM_X86_64_OP_FLDS,      // push a float
+    ASM_X86_64_OP_FSTPS,     // pop a float to memory
+    ASM_X86_64_OP_FILDQ,     // push a 64-bit integer
+    ASM_X86_64_OP_FISTTPQ,   // pop a 64-bit integer truncated
     ASM_X86_64_OP_FADDP,     // %st(1) += %st, then pop
     ASM_X86_64_OP_FMULP,     // %st(1) *= %st, then pop
     ASM_X86_64_OP_FSUBRP,    // %st(1) -= %st, then pop, as gas spells it
     ASM_X86_64_OP_FDIVRP,    // %st(1) /= %st, then pop, as gas spells it
-    ASM_X86_64_OP_FCHS,
+    ASM_X86_64_OP_FCHS,      // negate %st
     ASM_X86_64_OP_FUCOMIP,   // compare %st with %st(1), then pop
     ASM_X86_64_OP_FSTP,      // pop %st
-    ASM_X86_64_OP_COUNT // number of operations
+    ASM_X86_64_OP_COUNT      // number of operations
 };
 
 // How an operand is addressed.
 typedef enum Asm_x86_64_OperandKind Asm_x86_64_OperandKind;
 enum Asm_x86_64_OperandKind {
-    ASM_X86_64_OPERAND_NONE,
+    ASM_X86_64_OPERAND_NONE,  // no operand
     ASM_X86_64_OPERAND_REG,   // ao_reg, ao_width      %rax / %al
     ASM_X86_64_OPERAND_IMM,   // ao_imm                $42
     ASM_X86_64_OPERAND_MEM,   // ao_reg (base), ao_disp   -8(%rbp)

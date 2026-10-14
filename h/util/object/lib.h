@@ -81,12 +81,12 @@
 // Why an archive could not be read.
 typedef enum Lib_ArStatus Lib_ArStatus;
 enum Lib_ArStatus {
-    LIB_AR_STATUS_OK,
+    LIB_AR_STATUS_OK,               // read
     LIB_AR_STATUS_NOT_ARCHIVE,      // no `!<arch>` magic
     LIB_AR_STATUS_MEMBER_TRUNCATED, // a header or its contents run past the end
     LIB_AR_STATUS_HEADER_MALFORMED, // a size or terminator that is not one
     LIB_AR_STATUS_NAME_NOT_FOUND,   // a long name the long-name table does not hold
-    LIB_AR_STATUS_COUNT
+    LIB_AR_STATUS_COUNT             // number of statuses
 };
 
 // One member header, on disk.

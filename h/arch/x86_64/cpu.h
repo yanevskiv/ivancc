@@ -94,35 +94,44 @@ typedef unsigned long long Cpu_x86_64_TypeULLong;
 // One SSE register, as its 64-bit lanes.
 typedef uint64_t Cpu_x86_64_XmmLanes[CPU_X86_64_XMM_LANES];
 
+// Map an address to its memory and the bytes mapped from it.
+typedef uint8_t *(*Cpu_x86_64_MemoryMapper)(void *ctx, uint64_t addr, size_t *avail);
+
+// Read a device in the window.
+typedef uint64_t (*Cpu_x86_64_DeviceLoader)(void *ctx, uint64_t addr, size_t size);
+
+// Write a device in the window.
+typedef void (*Cpu_x86_64_DeviceStorer)(void *ctx, uint64_t addr, size_t size, uint64_t value);
+
 // Registers, numbered as ModRM and REX number them.
 typedef enum Cpu_x86_64_Reg Cpu_x86_64_Reg;
 enum Cpu_x86_64_Reg {
-    CPU_X86_64_REG_RAX,
-    CPU_X86_64_REG_RCX,
-    CPU_X86_64_REG_RDX,
-    CPU_X86_64_REG_RBX,
-    CPU_X86_64_REG_RSP,
-    CPU_X86_64_REG_RBP,
-    CPU_X86_64_REG_RSI,
-    CPU_X86_64_REG_RDI,
-    CPU_X86_64_REG_R8,
-    CPU_X86_64_REG_R9,
-    CPU_X86_64_REG_R10,
-    CPU_X86_64_REG_R11,
-    CPU_X86_64_REG_R12,
-    CPU_X86_64_REG_R13,
-    CPU_X86_64_REG_R14,
-    CPU_X86_64_REG_R15,
+    CPU_X86_64_REG_RAX,  // %rax
+    CPU_X86_64_REG_RCX,  // %rcx
+    CPU_X86_64_REG_RDX,  // %rdx
+    CPU_X86_64_REG_RBX,  // %rbx
+    CPU_X86_64_REG_RSP,  // %rsp
+    CPU_X86_64_REG_RBP,  // %rbp
+    CPU_X86_64_REG_RSI,  // %rsi
+    CPU_X86_64_REG_RDI,  // %rdi
+    CPU_X86_64_REG_R8,   // %r8
+    CPU_X86_64_REG_R9,   // %r9
+    CPU_X86_64_REG_R10,  // %r10
+    CPU_X86_64_REG_R11,  // %r11
+    CPU_X86_64_REG_R12,  // %r12
+    CPU_X86_64_REG_R13,  // %r13
+    CPU_X86_64_REG_R14,  // %r14
+    CPU_X86_64_REG_R15,  // %r15
     CPU_X86_64_REG_COUNT // number of registers
 };
 
 // Register widths a decoded operand can name.
 typedef enum Cpu_x86_64_OperandWidth Cpu_x86_64_OperandWidth;
 enum Cpu_x86_64_OperandWidth {
-    CPU_X86_64_WIDTH_8  = 8,
-    CPU_X86_64_WIDTH_16 = 16,
-    CPU_X86_64_WIDTH_32 = 32,
-    CPU_X86_64_WIDTH_64 = 64
+    CPU_X86_64_WIDTH_8  = 8,  // %al
+    CPU_X86_64_WIDTH_16 = 16, // %ax
+    CPU_X86_64_WIDTH_32 = 32, // %eax
+    CPU_X86_64_WIDTH_64 = 64  // %rax
 };
 
 // What stopped a step for the CPU's consumer to deal with.
@@ -137,9 +146,9 @@ enum Cpu_x86_64_Trap {
 // Exception vectors a step can raise, numbered as the hardware numbers them.
 typedef enum Cpu_x86_64_Vector Cpu_x86_64_Vector;
 enum Cpu_x86_64_Vector {
-    CPU_X86_64_VECTOR_DE = 0,  // #DE, a divide error
-    CPU_X86_64_VECTOR_UD = 6,  // #UD, an opcode the CPU cannot run
-    CPU_X86_64_VECTOR_PF = 14  // #PF, an address the bus refused
+    CPU_X86_64_VECTOR_DE = 0, // #DE, a divide error
+    CPU_X86_64_VECTOR_UD = 6, // #UD, an opcode the CPU cannot run
+    CPU_X86_64_VECTOR_PF = 14 // #PF, an address the bus refused
 };
 
 // How an instruction reaches its r/m operand.
@@ -171,12 +180,12 @@ struct Cpu_x86_64_Insn {
 // The memory a CPU reaches, supplied by the program that runs it.
 typedef struct Cpu_x86_64_Bus Cpu_x86_64_Bus;
 struct Cpu_x86_64_Bus {
-    void      *cb_ctx;                                                          // what each function below is handed
-    uint8_t *(*cb_map)(void *ctx, uint64_t addr, size_t *avail);               // the memory at addr and the bytes mapped from it, or NULL
-    uint64_t   cb_io_base;                                                      // the first address of the device window
-    uint64_t   cb_io_size;                                                      // bytes the device window spans, or 0 for none
-    uint64_t (*cb_load)(void *ctx, uint64_t addr, size_t size);                // read a device in the window
-    void     (*cb_store)(void *ctx, uint64_t addr, size_t size, uint64_t value); // write a device in the window
+    void                    *cb_ctx;     // what each function below is handed
+    Cpu_x86_64_MemoryMapper  cb_map;     // the memory at an address, or NULL
+    uint64_t                 cb_io_base; // the device window's first address
+    uint64_t                 cb_io_size; // bytes the device window spans, or 0
+    Cpu_x86_64_DeviceLoader  cb_load;    // read a device in the window
+    Cpu_x86_64_DeviceStorer  cb_store;   // write a device in the window
 };
 
 // A running CPU: the register file, the flags and the bus they reach.

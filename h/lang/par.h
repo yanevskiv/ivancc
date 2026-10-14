@@ -80,26 +80,26 @@ enum Par_ArrayDecor {
 // The qualifiers an asm statement was written with.
 typedef enum Par_AsmQual Par_AsmQual;
 enum Par_AsmQual {
-    PAR_ASM_QUAL_NONE     = 0,
-    PAR_ASM_QUAL_VOLATILE = 1 << 0,
-    PAR_ASM_QUAL_INLINE   = 1 << 1
+    PAR_ASM_QUAL_NONE     = 0,      // neither
+    PAR_ASM_QUAL_VOLATILE = 1 << 0, // volatile
+    PAR_ASM_QUAL_INLINE   = 1 << 1  // inline
 };
 
 // One type specifier keyword.
 typedef enum Par_Spec Par_Spec;
 enum Par_Spec {
-    PAR_SPEC_NONE     = 0,       // no specifier keyword was written
-    PAR_SPEC_VOID     = 1 << 0,
-    PAR_SPEC_BOOL     = 1 << 1,
-    PAR_SPEC_CHAR     = 1 << 2,
-    PAR_SPEC_SHORT    = 1 << 3,
-    PAR_SPEC_INT      = 1 << 4,
-    PAR_SPEC_LONG     = 1 << 5,
-    PAR_SPEC_LLONG    = 1 << 6,  // set when a second `long` arrives
-    PAR_SPEC_SIGNED   = 1 << 7,
-    PAR_SPEC_UNSIGNED = 1 << 8,
-    PAR_SPEC_FLOAT    = 1 << 9,
-    PAR_SPEC_DOUBLE   = 1 << 10
+    PAR_SPEC_NONE     = 0,      // no specifier keyword was written
+    PAR_SPEC_VOID     = 1 << 0, // void
+    PAR_SPEC_BOOL     = 1 << 1, // _Bool
+    PAR_SPEC_CHAR     = 1 << 2, // char
+    PAR_SPEC_SHORT    = 1 << 3, // short
+    PAR_SPEC_INT      = 1 << 4, // int
+    PAR_SPEC_LONG     = 1 << 5, // the first `long`
+    PAR_SPEC_LLONG    = 1 << 6, // set when a second `long` arrives
+    PAR_SPEC_SIGNED   = 1 << 7, // signed
+    PAR_SPEC_UNSIGNED = 1 << 8, // unsigned
+    PAR_SPEC_FLOAT    = 1 << 9, // float
+    PAR_SPEC_DOUBLE   = 1 << 10 // double
 };
 
 // The storage-class and function specifiers a place in the grammar allows.
@@ -114,25 +114,25 @@ enum Par_StorageUse {
 // One step of a declarator, collected walking outward from the name.
 typedef enum Par_DerivKind Par_DerivKind;
 enum Par_DerivKind {
-    PAR_DERIV_POINTER,
-    PAR_DERIV_ARRAY,
-    PAR_DERIV_FUNCTION,
-    PAR_DERIV_COUNT // number of kinds
+    PAR_DERIV_POINTER,  // `*`
+    PAR_DERIV_ARRAY,    // `[]`
+    PAR_DERIV_FUNCTION, // `()`
+    PAR_DERIV_COUNT     // number of kinds
 };
 
 // Whether an initializer list was written with its own braces.
 typedef enum Par_List Par_List;
 enum Par_List {
-    PAR_LIST_UNBRACED,
-    PAR_LIST_BRACED
+    PAR_LIST_UNBRACED, // taking its items from the enclosing list
+    PAR_LIST_BRACED    // in braces of its own
 };
 
 // The bases an escape sequence is written in.
 typedef enum Par_Base Par_Base;
 enum Par_Base {
-    PAR_BASE_OCTAL   = 8,
-    PAR_BASE_DECIMAL = 10,
-    PAR_BASE_HEX     = 16
+    PAR_BASE_OCTAL   = 8,  // `\o`, `\oo` and `\ooo`
+    PAR_BASE_DECIMAL = 10, // a #line number
+    PAR_BASE_HEX     = 16  // `\x`, `\u` and `\U`
 };
 
 // An integer literal.

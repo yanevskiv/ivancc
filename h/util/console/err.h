@@ -63,7 +63,7 @@
 // Diagnostic codes, one per distinct message.
 typedef enum Err_Code Err_Code;
 enum Err_Code {
-    ERR_SUCCESS,
+    ERR_SUCCESS,                           // no error
 
     ERR_PP_FILE_NOT_READABLE,              // can't read a source file or a header
     ERR_PP_COMMENT_NOT_TERMINATED,         // can't leave a comment open at the end of the file
@@ -347,17 +347,17 @@ enum Err_Code {
     ERR_EMU_ARCH_NOT_X86_64,               // can't run an executable that is not for x86_64
     ERR_EMU_IMAGE_OVER_DEVICES,            // can't run an executable whose image, heap and stack reach the devices
 
-    ERR_CODE_COUNT
+    ERR_CODE_COUNT                         // number of codes
 };
 
 // How a diagnostic is reported by default.
 typedef enum Err_Level Err_Level;
 enum Err_Level {
-    ERR_LEVEL_FATAL,                       // an error that stays one
-    ERR_LEVEL_ERROR,                       // an error that may become a warning
-    ERR_LEVEL_PEDANTIC,                    // a warning that -pedantic-errors makes an error
-    ERR_LEVEL_WARNING,                     // a warning that -Werror makes an error
-    ERR_LEVEL_COUNT
+    ERR_LEVEL_FATAL,    // an error that stays one
+    ERR_LEVEL_ERROR,    // an error that may become a warning
+    ERR_LEVEL_PEDANTIC, // a warning that -pedantic-errors makes an error
+    ERR_LEVEL_WARNING,  // a warning that -Werror makes an error
+    ERR_LEVEL_COUNT     // number of levels
 };
 
 // A diagnostic's level, name and message format.

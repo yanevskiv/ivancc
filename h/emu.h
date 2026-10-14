@@ -226,8 +226,8 @@
 // Whether the emulator writes each instruction to stderr before it runs.
 typedef enum Emu_Trace Emu_Trace;
 enum Emu_Trace {
-    EMU_QUIET,
-    EMU_TRACE
+    EMU_QUIET, // nothing written
+    EMU_TRACE  // each instruction written
 };
 
 // What sent a pending signal.
@@ -252,8 +252,8 @@ struct Emu_Linux_Action {
 typedef struct Emu_Linux_Info Emu_Linux_Info;
 struct Emu_Linux_Info {
     Emu_Source ei_source; // what sent it
-    int32_t    ei_code;  // si_code
-    uint64_t   ei_addr;  // the address a fault names
+    int32_t    ei_code;   // si_code
+    uint64_t   ei_addr;   // the address a fault names
 };
 
 // A running program: its image, its signals and how it stopped.

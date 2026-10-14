@@ -76,16 +76,16 @@
 // Values getopt_long returns for the options with no short form.
 typedef enum Cc_Option Cc_Option;
 enum Cc_Option {
-    CC_OPTION_STD = UCHAR_MAX + 1,
-    CC_OPTION_INCLUDE,
-    CC_OPTION_M,
-    CC_OPTION_MM,
-    CC_OPTION_MD,
-    CC_OPTION_MMD,
-    CC_OPTION_MP,
-    CC_OPTION_MF,
-    CC_OPTION_MT,
-    CC_OPTION_MQ
+    CC_OPTION_STD = UCHAR_MAX + 1, // -std=
+    CC_OPTION_INCLUDE,             // -include
+    CC_OPTION_M,                   // -M
+    CC_OPTION_MM,                  // -MM
+    CC_OPTION_MD,                  // -MD
+    CC_OPTION_MMD,                 // -MMD
+    CC_OPTION_MP,                  // -MP
+    CC_OPTION_MF,                  // -MF
+    CC_OPTION_MT,                  // -MT
+    CC_OPTION_MQ                   // -MQ
 };
 
 // Where a run stops.
@@ -94,13 +94,13 @@ enum Cc_Mode {
     CC_MODE_PP,     // -E
     CC_MODE_TEXT,   // -S
     CC_MODE_OBJECT, // -c
-    CC_MODE_EXEC
+    CC_MODE_EXEC    // a linked executable
 };
 
 // What a run does with its dependency rule.
 typedef enum Cc_DependMode Cc_DependMode;
 enum Cc_DependMode {
-    CC_DEPEND_NONE,
+    CC_DEPEND_NONE,    // no rule
     CC_DEPEND_INSTEAD, // write the rule instead of compiling
     CC_DEPEND_BESIDE   // write the rule and compile
 };
