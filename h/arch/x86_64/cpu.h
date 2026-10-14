@@ -87,6 +87,24 @@
 // [Amd64-Vol4:LDMXCSR]: a nonzero reserved bit raises #GP
 #define CPU_X86_64_MXCSR_MASK 0xFFFF
 
+// MXCSR's exception flags, their masks the same bits shifted up.
+// [Amd64-Vol1:4.2.2]: IE, DE, ZE, OE, UE and PE, bits 0 to 5, masked by bits 7 to 12
+#define CPU_X86_64_MXCSR_IE         0x01
+#define CPU_X86_64_MXCSR_DE         0x02
+#define CPU_X86_64_MXCSR_ZE         0x04
+#define CPU_X86_64_MXCSR_OE         0x08
+#define CPU_X86_64_MXCSR_UE         0x10
+#define CPU_X86_64_MXCSR_PE         0x20
+#define CPU_X86_64_MXCSR_FLAGS      0x3F
+#define CPU_X86_64_MXCSR_MASK_SHIFT 7
+
+// MXCSR's rounding control and the bits that bend IEEE 754 for speed.
+// [Amd64-Vol1:4.2.2]: RC, bits 13 and 14; DAZ, bit 6; FZ, bit 15
+#define CPU_X86_64_MXCSR_RC_SHIFT 13
+#define CPU_X86_64_MXCSR_RC_MASK  3
+#define CPU_X86_64_MXCSR_DAZ      0x0040
+#define CPU_X86_64_MXCSR_FZ       0x8000
+
 // The x87 control word FNINIT leaves: every exception masked, rounding to
 // nearest, at double-extended precision.
 // [Amd64-Vol1:6.2.3]: the x87 control word's fields, and 037Fh
@@ -202,7 +220,8 @@ enum Cpu_x86_64_Vector {
     CPU_X86_64_VECTOR_DE = 0,  // #DE, a divide error
     CPU_X86_64_VECTOR_UD = 6,  // #UD, an opcode the CPU cannot run
     CPU_X86_64_VECTOR_GP = 13, // #GP, an operand the instruction refuses
-    CPU_X86_64_VECTOR_PF = 14  // #PF, an address the bus refused
+    CPU_X86_64_VECTOR_PF = 14, // #PF, an address the bus refused
+    CPU_X86_64_VECTOR_XF = 19  // #XF, an unmasked SSE floating-point exception
 };
 
 // What the x87 tag word says of a physical register, by its contents.
@@ -294,9 +313,15 @@ void           Cpu_x86_64_WriteRm(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *
 void           Cpu_x86_64_FlagsSub(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
 void           Cpu_x86_64_FlagsAdd(Cpu_x86_64_State *cpu, uint64_t a, uint64_t b, Cpu_x86_64_OperandWidth width);
 bool           Cpu_x86_64_Parity(uint64_t res);
+void           Cpu_x86_64_FlagsOrder(Cpu_x86_64_State *cpu, Fp_Order order);
 void           Cpu_x86_64_FlagsCompare(Cpu_x86_64_State *cpu, long double a, long double b);
 uint64_t       Cpu_x86_64_Truncate(long double value, Cpu_x86_64_OperandWidth width);
 uint64_t       Cpu_x86_64_ReadSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, Cpu_x86_64_OperandWidth width);
+Fp_Context     Cpu_x86_64_SseContext(const Cpu_x86_64_State *cpu);
+Fp_Value       Cpu_x86_64_SseUnpack(const Cpu_x86_64_State *cpu, const Fp_Format *fmt, uint64_t bits, uint32_t *denormal);
+Fp_Value       Cpu_x86_64_SseQuiet(const Fp_Value *a, const Fp_Value *b);
+bool           Cpu_x86_64_SseSettle(Cpu_x86_64_State *cpu, const Fp_Context *ctx, uint32_t denormal, Fp_Value *result, uint64_t rip);
+void           Cpu_x86_64_SseWrite(uint64_t *dst, const Fp_Format *fmt, const Fp_Value *value);
 void           Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip);
 long double   *Cpu_x86_64_St(Cpu_x86_64_State *cpu, int32_t i);
 void           Cpu_x86_64_StPush(Cpu_x86_64_State *cpu, long double value);

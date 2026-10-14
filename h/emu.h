@@ -107,6 +107,11 @@
 #define EMU_LINUX_SI_KERNEL   0x80
 #define EMU_LINUX_ILL_ILLOPN  2
 #define EMU_LINUX_FPE_INTDIV  1
+#define EMU_LINUX_FPE_FLTDIV  3
+#define EMU_LINUX_FPE_FLTOVF  4
+#define EMU_LINUX_FPE_FLTUND  5
+#define EMU_LINUX_FPE_FLTRES  6
+#define EMU_LINUX_FPE_FLTINV  7
 #define EMU_LINUX_SEGV_MAPERR 1
 
 // The layout of Linux's siginfo.
@@ -339,6 +344,7 @@ uint64_t Emu_x86_64_Linux_SigAction(Emu_x86_64_Linux_Guest *guest, int32_t sig, 
 bool     Emu_x86_64_Linux_PushFrame(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu, int32_t sig, const Emu_Linux_Action *action, const Emu_Linux_Info *info);
 uint64_t Emu_x86_64_Linux_SigReturn(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu);
 void     Emu_x86_64_Linux_Deliver(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu);
+int32_t  Emu_x86_64_Linux_SimdCode(uint32_t mxcsr);
 void     Emu_x86_64_Linux_Fault(Emu_x86_64_Linux_Guest *guest, Cpu_x86_64_State *cpu, uint64_t rip);
 
 // x86_64 Linux running

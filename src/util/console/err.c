@@ -1737,6 +1737,20 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
         .ee_format = "quotient too large for its register at 0x%llx"
     },
 
+    // Args: [MXCSR, instruction address]
+    [ERR_CPU_SIMD_FLOAT_OPERAND_UNMASKED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_SIMD_FLOAT_OPERAND_UNMASKED",
+        .ee_format = "unmasked SSE exception on an operand, MXCSR 0x%llx, at 0x%llx"
+    },
+
+    // Args: [MXCSR, instruction address]
+    [ERR_CPU_SIMD_FLOAT_RESULT_UNMASKED] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_CPU_SIMD_FLOAT_RESULT_UNMASKED",
+        .ee_format = "unmasked SSE exception on a result, MXCSR 0x%llx, at 0x%llx"
+    },
+
     // Args: [architecture, supported architecture]
     [ERR_CC_ARCH_NOT_SUPPORTED] = {
         .ee_level  = ERR_LEVEL_FATAL,

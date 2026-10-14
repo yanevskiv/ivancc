@@ -317,16 +317,24 @@ bool Cpu_x86_64_Parity(uint64_t res)
     return even;
 }
 
+// Set the flags an unordered comparison leaves behind.
+void Cpu_x86_64_FlagsOrder(Cpu_x86_64_State *cpu, Fp_Order order)
+{
+    bool unordered = order == FP_ORDER_UNORDERED;
+
+    cpu->cs_zf = unordered || order == FP_ORDER_EQUAL;
+    cpu->cs_pf = unordered;
+    cpu->cs_cf = unordered || order == FP_ORDER_LESS;
+    cpu->cs_sf = false;
+    cpu->cs_of = false;
+}
+
 // Set the flags an unordered comparison of a with b leaves behind.
 void Cpu_x86_64_FlagsCompare(Cpu_x86_64_State *cpu, long double a, long double b)
 {
-    bool unordered = isnan(a) || isnan(b);
+    Fp_Order order = a < b ? FP_ORDER_LESS : a > b ? FP_ORDER_GREATER : FP_ORDER_EQUAL;
 
-    cpu->cs_zf = unordered || a == b;
-    cpu->cs_pf = unordered;
-    cpu->cs_cf = unordered || a < b;
-    cpu->cs_sf = false;
-    cpu->cs_of = false;
+    Cpu_x86_64_FlagsOrder(cpu, isnan(a) || isnan(b) ? FP_ORDER_UNORDERED : order);
 }
 
 // Truncate a value toward zero into a signed integer of width bits.
@@ -350,6 +358,99 @@ uint64_t Cpu_x86_64_ReadSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, 
     return width == CPU_X86_64_WIDTH_64 ? lane : lane & CPU_X86_64_MASK_32;
 }
 
+// Return how an SSE operation rounds: MXCSR's mode, tiny after rounding.
+Fp_Context Cpu_x86_64_SseContext(const Cpu_x86_64_State *cpu)
+{
+    static const Fp_RoundMode modes[CPU_X86_64_MXCSR_RC_MASK + 1] = {
+        FP_ROUND_NEAREST_EVEN, FP_ROUND_DOWN, FP_ROUND_UP, FP_ROUND_ZERO
+    };
+    Fp_Context ctx = {
+        .fc_mode      = modes[cpu->cs_mxcsr >> CPU_X86_64_MXCSR_RC_SHIFT & CPU_X86_64_MXCSR_RC_MASK],
+        .fc_tininess  = FP_ROUND_TINY_AFTER,
+        .fc_flags     = 0
+    };
+    return ctx;
+}
+
+// Unpack an SSE operand: a zero for a denormal under DAZ, else DE noted.
+Fp_Value Cpu_x86_64_SseUnpack(const Cpu_x86_64_State *cpu, const Fp_Format *fmt, uint64_t bits, uint32_t *denormal)
+{
+    Fp_Value value = Fp_FormatUnpack(fmt, Fp_WideMake(0, bits));
+
+    if (value.fv_class != FP_CLASS_SUBNORMAL) {
+        return value;
+    }
+    if (cpu->cs_mxcsr & CPU_X86_64_MXCSR_DAZ) {
+        return Fp_FormatMake(value.fv_sign, Fp_WideMake(0, 0), 0);
+    }
+    *denormal = CPU_X86_64_MXCSR_DE;
+    return value;
+}
+
+// Return an SSE operation's NaN: its first NaN operand quieted, or indefinite.
+Fp_Value Cpu_x86_64_SseQuiet(const Fp_Value *a, const Fp_Value *b)
+{
+    Fp_Value nan = Fp_FormatMake(FP_SIGN_NEGATIVE, Fp_WideMake(0, 0), 0);
+
+    if (a->fv_class == FP_CLASS_NAN) {
+        nan = *a;
+    } else if (b->fv_class == FP_CLASS_NAN) {
+        nan = *b;
+    }
+    nan.fv_class = FP_CLASS_NAN;
+    nan.fv_mant.fw_hi |= FP_WORD_TOP;
+    return nan;
+}
+
+// Settle an SSE operation's flags in MXCSR; return whether #XF spares it.
+bool Cpu_x86_64_SseSettle(Cpu_x86_64_State *cpu, const Fp_Context *ctx, uint32_t denormal, Fp_Value *result, uint64_t rip)
+{
+    uint32_t masks = cpu->cs_mxcsr >> CPU_X86_64_MXCSR_MASK_SHIFT & CPU_X86_64_MXCSR_FLAGS;
+    uint32_t flags = ctx->fc_flags;
+    uint32_t inexact = flags & FP_FLAG_INEXACT ? CPU_X86_64_MXCSR_PE : 0;
+    uint32_t pre = denormal;
+    uint32_t post = inexact;
+
+    if (flags & FP_FLAG_INVALID) {
+        pre = CPU_X86_64_MXCSR_IE;
+    } else if (flags & FP_FLAG_DIVIDE) {
+        pre = CPU_X86_64_MXCSR_ZE;
+    }
+    if (pre & ~masks) {
+        cpu->cs_mxcsr |= pre;
+        Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_XF, ERR_CPU_SIMD_FLOAT_OPERAND_UNMASKED, (Cpu_x86_64_TypeULLong) cpu->cs_mxcsr, (Cpu_x86_64_TypeULLong) rip);
+        return false;
+    }
+    if (flags & FP_FLAG_OVERFLOW) {
+        post = masks & CPU_X86_64_MXCSR_OE ? CPU_X86_64_MXCSR_OE | CPU_X86_64_MXCSR_PE : CPU_X86_64_MXCSR_OE;
+    } else if ((flags & FP_FLAG_TINY) && ! (masks & CPU_X86_64_MXCSR_UE)) {
+        post = CPU_X86_64_MXCSR_UE | inexact;
+    } else if ((flags & FP_FLAG_TINY) && (cpu->cs_mxcsr & CPU_X86_64_MXCSR_FZ)) {
+        post = CPU_X86_64_MXCSR_UE | CPU_X86_64_MXCSR_PE;
+        *result = Fp_FormatMake(result->fv_sign, Fp_WideMake(0, 0), 0);
+    } else if (flags & FP_FLAG_UNDERFLOW) {
+        post = CPU_X86_64_MXCSR_UE | inexact;
+    }
+    cpu->cs_mxcsr |= pre | post;
+    if (post & ~masks) {
+        Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_XF, ERR_CPU_SIMD_FLOAT_RESULT_UNMASKED, (Cpu_x86_64_TypeULLong) cpu->cs_mxcsr, (Cpu_x86_64_TypeULLong) rip);
+        return false;
+    }
+    return true;
+}
+
+// Write a value into an SSE register's low lane of its format, the rest kept.
+void Cpu_x86_64_SseWrite(uint64_t *dst, const Fp_Format *fmt, const Fp_Value *value)
+{
+    uint64_t bits = Fp_FormatPack(fmt, value).fw_lo;
+
+    if (fmt->ff_bits == CPU_X86_64_WIDTH_64) {
+        dst[0] = bits;
+    } else {
+        dst[0] = (dst[0] & ~(uint64_t) CPU_X86_64_MASK_32) | bits;
+    }
+}
+
 // Execute one scalar SSE operation or conversion.
 void Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint64_t next, uint64_t rip)
 {
@@ -357,6 +458,13 @@ void Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint
     Cpu_x86_64_OperandWidth width = insn->ci_rexw ? CPU_X86_64_WIDTH_64 : CPU_X86_64_WIDTH_32;
     bool dbl = insn->ci_rep == ENC_X86_64_OPCODE_SSE_DOUBLE || (insn->ci_rep == 0 && insn->ci_opsize16);
     Cpu_x86_64_OperandWidth lane = dbl ? CPU_X86_64_WIDTH_64 : CPU_X86_64_WIDTH_32;
+    const Fp_Format *fmt = dbl ? &Fp_FormatBinary64 : &Fp_FormatBinary32;
+    const Fp_Format *other = dbl ? &Fp_FormatBinary32 : &Fp_FormatBinary64;
+    Fp_Context ctx = Cpu_x86_64_SseContext(cpu);
+    uint32_t denormal = 0;
+    Fp_Value a;
+    Fp_Value b;
+    Fp_Value result;
 
     switch (insn->ci_op2) {
         case ENC_X86_64_OPCODE2_MOVQ_XMM_RM: {
@@ -367,82 +475,71 @@ void Cpu_x86_64_StepSse(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, uint
             Cpu_x86_64_WriteRm(cpu, insn, next, dst[0], width);
         } break;
         case ENC_X86_64_OPCODE2_UCOMIS: {
-            uint64_t b = Cpu_x86_64_ReadSse(cpu, insn, next, lane);
-            if (dbl) {
-                Cpu_x86_64_FlagsCompare(cpu, Fp_DoubleFromBits(dst[0]), Fp_DoubleFromBits(b));
-            } else {
-                Cpu_x86_64_FlagsCompare(cpu, Fp_FloatFromBits((uint32_t) dst[0]), Fp_FloatFromBits((uint32_t) b));
+            a = Cpu_x86_64_SseUnpack(cpu, fmt, dst[0] & (dbl ? ~(uint64_t) 0 : CPU_X86_64_MASK_32), &denormal);
+            b = Cpu_x86_64_SseUnpack(cpu, fmt, Cpu_x86_64_ReadSse(cpu, insn, next, lane), &denormal);
+            Fp_Order order = Fp_ArithCmp(&a, &b, FP_COMPARE_QUIET, &ctx);
+            if (Cpu_x86_64_SseSettle(cpu, &ctx, denormal, &a, rip)) {
+                Cpu_x86_64_FlagsOrder(cpu, order);
             }
         } break;
         case ENC_X86_64_OPCODE2_CVTSI2S: {
-            uint64_t a = Cpu_x86_64_ReadRm(cpu, insn, next, width);
-            int64_t v = width == CPU_X86_64_WIDTH_64 ? (int64_t) a : (int32_t) a;
-            if (dbl) {
-                dst[0] = Fp_DoubleBits((double) v);
-            } else {
-                dst[0] = (dst[0] & ~(uint64_t) CPU_X86_64_MASK_32) | Fp_FloatBits((float) v);
+            uint64_t bits = Cpu_x86_64_ReadRm(cpu, insn, next, width);
+            result = Fp_ToValue(width == CPU_X86_64_WIDTH_64 ? (int64_t) bits : (int32_t) bits, fmt, &ctx);
+            if (Cpu_x86_64_SseSettle(cpu, &ctx, denormal, &result, rip)) {
+                Cpu_x86_64_SseWrite(dst, fmt, &result);
             }
         } break;
         case ENC_X86_64_OPCODE2_CVTTS2SI: {
-            uint64_t b = Cpu_x86_64_ReadSse(cpu, insn, next, lane);
-            long double v = dbl ? Fp_DoubleFromBits(b) : Fp_FloatFromBits((uint32_t) b);
-            Cpu_x86_64_WriteReg(cpu, insn->ci_reg, Cpu_x86_64_Truncate(v, width), width);
+            b = Cpu_x86_64_SseUnpack(cpu, fmt, Cpu_x86_64_ReadSse(cpu, insn, next, lane), &denormal);
+            ctx.fc_mode = FP_ROUND_ZERO;
+            uint64_t integer = Fp_ToInteger(&b, width, &ctx);
+            if (ctx.fc_flags & FP_FLAG_INVALID) {
+                integer = width == CPU_X86_64_WIDTH_64 ? CPU_X86_64_INDEFINITE_64 : CPU_X86_64_INDEFINITE_32;
+            }
+            if (Cpu_x86_64_SseSettle(cpu, &ctx, 0, &b, rip)) {
+                Cpu_x86_64_WriteReg(cpu, insn->ci_reg, integer, width);
+            }
         } break;
         case ENC_X86_64_OPCODE2_CVTS2S: {
-            if (dbl) {
-                double v = Fp_DoubleFromBits(Cpu_x86_64_ReadSse(cpu, insn, next, CPU_X86_64_WIDTH_64));
-                dst[0] = (dst[0] & ~(uint64_t) CPU_X86_64_MASK_32) | Fp_FloatBits((float) v);
-            } else {
-                float v = Fp_FloatFromBits((uint32_t) Cpu_x86_64_ReadSse(cpu, insn, next, CPU_X86_64_WIDTH_32));
-                dst[0] = Fp_DoubleBits((double) v);
+            b = Cpu_x86_64_SseUnpack(cpu, fmt, Cpu_x86_64_ReadSse(cpu, insn, next, lane), &denormal);
+            result = Fp_RoundValue(&b, other, &ctx);
+            if (b.fv_class == FP_CLASS_NAN) {
+                result = Cpu_x86_64_SseQuiet(&b, &b);
+            }
+            if (Cpu_x86_64_SseSettle(cpu, &ctx, denormal, &result, rip)) {
+                Cpu_x86_64_SseWrite(dst, other, &result);
             }
         } break;
         default: {
-            uint64_t b = Cpu_x86_64_ReadSse(cpu, insn, next, lane);
-            if (dbl) {
-                double x = Fp_DoubleFromBits(dst[0]);
-                double y = Fp_DoubleFromBits(b);
-                double r = 0;
-                switch (insn->ci_op2) {
-                    case ENC_X86_64_OPCODE2_ADDS: {
-                        r = x + y;
-                    } break;
-                    case ENC_X86_64_OPCODE2_SUBS: {
-                        r = x - y;
-                    } break;
-                    case ENC_X86_64_OPCODE2_MULS: {
-                        r = x * y;
-                    } break;
-                    case ENC_X86_64_OPCODE2_DIVS: {
-                        r = x / y;
-                    } break;
-                    default: {
+            a = Cpu_x86_64_SseUnpack(cpu, fmt, dst[0] & (dbl ? ~(uint64_t) 0 : CPU_X86_64_MASK_32), &denormal);
+            b = Cpu_x86_64_SseUnpack(cpu, fmt, Cpu_x86_64_ReadSse(cpu, insn, next, lane), &denormal);
+            switch (insn->ci_op2) {
+                case ENC_X86_64_OPCODE2_ADDS: {
+                    result = Fp_ArithAdd(&a, &b, fmt, &ctx);
+                } break;
+                case ENC_X86_64_OPCODE2_SUBS: {
+                    result = Fp_ArithSub(&a, &b, fmt, &ctx);
+                } break;
+                case ENC_X86_64_OPCODE2_MULS: {
+                    result = Fp_ArithMul(&a, &b, fmt, &ctx);
+                } break;
+                case ENC_X86_64_OPCODE2_DIVS: {
+                    result = Fp_ArithDiv(&a, &b, fmt, &ctx);
+                } break;
+                default: {
+                    if (dbl) {
                         Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_SSE_DOUBLE_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
-                    }
-                }
-                dst[0] = Fp_DoubleBits(r);
-            } else {
-                float x = Fp_FloatFromBits((uint32_t) dst[0]);
-                float y = Fp_FloatFromBits((uint32_t) b);
-                float r = 0;
-                switch (insn->ci_op2) {
-                    case ENC_X86_64_OPCODE2_ADDS: {
-                        r = x + y;
-                    } break;
-                    case ENC_X86_64_OPCODE2_SUBS: {
-                        r = x - y;
-                    } break;
-                    case ENC_X86_64_OPCODE2_MULS: {
-                        r = x * y;
-                    } break;
-                    case ENC_X86_64_OPCODE2_DIVS: {
-                        r = x / y;
-                    } break;
-                    default: {
+                    } else {
                         Cpu_x86_64_Fault(cpu, CPU_X86_64_VECTOR_UD, ERR_CPU_SSE_SINGLE_NOT_IMPLEMENTED, (Cpu_x86_64_TypeULLong) rip);
                     }
+                    return;
                 }
-                dst[0] = (dst[0] & ~(uint64_t) CPU_X86_64_MASK_32) | Fp_FloatBits(r);
+            }
+            if (result.fv_class == FP_CLASS_NAN) {
+                result = Cpu_x86_64_SseQuiet(&a, &b);
+            }
+            if (Cpu_x86_64_SseSettle(cpu, &ctx, denormal, &result, rip)) {
+                Cpu_x86_64_SseWrite(dst, fmt, &result);
             }
         } break;
     }
@@ -499,7 +596,7 @@ Cpu_x86_64_Tag Cpu_x86_64_ClassifyTag(long double value)
     uint8_t bytes[FP_EXTENDED_SIZE];
     uint64_t mant = 0;
 
-    Fp_EncodeExtended(value, bytes);
+    Fp_HostEncodeExtended(value, bytes);
     for (int32_t i = 0; i < FP_EXTENDED_TOP_OFF; i++) {
         mant |= (uint64_t) bytes[i] << (FP_BITS_PER_BYTE * i);
     }
@@ -598,16 +695,16 @@ void Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, u
 
     switch (insn->ci_op << ENC_X86_64_REG_SHIFT | digit) {
         case ENC_X86_64_OPCODE_X87_D9 << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M32: {
-            Cpu_x86_64_StPush(cpu, Fp_FloatFromBits((uint32_t) Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_32)));
+            Cpu_x86_64_StPush(cpu, Fp_HostFloatFromBits((uint32_t) Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_32)));
         } break;
         case ENC_X86_64_OPCODE_X87_D9 << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M32: {
-            Cpu_x86_64_WriteMem(cpu, addr, Fp_FloatBits((float) Cpu_x86_64_StPop(cpu)), CPU_X86_64_WIDTH_32);
+            Cpu_x86_64_WriteMem(cpu, addr, Fp_HostFloatBits((float) Cpu_x86_64_StPop(cpu)), CPU_X86_64_WIDTH_32);
         } break;
         case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLD_M64: {
-            Cpu_x86_64_StPush(cpu, Fp_DoubleFromBits(Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_64)));
+            Cpu_x86_64_StPush(cpu, Fp_HostDoubleFromBits(Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_64)));
         } break;
         case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M64: {
-            Cpu_x86_64_WriteMem(cpu, addr, Fp_DoubleBits((double) Cpu_x86_64_StPop(cpu)), CPU_X86_64_WIDTH_64);
+            Cpu_x86_64_WriteMem(cpu, addr, Fp_HostDoubleBits((double) Cpu_x86_64_StPop(cpu)), CPU_X86_64_WIDTH_64);
         } break;
         case ENC_X86_64_OPCODE_X87_DD << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FISTTP_M64: {
             Cpu_x86_64_WriteMem(cpu, addr, Cpu_x86_64_Truncate(Cpu_x86_64_StPop(cpu), CPU_X86_64_WIDTH_64), CPU_X86_64_WIDTH_64);
@@ -620,14 +717,14 @@ void Cpu_x86_64_StepX87Mem(Cpu_x86_64_State *cpu, const Cpu_x86_64_Insn *insn, u
             if (! p) {
                 return;
             }
-            Cpu_x86_64_StPush(cpu, Fp_DecodeExtended(p));
+            Cpu_x86_64_StPush(cpu, Fp_HostDecodeExtended(p));
         } break;
         case ENC_X86_64_OPCODE_X87_DB << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FSTP_M80: {
             uint8_t *p = Cpu_x86_64_WriteAt(cpu, addr, FP_EXTENDED_SIZE);
             if (! p) {
                 return;
             }
-            Fp_EncodeExtended(Cpu_x86_64_StPop(cpu), p);
+            Fp_HostEncodeExtended(Cpu_x86_64_StPop(cpu), p);
         } break;
         case ENC_X86_64_OPCODE_X87_D9 << ENC_X86_64_REG_SHIFT | ENC_X86_64_X87_FLDCW: {
             uint64_t fcw = Cpu_x86_64_ReadMem(cpu, addr, CPU_X86_64_WIDTH_16);

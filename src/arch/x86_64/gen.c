@@ -1040,13 +1040,13 @@ void Gen_x86_64_EmitFNum(const Ast_Node *node)
 
     switch (node->an_type->at_kind) {
         case AST_TYPE_KIND_FLOAT: {
-            Asm_x86_64_EmitMovImm(Fp_FloatBits((float) node->an_fval), ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitMovImm(Fp_HostFloatBits((float) node->an_fval), ASM_X86_64_REG_RAX);
         } break;
         case AST_TYPE_KIND_DOUBLE: {
-            Asm_x86_64_EmitMovImm((int64_t) Fp_DoubleBits((double) node->an_fval), ASM_X86_64_REG_RAX);
+            Asm_x86_64_EmitMovImm((int64_t) Fp_HostDoubleBits((double) node->an_fval), ASM_X86_64_REG_RAX);
         } break;
         default: {
-            Fp_EncodeExtended(node->an_fval, bytes);
+            Fp_HostEncodeExtended(node->an_fval, bytes);
             for (int32_t i = 0; i < FP_EXTENDED_SIZE; i++) {
                 if (i < FP_EXTENDED_TOP_OFF) {
                     low |= (uint64_t) bytes[i] << (i * FP_BITS_PER_BYTE);
@@ -1982,19 +1982,19 @@ void Gen_x86_64_EmitFloatConstant(uint8_t *bytes, const Ast_Node *item, const As
     Err_AssertAt(var->av_line, Sem_FoldFloat(item->an_lhs, &value), ERR_GEN_INIT_FLOAT_NOT_CONSTANT, var->av_name);
     switch (item->an_type->at_kind) {
         case AST_TYPE_KIND_FLOAT: {
-            single = Fp_FloatBits((float) value);
+            single = Fp_HostFloatBits((float) value);
             for (int32_t i = 0; i < AST_TYPE_SIZE_FLOAT; i++) {
                 bytes[i] = (uint8_t) (single >> (i * FP_BITS_PER_BYTE));
             }
         } break;
         case AST_TYPE_KIND_DOUBLE: {
-            dbl = Fp_DoubleBits((double) value);
+            dbl = Fp_HostDoubleBits((double) value);
             for (int32_t i = 0; i < AST_TYPE_SIZE_DOUBLE; i++) {
                 bytes[i] = (uint8_t) (dbl >> (i * FP_BITS_PER_BYTE));
             }
         } break;
         default: {
-            Fp_EncodeExtended(value, bytes);
+            Fp_HostEncodeExtended(value, bytes);
         }
     }
 }
