@@ -29,9 +29,6 @@
 // The conversion the four functions stand on.
 #include <_int.h>
 
-// The null pointer an absent endptr is.
-#include <stddef.h>
-
 // Give the absolute value of j.
 intmax_t imaxabs(intmax_t j)
 {
@@ -56,7 +53,7 @@ intmax_t strtoimax(const char *restrict nptr, char **restrict endptr, int base)
     unsigned long end;
     uintmax_t value = _Int_ToNumber(nptr, _INT_TEXT_NARROW, &end, base, &sign, &range);
 
-    if (endptr != NULL) {
+    if (endptr != _INTTYPES_NULL) {
         *endptr = (char *) nptr + end;
     }
     return _Int_MakeSigned(value, sign, range);
@@ -70,7 +67,7 @@ uintmax_t strtoumax(const char *restrict nptr, char **restrict endptr, int base)
     unsigned long end;
     uintmax_t value = _Int_ToNumber(nptr, _INT_TEXT_NARROW, &end, base, &sign, &range);
 
-    if (endptr != NULL) {
+    if (endptr != _INTTYPES_NULL) {
         *endptr = (char *) nptr + end;
     }
     return _Int_MakeUnsigned(value, sign, range);
@@ -84,7 +81,7 @@ intmax_t wcstoimax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharType
     unsigned long end;
     uintmax_t value = _Int_ToNumber(nptr, _INT_TEXT_WIDE, &end, base, &sign, &range);
 
-    if (endptr != NULL) {
+    if (endptr != _INTTYPES_NULL) {
         *endptr = (_Inttypes_WcharType *) nptr + end;
     }
     return _Int_MakeSigned(value, sign, range);
@@ -98,7 +95,7 @@ uintmax_t wcstoumax(const _Inttypes_WcharType *restrict nptr, _Inttypes_WcharTyp
     unsigned long end;
     uintmax_t value = _Int_ToNumber(nptr, _INT_TEXT_WIDE, &end, base, &sign, &range);
 
-    if (endptr != NULL) {
+    if (endptr != _INTTYPES_NULL) {
         *endptr = (_Inttypes_WcharType *) nptr + end;
     }
     return _Int_MakeUnsigned(value, sign, range);

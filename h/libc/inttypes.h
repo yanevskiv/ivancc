@@ -29,6 +29,9 @@
 // Standard headers.
 #include <stdint.h>
 
+// A pointer to nothing, of any type.
+#define _INTTYPES_NULL ((void *) 0)
+
 // [C99:S7.8.1] Macros for format specifiers
 #define PRId8       "d"
 #define PRId16      "d"
