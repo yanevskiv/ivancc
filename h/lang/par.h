@@ -33,7 +33,8 @@
 // Bits in the value a literal is read into.
 #define PAR_VALUE_BITS 64
 
-// [C11:6.2.8p3] The strictest alignment `_Alignas` may ask for.
+// The strictest alignment `_Alignas` may ask for.
+// [C11:6.2.8p3]: extended alignments, implementation-defined
 #define PAR_ALIGN_MAX_AUTO   16   // on a local or a member
 #define PAR_ALIGN_MAX_STATIC 4096 // on an object of static storage
 
@@ -243,6 +244,11 @@ void     Par_PutUtf8(char *buf, size_t *len, uint64_t value);
 char    *Par_UnescapeLiteral(const char *body, size_t len, size_t width, size_t *out_len, Ast_Line line);
 
 // Types
+// [C11:6.7.5p2]: where an alignment specifier may not stand
+// [C11:6.7.5p3]: _Alignas's constant, zero or a valid alignment
+// [C11:6.7.5p4]: no alignment weaker than the type's
+// [C11:6.7.5p5]: _Alignas ( type-name ) as _Alignas (_Alignof (type-name))
+// [C11:6.7.5p6]: the strictest alignment specified, zero none
 void        Par_ClearSpecs(Par_Specs *specs);
 Par_Specs   Par_AlignSpec(const Ast_Node *expr, Ast_Line line);
 Par_Specs   Par_AlignSpecType(Ast_Type *type, Ast_Line line);
@@ -310,6 +316,7 @@ Ast_Var  *Par_FindFuncName(const char *name, Ast_Line line);
 void      Par_AddDeclared(Par_Decl *decl, Ast_Node *init, Ast_Line line);
 
 // Expressions
+// [C11:6.5.3.4p3]: _Alignof, an array's being its element's
 Ast_Node *Par_Designator(char *name, Ast_Line line);
 Ast_Node *Par_MakeCall(Ast_Node *callee, Ast_Node *args, Ast_Line line);
 Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line);

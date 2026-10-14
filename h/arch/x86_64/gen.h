@@ -156,6 +156,7 @@ void Gen_x86_64_SysV_EmitVaAggregate(const Ast_Node *node);
 void Gen_x86_64_SysV_EmitVaArg(const Ast_Node *node);
 
 // Code emission helpers
+// [SysV:3.1.2]: an array variable of 16 bytes or more, aligned to 16
 int32_t          Gen_x86_64_Count(void);
 void             Gen_x86_64_EmitPush(void);
 void             Gen_x86_64_EmitPop(Asm_x86_64_Reg reg);

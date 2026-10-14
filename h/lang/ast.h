@@ -405,6 +405,7 @@ extern Ast_Type Ast_TypeDouble;
 extern Ast_Type Ast_TypeLDouble;
 
 // Type construction
+// [C11:6.7.5p6]: a member's alignment, the strictest specified
 int32_t     Ast_AlignTo(int32_t n, int32_t align);
 int32_t     Ast_AlignDown(int32_t n, int32_t align);
 Ast_Type   *Ast_IntegerType(Ast_TypeKind kind, Ast_TypeSign sign);
