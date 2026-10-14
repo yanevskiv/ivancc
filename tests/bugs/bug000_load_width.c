@@ -1,5 +1,5 @@
 // (Test) Status: 200
-// bug000. ivanas assembled `mov (%rax), %eax`, a 32-bit load, as the 64-bit
+// bug000. ivas assembled `mov (%rax), %eax`, a 32-bit load, as the 64-bit
 // `mov (%rax), %rax`, so every unsigned int read through the text path also
 // read the 4 bytes after it.
 

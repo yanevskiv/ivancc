@@ -15,7 +15,7 @@ int main(int argc, char **argv, char **envp)
 {
     if (envp != argv + argc + 1) return 1;
     if (envp[0] == 0) return 2;
-    if (! same(envp[0], "IVANCC_TEST=1")) return 3;
+    if (! same(envp[0], "IVCC_TEST=1")) return 3;
     if (envp[1] != 0) return 4;
     return 0;
 }

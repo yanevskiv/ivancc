@@ -1,20 +1,20 @@
 /*
- * C source file for the ivancc compiler driver.
+ * C source file for the ivcc compiler driver.
  *
  * Copyright (C) 2026 Ivan Janevski
  *
- * ivancc is free software: you can redistribute it and/or modify it
+ * ivcc is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at
  * your option) any later version.
  *
- * ivancc is distributed in the hope that it will be useful, but WITHOUT
+ * ivcc is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
+ * along with ivcc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // Module header.
@@ -26,16 +26,16 @@ static const char *const Cc_LinuxMacros[] = { "__linux__", "__linux", "__gnu_lin
 // The runtime files -mtarget=linux links.
 static const char *const Cc_LinuxRuntime[] = { "crt0.o", "libc.a", NULL };
 
-// The macros -mtarget=ivanemu predefines.
-static const char *const Cc_EmuMacros[] = { "__ivanemu__", NULL };
+// The macros -mtarget=ivemu predefines.
+static const char *const Cc_EmuMacros[] = { "__ivemu__", NULL };
 
-// The runtime files -mtarget=ivanemu links.
+// The runtime files -mtarget=ivemu links.
 static const char *const Cc_EmuRuntime[] = { "crt0.o", NULL };
 
 // Every runtime target -mtarget accepts.
 static const Cc_Target Cc_Targets[] = {
     { "linux",   Cc_LinuxMacros, Cc_LinuxRuntime },
-    { "ivanemu", Cc_EmuMacros,   Cc_EmuRuntime }
+    { "ivemu", Cc_EmuMacros,   Cc_EmuRuntime }
 };
 
 // The output file this run created.

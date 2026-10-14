@@ -128,11 +128,11 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
             - [x] `__builtin_offsetof`, an integer constant for `offsetof`
             - [ ] target macros predefined from `-mtarget` (`__linux__`, `__unix__`, ...)
             - [ ] `_start` hands `main` its `argc`, `argv` and `envp`, and a return from `main` calls `exit`
-            - [ ] `ivanar`, which builds `libc.a`
-            - [ ] archives in `ivanld`, pulling in only the members a program needs
-            - [ ] the system layer: one syscall stub, and the syscalls libc needs answered by `ivanemu`
-            - [ ] signal delivery in `ivanemu`: a handler, its frame and `rt_sigreturn`
-            - [ ] the floating-point control and status instructions, and `ivanemu`'s rounding modes and exception flags
+            - [ ] `ivar`, which builds `libc.a`
+            - [ ] archives in `ivld`, pulling in only the members a program needs
+            - [ ] the system layer: one syscall stub, and the syscalls libc needs answered by `ivemu`
+            - [ ] signal delivery in `ivemu`: a handler, its frame and `rt_sigreturn`
+            - [ ] the floating-point control and status instructions, and `ivemu`'s rounding modes and exception flags
             - [ ] `_Complex`: the three types, their arithmetic, conversions and calling convention
             - [ ] `_Generic`, for `<tgmath.h>`
             - [ ] `__STDC_HOSTED__` is 1

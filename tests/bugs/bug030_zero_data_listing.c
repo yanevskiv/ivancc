@@ -1,6 +1,6 @@
 // (Test) Status: 200
 // bug030. -S wrote a zero-filled object as one `.byte 0` line per byte, so a
-// 3 MB buffer became 3 million lines that ivanas could not finish in time.
+// 3 MB buffer became 3 million lines that ivas could not finish in time.
 
 static char big[3000000];
 char tail[4096] = { 1, [4095] = 2 };

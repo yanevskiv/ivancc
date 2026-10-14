@@ -1,6 +1,6 @@
 // (Test) Status: 200
-// bug001. ivanas made an unflagged `.section .bss` a read-only PROGBITS
-// section, where GNU as makes it writable NOBITS. ivancc -S writes .bss that
+// bug001. ivas made an unflagged `.section .bss` a read-only PROGBITS
+// section, where GNU as makes it writable NOBITS. ivcc -S writes .bss that
 // way, so writing a zero-initialized global crashed on the text path.
 
 int counter;

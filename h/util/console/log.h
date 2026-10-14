@@ -3,18 +3,18 @@
  *
  * Copyright (C) 2026 Ivan Janevski
  *
- * ivancc is free software: you can redistribute it and/or modify it
+ * ivcc is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at
  * your option) any later version.
  *
- * ivancc is distributed in the hope that it will be useful, but WITHOUT
+ * ivcc is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
+ * along with ivcc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef LOG_H
@@ -28,7 +28,7 @@
 #include <string.h>
 
 // Program name a message carries before Log_SetProgramName.
-#define LOG_PROGRAM_DEFAULT "ivancc"
+#define LOG_PROGRAM_DEFAULT "ivcc"
 
 // Line of a message that names no line.
 #define LOG_LINE_NONE 0

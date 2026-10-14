@@ -8,12 +8,12 @@
 // [C99:7.20.4.5p2]: getenv
 static void Test_StdlibEnvironment(void)
 {
-    const char *value = getenv("IVANCC_TEST");
+    const char *value = getenv("IVCC_TEST");
 
     _TEST_STR(value, "1");
-    _TEST_TRUE((getenv)("IVANCC_TEST") == value);
-    _TEST_STR(getenv("IVANCC"), NULL);
-    _TEST_STR(getenv("IVANCC_TEST_UNSET"), NULL);
+    _TEST_TRUE((getenv)("IVCC_TEST") == value);
+    _TEST_STR(getenv("IVCC"), NULL);
+    _TEST_STR(getenv("IVCC_TEST_UNSET"), NULL);
     (void) system(NULL);
     (void) (system)(NULL);
 }

@@ -3,18 +3,18 @@
  *
  * Copyright (C) 2026 Ivan Janevski
  *
- * ivancc is free software: you can redistribute it and/or modify it
+ * ivcc is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at
  * your option) any later version.
  *
- * ivancc is distributed in the hope that it will be useful, but WITHOUT
+ * ivcc is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  * for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with ivancc.  If not, see <https://www.gnu.org/licenses/>.
+ * along with ivcc.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef ERR_H
@@ -321,7 +321,7 @@ enum Err_Code {
     ERR_CC_OUTPUT_NOT_WRITEABLE,           // can't create the compiler's output file
     ERR_CC_RUNTIME_NOT_FOUND,              // can't link without finding the runtime directory
     ERR_CC_STD_NOT_SUPPORTED,              // can't compile to a standard other than C99
-    ERR_CC_TARGET_NOT_SUPPORTED,           // can't target a runtime other than linux or ivanemu
+    ERR_CC_TARGET_NOT_SUPPORTED,           // can't target a runtime other than linux or ivemu
     ERR_CC_TOO_MANY_INPUTS,                // can't compile more than one input file
 
     ERR_AS_INPUT_NOT_READABLE,             // can't read the assembler's input file
