@@ -159,9 +159,9 @@ void Gen_x86_64_SysV_EmitVaAggregate(const Ast_Node *node);
 void Gen_x86_64_SysV_EmitVaArg(const Ast_Node *node);
 
 // Code emission helpers
-// [C99:6.3.1.3p2]:     a value converted to unsigned, reduced modulo its range
-// [C99:6.3.1.3p3]:     a value out of a signed type's range, implementation-defined
-// [x86-64-SysV:3.1.2]: an array variable of 16 bytes or more, aligned to 16
+// [C99:6.3.1.3p2]:    a value converted to unsigned, reduced modulo its range
+// [C99:6.3.1.3p3]:    a value out of a signed type's range, implementation-defined
+// [Amd64-SysV:3.1.2]: an array variable of 16 bytes or more, aligned to 16
 int32_t          Gen_x86_64_Count(void);
 void             Gen_x86_64_EmitPush(void);
 void             Gen_x86_64_EmitPop(Asm_x86_64_Reg reg);
