@@ -21,6 +21,7 @@
 #define FP_H
 
 // Standard headers.
+#include <float.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -48,6 +49,10 @@
 
 // Offset of the sign and exponent after the significand's bytes.
 #define FP_EXTENDED_TOP_OFF 8
+
+// The extended format's significand bits, the integer bit among them, as
+// a host's LDBL_MANT_DIG gives them when its long double is the x87's.
+#define FP_EXTENDED_MANT_DIG 64
 
 // The extended format's exponent bias and its all-ones exponent.
 #define FP_EXTENDED_BIAS    16383

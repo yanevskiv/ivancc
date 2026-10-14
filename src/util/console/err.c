@@ -828,10 +828,10 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
-    [ERR_PAR_NAN_TAG_NOT_EMPTY] = {
+    [ERR_PAR_NAN_TAG_NOT_NARROW] = {
         .ee_level  = ERR_LEVEL_FATAL,
-        .ee_name   = "ERR_PAR_NAN_TAG_NOT_EMPTY",
-        .ee_format = "a NaN's tag must be the empty string \"\" for now"
+        .ee_name   = "ERR_PAR_NAN_TAG_NOT_NARROW",
+        .ee_format = "a NaN's tag must be a narrow string literal"
     },
 
     // Args: none

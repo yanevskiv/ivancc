@@ -128,7 +128,7 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
             - [x] `__builtin_offsetof`, an integer constant for `offsetof`
             - [x] `__builtin_flt_rounds`, SSE's rounding direction for `FLT_ROUNDS`
             - [x] `__builtin_inf`, `__builtin_inff`, `__builtin_infl`, constant infinities for `HUGE_VAL` and `INFINITY`
-            - [x] `__builtin_nan`, `__builtin_nanf`, `__builtin_nanl`, constant quiet NaNs for `NAN`, of an empty tag alone
+            - [x] `__builtin_nan`, `__builtin_nanf`, `__builtin_nanl`, constant quiet NaNs for `NAN`, their payloads `nan`'s of a narrow tag
             - [ ] target macros predefined from `-mtarget` (`__linux__`, `__unix__`, ...)
             - [ ] `_start` hands `main` its `argc`, `argv` and `envp`, and a return from `main` calls `exit`
             - [ ] `ivar`, which builds `libc.a`
@@ -304,13 +304,15 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
             - [x] classification: `fpclassify`, `isfinite`, `isinf`, `isnan`, `isnormal`, `signbit`
             - [ ] trigonometric: `acos`, `asin`, `atan`, `atan2`, `cos`, `sin`, `tan`
             - [ ] hyperbolic: `acosh`, `asinh`, `atanh`, `cosh`, `sinh`, `tanh`
-            - [ ] exponential and logarithmic: `exp`, `exp2`, `expm1`, `frexp`, `ilogb`, `ldexp`, `log`, `log10`, `log1p`, `log2`, `logb`, `modf`, `scalbn`, `scalbln`
-            - [ ] power and absolute value: `cbrt`, `fabs`, `hypot`, `pow`, `sqrt`
+            - [x] exponential and logarithmic, the exact ones: `frexp`, `ilogb`, `ldexp`, `logb`, `modf`, `scalbn`, `scalbln`
+            - [ ] exponential and logarithmic: `exp`, `exp2`, `expm1`, `log`, `log10`, `log1p`, `log2`
+            - [x] absolute value: `fabs`
+            - [ ] power: `cbrt`, `hypot`, `pow`, `sqrt`
             - [ ] error and gamma: `erf`, `erfc`, `lgamma`, `tgamma`
-            - [ ] nearest integer: `ceil`, `floor`, `nearbyint`, `rint`, `lrint`, `llrint`, `round`, `lround`, `llround`, `trunc`
-            - [ ] remainder: `fmod`, `remainder`, `remquo`
-            - [ ] manipulation: `copysign`, `nan`, `nextafter`, `nexttoward`
-            - [ ] maximum, minimum and positive difference: `fdim`, `fmax`, `fmin`
+            - [x] nearest integer: `ceil`, `floor`, `nearbyint`, `rint`, `lrint`, `llrint`, `round`, `lround`, `llround`, `trunc`
+            - [x] remainder: `fmod`, `remainder`, `remquo`
+            - [x] manipulation: `copysign`, `nan`, `nextafter`, `nexttoward`
+            - [x] maximum, minimum and positive difference: `fdim`, `fmax`, `fmin`
             - [ ] `fma`
             - [x] comparison: `isgreater`, `isgreaterequal`, `isless`, `islessequal`, `islessgreater`, `isunordered`
 

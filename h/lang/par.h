@@ -47,10 +47,10 @@
 #define PAR_ASM_INLINE_NAME   "inline"
 
 // The texts the builtins' constants read as: a positive infinity, and a
-// quiet NaN of no payload for an empty tag.
-// [C99:7.12.11.2p2]: nan(""), strtod("NAN()", NULL)
-#define PAR_INF       "INF"
-#define PAR_NAN_EMPTY "NAN()"
+// quiet NaN whose payload its tag gives, as nan's.
+// [C99:7.12.11.2p2]: nan(tag), strtod of "NAN(tag)", its n-char-sequence
+#define PAR_INF        "INF"
+#define PAR_NAN_TAGGED "NAN(%s)"
 
 // All bits of one byte set.
 #define PAR_BYTE_MASK 0xFF
@@ -266,7 +266,7 @@ void       Par_BeginBody(void);
 // [C99:7.12p3]:      HUGE_VAL, a positive double constant expression
 // [C99:7.12p4]:      INFINITY, a constant expression of float, an infinity
 // [C99:7.12p5]:      NAN, a constant expression of float, a quiet NaN
-// [C99:7.12.11.2p2]: nan(""), strtod("NAN()", NULL)
+// [C99:7.12.11.2p2]: nan(tag), strtod of "NAN(tag)", its n-char-sequence
 Par_Num   Par_NumLiteral(const char *text);
 Par_FNum  Par_FloatLiteral(const char *text);
 Ast_Node *Par_InfLiteral(Ast_Type *type, Ast_Line line);

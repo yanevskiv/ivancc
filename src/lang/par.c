@@ -407,18 +407,22 @@ Ast_Node *Par_InfLiteral(Ast_Type *type, Ast_Line line)
     return Ast_NewFNum(strtod(PAR_INF, NULL), type, line);
 }
 
-// Make a NaN builtin's quiet NaN of its type, its tag empty.
+// Make a NaN builtin's quiet NaN of its type, its payload its tag's.
 Ast_Node *Par_NanLiteral(Ast_Type *type, Ast_Str tag, Ast_Line line)
 {
-    Err_AssertAt(line, tag.as_width == AST_TYPE_SIZE_CHAR && tag.as_len == 0, ERR_PAR_NAN_TAG_NOT_EMPTY);
+    Err_AssertAt(line, tag.as_width == AST_TYPE_SIZE_CHAR, ERR_PAR_NAN_TAG_NOT_NARROW);
+    char *text = Str_Format(PAR_NAN_TAGGED, tag.as_data);
+    Ast_Node *node;
 
     if (type->at_kind == AST_TYPE_KIND_FLOAT) {
-        return Ast_NewFNum(strtof(PAR_NAN_EMPTY, NULL), type, line);
+        node = Ast_NewFNum(strtof(text, NULL), type, line);
+    } else if (type->at_kind == AST_TYPE_KIND_LDOUBLE) {
+        node = Ast_NewFNum(strtold(text, NULL), type, line);
+    } else {
+        node = Ast_NewFNum(strtod(text, NULL), type, line);
     }
-    if (type->at_kind == AST_TYPE_KIND_LDOUBLE) {
-        return Ast_NewFNum(strtold(PAR_NAN_EMPTY, NULL), type, line);
-    }
-    return Ast_NewFNum(strtod(PAR_NAN_EMPTY, NULL), type, line);
+    Str_Free(text);
+    return node;
 }
 
 // Decode a character literal body into its value and type.

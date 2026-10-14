@@ -629,7 +629,7 @@ double Fp_HostDoubleFromBits(uint64_t bits)
     return value;
 }
 
-// Write a value in the x87 extended format, scaled by halving and doubling.
+// Write a value as x87 extended by halving and doubling, an x87 NaN's payload.
 void Fp_HostEncodeExtended(long double value, uint8_t *out)
 {
     uint16_t top = signbit(value) ? FP_EXTENDED_SIGN_BIT : 0;
@@ -638,8 +638,11 @@ void Fp_HostEncodeExtended(long double value, uint8_t *out)
     int32_t exp = 0;
 
     if (isnan(value)) {
+        if (LDBL_MANT_DIG == FP_EXTENDED_MANT_DIG) {
+            memcpy(&mant, &value, sizeof(mant));
+        }
         top |= FP_EXTENDED_EXP_MAX;
-        mant = FP_EXTENDED_INT_BIT | FP_EXTENDED_QUIET_BIT;
+        mant |= FP_EXTENDED_INT_BIT | FP_EXTENDED_QUIET_BIT;
     } else if (isinf(value)) {
         top |= FP_EXTENDED_EXP_MAX;
         mant = FP_EXTENDED_INT_BIT;
