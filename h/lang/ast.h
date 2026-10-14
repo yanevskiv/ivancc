@@ -49,6 +49,8 @@ typedef struct Ast_Var Ast_Var;
 typedef struct Ast_Node Ast_Node;
 
 // The kind of a type, the integer and floating kinds in rank order.
+// [C99:6.2.5]:     types
+// [C99:6.3.1.1p1]: integer conversion ranks
 typedef enum Ast_TypeKind Ast_TypeKind;
 enum Ast_TypeKind {
     AST_TYPE_KIND_VOID,                               // void
@@ -108,6 +110,7 @@ enum Ast_TypeAlign {
 };
 
 // Whether a function's parameter list ended in `...`.
+// [C99:6.7.5.3p9]: `, ...`, nothing said of the parameters after it
 typedef enum Ast_TypeVa Ast_TypeVa;
 enum Ast_TypeVa {
     AST_TYPE_FIXED, // no `...`
@@ -115,6 +118,7 @@ enum Ast_TypeVa {
 };
 
 // Whether a function was declared with a prototype.
+// [C99:6.7.5.3p14]: (), nothing said of the parameters
 typedef enum Ast_TypeProto Ast_TypeProto;
 enum Ast_TypeProto {
     AST_TYPE_NOPROTO, // written `int f()`
@@ -122,6 +126,7 @@ enum Ast_TypeProto {
 };
 
 // Whether an integer type holds negative values.
+// [C99:6.2.5p6]: an unsigned type for each signed one
 typedef enum Ast_TypeSign Ast_TypeSign;
 enum Ast_TypeSign {
     AST_TYPE_SIGNED,  // holding negative values
@@ -129,6 +134,7 @@ enum Ast_TypeSign {
 };
 
 // The qualifiers a declaration may carry.
+// [C99:6.7.3]: type qualifiers
 typedef enum Ast_Qual Ast_Qual;
 enum Ast_Qual {
     AST_QUAL_CONST    = 1, // const
@@ -137,6 +143,7 @@ enum Ast_Qual {
 };
 
 // Whether a type's members have been seen.
+// [C99:6.2.5p1]: object, function and incomplete types
 typedef enum Ast_TypeComplete Ast_TypeComplete;
 enum Ast_TypeComplete {
     AST_TYPE_INCOMPLETE, // members not yet seen
@@ -210,6 +217,8 @@ enum Ast_NodeKind {
 };
 
 // What a declaration's storage class asks for.
+// [C99:6.2.4p1]: static and automatic storage durations
+// [C99:6.7.1]:   storage-class specifiers
 typedef enum Ast_Storage Ast_Storage;
 enum Ast_Storage {
     AST_STORAGE_NONE,    // no storage class was written
@@ -242,6 +251,10 @@ struct Ast_Type {
 };
 
 // One member of a struct or union, at the offset layout gave it.
+// [C99:6.7.2.1p10]: bit-fields packed into adjacent bits of a unit
+// [C99:6.7.2.1p13]: a struct's members at increasing addresses, the first at its start
+// [C99:6.7.2.1p14]: a union's members, each at its start
+// [C99:6.7.2.1p15]: padding at the end of a struct or union
 struct Ast_Member {
     Ast_Member *am_next;     // the member declared after it
     char       *am_name;     // NULL for a bitfield declared only to pad
@@ -256,6 +269,7 @@ struct Ast_Member {
 };
 
 // An interned string literal.
+// [C99:6.4.5p6]: identical string literals, possibly one array
 typedef struct Ast_Str Ast_Str;
 struct Ast_Str {
     char   *as_data;  // decoded bytes
@@ -281,6 +295,7 @@ struct Ast_Var {
 };
 
 // A struct, union or enum tag.
+// [C99:6.7.2.3]: tags
 typedef struct Ast_Tag Ast_Tag;
 struct Ast_Tag {
     Ast_Tag  *ag_next; // the tag declared before it in its scope
@@ -289,6 +304,7 @@ struct Ast_Tag {
 };
 
 // An enumeration constant: an int that answers to a name.
+// [C99:6.4.4.3p2]: an enumeration constant, of type int
 typedef struct Ast_EnumConst Ast_EnumConst;
 struct Ast_EnumConst {
     Ast_EnumConst *ae_next;  // the constant declared before it in its scope
@@ -297,6 +313,7 @@ struct Ast_EnumConst {
 };
 
 // A name a typedef declaration bound to a type.
+// [C99:6.7.7p3]: a typedef name, the type its declarator gives
 typedef struct Ast_Typedef Ast_Typedef;
 struct Ast_Typedef {
     Ast_Typedef *ad_next; // the typedef declared before it in its scope
@@ -311,6 +328,7 @@ struct Ast_VmScope {
 };
 
 // One lexical scope: what was declared directly inside a pair of braces.
+// [C99:6.2.1p4]: file, block and function prototype scopes
 typedef struct Ast_Scope Ast_Scope;
 struct Ast_Scope {
     Ast_Scope       *as_parent;   // the scope this one is nested in
@@ -405,7 +423,11 @@ extern Ast_Type Ast_TypeDouble;
 extern Ast_Type Ast_TypeLDouble;
 
 // Type construction
-// [C11:6.7.5p6]: a member's alignment, the strictest specified
+// [C99:6.2.5p20]:  derived types
+// [C99:6.2.7p1]:   compatible types
+// [C99:6.7.2.1p2]: no incomplete or function member, a flexible array last
+// [C99:6.7.2.1p7]: a struct or union without a named member, undefined
+// [C11:6.7.5p6]:   a member's alignment, the strictest specified
 int32_t     Ast_AlignTo(int32_t n, int32_t align);
 int32_t     Ast_AlignDown(int32_t n, int32_t align);
 Ast_Type   *Ast_IntegerType(Ast_TypeKind kind, Ast_TypeSign sign);
@@ -446,6 +468,7 @@ Ast_Node *Ast_NewMemberNode(Ast_Node *lhs, const char *name, Ast_Line line);
 void      Ast_AddFileAsm(Ast_Node *node);
 
 // Variable scopes
+// [C99:6.2.1p4]: file, block and function prototype scopes
 void         Ast_BeginScope(void);
 void         Ast_EndScope(void);
 void         Ast_PushScope(void);
@@ -467,6 +490,7 @@ Ast_VmScope *Ast_CurrentVmScope(void);
 bool         Ast_ContainsVmScope(const Ast_VmScope *scope, const Ast_VmScope *outer);
 
 // Tags and typedef names
+// [C99:6.2.3p1]: name spaces for labels, tags, members and other names
 Ast_Type *Ast_FindTag(const char *name);
 Ast_Type *Ast_FindTagHere(const char *name);
 void      Ast_DeclareTag(const char *name, Ast_Type *type);
@@ -478,6 +502,7 @@ bool      Ast_IsEnumConstHere(const char *name);
 void      Ast_DeclareEnumConst(const char *name, int64_t value);
 
 // String literal interning
+// [C99:6.4.5p6]: identical string literals, possibly one array
 size_t   Ast_AddString(char *s, size_t len, size_t width);
 size_t   Ast_StringCount(void);
 Ast_Str *Ast_StringAt(size_t idx);
