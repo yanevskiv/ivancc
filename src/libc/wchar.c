@@ -44,9 +44,6 @@
 // The longest character a conversion state holds the bytes of.
 #include <_utf8.h>
 
-// The limits of wchar_t the header gives again.
-#include <stdint.h>
-
 // The copies of a conversion's bytes.
 #include <_str.h>
 

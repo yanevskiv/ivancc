@@ -34,7 +34,6 @@
 // Project headers.
 #include "util/console/err.h"
 #include "util/console/log.h"
-#include "util/object/elf.h"
 #include "util/object/link.h"
 #include "util/buf.h"
 #include "util/str.h"
