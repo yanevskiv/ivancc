@@ -678,6 +678,14 @@ void Asm_x86_64_EmitCvtFromSse(Asm_x86_64_Op op, Asm_x86_64_Xmm src, Asm_x86_64_
     item->ai_src = Asm_x86_64_XmmReg(src);
 }
 
+// Emit `stmxcsr disp(%base)`.
+void Asm_x86_64_EmitStmxcsr(Asm_x86_64_Reg base, int32_t disp)
+{
+    Asm_x86_64_Item *item = Asm_x86_64_New(ASM_X86_64_ITEM_INSTR);
+    item->ai_op  = ASM_X86_64_OP_STMXCSR;
+    item->ai_dst = Asm_x86_64_Mem(base, disp);
+}
+
 // Emit an x87 load or store of disp(%base).
 void Asm_x86_64_EmitX87Mem(Asm_x86_64_Op op, Asm_x86_64_Reg base, int32_t disp)
 {

@@ -93,6 +93,7 @@ BEXP    [pP][+-]?{DIGIT}+
 "__builtin_va_end"      return BUILTIN_VA_END;
 "__builtin_va_copy"     return BUILTIN_VA_COPY;
 "__builtin_offsetof"    return BUILTIN_OFFSETOF;
+"__builtin_flt_rounds"  return BUILTIN_FLT_ROUNDS;
 "_Static_assert"        return STATIC_ASSERT;
 "_Alignof"              return ALIGNOF;
 "_Alignas"              return ALIGNAS;

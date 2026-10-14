@@ -1404,6 +1404,10 @@ void Sem_Annotate(Ast_Node *node)
             // empty
         } break;
 
+        case AST_NODE_KIND_FLT_ROUNDS: {
+            node->an_type = &Ast_TypeInt;
+        } break;
+
         case AST_NODE_KIND_CASE: {
             Err_AssertAt(node->an_line, Sem_Fold(node->an_cond, &node->an_val), ERR_SEM_CASE_NOT_CONSTANT);
         } break;

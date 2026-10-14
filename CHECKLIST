@@ -126,6 +126,7 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
         Toolchain and runtime
 
             - [x] `__builtin_offsetof`, an integer constant for `offsetof`
+            - [x] `__builtin_flt_rounds`, SSE's rounding direction for `FLT_ROUNDS`
             - [ ] target macros predefined from `-mtarget` (`__linux__`, `__unix__`, ...)
             - [ ] `_start` hands `main` its `argc`, `argv` and `envp`, and a return from `main` calls `exit`
             - [ ] `ivar`, which builds `libc.a`

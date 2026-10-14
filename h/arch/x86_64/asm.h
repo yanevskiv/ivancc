@@ -325,6 +325,7 @@ void Asm_x86_64_EmitMovFromXmm(Asm_x86_64_Xmm src, Asm_x86_64_Reg dst);
 void Asm_x86_64_EmitSse(Asm_x86_64_Op op, Asm_x86_64_Xmm src, Asm_x86_64_Xmm dst);
 void Asm_x86_64_EmitCvtToSse(Asm_x86_64_Op op, Asm_x86_64_Reg src, Asm_x86_64_Xmm dst);
 void Asm_x86_64_EmitCvtFromSse(Asm_x86_64_Op op, Asm_x86_64_Xmm src, Asm_x86_64_Reg dst);
+void Asm_x86_64_EmitStmxcsr(Asm_x86_64_Reg base, int32_t disp);
 
 // The x87 stack
 void Asm_x86_64_EmitX87Mem(Asm_x86_64_Op op, Asm_x86_64_Reg base, int32_t disp);

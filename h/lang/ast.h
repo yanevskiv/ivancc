@@ -195,6 +195,7 @@ enum Ast_NodeKind {
     AST_NODE_KIND_FUNCADDR,   // a function named as a value
     AST_NODE_KIND_VA_START,   // __builtin_va_start(lhs, last)
     AST_NODE_KIND_VA_ARG,     // __builtin_va_arg(lhs, T)
+    AST_NODE_KIND_FLT_ROUNDS, // __builtin_flt_rounds()
     AST_NODE_KIND_RETURN,     // return lhs;
     AST_NODE_KIND_IF,         // if (cond) then; else els;
     AST_NODE_KIND_FOR,        // for (init; cond; inc) body;

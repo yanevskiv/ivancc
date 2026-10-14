@@ -1264,6 +1264,24 @@ void Gen_x86_64_EmitFloatNeg(Ast_Node *node)
     Asm_x86_64_EmitXor(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
 }
 
+// Load into %rax the FLT_ROUNDS value of SSE's rounding direction.
+void Gen_x86_64_EmitFltRounds(void)
+{
+    Gen_x86_64_EmitPush();
+    Asm_x86_64_EmitStmxcsr(ASM_X86_64_REG_RSP, 0);
+    Asm_x86_64_EmitMovLoadZero(ASM_X86_64_REG_RSP, 0, ASM_X86_64_REG_RAX, ASM_X86_64_WIDTH_32);
+    Gen_x86_64_EmitPop(ASM_X86_64_REG_RDI);
+    Asm_x86_64_EmitMovImm(GEN_X86_64_MXCSR_RC_SHIFT, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitShr(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovImm(GEN_X86_64_MXCSR_RC_TWICE, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitAnd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovRR(ASM_X86_64_REG_RAX, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitMovImm(GEN_X86_64_FLT_ROUNDS_TABLE, ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitShr(ASM_X86_64_REG_RAX);
+    Asm_x86_64_EmitMovImm(GEN_X86_64_FLT_ROUNDS_MASK, ASM_X86_64_REG_RCX);
+    Asm_x86_64_EmitAnd(ASM_X86_64_REG_RCX, ASM_X86_64_REG_RAX);
+}
+
 // Record the frame offset a new variable-length array saved %rsp at.
 void Gen_x86_64_PushVla(int32_t saved)
 {
@@ -1616,6 +1634,9 @@ void Gen_x86_64_EmitExpr(Ast_Node *node)
         case AST_NODE_KIND_VA_ARG: {
             Gen_x86_64_EmitExpr(node->an_lhs);
             Gen_x86_64_SysV_EmitVaArg(node);
+        } break;
+        case AST_NODE_KIND_FLT_ROUNDS: {
+            Gen_x86_64_EmitFltRounds();
         } break;
         case AST_NODE_KIND_FUNCADDR: {
             Asm_x86_64_EmitLeaRip(ASM_X86_64_REG_RAX, "%s", node->an_funcname);

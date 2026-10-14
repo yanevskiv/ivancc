@@ -57,6 +57,17 @@
 #define GEN_X86_64_FLOAT_TWO_TO_63 0x5F000000
 #define GEN_X86_64_FLOAT_TWO_TO_64 0x5F800000
 
+// The shift that brings MXCSR's rounding control down to bits 2:1, and those
+// bits, the control doubled.
+// [Amd64-Vol1:4.2.2]: RC, bits 14:13, 00 nearest, 01 down, 10 up, 11 toward zero
+#define GEN_X86_64_MXCSR_RC_SHIFT 12
+#define GEN_X86_64_MXCSR_RC_TWICE 6
+
+// FLT_ROUNDS for each rounding control, two bits apiece: 1, 3, 2 and 0.
+// [C99:5.2.4.2.2p7]: FLT_ROUNDS, 0 toward zero, 1 nearest, 2 up, 3 down
+#define GEN_X86_64_FLT_ROUNDS_TABLE 0x2D
+#define GEN_X86_64_FLT_ROUNDS_MASK  3
+
 // The shift that brings a 64-bit sign bit down to bit 0 and back.
 #define GEN_X86_64_SIGN_SHIFT 63
 
@@ -207,6 +218,7 @@ void          Gen_x86_64_EmitConvert(const Ast_Type *from, const Ast_Type *to, i
 void          Gen_x86_64_EmitFloatCompare(Ast_NodeKind kind);
 void          Gen_x86_64_EmitFloatBinary(Ast_Node *node);
 void          Gen_x86_64_EmitFloatNeg(Ast_Node *node);
+void          Gen_x86_64_EmitFltRounds(void);
 
 // Variable-length arrays
 // [C99:6.2.4p6]:   a variable length array, alive from its declaration to its scope's end

@@ -68,7 +68,7 @@ void yyerror(const char *s);
 %token STATIC EXTERN REGISTER AUTO INLINE
 %token ASM
 %token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END BUILTIN_VA_COPY
-%token BUILTIN_OFFSETOF
+%token BUILTIN_OFFSETOF BUILTIN_FLT_ROUNDS
 %token STATIC_ASSERT
 %token ALIGNOF ALIGNAS
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
@@ -718,6 +718,8 @@ primary
         { $$ = Par_VaCopy($3, $5, @1); }
     | BUILTIN_OFFSETOF LPAREN type_name COMMA offsetof_desig RPAREN
         { $$ = Par_OffsetOf($3, $5, @1); }
+    | BUILTIN_FLT_ROUNDS LPAREN RPAREN
+        { $$ = Ast_NewNode(AST_NODE_KIND_FLT_ROUNDS, @1); }
     ;
 
 /* The members and indices __builtin_offsetof walks, `a->b` being `a[0].b`. */

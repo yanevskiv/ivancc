@@ -27,8 +27,10 @@
 #define _FLOAT_H
 
 // Characteristics of floating types
-// [C99:7.7]: <float.h>'s macros, with their values in 5.2.4.2.2
-#define FLT_ROUNDS      1
+// [C99:7.7]:         <float.h>'s macros, with their values in 5.2.4.2.2
+// [C99:5.2.4.2.2p6]: FLT_ROUNDS, the one integer value not constant
+// [C99:5.2.4.2.2p7]: FLT_ROUNDS, its footnote 18 following fesetround
+#define FLT_ROUNDS      (__builtin_flt_rounds())
 #define FLT_EVAL_METHOD 0
 #define FLT_RADIX       2
 
