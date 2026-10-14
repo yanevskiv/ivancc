@@ -88,6 +88,21 @@
 // The exponent of a fraction in [1/2, 1).
 #define _MATH_FRACTION_EXP (-1)
 
+// A wide integer's limbs, the bits of each, all its bits, and its lowest.
+#define _MATH_WIDE_LIMBS 12
+#define _MATH_LIMB_BITS  32
+#define _MATH_WIDE_BITS  (_MATH_WIDE_LIMBS * _MATH_LIMB_BITS)
+#define _MATH_LOW_BIT    1U
+
+// The top bit of a wide integer that is zero.
+#define _MATH_WIDE_NONE (-1)
+
+// The bits a root is developed to, a round and a guard bit past 64.
+#define _MATH_ROOT_BITS 66
+
+// The bits of a sum kept exact below its top, the rest sticky.
+#define _MATH_SUM_WINDOW 320
+
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
 // [C99:7.12p4]: INFINITY, a constant expression of float
@@ -169,6 +184,36 @@ enum _Math_Step {
     _MATH_STEP_DOWN // toward zero
 };
 
+// Which type a value is rounded to.
+typedef enum _Math_Type _Math_Type;
+enum _Math_Type {
+    _MATH_TYPE_FLOAT,  // float's 24 bits
+    _MATH_TYPE_DOUBLE, // double's 53 bits
+    _MATH_TYPE_LDOUBLE // long double's 64 bits
+};
+
+// Which root is taken, by its degree.
+typedef enum _Math_Root _Math_Root;
+enum _Math_Root {
+    _MATH_ROOT_SQUARE = 2, // sqrt's
+    _MATH_ROOT_CUBE   = 3  // cbrt's
+};
+
+// An unsigned integer of limbs, the least significant first.
+typedef struct _Math_Wide _Math_Wide;
+struct _Math_Wide {
+    unsigned int mw_limb[_MATH_WIDE_LIMBS]; // the limbs, each 32 bits
+};
+
+// An exact value, its significand times 2 to its unit.
+typedef struct _Math_Exact _Math_Exact;
+struct _Math_Exact {
+    _Math_Wide me_sig;      // the significand, an integer
+    int        me_unit;     // the exponent of its lowest bit
+    _Bool      me_negative; // whether its sign is negative
+    _Bool      me_sticky;   // whether nonzero bits lie below its lowest
+};
+
 // The classification and sign of a value of each type.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
 int _Math_ClassifyFloat(float x);
@@ -200,6 +245,31 @@ unsigned long long _Math_ReadPayload(const char *tagp);
 long double        _Math_RaiseDomain(long double x, long double y);
 void               _Math_CheckScaled(long double x, long double y);
 void               _Math_CheckNext(long double x, int class);
+
+// A wide integer's arithmetic.
+void               _Math_WideSet(_Math_Wide *w, unsigned long long low);
+unsigned long long _Math_WideReadLow(const _Math_Wide *w);
+unsigned int       _Math_WideReadBit(const _Math_Wide *w, int at);
+int                _Math_WideTop(const _Math_Wide *w);
+void               _Math_WideShiftLeft(_Math_Wide *w, int n);
+_Bool              _Math_WideShiftRight(_Math_Wide *w, int n);
+_Bool              _Math_WideAlign(_Math_Wide *w, int n);
+int                _Math_WideCompare(const _Math_Wide *a, const _Math_Wide *b);
+void               _Math_WideAdd(_Math_Wide *w, const _Math_Wide *add);
+void               _Math_WideSubtract(_Math_Wide *w, const _Math_Wide *sub);
+void               _Math_WideMultiply(_Math_Wide *to, const _Math_Wide *a, const _Math_Wide *b);
+void               _Math_WidePower(_Math_Wide *to, const _Math_Wide *base, int k);
+
+// The correctly rounded functions' exact values and their one rounding.
+void               _Math_MakeExact(_Math_Exact *exact, long double x);
+void               _Math_MultiplyExact(_Math_Exact *product, const _Math_Exact *a, const _Math_Exact *b);
+void               _Math_AddExact(_Math_Exact *sum, const _Math_Exact *a, const _Math_Exact *b);
+void               _Math_RootExact(_Math_Exact *root, const _Math_Exact *radicand, _Math_Root degree);
+unsigned long long _Math_RoundBits(const _Math_Exact *exact, int keep, int *low, _Bool *inexact);
+long double        _Math_RoundExact(const _Math_Exact *exact, _Math_Type type);
+long double        _Math_TakeRoot(long double x, _Math_Root degree, _Math_Type type);
+long double        _Math_TakeHypot(long double x, long double y, _Math_Type type);
+long double        _Math_TakeFma(long double x, long double y, long double z, _Math_Type type);
 
 // Exponential and logarithmic functions
 // [C99:7.12.1p2]:  a domain error, EDOM and invalid
@@ -239,11 +309,27 @@ double      scalbln(double x, long int n);
 float       scalblnf(float x, long int n);
 long double scalblnl(long double x, long int n);
 
-// Absolute value functions
+// Power and absolute-value functions
+// [C99:7.12.7.1]: cbrt, the real cube root
 // [C99:7.12.7.2]: fabs, fabsf and fabsl
+// [C99:7.12.7.3]: hypot, without undue overflow or underflow
+// [C99:7.12.7.5]: sqrt, a domain error below zero
+// [C99:F.3p1]:    sqrt, IEC 60559's square root
+// [C99:F.9.4.1]:  cbrt of a zero and an infinity
+// [C99:F.9.4.3]:  hypot of a zero, and of an infinity even with a NaN
+// [C99:F.9.4.5]:  sqrt, fully specified by IEC 60559
+double      cbrt(double x);
+float       cbrtf(float x);
+long double cbrtl(long double x);
 double      fabs(double x);
 float       fabsf(float x);
 long double fabsl(long double x);
+double      hypot(double x, double y);
+float       hypotf(float x, float y);
+long double hypotl(long double x, long double y);
+double      sqrt(double x);
+float       sqrtf(float x);
+long double sqrtl(long double x);
 
 // Nearest integer functions
 // [C99:7.12.9.1]: ceil, the least integer not below x
@@ -344,5 +430,12 @@ long double fmaxl(long double x, long double y);
 double      fmin(double x, double y);
 float       fminf(float x, float y);
 long double fminl(long double x, long double y);
+
+// Floating multiply-add
+// [C99:7.12.13.1]: fma, x times y plus z, rounded once in the current mode
+// [C99:F.9.10.1]:  fma, invalid of an infinity times a zero, optional by a NaN
+double      fma(double x, double y, double z);
+float       fmaf(float x, float y, float z);
+long double fmal(long double x, long double y, long double z);
 
 #endif // _MATH_H

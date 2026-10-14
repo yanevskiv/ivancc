@@ -30,6 +30,7 @@
 #include <_fp.h>
 #include <errno.h>
 #include <fenv.h>
+#include <float.h>
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
@@ -303,6 +304,431 @@ void _Math_CheckNext(long double x, int class)
     }
 }
 
+// Set w to a 64-bit value.
+void _Math_WideSet(_Math_Wide *w, unsigned long long low)
+{
+    memset(w, 0, sizeof(*w));
+    w->mw_limb[0] = (uint32_t) low;
+    w->mw_limb[1] = (uint32_t) (low >> _MATH_LIMB_BITS);
+}
+
+// Read w's low 64 bits.
+unsigned long long _Math_WideReadLow(const _Math_Wide *w)
+{
+    return (uint64_t) w->mw_limb[1] << _MATH_LIMB_BITS | w->mw_limb[0];
+}
+
+// Read w's bit at a place.
+unsigned int _Math_WideReadBit(const _Math_Wide *w, int at)
+{
+    return w->mw_limb[at / _MATH_LIMB_BITS] >> (at % _MATH_LIMB_BITS) & _MATH_LOW_BIT;
+}
+
+// Find the place of w's top set bit.
+int _Math_WideTop(const _Math_Wide *w)
+{
+    for (int i = _MATH_WIDE_LIMBS - 1; i >= 0; i--) {
+        int bit = _MATH_LIMB_BITS - 1;
+
+        if (w->mw_limb[i] == 0) {
+            continue;
+        }
+        while ((w->mw_limb[i] >> bit) == 0) {
+            bit--;
+        }
+        return i * _MATH_LIMB_BITS + bit;
+    }
+    return _MATH_WIDE_NONE;
+}
+
+// Shift w left by n bits, no set bit passing its top.
+void _Math_WideShiftLeft(_Math_Wide *w, int n)
+{
+    int limbs = n / _MATH_LIMB_BITS;
+    int bits = n % _MATH_LIMB_BITS;
+
+    for (int i = _MATH_WIDE_LIMBS - 1; i >= 0; i--) {
+        uint32_t high = i - limbs >= 0 ? w->mw_limb[i - limbs] : 0;
+        uint32_t low = i - limbs - 1 >= 0 ? w->mw_limb[i - limbs - 1] : 0;
+
+        w->mw_limb[i] = bits == 0 ? high : (uint32_t) (high << bits | low >> (_MATH_LIMB_BITS - bits));
+    }
+}
+
+// Shift w right by n bits, returning whether a set bit fell off.
+_Bool _Math_WideShiftRight(_Math_Wide *w, int n)
+{
+    _Bool lost = 0;
+    int limbs = n / _MATH_LIMB_BITS;
+    int bits = n % _MATH_LIMB_BITS;
+
+    if (n >= _MATH_WIDE_BITS) {
+        lost = _Math_WideTop(w) != _MATH_WIDE_NONE;
+        memset(w, 0, sizeof(*w));
+        return lost;
+    }
+    for (int i = 0; i < limbs; i++) {
+        lost = lost || w->mw_limb[i] != 0;
+    }
+    lost = lost || (w->mw_limb[limbs] & ((_MATH_LOW_BIT << bits) - 1)) != 0;
+    for (int i = 0; i < _MATH_WIDE_LIMBS; i++) {
+        uint32_t low = i + limbs < _MATH_WIDE_LIMBS ? w->mw_limb[i + limbs] : 0;
+        uint32_t high = i + limbs + 1 < _MATH_WIDE_LIMBS ? w->mw_limb[i + limbs + 1] : 0;
+
+        w->mw_limb[i] = bits == 0 ? low : (uint32_t) (low >> bits | high << (_MATH_LIMB_BITS - bits));
+    }
+    return lost;
+}
+
+// Shift w left by n bits, or right by -n, returning whether a set bit fell off.
+_Bool _Math_WideAlign(_Math_Wide *w, int n)
+{
+    if (n >= 0) {
+        _Math_WideShiftLeft(w, n);
+        return 0;
+    }
+    return _Math_WideShiftRight(w, -n);
+}
+
+// Compare a with b, negative, zero or positive.
+int _Math_WideCompare(const _Math_Wide *a, const _Math_Wide *b)
+{
+    for (int i = _MATH_WIDE_LIMBS - 1; i >= 0; i--) {
+        if (a->mw_limb[i] != b->mw_limb[i]) {
+            return a->mw_limb[i] < b->mw_limb[i] ? -1 : 1;
+        }
+    }
+    return 0;
+}
+
+// Add add to w.
+void _Math_WideAdd(_Math_Wide *w, const _Math_Wide *add)
+{
+    uint64_t carry = 0;
+
+    for (int i = 0; i < _MATH_WIDE_LIMBS; i++) {
+        carry += (uint64_t) w->mw_limb[i] + add->mw_limb[i];
+        w->mw_limb[i] = (uint32_t) carry;
+        carry >>= _MATH_LIMB_BITS;
+    }
+}
+
+// Subtract sub from w, sub not above it.
+void _Math_WideSubtract(_Math_Wide *w, const _Math_Wide *sub)
+{
+    uint64_t borrow = 0;
+
+    for (int i = 0; i < _MATH_WIDE_LIMBS; i++) {
+        uint64_t diff = (uint64_t) w->mw_limb[i] - sub->mw_limb[i] - borrow;
+
+        w->mw_limb[i] = (uint32_t) diff;
+        borrow = diff >> _MATH_LIMB_BITS & _MATH_LOW_BIT;
+    }
+}
+
+// Multiply a by b into to, the product below w's top.
+void _Math_WideMultiply(_Math_Wide *to, const _Math_Wide *a, const _Math_Wide *b)
+{
+    _Math_Wide product;
+
+    memset(&product, 0, sizeof(product));
+    for (int i = 0; i < _MATH_WIDE_LIMBS; i++) {
+        uint64_t carry = 0;
+
+        for (int j = 0; i + j < _MATH_WIDE_LIMBS; j++) {
+            carry += (uint64_t) a->mw_limb[i] * b->mw_limb[j] + product.mw_limb[i + j];
+            product.mw_limb[i + j] = (uint32_t) carry;
+            carry >>= _MATH_LIMB_BITS;
+        }
+    }
+    *to = product;
+}
+
+// Raise base to the kth power into to.
+void _Math_WidePower(_Math_Wide *to, const _Math_Wide *base, int k)
+{
+    _Math_WideSet(to, _MATH_LOW_BIT);
+    for (int i = 0; i < k; i++) {
+        _Math_WideMultiply(to, to, base);
+    }
+}
+
+// Make the exact value of a finite nonzero long double.
+void _Math_MakeExact(_Math_Exact *exact, long double x)
+{
+    int exp;
+
+    _Math_WideSet(&exact->me_sig, _Math_SplitLDouble(x, &exp));
+    exact->me_unit = exp - _MATH_LDOUBLE_INT_SHIFT;
+    exact->me_negative = signbit(x) != 0;
+    exact->me_sticky = 0;
+}
+
+// Multiply exact values a and b, neither sticky, into product.
+void _Math_MultiplyExact(_Math_Exact *product, const _Math_Exact *a, const _Math_Exact *b)
+{
+    int unit = a->me_unit + b->me_unit;
+    _Bool negative = a->me_negative != b->me_negative;
+
+    _Math_WideMultiply(&product->me_sig, &a->me_sig, &b->me_sig);
+    product->me_unit = unit;
+    product->me_negative = negative;
+    product->me_sticky = 0;
+}
+
+// Add exact values a and b, neither sticky, into sum, below a window sticky.
+void _Math_AddExact(_Math_Exact *sum, const _Math_Exact *a, const _Math_Exact *b)
+{
+    int order;
+    _Bool lost;
+    _Math_Wide one;
+    _Math_Wide wa = a->me_sig;
+    _Math_Wide wb = b->me_sig;
+    int top_a = a->me_unit + _Math_WideTop(&wa);
+    int top_b = b->me_unit + _Math_WideTop(&wb);
+    int base = (top_a > top_b ? top_a : top_b) + 1 - _MATH_SUM_WINDOW;
+
+    lost = _Math_WideAlign(&wa, a->me_unit - base);
+    lost = _Math_WideAlign(&wb, b->me_unit - base) || lost;
+    order = _Math_WideCompare(&wa, &wb);
+    sum->me_unit = base;
+    sum->me_sticky = lost;
+    if (a->me_negative == b->me_negative) {
+        sum->me_sig = wa;
+        _Math_WideAdd(&sum->me_sig, &wb);
+        sum->me_negative = a->me_negative;
+        return;
+    }
+    sum->me_sig = order >= 0 ? wa : wb;
+    _Math_WideSubtract(&sum->me_sig, order >= 0 ? &wb : &wa);
+    sum->me_negative = order >= 0 ? a->me_negative : b->me_negative;
+    if (lost) {
+        _Math_WideSet(&one, _MATH_LOW_BIT);
+        _Math_WideSubtract(&sum->me_sig, &one);
+    }
+    if (order == 0) {
+        sum->me_negative = fegetround() == FE_DOWNWARD;
+    }
+}
+
+// Take the degree's root of an exact radicand into root, a round bit spare.
+void _Math_RootExact(_Math_Exact *root, const _Math_Exact *radicand, _Math_Root degree)
+{
+    _Bool lost;
+    _Math_Wide rest;
+    _Math_Wide next;
+    _Math_Wide trial;
+    _Math_Wide power;
+    int k = (int) degree;
+    _Math_Wide n = radicand->me_sig;
+    int shift = k * _MATH_ROOT_BITS - 1 - _Math_WideTop(&n);
+
+    while ((radicand->me_unit - shift) % k != 0) {
+        shift--;
+    }
+    lost = _Math_WideAlign(&n, shift);
+    _Math_WideSet(&rest, 0);
+    _Math_WideSet(&root->me_sig, 0);
+    for (int i = _MATH_ROOT_BITS - 1; i >= 0; i--) {
+        _Math_WideShiftLeft(&rest, k);
+        for (int j = 0; j < k; j++) {
+            rest.mw_limb[0] |= _Math_WideReadBit(&n, k * i + j) << j;
+        }
+        _Math_WideShiftLeft(&root->me_sig, 1);
+        next = root->me_sig;
+        next.mw_limb[0] |= _MATH_LOW_BIT;
+        _Math_WidePower(&trial, &next, k);
+        _Math_WidePower(&power, &root->me_sig, k);
+        _Math_WideSubtract(&trial, &power);
+        if (_Math_WideCompare(&rest, &trial) >= 0) {
+            _Math_WideSubtract(&rest, &trial);
+            root->me_sig.mw_limb[0] |= _MATH_LOW_BIT;
+        }
+    }
+    root->me_unit = (radicand->me_unit - shift) / k;
+    root->me_negative = radicand->me_negative;
+    root->me_sticky = lost || radicand->me_sticky || _Math_WideTop(&rest) != _MATH_WIDE_NONE;
+}
+
+// Round exact's significand to its top keep bits in the current direction.
+unsigned long long _Math_RoundBits(const _Math_Exact *exact, int keep, int *low, _Bool *inexact)
+{
+    _Bool up;
+    uint64_t kept;
+    _Bool half = 0;
+    int mode = fegetround();
+    _Math_Wide rest = exact->me_sig;
+    _Bool below = exact->me_sticky;
+
+    *low = _Math_WideTop(&rest) - keep + 1;
+    if (*low <= 0) {
+        _Math_WideShiftLeft(&rest, -*low);
+    } else {
+        below = _Math_WideShiftRight(&rest, *low - 1) || below;
+        half = (rest.mw_limb[0] & _MATH_LOW_BIT) != 0;
+        _Math_WideShiftRight(&rest, 1);
+    }
+    kept = _Math_WideReadLow(&rest);
+    *inexact = half || below;
+    if (mode == FE_TONEAREST) {
+        up = half && (below || (kept & _MATH_LOW_BIT) != 0);
+    } else if (mode == FE_UPWARD || mode == FE_DOWNWARD) {
+        up = *inexact && exact->me_negative == (mode == FE_DOWNWARD);
+    } else {
+        up = 0;
+    }
+    if (! up) {
+        return kept;
+    }
+    kept++;
+    if (keep > 0 && (keep == LDBL_MANT_DIG ? kept == 0 : kept >> keep != 0)) {
+        kept = _MATH_LDOUBLE_INT_BIT >> (LDBL_MANT_DIG - keep);
+        (*low)++;
+    }
+    return kept;
+}
+
+// Round an exact value once to type in the current direction, with its flags.
+long double _Math_RoundExact(const _Math_Exact *exact, _Math_Type type)
+{
+    int low;
+    int min;
+    int max;
+    int keep;
+    _Bool tiny;
+    int digits;
+    _Bool inexact;
+    uint64_t kept;
+    _Bool infinite;
+    long double value;
+    int mode = fegetround();
+    int top = _Math_WideTop(&exact->me_sig);
+    int exp = exact->me_unit + top;
+
+    switch (type) {
+        case _MATH_TYPE_FLOAT: {
+            digits = FLT_MANT_DIG;
+            min = FLT_MIN_EXP + _MATH_FRACTION_EXP;
+            max = FLT_MAX_EXP + _MATH_FRACTION_EXP;
+        } break;
+        case _MATH_TYPE_DOUBLE: {
+            digits = DBL_MANT_DIG;
+            min = DBL_MIN_EXP + _MATH_FRACTION_EXP;
+            max = DBL_MAX_EXP + _MATH_FRACTION_EXP;
+        } break;
+        default: {
+            digits = LDBL_MANT_DIG;
+            min = LDBL_MIN_EXP + _MATH_FRACTION_EXP;
+            max = LDBL_MAX_EXP + _MATH_FRACTION_EXP;
+        } break;
+    }
+    if (top == _MATH_WIDE_NONE) {
+        return exact->me_negative ? -0.0L : 0.0L;
+    }
+    tiny = exp < min;
+    if (exp == min - 1) {
+        _Math_RoundBits(exact, digits, &low, &inexact);
+        tiny = low == top - digits + 1;
+    }
+    keep = exp < min ? digits - (min - exp) : digits;
+    kept = _Math_RoundBits(exact, keep, &low, &inexact);
+    if (exp >= min && exact->me_unit + low + keep - 1 > max) {
+        infinite = mode == FE_TONEAREST || (mode == FE_UPWARD && ! exact->me_negative) || (mode == FE_DOWNWARD && exact->me_negative);
+        feraiseexcept(FE_OVERFLOW | FE_INEXACT);
+        value = infinite ? HUGE_VALL : _Math_JoinLDouble(max, UINT64_MAX << (LDBL_MANT_DIG - digits));
+        return exact->me_negative ? -value : value;
+    }
+    if (inexact) {
+        feraiseexcept(tiny ? FE_UNDERFLOW | FE_INEXACT : FE_INEXACT);
+    }
+    value = _Math_JoinLDouble(exact->me_unit + low + _MATH_LDOUBLE_INT_SHIFT, kept);
+    return exact->me_negative ? -value : value;
+}
+
+// Take x's square or cube root, correctly rounded to type.
+long double _Math_TakeRoot(long double x, _Math_Root degree, _Math_Type type)
+{
+    _Math_Exact root;
+    _Math_Exact radicand;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (x == 0 || (isinf(x) && (degree == _MATH_ROOT_CUBE || x > 0))) {
+        return x;
+    }
+    if (x < 0 && degree == _MATH_ROOT_SQUARE) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    _Math_MakeExact(&radicand, x);
+    _Math_RootExact(&root, &radicand, degree);
+    return _Math_RoundExact(&root, type);
+}
+
+// Take the hypotenuse of x and y, correctly rounded to type.
+long double _Math_TakeHypot(long double x, long double y, _Math_Type type)
+{
+    _Math_Exact sum;
+    _Math_Exact root;
+    _Math_Exact side_x;
+    _Math_Exact side_y;
+    long double result;
+
+    if (isinf(x) || isinf(y)) {
+        return HUGE_VALL;
+    }
+    if (isnan(x) || isnan(y)) {
+        return x + y;
+    }
+    if (x == 0 || y == 0) {
+        return fabsl(x) + fabsl(y);
+    }
+    _Math_MakeExact(&side_x, x);
+    _Math_MakeExact(&side_y, y);
+    _Math_MultiplyExact(&side_x, &side_x, &side_x);
+    _Math_MultiplyExact(&side_y, &side_y, &side_y);
+    _Math_AddExact(&sum, &side_x, &side_y);
+    _Math_RootExact(&root, &sum, _MATH_ROOT_SQUARE);
+    result = _Math_RoundExact(&root, type);
+    if (isinf(result)) {
+        errno = ERANGE;
+    }
+    return result;
+}
+
+// Take x times y plus z, correctly rounded once to type.
+long double _Math_TakeFma(long double x, long double y, long double z, _Math_Type type)
+{
+    _Math_Exact sum;
+    _Math_Exact addend;
+    _Math_Exact product;
+
+    if (isnan(x) || isnan(y)) {
+        return x * y + z;
+    }
+    if (isnan(z)) {
+        return z + z;
+    }
+    if (isinf(x) || isinf(y)) {
+        return x * y + z;
+    }
+    if (isinf(z)) {
+        return z;
+    }
+    if (x == 0 || y == 0) {
+        return x * y + z;
+    }
+    _Math_MakeExact(&product, x);
+    _Math_MakeExact(&addend, y);
+    _Math_MultiplyExact(&product, &product, &addend);
+    if (z == 0) {
+        return _Math_RoundExact(&product, type);
+    }
+    _Math_MakeExact(&addend, z);
+    _Math_AddExact(&sum, &product, &addend);
+    return _Math_RoundExact(&sum, type);
+}
+
 // Break value into a fraction and a power of 2.
 double frexp(double value, int *exp)
 {
@@ -481,6 +907,24 @@ long double scalblnl(long double x, long int n)
     return scalbnl(x, _Math_ClampExponent(n));
 }
 
+// Take the real cube root of x.
+double cbrt(double x)
+{
+    return (double) _Math_TakeRoot(x, _MATH_ROOT_CUBE, _MATH_TYPE_DOUBLE);
+}
+
+// Take the real cube root of x.
+float cbrtf(float x)
+{
+    return (float) _Math_TakeRoot(x, _MATH_ROOT_CUBE, _MATH_TYPE_FLOAT);
+}
+
+// Take the real cube root of x.
+long double cbrtl(long double x)
+{
+    return _Math_TakeRoot(x, _MATH_ROOT_CUBE, _MATH_TYPE_LDOUBLE);
+}
+
 // Clear the sign of x.
 double fabs(double x)
 {
@@ -500,6 +944,42 @@ long double fabsl(long double x)
 {
     ((unsigned char *) &x)[_MATH_LDOUBLE_SIGN_BYTE] &= _MATH_SIGN_CLEAR;
     return x;
+}
+
+// Take the square root of the sum of the squares of x and y.
+double hypot(double x, double y)
+{
+    return (double) _Math_TakeHypot(x, y, _MATH_TYPE_DOUBLE);
+}
+
+// Take the square root of the sum of the squares of x and y.
+float hypotf(float x, float y)
+{
+    return (float) _Math_TakeHypot(x, y, _MATH_TYPE_FLOAT);
+}
+
+// Take the square root of the sum of the squares of x and y.
+long double hypotl(long double x, long double y)
+{
+    return _Math_TakeHypot(x, y, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the nonnegative square root of x.
+double sqrt(double x)
+{
+    return (double) _Math_TakeRoot(x, _MATH_ROOT_SQUARE, _MATH_TYPE_DOUBLE);
+}
+
+// Take the nonnegative square root of x.
+float sqrtf(float x)
+{
+    return (float) _Math_TakeRoot(x, _MATH_ROOT_SQUARE, _MATH_TYPE_FLOAT);
+}
+
+// Take the nonnegative square root of x.
+long double sqrtl(long double x)
+{
+    return _Math_TakeRoot(x, _MATH_ROOT_SQUARE, _MATH_TYPE_LDOUBLE);
 }
 
 // Round x up to an integer.
@@ -1070,4 +1550,22 @@ long double fminl(long double x, long double y)
         return signbit(x) != 0 ? x : y;
     }
     return x < y ? x : y;
+}
+
+// Take x times y plus z, rounded once.
+double fma(double x, double y, double z)
+{
+    return (double) _Math_TakeFma(x, y, z, _MATH_TYPE_DOUBLE);
+}
+
+// Take x times y plus z, rounded once.
+float fmaf(float x, float y, float z)
+{
+    return (float) _Math_TakeFma(x, y, z, _MATH_TYPE_FLOAT);
+}
+
+// Take x times y plus z, rounded once.
+long double fmal(long double x, long double y, long double z)
+{
+    return _Math_TakeFma(x, y, z, _MATH_TYPE_LDOUBLE);
 }
