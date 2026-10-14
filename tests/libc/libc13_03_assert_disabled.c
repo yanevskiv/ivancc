@@ -7,7 +7,7 @@
 #define NDEBUG
 #include <assert.h>
 
-// [C99:S7.2p1] Under NDEBUG, assert should evaluate nothing, an expression still.
+// [C99:7.2p1] Under NDEBUG, assert should evaluate nothing, an expression still.
 static void Test_AssertDisabled(void)
 {
     count = 0;

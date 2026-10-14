@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:S7.24.2.3] swprintf should write a format's wide characters and a null.
+// [C99:7.24.2.3] swprintf should write a format's wide characters and a null.
 static void Test_WcharSwprintfText(void)
 {
     wchar_t out[SIZE];
@@ -22,7 +22,7 @@ static void Test_WcharSwprintfText(void)
     _TEST_MEM(out, past, sizeof(past));
 }
 
-// [C99:S7.24.2.1p8] Each conversion of a number should write as fprintf's does.
+// [C99:7.24.2.1p8] Each conversion of a number should write as fprintf's does.
 static void Test_WcharSwprintfNumbers(void)
 {
     wchar_t out[SIZE * 2];
@@ -43,7 +43,7 @@ static void Test_WcharSwprintfNumbers(void)
     _TEST_MEM(out, L"0x1.0p+0", WIDE(9));
 }
 
-// [C99:S7.24.2.1p4] A width, a precision and the flags should shape a field.
+// [C99:7.24.2.1p4] A width, a precision and the flags should shape a field.
 static void Test_WcharSwprintfFields(void)
 {
     wchar_t out[SIZE * 2];
@@ -60,7 +60,7 @@ static void Test_WcharSwprintfFields(void)
     _TEST_MEM(out, L"   3.142|3.1e+01 |", WIDE(19));
 }
 
-// [C99:S7.24.2.1p8] %n should store the wide characters written so far.
+// [C99:7.24.2.1p8] %n should store the wide characters written so far.
 static void Test_WcharSwprintfCount(void)
 {
     int n = NONE;

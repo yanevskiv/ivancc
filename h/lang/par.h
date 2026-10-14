@@ -33,7 +33,7 @@
 // Bits in the value a literal is read into.
 #define PAR_VALUE_BITS 64
 
-// [C11:S6.2.8p3] The strictest alignment `_Alignas` may ask for.
+// [C11:6.2.8p3] The strictest alignment `_Alignas` may ask for.
 #define PAR_ALIGN_MAX_AUTO   16   // on a local or a member
 #define PAR_ALIGN_MAX_STATIC 4096 // on an object of static storage
 

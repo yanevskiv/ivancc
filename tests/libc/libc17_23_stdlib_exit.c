@@ -11,7 +11,7 @@
 static int stage;
 static int middles;
 
-// [C99:S7.20.4.3p3] Registered first, this should run last, which finish prevents.
+// [C99:7.20.4.3p3] Registered first, this should run last, which finish prevents.
 static void skipped(void)
 {
     int reached = 1;
@@ -20,7 +20,7 @@ static void skipped(void)
     _Exit(_Test_Status());
 }
 
-// [C99:S7.20.4.3p3] Registered second, this should run once each later one has.
+// [C99:7.20.4.3p3] Registered second, this should run once each later one has.
 static void finish(void)
 {
     _TEST_INT(stage, 1);
@@ -28,7 +28,7 @@ static void finish(void)
     _Exit(_Test_Status());
 }
 
-// [C99:S7.20.4.3p3] Registered between them, this should run once last has.
+// [C99:7.20.4.3p3] Registered between them, this should run once last has.
 static void middle(void)
 {
     if (stage == 1) {
@@ -36,7 +36,7 @@ static void middle(void)
     }
 }
 
-// [C99:S7.20.4.3p3] Registered last, this should run first.
+// [C99:7.20.4.3p3] Registered last, this should run first.
 static void last(void)
 {
     if (stage == 0 && middles == 0) {
@@ -44,7 +44,7 @@ static void last(void)
     }
 }
 
-// [C99:S7.20.4.2p3] atexit should take 32 functions: return the first it refuses.
+// [C99:7.20.4.2p3] atexit should take 32 functions: return the first it refuses.
 static int unregistered(void)
 {
     int i;
@@ -57,7 +57,7 @@ static int unregistered(void)
     return NONE;
 }
 
-// [C99:S7.20.4.3p3] exit should run the functions registered, last first.
+// [C99:7.20.4.3p3] exit should run the functions registered, last first.
 static void Test_StdlibExit(void)
 {
     int returned = 0;

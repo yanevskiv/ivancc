@@ -648,7 +648,7 @@ void Par_ClearSpecs(Par_Specs *specs)
     specs->ps_align      = 0;
 }
 
-// [C11:S6.7.5p3] Return the specifier set an alignment makes of a constant.
+// [C11:6.7.5p3] Return the specifier set an alignment makes of a constant.
 Par_Specs Par_AlignSpec(const Ast_Node *expr, Ast_Line line)
 {
     int64_t val;
@@ -666,19 +666,19 @@ Par_Specs Par_AlignSpec(const Ast_Node *expr, Ast_Line line)
     return specs;
 }
 
-// [C11:S6.7.5p5] Return the specifier set an alignment makes of a type.
+// [C11:6.7.5p5] Return the specifier set an alignment makes of a type.
 Par_Specs Par_AlignSpecType(Ast_Type *type, Ast_Line line)
 {
     return Par_AlignSpec(Par_AlignOfType(type, line), line);
 }
 
-// [C11:S6.7.5p2] Refuse an alignment where a declaration may carry none.
+// [C11:6.7.5p2] Refuse an alignment where a declaration may carry none.
 void Par_RefuseAlign(bool is_aligned, Ast_Line line)
 {
     Err_AssertAt(line, ! is_aligned, ERR_PAR_ALIGNAS_NOT_ALLOWED);
 }
 
-// [C11:S6.7.5p4] Refuse an alignment weaker than its type's, or past max.
+// [C11:6.7.5p4] Refuse an alignment weaker than its type's, or past max.
 void Par_CheckAlign(int32_t align, const Ast_Type *type, int32_t max, Ast_Line line)
 {
     if (align == 0) {
@@ -688,7 +688,7 @@ void Par_CheckAlign(int32_t align, const Ast_Type *type, int32_t max, Ast_Line l
     Err_AssertAt(line, align <= max, ERR_PAR_ALIGNAS_NOT_SUPPORTED);
 }
 
-// [C11:S6.7.5p6] Give a variable the alignment its declaration asked for.
+// [C11:6.7.5p6] Give a variable the alignment its declaration asked for.
 void Par_AlignVar(Ast_Var *var, Ast_Line line)
 {
     int32_t max = var->av_global ? PAR_ALIGN_MAX_STATIC : PAR_ALIGN_MAX_AUTO;
@@ -1689,7 +1689,7 @@ Ast_Node *Par_SizeOfType(Ast_Type *type, Ast_Line line)
     return size ? Ast_NewBinary(AST_NODE_KIND_COMMA, size, bytes, line) : bytes;
 }
 
-// [C11:S6.5.3.4p3] Make the constant a type's alignment is.
+// [C11:6.5.3.4p3] Make the constant a type's alignment is.
 Ast_Node *Par_AlignOfType(Ast_Type *type, Ast_Line line)
 {
     Ast_Node *num = Ast_NewNum(type->at_align, line);

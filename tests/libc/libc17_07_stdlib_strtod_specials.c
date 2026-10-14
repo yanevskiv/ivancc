@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:S7.20.1.3p3] strtod should read an infinity and a NaN, in any case.
+// [C99:7.20.1.3p3] strtod should read an infinity and a NaN, in any case.
 static void Test_StdlibStrtodSpecials(void)
 {
     double invalid = nought / nought;

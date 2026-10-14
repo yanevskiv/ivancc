@@ -8,7 +8,7 @@
 // | -1 0
 // Standard: wscanf should fail a wide character that has no bytes as an input
 // failure, EOF if nothing was assigned, and set errno to EILSEQ.
-// Unlike: [C99:S7.24.2.2p4] [C99:S7.24.2.2p16] glibc returns 0, so no libc test holds
+// Unlike: [C99:7.24.2.2p4] [C99:7.24.2.2p16] glibc returns 0, so no libc test holds
 // this.
 
 #include <errno.h>

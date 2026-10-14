@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc03_00_stddef_helpers.inc"
 
-// [C99:S7.17p3] NULL should be a null pointer constant, equal to 0 and no object.
+// [C99:7.17p3] NULL should be a null pointer constant, equal to 0 and no object.
 static void Test_StddefNull(void)
 {
     int number = 0;

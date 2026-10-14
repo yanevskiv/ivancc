@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:S7.20.6.2p3] div_t, ldiv_t and lldiv_t should hold quot and rem of
+// [C99:7.20.6.2p3] div_t, ldiv_t and lldiv_t should hold quot and rem of
 // the type of div's, ldiv's and lldiv's arguments.
 static void Test_StdlibDivisionTypes(void)
 {
@@ -26,7 +26,7 @@ static void Test_StdlibDivisionTypes(void)
     _TEST_INT(*llr, -2);
 }
 
-// [C99:S7.20.6.2p2] quot and rem should be numer / denom and numer % denom,
+// [C99:7.20.6.2p2] quot and rem should be numer / denom and numer % denom,
 // so quot * denom + rem gives numer back.
 static void Test_StdlibDivisionParts(void)
 {

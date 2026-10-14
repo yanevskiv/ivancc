@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc12_00_setjmp_helpers.inc"
 
-// [C99:S7.13.2.1p4] setjmp should return the value longjmp was given, if not 0.
+// [C99:7.13.2.1p4] setjmp should return the value longjmp was given, if not 0.
 static void Test_SetjmpValues(void)
 {
     volatile int count = 0;

@@ -6,7 +6,7 @@
 
 #define BAD 0xe9
 
-// [C99:S7.24.6.3.3p4] A wide character with no bytes should fail, errno EILSEQ.
+// [C99:7.24.6.3.3p4] A wide character with no bytes should fail, errno EILSEQ.
 static bool fails(const char *format, ...)
 {
     int n;
@@ -23,7 +23,7 @@ static bool fails(const char *format, ...)
     return lost == 0;
 }
 
-// [C99:S7.19.6.1p14] printf should return a negative value at an encoding error.
+// [C99:7.19.6.1p14] printf should return a negative value at an encoding error.
 static void Test_StdioWideError(void)
 {
     char got[SMALL];

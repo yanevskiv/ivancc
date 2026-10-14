@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:S7.24.4.6] wcslen should count to the null, and wmemset fill with a value.
+// [C99:7.24.4.6] wcslen should count to the null, and wmemset fill with a value.
 static void Test_WcharMiscellaneous(void)
 {
     wchar_t buf[SIZE];

@@ -12,7 +12,7 @@ static void fail(const char *str)
     assert(str[0] == '"' || strcmp(str, "a\\b\"c") == 0);
 }
 
-// [C99:S7.2.1.1p2] A false argument should report itself and end the program.
+// [C99:7.2.1.1p2] A false argument should report itself and end the program.
 static void Test_AssertFails(void)
 {
     fail("\"");

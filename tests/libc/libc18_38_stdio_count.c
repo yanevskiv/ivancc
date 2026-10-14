@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.6.1p8] %n should store the characters written so far, converting none.
+// [C99:7.19.6.1p8] %n should store the characters written so far, converting none.
 static void Test_StdioCount(void)
 {
     int n = NONE;

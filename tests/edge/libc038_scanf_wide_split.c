@@ -7,7 +7,7 @@
 // | 1 0 e9 e8 0
 // Non-standard: scanf should fail a wide field that ends inside a character,
 // cut there by a width or by a scanset that holds one of its bytes.
-// Liberty: [C99:S7.19.6.2p12] the input shall be a sequence of multibyte
+// Liberty: [C99:7.19.6.2p12] the input shall be a sequence of multibyte
 // characters, so one that is not is undefined behaviour.
 
 #include <errno.h>

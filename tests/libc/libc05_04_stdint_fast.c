@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// [C99:S7.18.1.3p2] A fastest type should have at least its bits.
+// [C99:7.18.1.3p2] A fastest type should have at least its bits.
 static void Test_StdintFast(void)
 {
     _TEST_TRUE(sizeof(int_fast8_t) * CHAR_BIT >= 8);

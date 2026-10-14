@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.6.2p12] %p should read back a pointer that %p wrote, equal to it.
+// [C99:7.19.6.2p12] %p should read back a pointer that %p wrote, equal to it.
 static void Test_StdioScanPointer(void)
 {
     int object;

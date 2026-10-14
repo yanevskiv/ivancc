@@ -2,7 +2,7 @@
 // bug044. `inline` was ignored, so an inline definition became an external
 // one, and two translation units that included it failed to link. A function
 // whose file-scope declarations all say `inline` and none `extern` has an
-// inline definition, which gives no external one [C99:S6.7.4p7]: `twice` below
+// inline definition, which gives no external one [C99:6.7.4p7]: `twice` below
 // links with the external definition the asm gives. A declaration without
 // `inline`, or with `extern`, makes the definition external again.
 

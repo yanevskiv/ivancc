@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc05_00_stdint_helpers.inc"
 
-// [C99:S7.18.1.2p1] A minimum-width type should have at least its bits.
+// [C99:7.18.1.2p1] A minimum-width type should have at least its bits.
 static void Test_StdintLeast(void)
 {
     _TEST_TRUE(sizeof(int_least8_t) * CHAR_BIT >= 8);

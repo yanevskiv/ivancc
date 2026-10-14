@@ -8,7 +8,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.10.4p2] perror should write its string and errno's text to stderr.
+// [C99:7.19.10.4p2] perror should write its string and errno's text to stderr.
 static void Test_StdioPerror(void)
 {
     errno = EDOM;

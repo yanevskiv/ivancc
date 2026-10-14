@@ -9,7 +9,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.6.3p2] printf should write to stdout as fprintf does.
+// [C99:7.19.6.3p2] printf should write to stdout as fprintf does.
 static void Test_StdioPrintf(void)
 {
     _TEST_INT(printf("printf: %s, %c and 100%%\n", "abc", 'd'), 24);

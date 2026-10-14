@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc14_00_time_helpers.inc"
 
-// [C99:S7.23.3.1p2] asctime should write "Www Mmm dd hh:mm:ss yyyy\n".
+// [C99:7.23.3.1p2] asctime should write "Www Mmm dd hh:mm:ss yyyy\n".
 static void Test_TimeAsctime(void)
 {
     time_t when = 0;

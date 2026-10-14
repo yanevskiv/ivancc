@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc10_00_string_helpers.inc"
 
-// [C99:S7.21.2] A copy should write the bytes asked for alone, and return where.
+// [C99:7.21.2] A copy should write the bytes asked for alone, and return where.
 static void Test_StringCopying(void)
 {
     char buf[SIZE];

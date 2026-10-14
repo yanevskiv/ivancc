@@ -32,7 +32,7 @@
 // A pointer to nothing, of any type.
 #define _INTTYPES_NULL ((void *) 0)
 
-// [C99:S7.8.1] Macros for format specifiers
+// [C99:7.8.1] Macros for format specifiers
 #define PRId8       "d"
 #define PRId16      "d"
 #define PRId32      "d"
@@ -191,13 +191,13 @@
 // The wide character, which inttypes.h may not name.
 typedef int _Inttypes_WcharType;
 
-// [C99:S7.8] Format conversion of integer types
+// [C99:7.8] Format conversion of integer types
 typedef struct {
     intmax_t quot; // the quotient
     intmax_t rem;  // the remainder
 } imaxdiv_t;
 
-// [C99:S7.8.2] Functions for greatest-width integer types
+// [C99:7.8.2] Functions for greatest-width integer types
 intmax_t  imaxabs(intmax_t j);
 imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom);
 intmax_t  strtoimax(const char *restrict nptr, char **restrict endptr, int base);

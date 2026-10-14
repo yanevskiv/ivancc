@@ -7,7 +7,7 @@
 // | 2 0 [x]
 // | 2 1 [5]
 // Standard: scanf should fail a number its width cuts inside an exponent or 0x.
-// Unlike: [C99:S7.19.6.2p9] glibc stores what came before, and reads no x that a
+// Unlike: [C99:7.19.6.2p9] glibc stores what came before, and reads no x that a
 // width leaves no digit after, so no libc test holds this.
 
 #include <stdio.h>

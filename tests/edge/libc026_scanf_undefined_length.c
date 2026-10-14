@@ -9,7 +9,7 @@
 // | 1 [m]
 // | -7
 // Non-standard: scanf should stop at a length its conversion has not.
-// Liberty: [C99:S7.19.6.2p11] such a length modifier is undefined behaviour.
+// Liberty: [C99:7.19.6.2p11] such a length modifier is undefined behaviour.
 
 #include <stdio.h>
 

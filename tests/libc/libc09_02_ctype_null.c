@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc09_00_ctype_helpers.inc"
 
-// [C99:S7.4.1p1] The null character should be of the control class alone.
+// [C99:7.4.1p1] The null character should be of the control class alone.
 static void Test_CtypeNull(void)
 {
     _TEST_TRUE(! isalnum('\0'));

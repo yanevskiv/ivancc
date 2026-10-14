@@ -34,7 +34,7 @@
 #define _WCTYPE_CLASSES  12
 #define _WCTYPE_MAPPINGS 2
 
-// [C99:S7.25.1] Introduction
+// [C99:7.25.1] Introduction
 #ifndef __WINT_T__
 #define __WINT_T__
 typedef unsigned int wint_t;
@@ -47,7 +47,7 @@ typedef int wctype_t;
 #define WEOF 0xFFFFFFFFU
 #endif
 
-// What wctrans gives for a mapping: 0 for none, as [C99:S7.25.3.2.2p4] asks.
+// What wctrans gives for a mapping: 0 for none, as [C99:7.25.3.2.2p4] asks.
 typedef enum _Wctype_Mapping _Wctype_Mapping;
 enum _Wctype_Mapping {
     _WCTYPE_MAPPING_NONE,  // no mapping, what a name unknown gives
@@ -63,7 +63,7 @@ extern const char *const _Wctype_MappingNames[_WCTYPE_MAPPINGS];
 int    _Wctype_IsInClass(wint_t wc, _Utf8_Class class);
 wint_t _Wctype_ToCase(wint_t wc, _Wctype_Mapping mapping);
 
-// [C99:S7.25.2.1] Wide character classification functions
+// [C99:7.25.2.1] Wide character classification functions
 int iswalnum(wint_t wc);
 int iswalpha(wint_t wc);
 int iswblank(wint_t wc);
@@ -77,15 +77,15 @@ int iswspace(wint_t wc);
 int iswupper(wint_t wc);
 int iswxdigit(wint_t wc);
 
-// [C99:S7.25.2.2] Extensible wide character classification functions
+// [C99:7.25.2.2] Extensible wide character classification functions
 int      iswctype(wint_t wc, wctype_t desc);
 wctype_t wctype(const char *property);
 
-// [C99:S7.25.3.1] Wide character case mapping functions
+// [C99:7.25.3.1] Wide character case mapping functions
 wint_t towlower(wint_t wc);
 wint_t towupper(wint_t wc);
 
-// [C99:S7.25.3.2] Extensible wide character case mapping functions
+// [C99:7.25.3.2] Extensible wide character case mapping functions
 wint_t    towctrans(wint_t wc, wctrans_t desc);
 wctrans_t wctrans(const char *property);
 

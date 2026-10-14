@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc15_00_signal_helpers.inc"
 
-// [C99:S7.14.1.1p8] signal should refuse a number, and say why in errno.
+// [C99:7.14.1.1p8] signal should refuse a number, and say why in errno.
 static bool refuses(int sig)
 {
     int lost = 0;
@@ -19,7 +19,7 @@ static bool refuses(int sig)
     return lost == 0;
 }
 
-// [C99:S7.14.1.1p8] signal should refuse a number that is no signal's.
+// [C99:7.14.1.1p8] signal should refuse a number that is no signal's.
 static void Test_SignalRefused(void)
 {
     _TEST_TRUE(refuses(-1));

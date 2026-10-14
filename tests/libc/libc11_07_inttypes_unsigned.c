@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// [C99:S7.8.2.3p3] strtoumax should give the number, the end and the error given.
+// [C99:7.8.2.3p3] strtoumax should give the number, the end and the error given.
 static bool to_unsigned(const char *str, int base, uintmax_t want, long used, int error)
 {
     int lost = 0;
@@ -21,7 +21,7 @@ static bool to_unsigned(const char *str, int base, uintmax_t want, long used, in
     return lost == 0;
 }
 
-// [C99:S7.8.2.3p2] strtoumax should negate a number with a minus sign, unsigned.
+// [C99:7.8.2.3p2] strtoumax should negate a number with a minus sign, unsigned.
 static void Test_InttypesUnsigned(void)
 {
     _TEST_TRUE(to_unsigned("18446744073709551615", 10, UINTMAX_MAX, 20, 0));

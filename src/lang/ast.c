@@ -382,7 +382,7 @@ Ast_Member *Ast_NamedMembers(Ast_Member *members)
     return head.am_next;
 }
 
-// [C11:S6.7.5p6] Return the address multiple a member sits on.
+// [C11:6.7.5p6] Return the address multiple a member sits on.
 int32_t Ast_MemberAlign(const Ast_Member *member)
 {
     const Ast_Type *type = member->am_type;

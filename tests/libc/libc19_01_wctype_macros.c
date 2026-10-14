@@ -4,10 +4,10 @@
 // Include helpers.
 #include "libc19_00_wctype_helpers.inc"
 
-// [C99:S7.25.1p3] WEOF should be an integer constant expression.
+// [C99:7.25.1p3] WEOF should be an integer constant expression.
 enum { CONSTANT = WEOF != 0 };
 
-// [C99:S7.25.1p2] wint_t should hold WEOF and any wide character, told apart.
+// [C99:7.25.1p2] wint_t should hold WEOF and any wide character, told apart.
 static void Test_WctypeWint(void)
 {
     wint_t wc = WEOF;
@@ -28,7 +28,7 @@ static void Test_WctypeWint(void)
     _TEST_TRUE((wchar_t) wc == WCHAR_MIN);
 }
 
-// [C99:S7.25.1p2] wctrans_t and wctype_t should be scalar types.
+// [C99:7.25.1p2] wctrans_t and wctype_t should be scalar types.
 static void Test_WctypeScalars(void)
 {
     wctrans_t mapping = 0;

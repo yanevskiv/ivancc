@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.5.3p3] fopen should make, extend and empty a file, and read none lost.
+// [C99:7.19.5.3p3] fopen should make, extend and empty a file, and read none lost.
 static void Test_StdioOpening(void)
 {
     FILE *file;

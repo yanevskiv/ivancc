@@ -8,7 +8,7 @@
 #define CUT  ((size_t) -2)
 #define BAD  ((size_t) -1)
 
-// [C99:S7.24.6.3.2p4] mbrtowc should take a character whole, or in parts by *ps.
+// [C99:7.24.6.3.2p4] mbrtowc should take a character whole, or in parts by *ps.
 static void Test_WcharRestart(void)
 {
     mbstate_t state;
@@ -46,7 +46,7 @@ static void Test_WcharRestart(void)
     _TEST_INT(wc, L'\0');
 }
 
-// [C99:S7.24.6.3.1] mbrlen should measure a character in parts, by *ps as well.
+// [C99:7.24.6.3.1] mbrlen should measure a character in parts, by *ps as well.
 static void Test_WcharRestartLength(void)
 {
     mbstate_t state;
@@ -60,7 +60,7 @@ static void Test_WcharRestartLength(void)
     _TEST_TRUE(mbsinit(&state) != 0);
 }
 
-// [C99:S7.24.6.3p1] With no *ps each function should keep a state of its own.
+// [C99:7.24.6.3p1] With no *ps each function should keep a state of its own.
 static void Test_WcharRestartOwn(void)
 {
     wchar_t wc = L'?';
@@ -75,7 +75,7 @@ static void Test_WcharRestartOwn(void)
     _TEST_INT(wc, L'b');
 }
 
-// [C99:S7.24.6.3.3] wcrtomb should give a character's bytes, MB_CUR_MAX at most.
+// [C99:7.24.6.3.3] wcrtomb should give a character's bytes, MB_CUR_MAX at most.
 static void Test_WcharRestartEncoding(void)
 {
     mbstate_t state;
@@ -96,7 +96,7 @@ static void Test_WcharRestartEncoding(void)
     _TEST_TRUE(mbsinit(&state) != 0);
 }
 
-// [C99:S7.24.6.3] What is no character should be an error, EILSEQ in errno.
+// [C99:7.24.6.3] What is no character should be an error, EILSEQ in errno.
 static void Test_WcharRestartErrors(void)
 {
     mbstate_t state;

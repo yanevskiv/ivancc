@@ -26,7 +26,7 @@
 #ifndef _STDDEF_H
 #define _STDDEF_H
 
-// [C99:S7.17] Common definitions
+// [C99:7.17] Common definitions
 #define NULL ((void *) 0)
 
 #define offsetof(type, member) __builtin_offsetof(type, member)

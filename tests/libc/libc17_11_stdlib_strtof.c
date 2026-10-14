@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc17_00_stdlib_helpers.inc"
 
-// [C99:S7.20.1.3p4] strtof should read a string as a value, bit for bit, and stop.
+// [C99:7.20.1.3p4] strtof should read a string as a value, bit for bit, and stop.
 static bool reads_float(const char *str, float value, long end)
 {
     int lost = 0;
@@ -16,7 +16,7 @@ static bool reads_float(const char *str, float value, long end)
     return lost == 0;
 }
 
-// [C99:S7.20.1.3p10] strtof should read to the nearest float, and range as strtod.
+// [C99:7.20.1.3p10] strtof should read to the nearest float, and range as strtod.
 static void Test_StdlibStrtof(void)
 {
     _TEST_TRUE(reads_float("1.5", 1.5F, 3));

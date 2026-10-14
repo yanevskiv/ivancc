@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc19_00_wctype_helpers.inc"
 
-// [C99:S7.25.2.1p1] A class should judge ASCII as <ctype.h>'s: the first to differ.
+// [C99:7.25.2.1p1] A class should judge ASCII as <ctype.h>'s: the first to differ.
 static long misjudged(int (*classify)(wint_t), int (*basic)(int))
 {
     wint_t wc;
@@ -17,7 +17,7 @@ static long misjudged(int (*classify)(wint_t), int (*basic)(int))
     return NONE;
 }
 
-// [C99:S7.25.2.1p1] Each class should hold of the characters its narrow one does.
+// [C99:7.25.2.1p1] Each class should hold of the characters its narrow one does.
 static void Test_WctypeClasses(void)
 {
     int i;
@@ -27,7 +27,7 @@ static void Test_WctypeClasses(void)
     }
 }
 
-// [C99:S7.25.2.1] A class should be true of its own characters and false of others.
+// [C99:7.25.2.1] A class should be true of its own characters and false of others.
 static void Test_WctypeClassesNamed(void)
 {
     _TEST_TRUE(iswalnum(L'a') && iswalnum(L'7') && ! iswalnum(L'_'));
@@ -44,7 +44,7 @@ static void Test_WctypeClassesNamed(void)
     _TEST_TRUE(iswxdigit(L'9') && iswxdigit(L'f') && iswxdigit(L'F') && ! iswxdigit(L'g'));
 }
 
-// [C99:S7.25.2.1] The null wide character should be of the control class alone.
+// [C99:7.25.2.1] The null wide character should be of the control class alone.
 static void Test_WctypeNull(void)
 {
     int i;

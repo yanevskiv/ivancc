@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.6.1p8] %ls should write a wide string to its null or its precision.
+// [C99:7.19.6.1p8] %ls should write a wide string to its null or its precision.
 static void Test_StdioWideString(void)
 {
     const wchar_t open[3] = {L'x', L'y', L'z'};

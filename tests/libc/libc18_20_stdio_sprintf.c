@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.6.6p2] sprintf should write a format's text and a null after it.
+// [C99:7.19.6.6p2] sprintf should write a format's text and a null after it.
 static void Test_StdioSprintf(void)
 {
     char got[SMALL];

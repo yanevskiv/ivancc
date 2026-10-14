@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc11_00_inttypes_helpers.inc"
 
-// [C99:S7.1.4p1] A pointer and a call in parentheses should reach each function.
+// [C99:7.1.4p1] A pointer and a call in parentheses should reach each function.
 static void Test_InttypesCalls(void)
 {
     intmax_t (*absolute)(intmax_t) = imaxabs;

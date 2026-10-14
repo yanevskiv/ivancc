@@ -6,7 +6,7 @@
 
 #define UTF8 "C.UTF-8"
 
-// [C99:S7.20.7p1] In UTF-8 a character should be one to four bytes, a stray none.
+// [C99:7.20.7p1] In UTF-8 a character should be one to four bytes, a stray none.
 static void Test_StdlibUtf8(void)
 {
     wchar_t wc = L'?';

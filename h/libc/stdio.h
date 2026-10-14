@@ -29,7 +29,7 @@
 // The streams, their buffers and the files under them.
 #include <_file.h>
 
-// [C99:S7.19.1] Introduction
+// [C99:7.19.1] Introduction
 #define NULL ((void *) 0)
 
 // The buffering setvbuf takes: full, by line and none.
@@ -73,18 +73,18 @@ typedef __builtin_va_list _Stdio_VaList;
 typedef unsigned long size_t;
 #endif
 
-// [C99:S7.19.1] Introduction
+// [C99:7.19.1] Introduction
 typedef _File_Stream FILE;
 
 typedef long fpos_t;
 
-// [C99:S7.19.4] Operations on files
+// [C99:7.19.4] Operations on files
 int   remove(const char *filename);
 int   rename(const char *old, const char *new);
 FILE *tmpfile(void);
 char *tmpnam(char *str);
 
-// [C99:S7.19.5] File access functions
+// [C99:7.19.5] File access functions
 int   fclose(FILE *stream);
 int   fflush(FILE *stream);
 FILE *fopen(const char *restrict filename, const char *restrict mode);
@@ -92,7 +92,7 @@ FILE *freopen(const char *restrict filename, const char *restrict mode, FILE *re
 void  setbuf(FILE *restrict stream, char *restrict buf);
 int   setvbuf(FILE *restrict stream, char *restrict buf, int mode, size_t size);
 
-// [C99:S7.19.6] Formatted input/output functions
+// [C99:7.19.6] Formatted input/output functions
 int fprintf(FILE *restrict stream, const char *restrict format, ...);
 int fscanf(FILE *restrict stream, const char *restrict format, ...);
 int printf(const char *restrict format, ...);
@@ -108,7 +108,7 @@ int vsnprintf(char *restrict str, size_t n, const char *restrict format, _Stdio_
 int vsprintf(char *restrict str, const char *restrict format, _Stdio_VaList arg);
 int vsscanf(const char *restrict str, const char *restrict format, _Stdio_VaList arg);
 
-// [C99:S7.19.7] Character input/output functions
+// [C99:7.19.7] Character input/output functions
 int   fgetc(FILE *stream);
 char *fgets(char *restrict str, int n, FILE *restrict stream);
 int   fputc(int ch, FILE *stream);
@@ -121,18 +121,18 @@ int   putchar(int ch);
 int   puts(const char *str);
 int   ungetc(int ch, FILE *stream);
 
-// [C99:S7.19.8] Direct input/output functions
+// [C99:7.19.8] Direct input/output functions
 size_t fread(void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
 size_t fwrite(const void *restrict ptr, size_t size, size_t nmemb, FILE *restrict stream);
 
-// [C99:S7.19.9] File positioning functions
+// [C99:7.19.9] File positioning functions
 int  fgetpos(FILE *restrict stream, fpos_t *restrict pos);
 int  fseek(FILE *stream, long offset, int whence);
 int  fsetpos(FILE *stream, const fpos_t *pos);
 long ftell(FILE *stream);
 void rewind(FILE *stream);
 
-// [C99:S7.19.10] Error-handling functions
+// [C99:7.19.10] Error-handling functions
 void clearerr(FILE *stream);
 int  feof(FILE *stream);
 int  ferror(FILE *stream);

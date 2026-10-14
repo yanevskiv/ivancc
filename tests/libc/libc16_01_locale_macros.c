@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc16_00_locale_helpers.inc"
 
-// [C99:S7.11p3] Each category should differ from the next in #if.
+// [C99:7.11p3] Each category should differ from the next in #if.
 #define DIRECTIVE 0
 #if (LC_ALL != LC_COLLATE) \
     && (LC_COLLATE != LC_CTYPE) \
@@ -15,7 +15,7 @@
 #define DIRECTIVE 1
 #endif
 
-// [C99:S7.11p3] The categories should be distinct: return the first to repeat.
+// [C99:7.11p3] The categories should be distinct: return the first to repeat.
 static int repeated(void)
 {
     int i;
@@ -31,7 +31,7 @@ static int repeated(void)
     return NONE;
 }
 
-// [C99:S7.11p3] The categories should be distinct constants, and NULL null.
+// [C99:7.11p3] The categories should be distinct constants, and NULL null.
 static void Test_LocaleMacros(void)
 {
     _TEST_INT(DIRECTIVE, 1);

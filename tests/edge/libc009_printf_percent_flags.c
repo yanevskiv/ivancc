@@ -6,7 +6,7 @@
 // | [%] 3
 // | [%|7] 5
 // Non-standard: %% should take flags, a width and a precision, and ignore them.
-// Liberty: [C99:S7.19.6.1p8] all but a complete %% is undefined behaviour.
+// Liberty: [C99:7.19.6.1p8] all but a complete %% is undefined behaviour.
 
 #include <stdio.h>
 

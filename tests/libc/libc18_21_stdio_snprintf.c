@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.6.5p2] snprintf should keep n - 1 characters and count them all.
+// [C99:7.19.6.5p2] snprintf should keep n - 1 characters and count them all.
 static void Test_StdioSnprintf(void)
 {
     char got[SMALL];

@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc18_00_stdio_helpers.inc"
 
-// [C99:S7.19.6.2p5] White space in a format should read input's, however much.
+// [C99:7.19.6.2p5] White space in a format should read input's, however much.
 static void Test_StdioScanSpace(void)
 {
     int n = NONE;

@@ -9,7 +9,7 @@
 // | -1 0 23
 // Standard: scanf should fail input that is no multibyte character as an input
 // failure, EOF if nothing was assigned, and set errno to EILSEQ.
-// Unlike: [C99:S7.19.6.2p9] [C99:S7.19.3p14] glibc returns 0, so no libc test holds
+// Unlike: [C99:7.19.6.2p9] [C99:7.19.3p14] glibc returns 0, so no libc test holds
 // this.
 
 #include <errno.h>

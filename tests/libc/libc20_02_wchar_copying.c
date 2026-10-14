@@ -4,7 +4,7 @@
 // Include helpers.
 #include "libc20_00_wchar_helpers.inc"
 
-// [C99:S7.24.4.2] A copy should write what is asked for alone, and return where.
+// [C99:7.24.4.2] A copy should write what is asked for alone, and return where.
 static void Test_WcharCopying(void)
 {
     wchar_t buf[SIZE];
@@ -39,7 +39,7 @@ static void Test_WcharCopying(void)
     _TEST_MEM(buf, L"cdefgfgh", WIDE(FILLED));
 }
 
-// [C99:S7.24.4.2] A copy should carry a wide character of any value whole.
+// [C99:7.24.4.2] A copy should carry a wide character of any value whole.
 static void Test_WcharCopyingValues(void)
 {
     static const wchar_t from[] = {0x20AC, 0x10FFFF, WCHAR_MAX, WCHAR_MIN, L'\0'};
