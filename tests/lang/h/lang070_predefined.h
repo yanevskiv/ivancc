@@ -1,4 +1,4 @@
-// Functions syntax070_predefined calls to see a header's own file and lines.
+// Functions lang070_predefined calls to see a header's own file and lines.
 
 const char *header_file(void)
 {

@@ -61,15 +61,15 @@ SYS_HEADERS  := $(patsubst h/libc/%,$(BUILD)/include/%,$(LIBC_HEADERS)) \
                 $(patsubst h/libm/%,$(BUILD)/include/%,$(LIBM_HEADERS))
 
 TEST_TOOL    := tests/run_test
-SYNTAX_NAMES := $(patsubst tests/%.c,%,$(sort $(wildcard tests/syntax/syntax*.c)))
+LANG_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/lang/lang*.c)))
 BUG_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/fixed_bug_*.c tests/bugs/wontfix_bug_*.c)))
 OPEN_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/bugs/open_bug_*.c)))
-EDGE_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/edge*.c tests/edge/libc*.c)))
+EDGE_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/edge/lang*.c tests/edge/libc*.c tests/edge/libm*.c)))
 LIBC_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/*.c)))
 SYS_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/sys/sys*.c)))
 LIBM_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libm/*.c)))
-ERROR_NAMES  := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errors/err*.c tests/errors/fake_err*.c)))
-TEST_NAMES   := $(SYNTAX_NAMES) $(BUG_NAMES) $(OPEN_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(LIBM_NAMES) $(ERROR_NAMES)
+ERRS_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errs/err*.c tests/errs/fake_err*.c)))
+TEST_NAMES   := $(LANG_NAMES) $(BUG_NAMES) $(OPEN_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(LIBM_NAMES) $(ERRS_NAMES)
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
@@ -85,9 +85,9 @@ all: $(CC_BIN) $(AS_BIN) $(AR_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS
 clean:
 	rm -rf $(BUILD) $(OUT)
 
-tests: test_syntax test_bugs test_edge test_libc test_libm test_errors
+tests: test_lang test_bugs test_edge test_libc test_libm test_errs
 
-test_syntax: $(SYNTAX_NAMES)
+test_lang: $(LANG_NAMES)
 
 test_bugs: $(BUG_NAMES)
 
@@ -97,7 +97,7 @@ test_libc: $(LIBC_NAMES) $(SYS_NAMES)
 
 test_libm: $(LIBM_NAMES)
 
-test_errors: $(ERROR_NAMES)
+test_errs: $(ERRS_NAMES)
 
 # --- tool recipes ---
 $(CC_BIN): $(CC_OBJS) | $(BUILD)/bin
@@ -193,4 +193,4 @@ $(EMU_DIR): | $(BUILD)
 
 -include $(shell find $(OUT) -name '*.d' 2>/dev/null)
 
-.PHONY: all clean tests test_syntax test_bugs test_edge test_libc test_libm test_errors $(TEST_NAMES)
+.PHONY: all clean tests test_lang test_bugs test_edge test_libc test_libm test_errs $(TEST_NAMES)
