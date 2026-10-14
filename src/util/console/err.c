@@ -828,6 +828,13 @@ static const Err_Entry Err_Table[ERR_CODE_COUNT] = {
     },
 
     // Args: none
+    [ERR_PAR_NAN_TAG_NOT_EMPTY] = {
+        .ee_level  = ERR_LEVEL_FATAL,
+        .ee_name   = "ERR_PAR_NAN_TAG_NOT_EMPTY",
+        .ee_format = "a NaN's tag must be the empty string \"\" for now"
+    },
+
+    // Args: none
     [ERR_PAR_TYPEDEF_INITIALIZED] = {
         .ee_level  = ERR_LEVEL_FATAL,
         .ee_name   = "ERR_PAR_TYPEDEF_INITIALIZED",

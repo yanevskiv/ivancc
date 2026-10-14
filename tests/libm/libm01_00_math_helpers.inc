@@ -23,3 +23,14 @@
 #include <wctype.h>
 #include <wchar.h>
 #include <math.h>
+#include <fenv.h>
+
+// Return the long double of an x87 sign and exponent, and a significand
+// whose top bit is the integer bit, so the encodings the x87 refuses too.
+static long double ldouble_of(uint16_t top, uint64_t sig)
+{
+    long double value = 0.0L;
+    memcpy(&value, &sig, sizeof(sig));
+    memcpy((unsigned char *) &value + sizeof(sig), &top, sizeof(top));
+    return value;
+}

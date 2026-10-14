@@ -127,6 +127,8 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
 
             - [x] `__builtin_offsetof`, an integer constant for `offsetof`
             - [x] `__builtin_flt_rounds`, SSE's rounding direction for `FLT_ROUNDS`
+            - [x] `__builtin_inf`, `__builtin_inff`, `__builtin_infl`, constant infinities for `HUGE_VAL` and `INFINITY`
+            - [x] `__builtin_nan`, `__builtin_nanf`, `__builtin_nanl`, constant quiet NaNs for `NAN`, of an empty tag alone
             - [ ] target macros predefined from `-mtarget` (`__linux__`, `__unix__`, ...)
             - [ ] `_start` hands `main` its `argc`, `argv` and `envp`, and a return from `main` calls `exit`
             - [ ] `ivar`, which builds `libc.a`
@@ -295,11 +297,11 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
 
         `<math.h>` (7.12), each function in `double`, `float` (`f`) and `long double` (`l`)
 
-            - [ ] `float_t`, `double_t`, `HUGE_VAL`, `HUGE_VALF`, `HUGE_VALL`, `INFINITY`, `NAN`
-            - [ ] `FP_INFINITE`, `FP_NAN`, `FP_NORMAL`, `FP_SUBNORMAL`, `FP_ZERO`, `FP_FAST_FMA`, `FP_FAST_FMAF`, `FP_FAST_FMAL`, `FP_ILOGB0`, `FP_ILOGBNAN`
-            - [ ] `MATH_ERRNO`, `MATH_ERREXCEPT`, `math_errhandling`
+            - [x] `float_t`, `double_t`, `HUGE_VAL`, `HUGE_VALF`, `HUGE_VALL`, `INFINITY`, `NAN`
+            - [x] `FP_INFINITE`, `FP_NAN`, `FP_NORMAL`, `FP_SUBNORMAL`, `FP_ZERO`, `FP_FAST_FMA`, `FP_FAST_FMAF`, `FP_FAST_FMAL` (optional, left undefined), `FP_ILOGB0`, `FP_ILOGBNAN`
+            - [x] `MATH_ERRNO`, `MATH_ERREXCEPT`, `math_errhandling`
             - [ ] `#pragma STDC FP_CONTRACT`
-            - [ ] classification: `fpclassify`, `isfinite`, `isinf`, `isnan`, `isnormal`, `signbit`
+            - [x] classification: `fpclassify`, `isfinite`, `isinf`, `isnan`, `isnormal`, `signbit`
             - [ ] trigonometric: `acos`, `asin`, `atan`, `atan2`, `cos`, `sin`, `tan`
             - [ ] hyperbolic: `acosh`, `asinh`, `atanh`, `cosh`, `sinh`, `tanh`
             - [ ] exponential and logarithmic: `exp`, `exp2`, `expm1`, `frexp`, `ilogb`, `ldexp`, `log`, `log10`, `log1p`, `log2`, `logb`, `modf`, `scalbn`, `scalbln`
@@ -310,7 +312,7 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
             - [ ] manipulation: `copysign`, `nan`, `nextafter`, `nexttoward`
             - [ ] maximum, minimum and positive difference: `fdim`, `fmax`, `fmin`
             - [ ] `fma`
-            - [ ] comparison: `isgreater`, `isgreaterequal`, `isless`, `islessequal`, `islessgreater`, `isunordered`
+            - [x] comparison: `isgreater`, `isgreaterequal`, `isless`, `islessequal`, `islessgreater`, `isunordered`
 
         `<complex.h>` (7.3), each function in `double`, `float` (`f`) and `long double` (`l`)
 

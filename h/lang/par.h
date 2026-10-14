@@ -46,6 +46,12 @@
 #define PAR_ASM_VOLATILE_NAME "volatile"
 #define PAR_ASM_INLINE_NAME   "inline"
 
+// The texts the builtins' constants read as: a positive infinity, and a
+// quiet NaN of no payload for an empty tag.
+// [C99:7.12.11.2p2]: nan(""), strtod("NAN()", NULL)
+#define PAR_INF       "INF"
+#define PAR_NAN_EMPTY "NAN()"
+
 // All bits of one byte set.
 #define PAR_BYTE_MASK 0xFF
 
@@ -251,17 +257,24 @@ Ast_Node  *Par_SizeParams(void);
 void       Par_BeginBody(void);
 
 // Literals
-// [C99:6.4.4.1]: integer constants
-// [C99:6.4.4.2]: floating constants
-// [C99:6.4.4.4]: character constants
-// [C99:6.4.5]:   string literals
-// [C99:6.4.5p4]: adjacent string literals joined, wide if any is wide
-Par_Num  Par_NumLiteral(const char *text);
-Par_FNum Par_FloatLiteral(const char *text);
-Par_Num  Par_CharLiteral(const char *body, size_t len, size_t width, Ast_Line line);
-Ast_Str  Par_StringLiteral(const char *body, size_t len, size_t width, Ast_Line line);
-Ast_Str  Par_WidenString(Ast_Str str, size_t width);
-Ast_Str  Par_ConcatStrings(Ast_Str left, Ast_Str right);
+// [C99:6.4.4.1]:     integer constants
+// [C99:6.4.4.2]:     floating constants
+// [C99:6.4.4.4]:     character constants
+// [C99:6.4.5]:       string literals
+// [C99:6.4.5p4]:     adjacent string literals joined, wide if any is wide
+// [C99:6.4.4p2]:     a constant in its type's range, so no literal is infinite
+// [C99:7.12p3]:      HUGE_VAL, a positive double constant expression
+// [C99:7.12p4]:      INFINITY, a constant expression of float, an infinity
+// [C99:7.12p5]:      NAN, a constant expression of float, a quiet NaN
+// [C99:7.12.11.2p2]: nan(""), strtod("NAN()", NULL)
+Par_Num   Par_NumLiteral(const char *text);
+Par_FNum  Par_FloatLiteral(const char *text);
+Ast_Node *Par_InfLiteral(Ast_Type *type, Ast_Line line);
+Ast_Node *Par_NanLiteral(Ast_Type *type, Ast_Str tag, Ast_Line line);
+Par_Num   Par_CharLiteral(const char *body, size_t len, size_t width, Ast_Line line);
+Ast_Str   Par_StringLiteral(const char *body, size_t len, size_t width, Ast_Line line);
+Ast_Str   Par_WidenString(Ast_Str str, size_t width);
+Ast_Str   Par_ConcatStrings(Ast_Str left, Ast_Str right);
 
 // Escape sequences
 // [C99:6.4.3]:     universal character names

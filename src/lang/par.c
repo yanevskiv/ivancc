@@ -395,6 +395,32 @@ Par_FNum Par_FloatLiteral(const char *text)
     };
 }
 
+// Make an infinity builtin's positive infinity of its type.
+Ast_Node *Par_InfLiteral(Ast_Type *type, Ast_Line line)
+{
+    if (type->at_kind == AST_TYPE_KIND_FLOAT) {
+        return Ast_NewFNum(strtof(PAR_INF, NULL), type, line);
+    }
+    if (type->at_kind == AST_TYPE_KIND_LDOUBLE) {
+        return Ast_NewFNum(strtold(PAR_INF, NULL), type, line);
+    }
+    return Ast_NewFNum(strtod(PAR_INF, NULL), type, line);
+}
+
+// Make a NaN builtin's quiet NaN of its type, its tag empty.
+Ast_Node *Par_NanLiteral(Ast_Type *type, Ast_Str tag, Ast_Line line)
+{
+    Err_AssertAt(line, tag.as_width == AST_TYPE_SIZE_CHAR && tag.as_len == 0, ERR_PAR_NAN_TAG_NOT_EMPTY);
+
+    if (type->at_kind == AST_TYPE_KIND_FLOAT) {
+        return Ast_NewFNum(strtof(PAR_NAN_EMPTY, NULL), type, line);
+    }
+    if (type->at_kind == AST_TYPE_KIND_LDOUBLE) {
+        return Ast_NewFNum(strtold(PAR_NAN_EMPTY, NULL), type, line);
+    }
+    return Ast_NewFNum(strtod(PAR_NAN_EMPTY, NULL), type, line);
+}
+
 // Decode a character literal body into its value and type.
 Par_Num Par_CharLiteral(const char *body, size_t len, size_t width, Ast_Line line)
 {

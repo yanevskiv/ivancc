@@ -69,6 +69,7 @@ void yyerror(const char *s);
 %token ASM
 %token BUILTIN_VA_LIST BUILTIN_VA_START BUILTIN_VA_ARG BUILTIN_VA_END BUILTIN_VA_COPY
 %token BUILTIN_OFFSETOF BUILTIN_FLT_ROUNDS
+%token BUILTIN_INF BUILTIN_INFF BUILTIN_INFL BUILTIN_NAN BUILTIN_NANF BUILTIN_NANL
 %token STATIC_ASSERT
 %token ALIGNOF ALIGNAS
 %token ADD SUB MUL DIV MOD ASSIGN NOT AMP PIPE CARET TILDE SHL SHR
@@ -720,6 +721,18 @@ primary
         { $$ = Par_OffsetOf($3, $5, @1); }
     | BUILTIN_FLT_ROUNDS LPAREN RPAREN
         { $$ = Ast_NewNode(AST_NODE_KIND_FLT_ROUNDS, @1); }
+    | BUILTIN_INF LPAREN RPAREN
+        { $$ = Par_InfLiteral(&Ast_TypeDouble, @1); }
+    | BUILTIN_INFF LPAREN RPAREN
+        { $$ = Par_InfLiteral(&Ast_TypeFloat, @1); }
+    | BUILTIN_INFL LPAREN RPAREN
+        { $$ = Par_InfLiteral(&Ast_TypeLDouble, @1); }
+    | BUILTIN_NAN LPAREN string RPAREN
+        { $$ = Par_NanLiteral(&Ast_TypeDouble, $3, @1); }
+    | BUILTIN_NANF LPAREN string RPAREN
+        { $$ = Par_NanLiteral(&Ast_TypeFloat, $3, @1); }
+    | BUILTIN_NANL LPAREN string RPAREN
+        { $$ = Par_NanLiteral(&Ast_TypeLDouble, $3, @1); }
     ;
 
 /* The members and indices __builtin_offsetof walks, `a->b` being `a[0].b`. */
