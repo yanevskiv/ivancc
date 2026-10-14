@@ -69,7 +69,8 @@ LIBC_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/*.c)))
 SYS_NAMES    := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libc/sys/sys*.c)))
 LIBM_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/libm/*.c)))
 ERRS_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/errs/err*.c tests/errs/fake_err*.c)))
-TEST_NAMES   := $(LANG_NAMES) $(BUG_NAMES) $(OPEN_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(LIBM_NAMES) $(ERRS_NAMES)
+ARCH_NAMES   := $(patsubst tests/%.c,%,$(sort $(wildcard tests/arch/x86_64/x86_64_*.c)))
+TEST_NAMES   := $(LANG_NAMES) $(BUG_NAMES) $(OPEN_NAMES) $(EDGE_NAMES) $(LIBC_NAMES) $(SYS_NAMES) $(LIBM_NAMES) $(ERRS_NAMES) $(ARCH_NAMES)
 
 CC_BIN := $(BUILD)/bin/$(TARGET)cc
 AS_BIN := $(BUILD)/bin/$(TARGET)as
@@ -85,7 +86,7 @@ all: $(CC_BIN) $(AS_BIN) $(AR_BIN) $(LD_BIN) $(EMU_BIN) $(RUNTIME) $(SYS_HEADERS
 clean:
 	rm -rf $(BUILD) $(OUT)
 
-tests: test_lang test_bugs test_edge test_libc test_libm test_errs
+tests: test_lang test_bugs test_edge test_libc test_libm test_errs test_arch
 
 test_lang: $(LANG_NAMES)
 
@@ -98,6 +99,8 @@ test_libc: $(LIBC_NAMES) $(SYS_NAMES)
 test_libm: $(LIBM_NAMES)
 
 test_errs: $(ERRS_NAMES)
+
+test_arch: $(ARCH_NAMES)
 
 # --- tool recipes ---
 $(CC_BIN): $(CC_OBJS) | $(BUILD)/bin
@@ -193,4 +196,4 @@ $(EMU_DIR): | $(BUILD)
 
 -include $(shell find $(OUT) -name '*.d' 2>/dev/null)
 
-.PHONY: all clean tests test_lang test_bugs test_edge test_libc test_libm test_errs $(TEST_NAMES)
+.PHONY: all clean tests test_lang test_bugs test_edge test_libc test_libm test_errs test_arch $(TEST_NAMES)
