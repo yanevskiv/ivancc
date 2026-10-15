@@ -26,140 +26,8 @@
 #ifndef _MATH_H
 #define _MATH_H
 
-// Exact values and long double fields.
-#include <_exact.h>
-
-// The byte of each floating type that holds its sign, in its top bit.
-#define _MATH_FLOAT_SIGN_BYTE   3
-#define _MATH_DOUBLE_SIGN_BYTE  7
-#define _MATH_LDOUBLE_SIGN_BYTE 9
-
-// The bits of a sign byte but its sign, its sign bit, and its sign's place.
-#define _MATH_SIGN_CLEAR 0x7F
-#define _MATH_SIGN_BIT   0x80
-#define _MATH_SIGN_SHIFT 7
-
-// A float's and a double's biased exponent, its field's place and its
-// largest value, that of the infinities and NaNs, and its fraction below it.
-#define _MATH_FLOAT_EXP_SHIFT  23
-#define _MATH_FLOAT_EXP_MAX    0xFFU
-#define _MATH_FLOAT_FRAC_MASK  0x7FFFFFU
-#define _MATH_DOUBLE_EXP_SHIFT 52
-#define _MATH_DOUBLE_EXP_MAX   0x7FFU
-#define _MATH_DOUBLE_FRAC_MASK 0xFFFFFFFFFFFFFULL
-
-// The bits of each format's quiet NaN without a payload.
-#define _MATH_FLOAT_QUIET   0x7FC00000U
-#define _MATH_DOUBLE_QUIET  0x7FF8000000000000ULL
-#define _MATH_LDOUBLE_QUIET 0xC000000000000000ULL
-
-// The least subnormal of each format.
-#define _MATH_FLOAT_TINY   0x1p-149f
-#define _MATH_DOUBLE_TINY  0x1p-1074
-#define _MATH_LDOUBLE_TINY 0x1p-16445L
-
-// The least magnitude of a long double that is always an integer.
-#define _MATH_LDOUBLE_INTEGRAL 0x1p63L
-
-// The distance from an integer at which round goes away from zero.
-#define _MATH_HALF 0.5L
-
-// A long double's normal exponents and the steps scalbn scales by.
-#define _MATH_LDOUBLE_EXP_LOW    (-16382)
-#define _MATH_LDOUBLE_EXP_HIGH   16383
-#define _MATH_LDOUBLE_STEP_DOWN  16318
-#define _MATH_LDOUBLE_SCALE_UP   0x1p16383L
-#define _MATH_LDOUBLE_SCALE_DOWN 0x1p-16318L
-#define _MATH_SCALE_STEPS        2
-
-// The low bits of the quotient remquo gives, and its odd bit.
-#define _MATH_QUOTIENT_MASK 7U
-#define _MATH_QUOTIENT_ODD  1U
-
-// The exponent of a fraction in [1/2, 1).
-#define _MATH_FRACTION_EXP (-1)
-
-// The terms of the exponential's and the logarithm's series, and the
-// magnitude past which e or 2 to x is an infinity or a zero in each type.
-#define _MATH_EXP_TERMS 15
-#define _MATH_LOG_TERMS 13
-#define _MATH_EXP_CLAMP 0x1p15L
-
-// The magnitude past which expm1 of a negative x is -1, the power of 2
-// past which its 1 is lost, and the magnitude below which log1p of x is x,
-// in long double.
-#define _MATH_EXPM1_FLOOR 0x1p6L
-#define _MATH_EXPM1_WIDE  64
-#define _MATH_LOG1P_TINY  0x1p-64L
-
-// ln 2, its top 48 bits and the rest, log2 e, log10 2, log10 e and the
-// square root of 2.
-#define _MATH_LN2      0xb.17217f7d1cf79acp-4L
-#define _MATH_LN2_HIGH 0xb.17217f7d1cfp-4L
-#define _MATH_LN2_LOW  0xf.35793c7673007e6p-53L
-#define _MATH_LOG2E    0xb.8aa3b295c17f0bcp-3L
-#define _MATH_LOG10_2  0x9.a209a84fbcff799p-5L
-#define _MATH_LOG10E   0xd.e5bd8a937287195p-5L
-#define _MATH_SQRT_TWO 0xb.504f333f9de6484p-3L
-
-// The value of a long double significand's lowest bit, its integer bit 1.
-#define _MATH_LDOUBLE_UNIT 0x1p-63L
-
-// 2 to 32 plus 1, which splits a long double into two halves of 32 bits.
-#define _MATH_SPLIT 0x1.00000001p32L
-
-// The steps of the logarithm's table, j/32 for j from 23 to 45, the terms
-// of its series pow takes, and the magnitude past which x to y is an
-// infinity or a zero for every x but 1 and -1.
-#define _MATH_LOG_STEPS      32
-#define _MATH_LOG_STEP_FIRST 23
-#define _MATH_LOG_STEP_COUNT 23
-#define _MATH_POW_TERMS      6
-#define _MATH_POW_CLAMP      0x1p80L
-
-// The magnitude below which the trigonometric functions reduce x by four
-// parts of pi/2, those parts, 2/pi and pi/4.
-#define _MATH_TRIG_NEAR    0x1p30L
-#define _MATH_HALF_PI_1    0xc.90fdaa2p-3L
-#define _MATH_HALF_PI_2    0x8.5a308d3p-37L
-#define _MATH_HALF_PI_3    0x9.8cc51701b839a25p-72L
-#define _MATH_HALF_PI_4    0x8.127044533e63a01p-138L
-#define _MATH_TWO_OVER_PI  0xa.2f9836e4e44152ap-4L
-#define _MATH_QUARTER_PI   0xc.90fdaa22168c235p-4L
-
-// pi/2 and pi, each its nearest long double and the rest.
-#define _MATH_HALF_PI_HIGH 0xc.90fdaa22168c235p-3L
-#define _MATH_HALF_PI_LOW  (-0xe.ce675d1fc8f8cbbp-69L)
-#define _MATH_PI_HIGH      0xc.90fdaa22168c235p-2L
-#define _MATH_PI_LOW       (-0xe.ce675d1fc8f8cbbp-68L)
-
-// A reduced argument's quadrant's mask, its bit of an odd quarter turn and
-// its bit of a half turn.
-#define _MATH_QUADRANT_MASK 3U
-#define _MATH_QUADRANT_ODD  1U
-#define _MATH_QUADRANT_HALF 2U
-
-// The terms of the sine's and the cosine's series, of the arc tangent's, the
-// steps of its table, j/16 for j from 0 to 16, and the ratio below which the
-// arc tangent of y over a positive x is y over x.
-#define _MATH_SIN_TERMS       9
-#define _MATH_COS_TERMS       10
-#define _MATH_ATAN_TERMS      6
-#define _MATH_ATAN_STEPS      16
-#define _MATH_ATAN_STEP_COUNT 17
-#define _MATH_ATAN_TINY       0x1p-33L
-
-// The magnitude past which a hyperbolic function's smaller exponential is
-// lost, and past which an inverse's 1 is lost.
-#define _MATH_HYPERBOLIC_WIDE     0x1p5L
-#define _MATH_ARC_HYPERBOLIC_WIDE 0x1p32L
-
-// The first guess of 1/sqrt(m) for m in [1, 4), a quadratic's coefficients,
-// and Newton's steps from it.
-#define _MATH_ROOT_GUESS_0 0x1.5078p+0L
-#define _MATH_ROOT_GUESS_1 (-0x1.9126p-2L)
-#define _MATH_ROOT_GUESS_2 0x1.85efp-5L
-#define _MATH_ROOT_STEPS   4
+// The basic mathematical functions.
+#include <_basic_math.h>
 
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
@@ -176,13 +44,13 @@
 #define HUGE_VALL        (__builtin_infl())
 #define INFINITY         (__builtin_inff())
 #define NAN              (__builtin_nanf(""))
-#define FP_INFINITE      1
-#define FP_NAN           0
-#define FP_NORMAL        4
-#define FP_SUBNORMAL     3
-#define FP_ZERO          2
-#define FP_ILOGB0        (-2147483647 - 1)
-#define FP_ILOGBNAN      (-2147483647 - 1)
+#define FP_INFINITE      _BASIC_MATH_FP_INFINITE
+#define FP_NAN           _BASIC_MATH_FP_NAN
+#define FP_NORMAL        _BASIC_MATH_FP_NORMAL
+#define FP_SUBNORMAL     _BASIC_MATH_FP_SUBNORMAL
+#define FP_ZERO          _BASIC_MATH_FP_ZERO
+#define FP_ILOGB0        _BASIC_MATH_FP_ILOGB0
+#define FP_ILOGBNAN      _BASIC_MATH_FP_ILOGBNAN
 #define MATH_ERRNO       1
 #define MATH_ERREXCEPT   2
 #define math_errhandling (MATH_ERRNO | MATH_ERREXCEPT)
@@ -194,18 +62,12 @@
 // [C99:7.12.3.4]: isnan
 // [C99:7.12.3.5]: isnormal
 // [C99:7.12.3.6]: signbit, of a zero, an infinity and a NaN too
-#define fpclassify(x)                                          \
-    (sizeof (x) == sizeof (float)  ? _Math_ClassifyFloat(x)  : \
-     sizeof (x) == sizeof (double) ? _Math_ClassifyDouble(x) : \
-                                     _Math_ClassifyLDouble(x))
-#define isfinite(x) (fpclassify(x) >= FP_ZERO)
-#define isinf(x)    (fpclassify(x) == FP_INFINITE)
-#define isnan(x)    (fpclassify(x) == FP_NAN)
-#define isnormal(x) (fpclassify(x) == FP_NORMAL)
-#define signbit(x)                                             \
-    (sizeof (x) == sizeof (float)  ? _Math_ReadSignFloat(x)  : \
-     sizeof (x) == sizeof (double) ? _Math_ReadSignDouble(x) : \
-                                     _Math_ReadSignLDouble(x))
+#define fpclassify(x) _BASIC_MATH_CLASSIFY(x)
+#define isfinite(x)   _BASIC_MATH_IS_FINITE(x)
+#define isinf(x)      _BASIC_MATH_IS_INF(x)
+#define isnan(x)      _BASIC_MATH_IS_NAN(x)
+#define isnormal(x)   _BASIC_MATH_IS_NORMAL(x)
+#define signbit(x)    _BASIC_MATH_SIGNBIT(x)
 
 // Comparison macros
 // [C99:7.12.14p1]: quiet versions of the relational operators
@@ -216,129 +78,17 @@
 // [C99:7.12.14.5]: islessgreater, each argument evaluated once
 // [C99:7.12.14.6]: isunordered
 // Each compares in long double, which holds every float and double exactly.
-#define isgreater(x, y)      _Math_CompareLess((y), (x))
-#define isgreaterequal(x, y) _Math_CompareLessEqual((y), (x))
-#define isless(x, y)         _Math_CompareLess((x), (y))
-#define islessequal(x, y)    _Math_CompareLessEqual((x), (y))
-#define islessgreater(x, y)  _Math_CompareLessGreater((x), (y))
-#define isunordered(x, y)    _Math_CompareUnordered((x), (y))
+#define isgreater(x, y)      _Basic_Math_CompareLess((y), (x))
+#define isgreaterequal(x, y) _Basic_Math_CompareLessEqual((y), (x))
+#define isless(x, y)         _Basic_Math_CompareLess((x), (y))
+#define islessequal(x, y)    _Basic_Math_CompareLessEqual((x), (y))
+#define islessgreater(x, y)  _Basic_Math_CompareLessGreater((x), (y))
+#define isunordered(x, y)    _Basic_Math_CompareUnordered((x), (y))
 
 // Mathematics
 // [C99:7.12p2]: float_t and double_t, float and double, FLT_EVAL_METHOD 0
 typedef float  float_t;
 typedef double double_t;
-
-// Which integer quotient a remainder is taken by.
-typedef enum _Math_Quotient _Math_Quotient;
-enum _Math_Quotient {
-    _MATH_QUOTIENT_TRUNCATED, // toward zero, fmod's
-    _MATH_QUOTIENT_NEAREST    // the nearest, ties to even, remainder's
-};
-
-// The base of an exponential or a logarithm.
-typedef enum _Math_Base _Math_Base;
-enum _Math_Base {
-    _MATH_BASE_E, // e, exp's and log's
-    _MATH_BASE_2, // 2, exp2's and log2's
-    _MATH_BASE_10 // 10, log10's
-};
-
-// Whether a finite value is an integer, and which.
-typedef enum _Math_Parity _Math_Parity;
-enum _Math_Parity {
-    _MATH_PARITY_NONE, // not an integer
-    _MATH_PARITY_EVEN, // an even integer
-    _MATH_PARITY_ODD   // an odd integer
-};
-
-// Which function of an angle, or its inverse, is taken.
-typedef enum _Math_Trig _Math_Trig;
-enum _Math_Trig {
-    _MATH_TRIG_SIN, // the sine's, or its inverse's
-    _MATH_TRIG_COS, // the cosine's, or its inverse's
-    _MATH_TRIG_TAN  // the tangent's, or its inverse's
-};
-
-// The terms of e to r less 1 over r, 1/k! from k = 1, and of the
-// logarithm's series, 1/(2k + 1) from k = 1.
-extern const long double _Math_ExpTerms[_MATH_EXP_TERMS];
-extern const long double _Math_LogTerms[_MATH_LOG_TERMS];
-
-// The natural logarithm of each step of the logarithm's table, its top 64
-// bits and the rest.
-extern const long double _Math_LogStepHigh[_MATH_LOG_STEP_COUNT];
-extern const long double _Math_LogStepLow[_MATH_LOG_STEP_COUNT];
-
-// The terms of the sine's series, (-1)^k/(2k + 1)! from k = 1, and of the
-// cosine's, (-1)^k/(2k)! from k = 1.
-extern const long double _Math_SinTerms[_MATH_SIN_TERMS];
-extern const long double _Math_CosTerms[_MATH_COS_TERMS];
-
-// The arc tangent of each step of the arc tangent's table, its top 64 bits
-// and the rest.
-extern const long double _Math_AtanStepHigh[_MATH_ATAN_STEP_COUNT];
-extern const long double _Math_AtanStepLow[_MATH_ATAN_STEP_COUNT];
-
-// The classification and sign of a value of each type.
-int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
-int _Math_ClassifyFloat(float x);
-int _Math_ClassifyDouble(double x);
-int _Math_ClassifyLDouble(long double x);
-int _Math_ReadSignFloat(float x);
-int _Math_ReadSignDouble(double x);
-int _Math_ReadSignLDouble(long double x);
-
-// The quiet comparisons, raising no invalid on a quiet NaN.
-int _Math_CompareLess(long double x, long double y);
-int _Math_CompareLessEqual(long double x, long double y);
-int _Math_CompareLessGreater(long double x, long double y);
-int _Math_CompareUnordered(long double x, long double y);
-
-// The functions' shared work and errors.
-long double        _Math_ScaleLDouble(long double x, int n);
-int                _Math_ClampExponent(long n);
-long double        _Math_TakeRemainder(long double x, long double y, _Math_Quotient kind, unsigned int *quo);
-unsigned long long _Math_ReadPayload(const char *tagp);
-long double        _Math_RaiseDomain(long double x, long double y);
-long double        _Math_RaisePole(void);
-void               _Math_CheckScaled(long double x, long double y);
-long double        _Math_CheckRange(long double x, long double y, long double least);
-long double        _Math_CheckPower(long double x, long double y, long double z, long double least);
-void               _Math_CheckNext(long double x, int class);
-
-// The correctly rounded functions, each by one rounding of an exact value.
-long double _Math_TakeRoot(long double x, _Exact_Root degree, _Exact_Type type);
-long double _Math_TakeHypot(long double x, long double y, _Exact_Type type);
-long double _Math_TakeFma(long double x, long double y, long double z, _Exact_Type type);
-
-// The exponentials, logarithms and powers, each by a series in long double.
-int          _Math_ReduceExp(long double x, _Math_Base base, long double *r);
-int          _Math_SplitFraction(long double x, long double *m);
-long double  _Math_SumExp(long double r);
-long double  _Math_SumLog(long double f);
-long double  _Math_TakeExp(long double x, _Math_Base base);
-long double  _Math_TakeExpm1(long double x);
-long double  _Math_TakeLog(long double x, _Math_Base base);
-long double  _Math_TakeLog1p(long double x);
-long double  _Math_SplitHalves(long double x, long double *low);
-long double  _Math_AddParts(long double x, long double y, long double *error);
-long double  _Math_MultiplyParts(long double x, long double y, long double *error);
-long double  _Math_TakeLogParts(long double x, long double *low);
-_Math_Parity _Math_ReadParity(long double y);
-long double  _Math_TakePow(long double x, long double y);
-
-// The trigonometric and hyperbolic functions and their inverses, each by a
-// series in long double.
-long double  _Math_IterateRoot(long double x);
-unsigned int _Math_ReduceTrig(long double x, long double *r, long double *low);
-long double  _Math_SumSin(long double r, long double low);
-long double  _Math_SumCos(long double r, long double low);
-long double  _Math_SumAtan(long double t);
-long double  _Math_TakeTrig(long double x, _Math_Trig which);
-long double  _Math_TakeAtan2(long double y, long double x);
-long double  _Math_TakeArc(long double x, _Math_Trig which);
-long double  _Math_TakeHyperbolic(long double x, _Math_Trig which);
-long double  _Math_TakeArcHyperbolic(long double x, _Math_Trig which);
 
 // Trigonometric functions
 // [C99:7.12.1p2]:  a domain error, of an infinity too by its footnote 203
@@ -639,5 +389,6 @@ long double fminl(long double x, long double y);
 double      fma(double x, double y, double z);
 float       fmaf(float x, float y, float z);
 long double fmal(long double x, long double y, long double z);
+
 
 #endif // _MATH_H
