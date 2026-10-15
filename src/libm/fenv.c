@@ -26,176 +26,79 @@
 // Module header.
 #include <fenv.h>
 
-// Includes.
-#include <float.h>
-
-#ifdef __x86_64__
-// Store both units' environments in envp, the x87's masks left as they were.
-__asm__(
-    "  .text\n"
-    "  .globl _Fenv_StoreEnv\n"
-    "_Fenv_StoreEnv:\n"
-    "  fnstenv (%rdi)\n"
-    "  fldenv (%rdi)\n"
-    "  stmxcsr 28(%rdi)\n"
-    "  ret\n"
-);
-
-// Load both units' environments from envp.
-__asm__(
-    "  .text\n"
-    "  .globl _Fenv_LoadEnv\n"
-    "_Fenv_LoadEnv:\n"
-    "  fldenv (%rdi)\n"
-    "  ldmxcsr 28(%rdi)\n"
-    "  ret\n"
-);
-
-// Return a divided by b on SSE, raising what the division raises.
-__asm__(
-    "  .text\n"
-    "  .globl _Fenv_DivideSingle\n"
-    "_Fenv_DivideSingle:\n"
-    "  divss %xmm1, %xmm0\n"
-    "  ret\n"
-);
-#else
-#error "fenv.c: no floating-point environment for this architecture"
-#endif
-
 // Clear the flags of excepts in both units.
 int feclearexcept(int excepts)
 {
-    fenv_t env;
-
-    _Fenv_StoreEnv(&env);
-    env.fe_status &= (unsigned short) ~(excepts & FE_ALL_EXCEPT);
-    env.fe_mxcsr &= (unsigned int) ~(excepts & FE_ALL_EXCEPT);
-    _Fenv_LoadEnv(&env);
+    _Fpu_ClearFlags(excepts);
     return 0;
 }
 
 // Store in flagp which flags of excepts either unit has set.
 int fegetexceptflag(fexcept_t *flagp, int excepts)
 {
-    *flagp = (fexcept_t) fetestexcept(excepts);
+    *flagp = (fexcept_t) _Fpu_TestFlags(excepts);
     return 0;
 }
 
-// Raise each exception of excepts by a division that raises it.
+// Raise each exception of excepts as the arithmetic raising it would.
 int feraiseexcept(int excepts)
 {
-    if (excepts & FE_INVALID) {
-        _Fenv_DivideSingle(_FENV_ZERO, _FENV_ZERO);
-    }
-    if (excepts & FE_DIVBYZERO) {
-        _Fenv_DivideSingle(_FENV_ONE, _FENV_ZERO);
-    }
-    if (excepts & FE_OVERFLOW) {
-        _Fenv_DivideSingle(FLT_MAX, FLT_MIN);
-    }
-    if (excepts & FE_UNDERFLOW) {
-        _Fenv_DivideSingle(FLT_MIN, FLT_MAX);
-    }
-    if (excepts & FE_INEXACT) {
-        _Fenv_DivideSingle(_FENV_ONE, _FENV_THREE);
-    }
+    _Fpu_RaiseFlags(excepts);
     return 0;
 }
 
 // Set the flags of excepts in both units as flagp holds them.
 int fesetexceptflag(const fexcept_t *flagp, int excepts)
 {
-    fenv_t env;
-    int mask = excepts & FE_ALL_EXCEPT;
-
-    _Fenv_StoreEnv(&env);
-    env.fe_status = (unsigned short) ((env.fe_status & ~mask) | (*flagp & mask));
-    env.fe_mxcsr = (env.fe_mxcsr & (unsigned int) ~mask) | (unsigned int) (*flagp & mask);
-    _Fenv_LoadEnv(&env);
+    _Fpu_WriteFlags(*flagp, excepts);
     return 0;
 }
 
 // Return which flags of excepts either unit has set.
 int fetestexcept(int excepts)
 {
-    fenv_t env;
-
-    _Fenv_StoreEnv(&env);
-    return (int) ((env.fe_status | env.fe_mxcsr) & (unsigned int) (excepts & FE_ALL_EXCEPT));
+    return _Fpu_TestFlags(excepts);
 }
 
-// Return the rounding direction, the x87's, which fesetround keeps SSE's.
+// Return the rounding direction.
 int fegetround(void)
 {
-    fenv_t env;
-
-    _Fenv_StoreEnv(&env);
-    return env.fe_control & _FENV_ROUND_MASK;
+    return _Fpu_ReadRound();
 }
 
 // Set both units' rounding direction to round, if it names one.
 int fesetround(int round)
 {
-    fenv_t env;
-
-    if (round & ~_FENV_ROUND_MASK) {
-        return _FENV_FAILED;
-    }
-    _Fenv_StoreEnv(&env);
-    env.fe_control = (unsigned short) ((env.fe_control & ~_FENV_ROUND_MASK) | round);
-    env.fe_mxcsr &= (unsigned int) ~(_FENV_ROUND_MASK << _FENV_SSE_ROUND_SHIFT);
-    env.fe_mxcsr |= (unsigned int) round << _FENV_SSE_ROUND_SHIFT;
-    _Fenv_LoadEnv(&env);
-    return 0;
+    return _Fpu_WriteRound(round);
 }
 
 // Store both units' environments in envp.
 int fegetenv(fenv_t *envp)
 {
-    _Fenv_StoreEnv(envp);
+    _Fpu_StoreEnv(envp);
     return 0;
 }
 
 // Store the environment in envp, then clear the flags and mask every exception.
 int feholdexcept(fenv_t *envp)
 {
-    fenv_t env;
-
-    _Fenv_StoreEnv(envp);
-    env = *envp;
-    env.fe_control |= _FENV_FLAGS;
-    env.fe_status &= (unsigned short) ~_FENV_FLAGS;
-    env.fe_mxcsr |= _FENV_FLAGS << _FENV_SSE_MASK_SHIFT;
-    env.fe_mxcsr &= (unsigned int) ~_FENV_FLAGS;
-    _Fenv_LoadEnv(&env);
+    _Fpu_HoldEnv(envp);
     return 0;
 }
 
 // Set both units' controls and flags from envp, the x87's stack kept.
 int fesetenv(const fenv_t *envp)
 {
-    fenv_t env;
-
-    _Fenv_StoreEnv(&env);
-    env.fe_status &= (unsigned short) ~_FENV_FLAGS;
-    if (envp == FE_DFL_ENV) {
-        env.fe_control = _FENV_DEFAULT_CONTROL;
-        env.fe_mxcsr = _FENV_DEFAULT_MXCSR;
-    } else {
-        env.fe_control = envp->fe_control;
-        env.fe_status |= envp->fe_status & _FENV_FLAGS;
-        env.fe_mxcsr = envp->fe_mxcsr;
-    }
-    _Fenv_LoadEnv(&env);
+    _Fpu_WriteEnv(envp);
     return 0;
 }
 
 // Set the environment from envp, then raise the exceptions raised before.
 int feupdateenv(const fenv_t *envp)
 {
-    int raised = fetestexcept(FE_ALL_EXCEPT);
+    int raised = _Fpu_TestFlags(FE_ALL_EXCEPT);
 
-    fesetenv(envp);
-    return feraiseexcept(raised);
+    _Fpu_WriteEnv(envp);
+    _Fpu_RaiseFlags(raised);
+    return 0;
 }

@@ -33,7 +33,7 @@ int main(void)
     feclearexcept(FE_ALL_EXCEPT);
     fegetenv(&env);
     env.fe_control &= (unsigned short) ~FE_INVALID;
-    env.fe_mxcsr &= (unsigned int) ~(FE_INVALID << _FENV_SSE_MASK_SHIFT);
+    env.fe_mxcsr &= (unsigned int) ~(FE_INVALID << _FPU_SSE_MASK_SHIFT);
     fesetenv(&env);
     printf("raising\n");
     fflush(stdout);

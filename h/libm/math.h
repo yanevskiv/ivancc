@@ -26,6 +26,9 @@
 #ifndef _MATH_H
 #define _MATH_H
 
+// Exact values and long double fields.
+#include <_exact.h>
+
 // The byte of each floating type that holds its sign, in its top bit.
 #define _MATH_FLOAT_SIGN_BYTE   3
 #define _MATH_DOUBLE_SIGN_BYTE  7
@@ -36,26 +39,14 @@
 #define _MATH_SIGN_BIT   0x80
 #define _MATH_SIGN_SHIFT 7
 
-// Each format's biased exponent, its field's place and its largest value,
-// that of the infinities and NaNs, and its fraction below it.
-#define _MATH_FLOAT_EXP_SHIFT   23
-#define _MATH_FLOAT_EXP_MAX     0xFFU
-#define _MATH_FLOAT_FRAC_MASK   0x7FFFFFU
-#define _MATH_DOUBLE_EXP_SHIFT  52
-#define _MATH_DOUBLE_EXP_MAX    0x7FFU
-#define _MATH_DOUBLE_FRAC_MASK  0xFFFFFFFFFFFFFULL
-#define _MATH_LDOUBLE_EXP_MAX   0x7FFFU
-#define _MATH_LDOUBLE_FRAC_MASK 0x7FFFFFFFFFFFFFFFULL
-
-// The bytes of a long double that hold its significand, its integer bit
-// explicit at the top, and the two above them, its sign and exponent.
-#define _MATH_LDOUBLE_SIGNIFICAND 0
-#define _MATH_LDOUBLE_TOP         8
-#define _MATH_LDOUBLE_INT_SHIFT   63
-
-// A long double's integer bit, and its exponent bias.
-#define _MATH_LDOUBLE_INT_BIT 0x8000000000000000ULL
-#define _MATH_LDOUBLE_BIAS    16383
+// A float's and a double's biased exponent, its field's place and its
+// largest value, that of the infinities and NaNs, and its fraction below it.
+#define _MATH_FLOAT_EXP_SHIFT  23
+#define _MATH_FLOAT_EXP_MAX    0xFFU
+#define _MATH_FLOAT_FRAC_MASK  0x7FFFFFU
+#define _MATH_DOUBLE_EXP_SHIFT 52
+#define _MATH_DOUBLE_EXP_MAX   0x7FFU
+#define _MATH_DOUBLE_FRAC_MASK 0xFFFFFFFFFFFFFULL
 
 // The bits of each format's quiet NaN without a payload.
 #define _MATH_FLOAT_QUIET   0x7FC00000U
@@ -87,121 +78,6 @@
 
 // The exponent of a fraction in [1/2, 1).
 #define _MATH_FRACTION_EXP (-1)
-
-// A wide integer's limbs, the bits of each, all its bits, and its lowest.
-#define _MATH_WIDE_LIMBS 12
-#define _MATH_LIMB_BITS  32
-#define _MATH_WIDE_BITS  (_MATH_WIDE_LIMBS * _MATH_LIMB_BITS)
-#define _MATH_LOW_BIT    1U
-
-// The top bit of a wide integer that is zero.
-#define _MATH_WIDE_NONE (-1)
-
-// The bits a root is developed to, a round and a guard bit past 64.
-#define _MATH_ROOT_BITS 66
-
-// The bits of a sum kept exact below its top, the rest sticky.
-#define _MATH_SUM_WINDOW 320
-
-// The bits a working value keeps, the rest truncated.
-#define _MATH_WORK_BITS 160
-
-// A constant's limbs, 192 bits, the least significant first, each
-// constant's limbs, and the exponent of its lowest bit.
-#define _MATH_CONSTANTS         6
-#define _MATH_CONST_LIMBS       6
-#define _MATH_LN2_LIMBS         0x7298B62DU, 0x40F34326U, 0x03F2F6AFU, 0xC9E3B398U, 0xD1CF79ABU, 0xB17217F7U
-#define _MATH_LN2_UNIT          (-192)
-#define _MATH_LOG2E_LIMBS       0xDD695A58U, 0xEB577AA8U, 0x691D3E88U, 0xBE87FED0U, 0x5C17F0BBU, 0xB8AA3B29U
-#define _MATH_LOG2E_UNIT        (-191)
-#define _MATH_LOG10E_LIMBS      0x45C9A202U, 0x3EE34602U, 0xAD33DC32U, 0x355BAAAFU, 0x37287195U, 0xDE5BD8A9U
-#define _MATH_LOG10E_UNIT       (-193)
-#define _MATH_PI_LIMBS          0x8A67CC74U, 0x29024E08U, 0x80DC1CD1U, 0xC4C6628BU, 0x2168C234U, 0xC90FDAA2U
-#define _MATH_PI_UNIT           (-190)
-#define _MATH_INV_ROOT_PI_LIMBS 0xAC3E7517U, 0x1409A0EBU, 0x6BFEC344U, 0x71D48A7FU, 0x14DB688DU, 0x906EBA82U
-#define _MATH_INV_ROOT_PI_UNIT  (-192)
-#define _MATH_LN_ROOT_2PI_LIMBS 0x13458B4DU, 0xCFB08F8DU, 0x44192023U, 0x94BC9001U, 0x25F5A534U, 0xEB3F8E43U
-#define _MATH_LN_ROOT_2PI_UNIT  (-192)
-
-// The magnitude past which every exponential overflows or underflows, and
-// its exponent.
-#define _MATH_EXP_CLAMP     0x1p15L
-#define _MATH_EXP_CLAMP_EXP 15
-
-// The power pow takes as a square root.
-#define _MATH_POW_ROOT 0.5L
-
-// The halvings of an exponential's reduced argument, and the greatest
-// divisor of its series.
-#define _MATH_EXP_HALVINGS 8
-#define _MATH_EXP_TERMS    15
-
-// The terms of a logarithm's series.
-#define _MATH_LOG_TERMS 34
-
-// The greatest exponents of a negative and a positive argument log1p takes
-// without forming 1 plus it.
-#define _MATH_LOG1P_LOW_EXP  (-3)
-#define _MATH_LOG1P_HIGH_EXP (-2)
-
-// Ten, and its greatest power a long double holds exactly.
-#define _MATH_TEN          10U
-#define _MATH_LDOUBLE_TENS 27
-
-// The long double Heron steps of a working square root's guess, and the
-// Newton steps of its reciprocal past them.
-#define _MATH_ROOT_GUESSES 6
-#define _MATH_ROOT_STEPS   2
-
-// The magnitude below which a function is its argument or 1, nudged, and its
-// exponent.
-#define _MATH_TINY     0x1p-60L
-#define _MATH_TINY_EXP (-60)
-
-// The limbs of 2/pi past its point, the most significant first, as many as
-// the largest long double's reduction reads, and the limbs one reads.
-#define _MATH_TWO_OVER_PI_LIMBS 519
-#define _MATH_TRIG_WINDOW       10
-
-// The bits of a reduced argument's quadrant, their mask, its bit of an odd
-// quarter turn and its bit of a half turn.
-#define _MATH_QUADRANT_BITS 2
-#define _MATH_QUADRANT_MASK 3U
-#define _MATH_QUADRANT_ODD  1U
-#define _MATH_QUADRANT_HALF 2U
-
-// The greatest n of the sine's and the cosine's series' n!.
-#define _MATH_TRIG_TERMS 44
-
-// The halvings of an arc tangent's argument, and the terms of its series.
-#define _MATH_ATAN_HALVINGS 2
-#define _MATH_ATAN_TERMS    36
-
-// The quarters of pi in pi/4, pi/2, 3pi/4 and pi, and a quarter's exponent.
-#define _MATH_QUARTER_PI       1U
-#define _MATH_HALF_PI          2U
-#define _MATH_THREE_QUARTER_PI 3U
-#define _MATH_WHOLE_PI         4U
-#define _MATH_QUARTER_EXP      (-2)
-
-// The magnitude below which erf takes its series, and the series' terms, a
-// base and more for each unit of the magnitude.
-#define _MATH_ERF_SPLIT      6.0L
-#define _MATH_ERF_TERMS_BASE 20U
-#define _MATH_ERF_TERMS_STEP 25U
-
-// The terms of erfc's continued fraction from the split on.
-#define _MATH_ERFC_TERMS 80
-
-// The fraction of an x past which sin(pi x) is taken as a cosine.
-#define _MATH_SINE_TURN 0.25L
-
-// The least argument Stirling's series takes, and its terms.
-#define _MATH_STIRLING_FROM  24
-#define _MATH_STIRLING_TERMS 30
-
-// The greatest integer whose gamma is taken as an exact factorial.
-#define _MATH_FACTORIAL_MAX 64
 
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
@@ -277,86 +153,6 @@ enum _Math_Quotient {
     _MATH_QUOTIENT_NEAREST    // the nearest, ties to even, remainder's
 };
 
-// Which way a step moves a long double's magnitude.
-typedef enum _Math_Step _Math_Step;
-enum _Math_Step {
-    _MATH_STEP_UP,  // away from zero
-    _MATH_STEP_DOWN // toward zero
-};
-
-// Which type a value is rounded to.
-typedef enum _Math_Type _Math_Type;
-enum _Math_Type {
-    _MATH_TYPE_FLOAT,  // float's 24 bits
-    _MATH_TYPE_DOUBLE, // double's 53 bits
-    _MATH_TYPE_LDOUBLE // long double's 64 bits
-};
-
-// Which root is taken, by its degree.
-typedef enum _Math_Root _Math_Root;
-enum _Math_Root {
-    _MATH_ROOT_SQUARE = 2, // sqrt's
-    _MATH_ROOT_CUBE   = 3  // cbrt's
-};
-
-// Which base an exponential or a logarithm takes.
-typedef enum _Math_Base _Math_Base;
-enum _Math_Base {
-    _MATH_BASE_E,  // exp's and log's
-    _MATH_BASE_2,  // exp2's and log2's
-    _MATH_BASE_10  // log10's
-};
-
-// Which constant a working value is made of.
-typedef enum _Math_Constant _Math_Constant;
-enum _Math_Constant {
-    _MATH_CONST_LN2,         // the natural logarithm of 2
-    _MATH_CONST_LOG2E,       // the base-2 logarithm of e
-    _MATH_CONST_LOG10E,      // the base-10 logarithm of e
-    _MATH_CONST_PI,          // pi
-    _MATH_CONST_INV_ROOT_PI, // 1 over the square root of pi
-    _MATH_CONST_LN_ROOT_2PI  // the natural logarithm of the root of 2 pi
-};
-
-// Which trigonometric or hyperbolic function is taken, by its circular name.
-typedef enum _Math_Trig _Math_Trig;
-enum _Math_Trig {
-    _MATH_TRIG_SIN, // the sine's, or its inverse's
-    _MATH_TRIG_COS, // the cosine's, or its inverse's
-    _MATH_TRIG_TAN  // the tangent's, or its inverse's
-};
-
-// Whether a power's exponent is an integer, and which.
-typedef enum _Math_Parity _Math_Parity;
-enum _Math_Parity {
-    _MATH_PARITY_NONE, // not an integer
-    _MATH_PARITY_EVEN, // an even integer
-    _MATH_PARITY_ODD   // an odd integer
-};
-
-// An unsigned integer of limbs, the least significant first.
-typedef struct _Math_Wide _Math_Wide;
-struct _Math_Wide {
-    unsigned int mw_limb[_MATH_WIDE_LIMBS]; // the limbs, each 32 bits
-};
-
-// An exact value, its significand times 2 to its unit.
-typedef struct _Math_Exact _Math_Exact;
-struct _Math_Exact {
-    _Math_Wide me_sig;      // the significand, an integer
-    int        me_unit;     // the exponent of its lowest bit
-    _Bool      me_negative; // whether its sign is negative
-    _Bool      me_sticky;   // whether nonzero bits lie below its lowest
-};
-
-// The bits of 2/pi past its point, 32 to a limb, the most significant first.
-extern const unsigned int _Math_TwoOverPi[_MATH_TWO_OVER_PI_LIMBS];
-
-// The magnitudes of Stirling's coefficients, B2k over 2k(2k - 1), as limbs
-// of constants, and their units; the first is positive, and signs alternate.
-extern const unsigned int _Math_Stirling[_MATH_STIRLING_TERMS][_MATH_CONST_LIMBS];
-extern const int          _Math_StirlingUnits[_MATH_STIRLING_TERMS];
-
 // The classification and sign of a value of each type.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
 int _Math_ClassifyFloat(float x);
@@ -372,14 +168,6 @@ int _Math_CompareLessEqual(long double x, long double y);
 int _Math_CompareLessGreater(long double x, long double y);
 int _Math_CompareUnordered(long double x, long double y);
 
-// A long double's fields, significand and exponent.
-unsigned long long _Math_ReadSignificand(long double x);
-unsigned int       _Math_ReadTop(long double x);
-long double        _Math_MakeLDouble(unsigned int top, unsigned long long sig);
-unsigned long long _Math_SplitLDouble(long double x, int *exp);
-long double        _Math_JoinLDouble(int exp, unsigned long long sig);
-long double        _Math_StepLDouble(long double x, _Math_Step step);
-
 // The exact functions' shared work and errors.
 long double        _Math_ScaleLDouble(long double x, int n);
 int                _Math_ClampExponent(long n);
@@ -389,85 +177,10 @@ long double        _Math_RaiseDomain(long double x, long double y);
 void               _Math_CheckScaled(long double x, long double y);
 void               _Math_CheckNext(long double x, int class);
 
-// A wide integer's arithmetic.
-void               _Math_WideSet(_Math_Wide *w, unsigned long long low);
-unsigned long long _Math_WideReadLow(const _Math_Wide *w);
-unsigned int       _Math_WideReadBit(const _Math_Wide *w, int at);
-int                _Math_WideTop(const _Math_Wide *w);
-void               _Math_WideShiftLeft(_Math_Wide *w, int n);
-_Bool              _Math_WideShiftRight(_Math_Wide *w, int n);
-_Bool              _Math_WideAlign(_Math_Wide *w, int n);
-int                _Math_WideCompare(const _Math_Wide *a, const _Math_Wide *b);
-void               _Math_WideAdd(_Math_Wide *w, const _Math_Wide *add);
-void               _Math_WideSubtract(_Math_Wide *w, const _Math_Wide *sub);
-void               _Math_WideMultiply(_Math_Wide *to, const _Math_Wide *a, const _Math_Wide *b);
-void               _Math_WidePower(_Math_Wide *to, const _Math_Wide *base, int k);
-unsigned int       _Math_WideDivideSmall(_Math_Wide *w, unsigned int d);
-void               _Math_WideDivide(_Math_Wide *to, const _Math_Wide *a, const _Math_Wide *b);
-
-// The correctly rounded functions' exact values and their one rounding.
-void               _Math_MakeExact(_Math_Exact *exact, long double x);
-void               _Math_MultiplyExact(_Math_Exact *product, const _Math_Exact *a, const _Math_Exact *b);
-void               _Math_AddExact(_Math_Exact *sum, const _Math_Exact *a, const _Math_Exact *b);
-void               _Math_RootExact(_Math_Exact *root, const _Math_Exact *radicand, _Math_Root degree);
-unsigned long long _Math_RoundBits(const _Math_Exact *exact, int keep, int *low, _Bool *inexact);
-long double        _Math_RoundExact(const _Math_Exact *exact, _Math_Type type);
-long double        _Math_TakeRoot(long double x, _Math_Root degree, _Math_Type type);
-long double        _Math_TakeHypot(long double x, long double y, _Math_Type type);
-long double        _Math_TakeFma(long double x, long double y, long double z, _Math_Type type);
-
-// The approximated functions' working values, their cores and their errors.
-void         _Math_TrimExact(_Math_Exact *e);
-void         _Math_WorkMultiply(_Math_Exact *product, const _Math_Exact *a, const _Math_Exact *b);
-void         _Math_WorkAdd(_Math_Exact *sum, const _Math_Exact *a, const _Math_Exact *b);
-void         _Math_WorkDivide(_Math_Exact *quotient, const _Math_Exact *a, const _Math_Exact *b);
-void         _Math_WorkDivideSmall(_Math_Exact *e, unsigned int d);
-void         _Math_MakeReciprocal(_Math_Exact *e, unsigned int d);
-void         _Math_MakeConstant(_Math_Exact *e, _Math_Constant which);
-long         _Math_ReadNearest(const _Math_Exact *e);
-long         _Math_ReduceExp(_Math_Exact *r, const _Math_Exact *t);
-void         _Math_ExpM1Exact(_Math_Exact *em1, const _Math_Exact *r);
-void         _Math_ExpExact(_Math_Exact *value, const _Math_Exact *t);
-void         _Math_ExpM1Clamped(_Math_Exact *em1, const _Math_Exact *t);
-int          _Math_SplitLog(_Math_Exact *num, _Math_Exact *den, const _Math_Exact *u);
-void         _Math_LogExact(_Math_Exact *log, const _Math_Exact *num, const _Math_Exact *den, int e);
-void         _Math_Log1pExact(_Math_Exact *log, const _Math_Exact *u);
-_Bool        _Math_IsPowerTen(long double x, long k);
-_Math_Parity _Math_ReadParity(long double y);
-_Bool        _Math_PowerExact(_Math_Exact *value, long double x, long double y);
-long double  _Math_RaisePole(void);
-long double  _Math_RoundRange(const _Math_Exact *value, _Math_Type type);
-long double  _Math_TakeExp(long double x, _Math_Base base, _Math_Type type);
-long double  _Math_TakeExpm1(long double x, _Math_Type type);
-long double  _Math_TakeLog(long double x, _Math_Base base, _Math_Type type);
-long double  _Math_TakeLog1p(long double x, _Math_Type type);
-long double  _Math_TakePow(long double x, long double y, _Math_Type type);
-
-// The trigonometric and hyperbolic functions' cores.
-void         _Math_NudgeExact(_Math_Exact *e, _Math_Step step);
-void         _Math_WorkRoot(_Math_Exact *root, const _Math_Exact *a);
-void         _Math_MakeQuarters(_Math_Exact *e, unsigned int quarters);
-unsigned int _Math_ReduceTrig(_Math_Exact *r, long double x);
-void         _Math_TrigExact(_Math_Exact *value, const _Math_Exact *r, _Math_Trig which);
-void         _Math_AtanExact(_Math_Exact *value, const _Math_Exact *num, const _Math_Exact *den);
-long double  _Math_TakeTiny(long double x, _Math_Step step, _Math_Type type);
-long double  _Math_TakeQuarters(unsigned int quarters, long double sign, _Math_Type type);
-long double  _Math_TakeTrig(long double x, _Math_Trig which, _Math_Type type);
-long double  _Math_TakeArc(long double x, _Math_Trig which, _Math_Type type);
-long double  _Math_TakeAtan2(long double y, long double x, _Math_Type type);
-long double  _Math_TakeHyperbolic(long double x, _Math_Trig which, _Math_Type type);
-long double  _Math_TakeArcHyperbolic(long double x, _Math_Trig which, _Math_Type type);
-
-// The error and gamma functions' cores.
-void        _Math_ErfExact(_Math_Exact *value, long double a);
-void        _Math_ErfcExact(_Math_Exact *value, long double a);
-void        _Math_MakeStirling(_Math_Exact *e, int k);
-void        _Math_StirlingExact(_Math_Exact *log, const _Math_Exact *y);
-_Bool       _Math_LogGammaExact(_Math_Exact *log, long double x);
-long double _Math_TakeErf(long double x, _Math_Type type);
-long double _Math_TakeErfc(long double x, _Math_Type type);
-long double _Math_TakeLgamma(long double x, _Math_Type type);
-long double _Math_TakeTgamma(long double x, _Math_Type type);
+// The correctly rounded functions, each by one rounding of an exact value.
+long double _Math_TakeRoot(long double x, _Exact_Root degree, _Exact_Type type);
+long double _Math_TakeHypot(long double x, long double y, _Exact_Type type);
+long double _Math_TakeFma(long double x, long double y, long double z, _Exact_Type type);
 
 // Trigonometric functions
 // [C99:7.12.1p2]:  a domain error, of an infinity too by its footnote 203

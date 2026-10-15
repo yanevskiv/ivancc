@@ -26,48 +26,25 @@
 #ifndef _FENV_H
 #define _FENV_H
 
-// What a function returns when it does not do what it was asked.
-#define _FENV_FAILED 1
-
-// The exception flags, the same six bits in the x87 status word and MXCSR.
-#define _FENV_FLAGS 0x3F
-
-// The rounding control of the x87 control word.
-#define _FENV_ROUND_MASK 0x0C00
-
-// How far above the x87 control word's fields MXCSR holds the same ones.
-#define _FENV_SSE_ROUND_SHIFT 3
-#define _FENV_SSE_MASK_SHIFT  7
-
-// The control words a program starts with: every exception masked, to
-// nearest, and the x87 at 64 bits.
-#define _FENV_DEFAULT_CONTROL 0x037F
-#define _FENV_DEFAULT_MXCSR   0x1F80
-
-// The dwords of the x87 environment that hold its last pointers and opcode.
-#define _FENV_X87_POINTERS 4
-
-// The operands feraiseexcept divides, an exception for each quotient.
-#define _FENV_ZERO  0.0f
-#define _FENV_ONE   1.0f
-#define _FENV_THREE 3.0f
+// The floating-point units' controls and flags.
+#include <_fpu.h>
 
 // Floating-point environment
 // [C99:7.6p5]: the exceptions, distinct bits
 // [C99:7.6p6]: FE_ALL_EXCEPT, their bitwise OR
 // [C99:7.6p7]: the rounding directions, distinct nonnegative values
 // [C99:7.6p8]: FE_DFL_ENV, the environment at program startup
-#define FE_DIVBYZERO  0x04
-#define FE_INEXACT    0x20
-#define FE_INVALID    0x01
-#define FE_OVERFLOW   0x08
-#define FE_UNDERFLOW  0x10
+#define FE_DIVBYZERO  _FPU_DIVBYZERO
+#define FE_INEXACT    _FPU_INEXACT
+#define FE_INVALID    _FPU_INVALID
+#define FE_OVERFLOW   _FPU_OVERFLOW
+#define FE_UNDERFLOW  _FPU_UNDERFLOW
 #define FE_ALL_EXCEPT (FE_DIVBYZERO | FE_INEXACT | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW)
-#define FE_DOWNWARD   0x0400
-#define FE_TONEAREST  0x0000
-#define FE_TOWARDZERO 0x0C00
-#define FE_UPWARD     0x0800
-#define FE_DFL_ENV    ((const fenv_t *) -1)
+#define FE_DOWNWARD   _FPU_DOWNWARD
+#define FE_TONEAREST  _FPU_TONEAREST
+#define FE_TOWARDZERO _FPU_TOWARDZERO
+#define FE_UPWARD     _FPU_UPWARD
+#define FE_DFL_ENV    _FPU_DEFAULT_ENV
 
 // Floating-point environment
 // [C99:7.6p4]: fexcept_t, the status flags
@@ -75,21 +52,7 @@ typedef unsigned short fexcept_t;
 
 // Floating-point environment
 // [C99:7.6p3]: fenv_t, the whole environment
-typedef struct {
-    unsigned short fe_control;                    // the x87 control word
-    unsigned short fe_unused1;                    // reserved
-    unsigned short fe_status;                     // the x87 status word
-    unsigned short fe_unused2;                    // reserved
-    unsigned short fe_tags;                       // the x87 tag word
-    unsigned short fe_unused3;                    // reserved
-    unsigned int fe_pointers[_FENV_X87_POINTERS]; // the last opcode and addresses
-    unsigned int fe_mxcsr;                        // SSE's control and status
-} fenv_t;
-
-// Both units' environments, and a division on SSE
-void  _Fenv_StoreEnv(fenv_t *envp);
-void  _Fenv_LoadEnv(const fenv_t *envp);
-float _Fenv_DivideSingle(float a, float b);
+typedef _Fpu_Env fenv_t;
 
 // Floating-point exceptions
 // [C99:7.6.2]: feclearexcept to fetestexcept, the five flag functions
