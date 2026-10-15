@@ -7,18 +7,21 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// tanh should give the hyperbolic tangent of x in the current direction in
-// each type, keep a zero's sign and give +-1 of an infinity raising
+// tanh should give the hyperbolic tangent of x within a few ulps in each
+// direction and type, keep a zero's sign and give +-1 of an infinity raising
 // nothing, and give a subnormal x itself with underflow.
-// [C99:7.12.5.6p2]: tanh, the hyperbolic tangent
-// [C99:F.9.2.6p1]:  tanh of a zero and an infinity
+// [C99:7.12.5.6p2]:  tanh, the hyperbolic tangent
+// [C99:F.9.2.6p1]:   tanh of a zero and an infinity
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathTanh(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const double value[MODES] = {0x1.cf6f9786df577p-1, 0x1.cf6f9786df577p-1, 0x1.cf6f9786df578p-1, 0x1.cf6f9786df577p-1};
-    static const float valuef[MODES] = {0x1.cf6f98p-1f, 0x1.cf6f96p-1f, 0x1.cf6f98p-1f, 0x1.cf6f96p-1f};
-    static const long double valuel[MODES] = {0xe.7b7cbc36fabbb07p-4L, 0xe.7b7cbc36fabbb06p-4L, 0xe.7b7cbc36fabbb07p-4L, 0xe.7b7cbc36fabbb06p-4L};
+    static const double value = 0x1.cf6f9786df577p-1;
+    static const float valuef = 0x1.cf6f98p-1f;
+    static const long double valuel = 0xe.7b7cbc36fabbb07p-4L;
     volatile double half = 1.5;
     volatile float halff = 1.5f;
     volatile long double halfl = 1.5L;
@@ -29,9 +32,9 @@ static void Test_MathTanh(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(tanh(half), value[i]);
-        _TEST_FLOAT(tanhf(halff), valuef[i]);
-        _TEST_FLOAT(tanhl(halfl), valuel[i]);
+        _TEST_TRUE(within_ulps(tanh(half), value, DBL_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(tanhf(halff), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(tanhl(halfl), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);

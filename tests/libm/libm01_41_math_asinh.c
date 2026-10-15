@@ -7,18 +7,21 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// asinh should give the inverse hyperbolic sine of x in the current
-// direction in each type, keep a zero's and an infinity's sign raising
+// asinh should give the inverse hyperbolic sine of x within a few ulps in
+// each direction and type, keep a zero's and an infinity's sign raising
 // nothing, and give a subnormal x itself with underflow.
-// [C99:7.12.5.2p2]: asinh, the arc hyperbolic sine
-// [C99:F.9.2.2p1]:  asinh of a zero and an infinity
+// [C99:7.12.5.2p2]:  asinh, the arc hyperbolic sine
+// [C99:F.9.2.2p1]:   asinh of a zero and an infinity
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathAsinh(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const double value[MODES] = {0x1.27fdfac4e438p+1, 0x1.27fdfac4e438p+1, 0x1.27fdfac4e4381p+1, 0x1.27fdfac4e438p+1};
-    static const float valuef[MODES] = {0x1.31dcp+0f, 0x1.31dcp+0f, 0x1.31dc02p+0f, 0x1.31dcp+0f};
-    static const long double valuel[MODES] = {0xb.17217f7d1cf79acp-4L, 0xb.17217f7d1cf79abp-4L, 0xb.17217f7d1cf79acp-4L, 0xb.17217f7d1cf79abp-4L};
+    static const double value = 0x1.27fdfac4e438p+1;
+    static const float valuef = 0x1.31dcp+0f;
+    static const long double valuel = 0xb.17217f7d1cf79acp-4L;
     volatile double five = 5.0;
     volatile float halff = 1.5f;
     volatile long double threel = 0.75L;
@@ -29,9 +32,9 @@ static void Test_MathAsinh(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(asinh(five), value[i]);
-        _TEST_FLOAT(asinhf(halff), valuef[i]);
-        _TEST_FLOAT(asinhl(threel), valuel[i]);
+        _TEST_TRUE(within_ulps(asinh(five), value, DBL_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(asinhf(halff), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(asinhl(threel), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);

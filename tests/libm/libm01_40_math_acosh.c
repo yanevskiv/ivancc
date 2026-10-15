@@ -7,20 +7,23 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// acosh should give the nonnegative inverse hyperbolic cosine of x in the
-// current direction in each type, +0 of 1 and +inf of +inf raising
+// acosh should give the nonnegative inverse hyperbolic cosine of x within a
+// few ulps in each direction and type, +0 of 1 and +inf of +inf raising
 // nothing, and a NaN with invalid and EDOM below 1.
-// [C99:7.12.5.1p2]: acosh, a domain error below 1
-// [C99:7.12.5.1p3]: acosh, in [0, +inf]
-// [C99:7.12.1p2]:   a domain error, EDOM and invalid
-// [C99:F.9.2.1p1]:  acosh of 1 and +inf, invalid below 1
+// [C99:7.12.5.1p2]:  acosh, a domain error below 1
+// [C99:7.12.5.1p3]:  acosh, in [0, +inf]
+// [C99:7.12.1p2]:    a domain error, EDOM and invalid
+// [C99:F.9.2.1p1]:   acosh of 1 and +inf, invalid below 1
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathAcosh(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const double value[MODES] = {0x1.ecc2caec5160ap-1, 0x1.ecc2caec51609p-1, 0x1.ecc2caec5160ap-1, 0x1.ecc2caec51609p-1};
-    static const float valuef[MODES] = {0x1.ecc2cap-1f, 0x1.ecc2cap-1f, 0x1.ecc2ccp-1f, 0x1.ecc2cap-1f};
-    static const long double valuel[MODES] = {0xb.17217f7d1cf79acp-4L, 0xb.17217f7d1cf79abp-4L, 0xb.17217f7d1cf79acp-4L, 0xb.17217f7d1cf79abp-4L};
+    static const double value = 0x1.ecc2caec5160ap-1;
+    static const float valuef = 0x1.ecc2cap-1f;
+    static const long double valuel = 0xb.17217f7d1cf79acp-4L;
     volatile double half = 1.5;
     volatile float halff = 1.5f;
     volatile long double quarterl = 1.25L;
@@ -31,9 +34,9 @@ static void Test_MathAcosh(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(acosh(half), value[i]);
-        _TEST_FLOAT(acoshf(halff), valuef[i]);
-        _TEST_FLOAT(acoshl(quarterl), valuel[i]);
+        _TEST_TRUE(within_ulps(acosh(half), value, DBL_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(acoshf(halff), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(acoshl(quarterl), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);

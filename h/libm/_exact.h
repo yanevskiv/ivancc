@@ -62,6 +62,15 @@
 // The bits of a sum kept exact below its top, the rest sticky.
 #define _EXACT_SUM_WINDOW 320
 
+// The limbs of 2/pi past its point, the most significant first, as many as
+// the largest long double's reduction reads, and the limbs one reads.
+#define _EXACT_TWO_OVER_PI_LIMBS 519
+#define _EXACT_TRIG_WINDOW       10
+
+// The bits of a reduced argument's quadrant and their mask.
+#define _EXACT_QUADRANT_BITS 2
+#define _EXACT_QUADRANT_MASK 3U
+
 // Which way a step moves a long double's magnitude.
 typedef enum _Exact_Step _Exact_Step;
 enum _Exact_Step {
@@ -99,6 +108,9 @@ struct _Exact_Value {
     _Bool       ev_sticky;   // whether nonzero bits lie below its lowest
 };
 
+// The bits of 2/pi past its point, 32 to a limb, the most significant first.
+extern const unsigned int _Exact_TwoOverPi[_EXACT_TWO_OVER_PI_LIMBS];
+
 // A long double's fields, significand and exponent, sign and class.
 unsigned long long _Exact_ReadSignificand(long double x);
 unsigned int       _Exact_ReadTop(long double x);
@@ -135,5 +147,8 @@ void               _Exact_AddValues(_Exact_Value *sum, const _Exact_Value *a, co
 void               _Exact_ExtractRoot(_Exact_Value *root, const _Exact_Value *radicand, _Exact_Root degree);
 unsigned long long _Exact_RoundBits(const _Exact_Value *exact, int keep, int *low, _Bool *inexact);
 long double        _Exact_RoundValue(const _Exact_Value *exact, _Exact_Type type);
+
+// An argument's reduction by pi/2.
+unsigned int _Exact_ReduceQuarters(_Exact_Value *f, long double x);
 
 #endif // _EXACT_H

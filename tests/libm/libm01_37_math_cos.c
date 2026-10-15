@@ -7,18 +7,21 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// cos should give the cosine of x in radians in each type, in the current
-// direction for float and long double, 1 of a zero raising nothing, the
-// cosine of a large x, and a NaN with invalid and EDOM of an infinity.
-// [C99:7.12.4.5p2]: cos, of x in radians
-// [C99:7.12.1p2]:   a domain error, of an infinity by footnote 203
-// [C99:F.9.1.5p1]:  cos of a zero, invalid of an infinity
+// cos should give the cosine of x in radians within a few ulps in each
+// direction and type, of a large x too, 1 of a zero raising nothing, and a
+// NaN with invalid and EDOM of an infinity.
+// [C99:7.12.4.5p2]:  cos, of x in radians
+// [C99:7.12.1p2]:    a domain error, of an infinity by footnote 203
+// [C99:F.9.1.5p1]:   cos of a zero, invalid of an infinity
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathCos(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const float valuef[MODES] = {-0x1.aa2266p-2f, -0x1.aa2266p-2f, -0x1.aa2264p-2f, -0x1.aa2264p-2f};
-    static const long double valuel[MODES] = {0xf.80aa4fbef750ba8p-4L, 0xf.80aa4fbef750ba7p-4L, 0xf.80aa4fbef750ba8p-4L, 0xf.80aa4fbef750ba7p-4L};
+    static const float valuef = -0x1.aa2266p-2f;
+    static const long double valuel = 0xf.80aa4fbef750ba8p-4L;
     volatile double half = 0.5;
     volatile float twof = 2.0f;
     volatile long double quarterl = 0.25L;
@@ -29,13 +32,13 @@ static void Test_MathCos(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(cosf(twof), valuef[i]);
-        _TEST_FLOAT(cosl(quarterl), valuel[i]);
+        _TEST_TRUE(within_ulps(cosf(twof), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(cosl(quarterl), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);
-    _TEST_FLOAT(cos(half), 0x1.c1528065b7d5p-1);
-    _TEST_FLOAT(cos(1e22), 0x1.0be2cef01c8f4p-1);
+    _TEST_TRUE(within_ulps(cos(half), 0x1.c1528065b7d5p-1, DBL_MANT_DIG, ULPS));
+    _TEST_TRUE(within_ulps(cos(1e22), 0x1.0be2cef01c8f4p-1, DBL_MANT_DIG, ULPS));
 
     feclearexcept(FE_ALL_EXCEPT);
     _TEST_FLOAT(cos(0.0), 1.0);

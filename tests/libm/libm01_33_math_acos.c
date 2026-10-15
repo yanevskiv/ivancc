@@ -7,20 +7,22 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// acos should give the arc cosine of x in [0, pi] in each type, in the
-// current direction for float and long double, +0 of 1 raising nothing,
-// pi/2 of a zero and pi of -1, and a NaN with invalid and EDOM outside
-// [-1, +1], an infinity too.
-// [C99:7.12.4.1p2]: acos, a domain error outside [-1, +1]
-// [C99:7.12.4.1p3]: acos, in [0, pi]
-// [C99:7.12.1p2]:   a domain error, EDOM and invalid
-// [C99:F.9.1.1p1]:  acos(1) +0, invalid for |x| > 1
+// acos should give the arc cosine of x in [0, pi] within a few ulps in each
+// direction and type, +0 of 1 raising nothing, pi/2 of a zero and pi of -1,
+// and a NaN with invalid and EDOM outside [-1, +1], an infinity too.
+// [C99:7.12.4.1p2]:  acos, a domain error outside [-1, +1]
+// [C99:7.12.4.1p3]:  acos, in [0, pi]
+// [C99:7.12.1p2]:    a domain error, EDOM and invalid
+// [C99:F.9.1.1p1]:   acos(1) +0, invalid for |x| > 1
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathAcos(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const float valuef[MODES] = {0x1.d2cf5cp+0f, 0x1.d2cf5cp+0f, 0x1.d2cf5ep+0f, 0x1.d2cf5cp+0f};
-    static const long double valuel[MODES] = {0x8.60a91c16b9b2c23p-2L, 0x8.60a91c16b9b2c23p-2L, 0x8.60a91c16b9b2c24p-2L, 0x8.60a91c16b9b2c23p-2L};
+    static const float valuef = 0x1.d2cf5cp+0f;
+    static const long double valuel = 0x8.60a91c16b9b2c23p-2L;
     volatile double half = 0.5;
     volatile float quarterf = -0.25f;
     volatile long double halfl = -0.5L;
@@ -31,12 +33,12 @@ static void Test_MathAcos(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(acosf(quarterf), valuef[i]);
-        _TEST_FLOAT(acosl(halfl), valuel[i]);
+        _TEST_TRUE(within_ulps(acosf(quarterf), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(acosl(halfl), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);
-    _TEST_FLOAT(acos(half), 0x1.0c152382d7366p+0);
+    _TEST_TRUE(within_ulps(acos(half), 0x1.0c152382d7366p+0, DBL_MANT_DIG, ULPS));
 
     feclearexcept(FE_ALL_EXCEPT);
     _TEST_FLOAT(acos(1.0), 0.0);

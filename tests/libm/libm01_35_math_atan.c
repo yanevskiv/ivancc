@@ -7,18 +7,21 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// atan should give the arc tangent of x in [-pi/2, +pi/2] in each type, in
-// the current direction for float and long double, keep a zero's sign
-// raising nothing, give a tiny x itself and +-pi/2 of an infinity.
-// [C99:7.12.4.3p2]: atan, the principal value
-// [C99:7.12.4.3p3]: atan, in [-pi/2, +pi/2]
-// [C99:F.9.1.3p1]:  atan of a zero and an infinity
+// atan should give the arc tangent of x in [-pi/2, +pi/2] within a few ulps
+// in each direction and type, keep a zero's sign raising nothing, give a tiny
+// x itself and +-pi/2 of an infinity.
+// [C99:7.12.4.3p2]:  atan, the principal value
+// [C99:7.12.4.3p3]:  atan, in [-pi/2, +pi/2]
+// [C99:F.9.1.3p1]:   atan of a zero and an infinity
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathAtan(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const float valuef[MODES] = {-0x1.3fc176p+0f, -0x1.3fc178p+0f, -0x1.3fc176p+0f, -0x1.3fc176p+0f};
-    static const long double valuel[MODES] = {0xb.c4de960b0029c17p-3L, 0xb.c4de960b0029c17p-3L, 0xb.c4de960b0029c18p-3L, 0xb.c4de960b0029c17p-3L};
+    static const float valuef = -0x1.3fc176p+0f;
+    static const long double valuel = 0xb.c4de960b0029c17p-3L;
     volatile double half = 0.5;
     volatile float threef = -3.0f;
     volatile long double tenl = 10.0L;
@@ -29,12 +32,12 @@ static void Test_MathAtan(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(atanf(threef), valuef[i]);
-        _TEST_FLOAT(atanl(tenl), valuel[i]);
+        _TEST_TRUE(within_ulps(atanf(threef), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(atanl(tenl), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);
-    _TEST_FLOAT(atan(half), 0x1.dac670561bb4fp-2);
+    _TEST_TRUE(within_ulps(atan(half), 0x1.dac670561bb4fp-2, DBL_MANT_DIG, ULPS));
 
     feclearexcept(FE_ALL_EXCEPT);
     _TEST_FLOAT(atan(0.0), 0.0);

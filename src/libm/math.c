@@ -74,6 +74,36 @@ const long double _Math_LogStepLow[_MATH_LOG_STEP_COUNT] = {
     0xc.c91a85081b3cdeep-70L,  0xb.7b37b33c734415ep-70L,  0xd.8e0f71ff84567cep-70L
 };
 
+// The terms of the sine's series, (-1)^k/(2k + 1)! from k = 1.
+const long double _Math_SinTerms[_MATH_SIN_TERMS] = {
+    -0xa.aaaaaaaaaaaaaabp-6L, 0x8.888888888888889p-10L, -0xd.00d00d00d00d00dp-16L, 0xb.8ef1d2ab6399c7dp-22L,
+    -0xd.7322b3faa271c7fp-29L, 0xb.092309d43684be5p-36L, -0xd.73f9f399dc0f88fp-44L, 0xc.a963b81856a5359p-52L,
+    -0x9.7a4da340a0ab926p-60L
+};
+
+// The terms of the cosine's series, (-1)^k/(2k)! from k = 1.
+const long double _Math_CosTerms[_MATH_COS_TERMS] = {
+    -0x8p-4L, 0xa.aaaaaaaaaaaaaabp-8L, -0xb.60b60b60b60b60bp-13L, 0xd.00d00d00d00d00dp-19L, -0x9.3f27dbbc4fae397p-25L,
+    0x8.f76c77fc6c4bdaap-32L, -0xc.9cba54603e4e906p-40L, 0xd.73f9f399dc0f88fp-48L, -0xb.413c31dcbecbbdep-56L,
+    0xf.2a15d201011283dp-65L
+};
+
+// The arc tangent of each step of the arc tangent's table, its top 64 bits.
+const long double _Math_AtanStepHigh[_MATH_ATAN_STEP_COUNT] = {
+    0x0p+0L, 0xf.faaddb967ef4e37p-8L, 0xf.eadd4d5617b6e33p-7L, 0xb.dcbda5e72d81134p-6L, 0xf.adbafc96406eb15p-6L,
+    0x9.b13b9b83f5e5e6ap-5L, 0xb.7b0ca0f26f78474p-5L, 0xd.327761e611fe5b6p-5L, 0xe.d63382b0dda7b45p-5L,
+    0x8.32bf4a6d9867e2ap-4L, 0x8.f005d5ef7f59f9bp-4L, 0x9.a2f80e671bdda2p-4L, 0xa.4bc7d1934f70924p-4L,
+    0xa.eac4c38b4d8c08p-4L, 0xb.8053e2bc2319e74p-4L, 0xc.0ce85b8ac526641p-4L, 0xc.90fdaa22168c235p-4L
+};
+
+// The arc tangent of each step of the arc tangent's table, the rest.
+const long double _Math_AtanStepLow[_MATH_ATAN_STEP_COUNT] = {
+    0x0p+0L, -0xd.361b48fc747cabbp-74L, -0xd.da19d8305ddc422p-73L, 0xf.6169f103938e90fp-71L, 0xd.b8f3debef442fcbp-71L,
+    -0xe.9512d9cb614336p-71L, -0xe.ab9bdba460376fap-70L, 0x8.4f92bd2003ce26dp-70L, 0xd.fc88bd978751a07p-70L,
+    0x9.6d41396c34a2b82p-69L, 0xb.906bc2ccb886e8fp-69L, 0x8.44df1c4409fe77ap-69L, 0xc.d43f9522bed64f7p-71L,
+    0xa.392f179f290385p-71L, -0xd.3496ab7bd6eef0bp-70L, -0xe.c453a7722da0bb6p-69L, -0xe.ce675d1fc8f8cbbp-70L
+};
+
 // Classify a value by its biased exponent and its fraction.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac)
 {
@@ -253,20 +283,22 @@ void _Math_CheckScaled(long double x, long double y)
 }
 
 // Check y, a function of x, for a range error and a nonzero y below least.
-void _Math_CheckRange(long double x, long double y, long double least)
+long double _Math_CheckRange(long double x, long double y, long double least)
 {
     _Math_CheckScaled(x, y);
     if (y == y && y != 0 && fabsl(y) < least) {
         feraiseexcept(FE_UNDERFLOW | FE_INEXACT);
     }
+    return y;
 }
 
 // Check z, x to y, for a range error and a nonzero z below least.
-void _Math_CheckPower(long double x, long double y, long double z, long double least)
+long double _Math_CheckPower(long double x, long double y, long double z, long double least)
 {
     if (y == y && fabsl(y) != HUGE_VALL) {
         _Math_CheckRange(x, z, least);
     }
+    return z;
 }
 
 // Check a step from x to a value of class for a range error.
@@ -649,319 +681,561 @@ long double _Math_TakePow(long double x, long double y)
     return _Math_ScaleLDouble(negative ? -result : result, n);
 }
 
+// Iterate to the square root of a nonnegative finite x by Newton's steps.
+long double _Math_IterateRoot(long double x)
+{
+    int e;
+    long double m;
+    long double y;
+    long double s;
+    long double p;
+    long double p_low;
+
+    if (x == 0) {
+        return 0;
+    }
+    m = _Exact_SplitLDouble(x, &e) * _MATH_LDOUBLE_UNIT;
+    if (e % 2 != 0) {
+        m *= 2;
+        e--;
+    }
+    y = _MATH_ROOT_GUESS_0 + m * (_MATH_ROOT_GUESS_1 + m * _MATH_ROOT_GUESS_2);
+    for (int k = 0; k < _MATH_ROOT_STEPS; k++) {
+        y += _MATH_HALF * y * (1 - m * y * y);
+    }
+    s = m * y;
+    p = _Math_MultiplyParts(s, s, &p_low);
+    s += _MATH_HALF * y * ((m - p) - p_low);
+    return _Math_ScaleLDouble(s, e / 2);
+}
+
+// Reduce a positive x to r and its low part, returning its quadrant.
+unsigned int _Math_ReduceTrig(long double x, long double *r, long double *low)
+{
+    _Exact_Value f;
+    _Exact_Value part;
+    long double high;
+    long double error;
+    long double rest;
+    long double p;
+    long double p_low;
+    unsigned int quadrant;
+    int n;
+
+    if (x <= _MATH_QUARTER_PI) {
+        *r = x;
+        *low = 0;
+        return 0;
+    }
+    if (x < _MATH_TRIG_NEAR) {
+        n = (int) (x * _MATH_TWO_OVER_PI + _MATH_HALF);
+        high = _Math_AddParts(x - n * _MATH_HALF_PI_1, -n * _MATH_HALF_PI_2, &error);
+        p = _Math_MultiplyParts(n, _MATH_HALF_PI_3, &p_low);
+        high = _Math_AddParts(high, -p, &rest);
+        rest += error - p_low - n * _MATH_HALF_PI_4;
+        *r = _Math_AddParts(high, rest, low);
+        return (unsigned int) n & _MATH_QUADRANT_MASK;
+    }
+    quadrant = _Exact_ReduceQuarters(&f, x);
+    high = _Exact_RoundValue(&f, _EXACT_TYPE_LDOUBLE);
+    _Exact_MakeValue(&part, -high);
+    _Exact_AddValues(&f, &f, &part);
+    rest = _Exact_RoundValue(&f, _EXACT_TYPE_LDOUBLE);
+    p = _Math_MultiplyParts(high, _MATH_HALF_PI_HIGH, &p_low);
+    p_low += high * _MATH_HALF_PI_LOW + rest * _MATH_HALF_PI_HIGH;
+    *r = _Math_AddParts(p, p_low, low);
+    return quadrant;
+}
+
+// Sum the sine of a reduced r and its low part by Taylor's series.
+long double _Math_SumSin(long double r, long double low)
+{
+    long double square = r * r;
+    long double sum = 0;
+
+    for (int k = _MATH_SIN_TERMS - 1; k >= 0; k--) {
+        sum = sum * square + _Math_SinTerms[k];
+    }
+    return r + (low + r * square * sum);
+}
+
+// Sum the cosine of a reduced r and its low part by Taylor's series.
+long double _Math_SumCos(long double r, long double low)
+{
+    long double square = r * r;
+    long double sum = 0;
+
+    for (int k = _MATH_COS_TERMS - 1; k >= 0; k--) {
+        sum = sum * square + _Math_CosTerms[k];
+    }
+    return 1 + (square * sum - r * low);
+}
+
+// Sum the arc tangent of a t in [0, 1] by its nearest step and a series.
+long double _Math_SumAtan(long double t)
+{
+    int j = (int) (t * _MATH_ATAN_STEPS + _MATH_HALF);
+    long double c = (long double) j / _MATH_ATAN_STEPS;
+    long double s = (t - c) / (1 + t * c);
+    long double square = s * s;
+    long double sum = 0;
+
+    for (int k = _MATH_ATAN_TERMS - 1; k >= 0; k--) {
+        sum = _Math_LogTerms[k] - sum * square;
+    }
+    return _Math_AtanStepHigh[j] + (_Math_AtanStepLow[j] + (s - s * square * sum));
+}
+
+// Take the sine, the cosine or the tangent of x.
+long double _Math_TakeTrig(long double x, _Math_Trig which)
+{
+    long double r;
+    long double low;
+    long double sine;
+    long double cosine;
+    long double result;
+    unsigned int quadrant;
+
+    if (x != x) {
+        return x + x;
+    }
+    if (fabsl(x) == HUGE_VALL) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (x == 0) {
+        return which == _MATH_TRIG_COS ? 1 : x;
+    }
+    quadrant = _Math_ReduceTrig(fabsl(x), &r, &low);
+    if (which == _MATH_TRIG_TAN) {
+        sine = _Math_SumSin(r, low);
+        cosine = _Math_SumCos(r, low);
+        result = (quadrant & _MATH_QUADRANT_ODD) != 0 ? -cosine / sine : sine / cosine;
+    } else {
+        if (which == _MATH_TRIG_COS) {
+            quadrant++;
+        }
+        result = (quadrant & _MATH_QUADRANT_ODD) != 0 ? _Math_SumCos(r, low) : _Math_SumSin(r, low);
+        if ((quadrant & _MATH_QUADRANT_HALF) != 0) {
+            result = -result;
+        }
+    }
+    return which != _MATH_TRIG_COS && x < 0 ? -result : result;
+}
+
+// Take the arc tangent of y over x by both signs.
+long double _Math_TakeAtan2(long double y, long double x)
+{
+    long double a = fabsl(y);
+    long double b = fabsl(x);
+    long double angle;
+
+    if (x != x || y != y) {
+        return x + y;
+    }
+    if (y == 0) {
+        return signbit(x) == 0 ? y : signbit(y) != 0 ? -(_MATH_PI_HIGH + _MATH_PI_LOW) : _MATH_PI_HIGH + _MATH_PI_LOW;
+    }
+    if (b == HUGE_VALL && a != HUGE_VALL) {
+        return x > 0 ? y * 0 : y < 0 ? -(_MATH_PI_HIGH + _MATH_PI_LOW) : _MATH_PI_HIGH + _MATH_PI_LOW;
+    }
+    if (a == HUGE_VALL && b == HUGE_VALL) {
+        a = 1;
+        b = 1;
+    }
+    if (a < b * _MATH_ATAN_TINY && x > 0) {
+        return y / b;
+    }
+    if (a <= b) {
+        angle = _Math_SumAtan(a / b);
+    } else {
+        angle = _MATH_HALF_PI_HIGH + (_MATH_HALF_PI_LOW - _Math_SumAtan(b / a));
+    }
+    if (x < 0) {
+        angle = _MATH_PI_HIGH + (_MATH_PI_LOW - angle);
+    }
+    return y < 0 ? -angle : angle;
+}
+
+// Take the arc sine or the arc cosine of x.
+long double _Math_TakeArc(long double x, _Math_Trig which)
+{
+    long double a = fabsl(x);
+    long double side;
+
+    if (x != x) {
+        return x + x;
+    }
+    if (a > 1) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (which == _MATH_TRIG_SIN && x == 0) {
+        return x;
+    }
+    if (which == _MATH_TRIG_COS && x == 1) {
+        return 0;
+    }
+    side = _Math_IterateRoot((1 - a) * (1 + a));
+    return which == _MATH_TRIG_SIN ? _Math_TakeAtan2(x, side) : _Math_TakeAtan2(side, x);
+}
+
+// Take the hyperbolic sine, cosine or tangent of x.
+long double _Math_TakeHyperbolic(long double x, _Math_Trig which)
+{
+    long double a = fabsl(x);
+    long double em1;
+    long double r;
+    long double result;
+    int n;
+
+    if (x != x) {
+        return x + x;
+    }
+    if (x == 0) {
+        return which == _MATH_TRIG_COS ? 1 : x;
+    }
+    if (a == HUGE_VALL) {
+        return which == _MATH_TRIG_COS ? a : which == _MATH_TRIG_SIN ? x : x > 0 ? 1 : -1;
+    }
+    if (which == _MATH_TRIG_TAN) {
+        if (a > _MATH_HYPERBOLIC_WIDE) {
+            a = _MATH_HYPERBOLIC_WIDE;
+        }
+        em1 = _Math_TakeExpm1(2 * a);
+        result = em1 / (em1 + 2);
+    } else if (a > _MATH_HYPERBOLIC_WIDE) {
+        if (a > _MATH_EXP_CLAMP) {
+            a = _MATH_EXP_CLAMP;
+        }
+        n = _Math_ReduceExp(a, _MATH_BASE_E, &r);
+        result = 1 + _Math_SumExp(r);
+        return _Math_ScaleLDouble(which == _MATH_TRIG_SIN && x < 0 ? -result : result, n - 1);
+    } else {
+        em1 = _Math_TakeExpm1(a);
+        if (which == _MATH_TRIG_SIN) {
+            result = _MATH_HALF * (em1 + em1 / (em1 + 1));
+        } else {
+            result = 1 + _MATH_HALF * (em1 * em1 / (em1 + 1));
+        }
+    }
+    return which != _MATH_TRIG_COS && x < 0 ? -result : result;
+}
+
+// Take the inverse hyperbolic sine, cosine or tangent of x.
+long double _Math_TakeArcHyperbolic(long double x, _Math_Trig which)
+{
+    long double a = fabsl(x);
+    long double result;
+
+    if (x != x) {
+        return x + x;
+    }
+    if ((which == _MATH_TRIG_COS && x < 1) || (which == _MATH_TRIG_TAN && a > 1)) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (which == _MATH_TRIG_TAN && a == 1) {
+        return x > 0 ? -_Math_RaisePole() : _Math_RaisePole();
+    }
+    if (a == HUGE_VALL || x == 0) {
+        return x;
+    }
+    if (which != _MATH_TRIG_TAN && a > _MATH_ARC_HYPERBOLIC_WIDE) {
+        result = _Math_TakeLog(a, _MATH_BASE_E) + _MATH_LN2;
+    } else if (which == _MATH_TRIG_SIN) {
+        result = _Math_TakeLog1p(a + a * a / (1 + _Math_IterateRoot(1 + a * a)));
+    } else if (which == _MATH_TRIG_COS) {
+        result = _Math_TakeLog1p((a - 1) + _Math_IterateRoot((a - 1) * (a + 1)));
+    } else {
+        result = _MATH_HALF * _Math_TakeLog1p(2 * a / (1 - a));
+    }
+    return which != _MATH_TRIG_COS && x < 0 ? -result : result;
+}
+
 // Take the arc cosine of x.
 double acos(double x)
 {
-    return __prec_math_acos(x);
+    return (double) _Math_TakeArc(x, _MATH_TRIG_COS);
 }
 
 // Take the arc cosine of x.
 float acosf(float x)
 {
-    return __prec_math_acosf(x);
+    return (float) _Math_TakeArc(x, _MATH_TRIG_COS);
 }
 
 // Take the arc cosine of x.
 long double acosl(long double x)
 {
-    return __prec_math_acosl(x);
+    return _Math_TakeArc(x, _MATH_TRIG_COS);
 }
 
 // Take the arc sine of x.
 double asin(double x)
 {
-    return __prec_math_asin(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeArc(x, _MATH_TRIG_SIN), DBL_MIN);
 }
 
 // Take the arc sine of x.
 float asinf(float x)
 {
-    return __prec_math_asinf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeArc(x, _MATH_TRIG_SIN), FLT_MIN);
 }
 
 // Take the arc sine of x.
 long double asinl(long double x)
 {
-    return __prec_math_asinl(x);
+    return _Math_CheckRange(x, _Math_TakeArc(x, _MATH_TRIG_SIN), LDBL_MIN);
 }
 
 // Take the arc tangent of x.
 double atan(double x)
 {
-    return __prec_math_atan(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeAtan2(x, 1), DBL_MIN);
 }
 
 // Take the arc tangent of x.
 float atanf(float x)
 {
-    return __prec_math_atanf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeAtan2(x, 1), FLT_MIN);
 }
 
 // Take the arc tangent of x.
 long double atanl(long double x)
 {
-    return __prec_math_atanl(x);
+    return _Math_CheckRange(x, _Math_TakeAtan2(x, 1), LDBL_MIN);
 }
 
 // Take the arc tangent of y over x by both signs.
 double atan2(double y, double x)
 {
-    return __prec_math_atan2(y, x);
+    return (double) _Math_CheckRange(fabsl(x) == HUGE_VALL ? 0 : y, (double) _Math_TakeAtan2(y, x), DBL_MIN);
 }
 
 // Take the arc tangent of y over x by both signs.
 float atan2f(float y, float x)
 {
-    return __prec_math_atan2f(y, x);
+    return (float) _Math_CheckRange(fabsl(x) == HUGE_VALL ? 0 : y, (float) _Math_TakeAtan2(y, x), FLT_MIN);
 }
 
 // Take the arc tangent of y over x by both signs.
 long double atan2l(long double y, long double x)
 {
-    return __prec_math_atan2l(y, x);
+    return _Math_CheckRange(fabsl(x) == HUGE_VALL ? 0 : y, _Math_TakeAtan2(y, x), LDBL_MIN);
 }
 
 // Take the cosine of x.
 double cos(double x)
 {
-    return __prec_math_cos(x);
+    return (double) _Math_TakeTrig(x, _MATH_TRIG_COS);
 }
 
 // Take the cosine of x.
 float cosf(float x)
 {
-    return __prec_math_cosf(x);
+    return (float) _Math_TakeTrig(x, _MATH_TRIG_COS);
 }
 
 // Take the cosine of x.
 long double cosl(long double x)
 {
-    return __prec_math_cosl(x);
+    return _Math_TakeTrig(x, _MATH_TRIG_COS);
 }
 
 // Take the sine of x.
 double sin(double x)
 {
-    return __prec_math_sin(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeTrig(x, _MATH_TRIG_SIN), DBL_MIN);
 }
 
 // Take the sine of x.
 float sinf(float x)
 {
-    return __prec_math_sinf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeTrig(x, _MATH_TRIG_SIN), FLT_MIN);
 }
 
 // Take the sine of x.
 long double sinl(long double x)
 {
-    return __prec_math_sinl(x);
+    return _Math_CheckRange(x, _Math_TakeTrig(x, _MATH_TRIG_SIN), LDBL_MIN);
 }
 
 // Take the tangent of x.
 double tan(double x)
 {
-    return __prec_math_tan(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeTrig(x, _MATH_TRIG_TAN), DBL_MIN);
 }
 
 // Take the tangent of x.
 float tanf(float x)
 {
-    return __prec_math_tanf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeTrig(x, _MATH_TRIG_TAN), FLT_MIN);
 }
 
 // Take the tangent of x.
 long double tanl(long double x)
 {
-    return __prec_math_tanl(x);
+    return _Math_CheckRange(x, _Math_TakeTrig(x, _MATH_TRIG_TAN), LDBL_MIN);
 }
 
 // Take the inverse hyperbolic cosine of x.
 double acosh(double x)
 {
-    return __prec_math_acosh(x);
+    return (double) _Math_TakeArcHyperbolic(x, _MATH_TRIG_COS);
 }
 
 // Take the inverse hyperbolic cosine of x.
 float acoshf(float x)
 {
-    return __prec_math_acoshf(x);
+    return (float) _Math_TakeArcHyperbolic(x, _MATH_TRIG_COS);
 }
 
 // Take the inverse hyperbolic cosine of x.
 long double acoshl(long double x)
 {
-    return __prec_math_acoshl(x);
+    return _Math_TakeArcHyperbolic(x, _MATH_TRIG_COS);
 }
 
 // Take the inverse hyperbolic sine of x.
 double asinh(double x)
 {
-    return __prec_math_asinh(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeArcHyperbolic(x, _MATH_TRIG_SIN), DBL_MIN);
 }
 
 // Take the inverse hyperbolic sine of x.
 float asinhf(float x)
 {
-    return __prec_math_asinhf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeArcHyperbolic(x, _MATH_TRIG_SIN), FLT_MIN);
 }
 
 // Take the inverse hyperbolic sine of x.
 long double asinhl(long double x)
 {
-    return __prec_math_asinhl(x);
+    return _Math_CheckRange(x, _Math_TakeArcHyperbolic(x, _MATH_TRIG_SIN), LDBL_MIN);
 }
 
 // Take the inverse hyperbolic tangent of x.
 double atanh(double x)
 {
-    return __prec_math_atanh(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeArcHyperbolic(x, _MATH_TRIG_TAN), DBL_MIN);
 }
 
 // Take the inverse hyperbolic tangent of x.
 float atanhf(float x)
 {
-    return __prec_math_atanhf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeArcHyperbolic(x, _MATH_TRIG_TAN), FLT_MIN);
 }
 
 // Take the inverse hyperbolic tangent of x.
 long double atanhl(long double x)
 {
-    return __prec_math_atanhl(x);
+    return _Math_CheckRange(x, _Math_TakeArcHyperbolic(x, _MATH_TRIG_TAN), LDBL_MIN);
 }
 
 // Take the hyperbolic cosine of x.
 double cosh(double x)
 {
-    return __prec_math_cosh(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeHyperbolic(x, _MATH_TRIG_COS), DBL_MIN);
 }
 
 // Take the hyperbolic cosine of x.
 float coshf(float x)
 {
-    return __prec_math_coshf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeHyperbolic(x, _MATH_TRIG_COS), FLT_MIN);
 }
 
 // Take the hyperbolic cosine of x.
 long double coshl(long double x)
 {
-    return __prec_math_coshl(x);
+    return _Math_CheckRange(x, _Math_TakeHyperbolic(x, _MATH_TRIG_COS), LDBL_MIN);
 }
 
 // Take the hyperbolic sine of x.
 double sinh(double x)
 {
-    return __prec_math_sinh(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeHyperbolic(x, _MATH_TRIG_SIN), DBL_MIN);
 }
 
 // Take the hyperbolic sine of x.
 float sinhf(float x)
 {
-    return __prec_math_sinhf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeHyperbolic(x, _MATH_TRIG_SIN), FLT_MIN);
 }
 
 // Take the hyperbolic sine of x.
 long double sinhl(long double x)
 {
-    return __prec_math_sinhl(x);
+    return _Math_CheckRange(x, _Math_TakeHyperbolic(x, _MATH_TRIG_SIN), LDBL_MIN);
 }
 
 // Take the hyperbolic tangent of x.
 double tanh(double x)
 {
-    return __prec_math_tanh(x);
+    return (double) _Math_CheckRange(x, (double) _Math_TakeHyperbolic(x, _MATH_TRIG_TAN), DBL_MIN);
 }
 
 // Take the hyperbolic tangent of x.
 float tanhf(float x)
 {
-    return __prec_math_tanhf(x);
+    return (float) _Math_CheckRange(x, (float) _Math_TakeHyperbolic(x, _MATH_TRIG_TAN), FLT_MIN);
 }
 
 // Take the hyperbolic tangent of x.
 long double tanhl(long double x)
 {
-    return __prec_math_tanhl(x);
+    return _Math_CheckRange(x, _Math_TakeHyperbolic(x, _MATH_TRIG_TAN), LDBL_MIN);
 }
 
 // Take e to x.
 double exp(double x)
 {
-    double y = (double) _Math_TakeExp(x, _MATH_BASE_E);
-
-    _Math_CheckRange(x, y, DBL_MIN);
-    return y;
+    return (double) _Math_CheckRange(x, (double) _Math_TakeExp(x, _MATH_BASE_E), DBL_MIN);
 }
 
 // Take e to x.
 float expf(float x)
 {
-    float y = (float) _Math_TakeExp(x, _MATH_BASE_E);
-
-    _Math_CheckRange(x, y, FLT_MIN);
-    return y;
+    return (float) _Math_CheckRange(x, (float) _Math_TakeExp(x, _MATH_BASE_E), FLT_MIN);
 }
 
 // Take e to x.
 long double expl(long double x)
 {
-    long double y = _Math_TakeExp(x, _MATH_BASE_E);
-
-    _Math_CheckRange(x, y, LDBL_MIN);
-    return y;
+    return _Math_CheckRange(x, _Math_TakeExp(x, _MATH_BASE_E), LDBL_MIN);
 }
 
 // Take 2 to x.
 double exp2(double x)
 {
-    double y = (double) _Math_TakeExp(x, _MATH_BASE_2);
-
-    _Math_CheckRange(x, y, DBL_MIN);
-    return y;
+    return (double) _Math_CheckRange(x, (double) _Math_TakeExp(x, _MATH_BASE_2), DBL_MIN);
 }
 
 // Take 2 to x.
 float exp2f(float x)
 {
-    float y = (float) _Math_TakeExp(x, _MATH_BASE_2);
-
-    _Math_CheckRange(x, y, FLT_MIN);
-    return y;
+    return (float) _Math_CheckRange(x, (float) _Math_TakeExp(x, _MATH_BASE_2), FLT_MIN);
 }
 
 // Take 2 to x.
 long double exp2l(long double x)
 {
-    long double y = _Math_TakeExp(x, _MATH_BASE_2);
-
-    _Math_CheckRange(x, y, LDBL_MIN);
-    return y;
+    return _Math_CheckRange(x, _Math_TakeExp(x, _MATH_BASE_2), LDBL_MIN);
 }
 
 // Take e to x, less 1.
 double expm1(double x)
 {
-    double y = (double) _Math_TakeExpm1(x);
-
-    _Math_CheckRange(x, y, DBL_MIN);
-    return y;
+    return (double) _Math_CheckRange(x, (double) _Math_TakeExpm1(x), DBL_MIN);
 }
 
 // Take e to x, less 1.
 float expm1f(float x)
 {
-    float y = (float) _Math_TakeExpm1(x);
-
-    _Math_CheckRange(x, y, FLT_MIN);
-    return y;
+    return (float) _Math_CheckRange(x, (float) _Math_TakeExpm1(x), FLT_MIN);
 }
 
 // Take e to x, less 1.
 long double expm1l(long double x)
 {
-    long double y = _Math_TakeExpm1(x);
-
-    _Math_CheckRange(x, y, LDBL_MIN);
-    return y;
+    return _Math_CheckRange(x, _Math_TakeExpm1(x), LDBL_MIN);
 }
 
 // Break value into a fraction and a power of 2.
@@ -1075,28 +1349,19 @@ long double log10l(long double x)
 // Take the natural logarithm of 1 plus x.
 double log1p(double x)
 {
-    double y = (double) _Math_TakeLog1p(x);
-
-    _Math_CheckRange(x, y, DBL_MIN);
-    return y;
+    return (double) _Math_CheckRange(x, (double) _Math_TakeLog1p(x), DBL_MIN);
 }
 
 // Take the natural logarithm of 1 plus x.
 float log1pf(float x)
 {
-    float y = (float) _Math_TakeLog1p(x);
-
-    _Math_CheckRange(x, y, FLT_MIN);
-    return y;
+    return (float) _Math_CheckRange(x, (float) _Math_TakeLog1p(x), FLT_MIN);
 }
 
 // Take the natural logarithm of 1 plus x.
 long double log1pl(long double x)
 {
-    long double y = _Math_TakeLog1p(x);
-
-    _Math_CheckRange(x, y, LDBL_MIN);
-    return y;
+    return _Math_CheckRange(x, _Math_TakeLog1p(x), LDBL_MIN);
 }
 
 // Take the base-2 logarithm of x.
@@ -1283,28 +1548,19 @@ long double hypotl(long double x, long double y)
 // Raise x to the power y.
 double pow(double x, double y)
 {
-    double z = (double) _Math_TakePow(x, y);
-
-    _Math_CheckPower(x, y, z, DBL_MIN);
-    return z;
+    return (double) _Math_CheckPower(x, y, (double) _Math_TakePow(x, y), DBL_MIN);
 }
 
 // Raise x to the power y.
 float powf(float x, float y)
 {
-    float z = (float) _Math_TakePow(x, y);
-
-    _Math_CheckPower(x, y, z, FLT_MIN);
-    return z;
+    return (float) _Math_CheckPower(x, y, (float) _Math_TakePow(x, y), FLT_MIN);
 }
 
 // Raise x to the power y.
 long double powl(long double x, long double y)
 {
-    long double z = _Math_TakePow(x, y);
-
-    _Math_CheckPower(x, y, z, LDBL_MIN);
-    return z;
+    return _Math_CheckPower(x, y, _Math_TakePow(x, y), LDBL_MIN);
 }
 
 // Take the nonnegative square root of x.

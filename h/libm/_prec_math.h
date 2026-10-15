@@ -84,15 +84,8 @@
 #define _PREC_MATH_TINY     0x1p-60L
 #define _PREC_MATH_TINY_EXP (-60)
 
-// The limbs of 2/pi past its point, the most significant first, as many as
-// the largest long double's reduction reads, and the limbs one reads.
-#define _PREC_MATH_TWO_OVER_PI_LIMBS 519
-#define _PREC_MATH_TRIG_WINDOW       10
-
-// The bits of a reduced argument's quadrant, their mask, its bit of an odd
-// quarter turn and its bit of a half turn.
-#define _PREC_MATH_QUADRANT_BITS 2
-#define _PREC_MATH_QUADRANT_MASK 3U
+// A reduced argument's quadrant's bit of an odd quarter turn and its bit of
+// a half turn.
 #define _PREC_MATH_QUADRANT_ODD  1U
 #define _PREC_MATH_QUADRANT_HALF 2U
 
@@ -165,9 +158,6 @@ enum _Prec_Math_Parity {
     _PREC_MATH_PARITY_EVEN, // an even integer
     _PREC_MATH_PARITY_ODD   // an odd integer
 };
-
-// The bits of 2/pi past its point, 32 to a limb, the most significant first.
-extern const unsigned int _Prec_Math_TwoOverPi[_PREC_MATH_TWO_OVER_PI_LIMBS];
 
 // The magnitudes of Stirling's coefficients, B2k over 2k(2k - 1), as limbs
 // of constants, and their units; the first is positive, and signs alternate.

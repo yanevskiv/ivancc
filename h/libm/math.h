@@ -117,6 +117,50 @@
 #define _MATH_POW_TERMS      6
 #define _MATH_POW_CLAMP      0x1p80L
 
+// The magnitude below which the trigonometric functions reduce x by four
+// parts of pi/2, those parts, 2/pi and pi/4.
+#define _MATH_TRIG_NEAR    0x1p30L
+#define _MATH_HALF_PI_1    0xc.90fdaa2p-3L
+#define _MATH_HALF_PI_2    0x8.5a308d3p-37L
+#define _MATH_HALF_PI_3    0x9.8cc51701b839a25p-72L
+#define _MATH_HALF_PI_4    0x8.127044533e63a01p-138L
+#define _MATH_TWO_OVER_PI  0xa.2f9836e4e44152ap-4L
+#define _MATH_QUARTER_PI   0xc.90fdaa22168c235p-4L
+
+// pi/2 and pi, each its nearest long double and the rest.
+#define _MATH_HALF_PI_HIGH 0xc.90fdaa22168c235p-3L
+#define _MATH_HALF_PI_LOW  (-0xe.ce675d1fc8f8cbbp-69L)
+#define _MATH_PI_HIGH      0xc.90fdaa22168c235p-2L
+#define _MATH_PI_LOW       (-0xe.ce675d1fc8f8cbbp-68L)
+
+// A reduced argument's quadrant's mask, its bit of an odd quarter turn and
+// its bit of a half turn.
+#define _MATH_QUADRANT_MASK 3U
+#define _MATH_QUADRANT_ODD  1U
+#define _MATH_QUADRANT_HALF 2U
+
+// The terms of the sine's and the cosine's series, of the arc tangent's, the
+// steps of its table, j/16 for j from 0 to 16, and the ratio below which the
+// arc tangent of y over a positive x is y over x.
+#define _MATH_SIN_TERMS       9
+#define _MATH_COS_TERMS       10
+#define _MATH_ATAN_TERMS      6
+#define _MATH_ATAN_STEPS      16
+#define _MATH_ATAN_STEP_COUNT 17
+#define _MATH_ATAN_TINY       0x1p-33L
+
+// The magnitude past which a hyperbolic function's smaller exponential is
+// lost, and past which an inverse's 1 is lost.
+#define _MATH_HYPERBOLIC_WIDE     0x1p5L
+#define _MATH_ARC_HYPERBOLIC_WIDE 0x1p32L
+
+// The first guess of 1/sqrt(m) for m in [1, 4), a quadratic's coefficients,
+// and Newton's steps from it.
+#define _MATH_ROOT_GUESS_0 0x1.5078p+0L
+#define _MATH_ROOT_GUESS_1 (-0x1.9126p-2L)
+#define _MATH_ROOT_GUESS_2 0x1.85efp-5L
+#define _MATH_ROOT_STEPS   4
+
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
 // [C99:7.12p4]: INFINITY, a constant expression of float
@@ -207,6 +251,14 @@ enum _Math_Parity {
     _MATH_PARITY_ODD   // an odd integer
 };
 
+// Which function of an angle, or its inverse, is taken.
+typedef enum _Math_Trig _Math_Trig;
+enum _Math_Trig {
+    _MATH_TRIG_SIN, // the sine's, or its inverse's
+    _MATH_TRIG_COS, // the cosine's, or its inverse's
+    _MATH_TRIG_TAN  // the tangent's, or its inverse's
+};
+
 // The terms of e to r less 1 over r, 1/k! from k = 1, and of the
 // logarithm's series, 1/(2k + 1) from k = 1.
 extern const long double _Math_ExpTerms[_MATH_EXP_TERMS];
@@ -216,6 +268,16 @@ extern const long double _Math_LogTerms[_MATH_LOG_TERMS];
 // bits and the rest.
 extern const long double _Math_LogStepHigh[_MATH_LOG_STEP_COUNT];
 extern const long double _Math_LogStepLow[_MATH_LOG_STEP_COUNT];
+
+// The terms of the sine's series, (-1)^k/(2k + 1)! from k = 1, and of the
+// cosine's, (-1)^k/(2k)! from k = 1.
+extern const long double _Math_SinTerms[_MATH_SIN_TERMS];
+extern const long double _Math_CosTerms[_MATH_COS_TERMS];
+
+// The arc tangent of each step of the arc tangent's table, its top 64 bits
+// and the rest.
+extern const long double _Math_AtanStepHigh[_MATH_ATAN_STEP_COUNT];
+extern const long double _Math_AtanStepLow[_MATH_ATAN_STEP_COUNT];
 
 // The classification and sign of a value of each type.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
@@ -240,8 +302,8 @@ unsigned long long _Math_ReadPayload(const char *tagp);
 long double        _Math_RaiseDomain(long double x, long double y);
 long double        _Math_RaisePole(void);
 void               _Math_CheckScaled(long double x, long double y);
-void               _Math_CheckRange(long double x, long double y, long double least);
-void               _Math_CheckPower(long double x, long double y, long double z, long double least);
+long double        _Math_CheckRange(long double x, long double y, long double least);
+long double        _Math_CheckPower(long double x, long double y, long double z, long double least);
 void               _Math_CheckNext(long double x, int class);
 
 // The correctly rounded functions, each by one rounding of an exact value.
@@ -264,6 +326,19 @@ long double  _Math_MultiplyParts(long double x, long double y, long double *erro
 long double  _Math_TakeLogParts(long double x, long double *low);
 _Math_Parity _Math_ReadParity(long double y);
 long double  _Math_TakePow(long double x, long double y);
+
+// The trigonometric and hyperbolic functions and their inverses, each by a
+// series in long double.
+long double  _Math_IterateRoot(long double x);
+unsigned int _Math_ReduceTrig(long double x, long double *r, long double *low);
+long double  _Math_SumSin(long double r, long double low);
+long double  _Math_SumCos(long double r, long double low);
+long double  _Math_SumAtan(long double t);
+long double  _Math_TakeTrig(long double x, _Math_Trig which);
+long double  _Math_TakeAtan2(long double y, long double x);
+long double  _Math_TakeArc(long double x, _Math_Trig which);
+long double  _Math_TakeHyperbolic(long double x, _Math_Trig which);
+long double  _Math_TakeArcHyperbolic(long double x, _Math_Trig which);
 
 // Trigonometric functions
 // [C99:7.12.1p2]:  a domain error, of an infinity too by its footnote 203
