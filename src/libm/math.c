@@ -35,6 +35,75 @@
 #include <stdint.h>
 #include <string.h>
 
+// The bits of 2/pi past its point, 32 to a limb, the most significant first.
+const unsigned int _Math_TwoOverPi[_MATH_TWO_OVER_PI_LIMBS] = {
+    0xA2F9836EU, 0x4E441529U, 0xFC2757D1U, 0xF534DDC0U, 0xDB629599U, 0x3C439041U, 0xFE5163ABU, 0xDEBBC561U,
+    0xB7246E3AU, 0x424DD2E0U, 0x06492EEAU, 0x09D1921CU, 0xFE1DEB1CU, 0xB129A73EU, 0xE88235F5U, 0x2EBB4484U,
+    0xE99C7026U, 0xB45F7E41U, 0x3991D639U, 0x835339F4U, 0x9C845F8BU, 0xBDF9283BU, 0x1FF897FFU, 0xDE05980FU,
+    0xEF2F118BU, 0x5A0A6D1FU, 0x6D367ECFU, 0x27CB09B7U, 0x4F463F66U, 0x9E5FEA2DU, 0x7527BAC7U, 0xEBE5F17BU,
+    0x3D0739F7U, 0x8A5292EAU, 0x6BFB5FB1U, 0x1F8D5D08U, 0x56033046U, 0xFC7B6BABU, 0xF0CFBC20U, 0x9AF4361DU,
+    0xA9E39161U, 0x5EE61B08U, 0x6599855FU, 0x14A06840U, 0x8DFFD880U, 0x4D732731U, 0x06061556U, 0xCA73A8C9U,
+    0x60E27BC0U, 0x8C6B47C4U, 0x19C367CDU, 0xDCE8092AU, 0x8359C476U, 0x8B961CA6U, 0xDDAF44D1U, 0x5719053EU,
+    0xA5FF0705U, 0x3F7E33E8U, 0x32C2DE4FU, 0x98327DBBU, 0xC33D26EFU, 0x6B1E5EF8U, 0x9F3A1F35U, 0xCAF27F1DU,
+    0x87F12190U, 0x7C7C246AU, 0xFA6ED577U, 0x2D30433BU, 0x15C614B5U, 0x9D19C3C2U, 0xC4AD414DU, 0x2C5D000CU,
+    0x467D862DU, 0x71E39AC6U, 0x9B006233U, 0x7CD2B497U, 0xA7B4D555U, 0x37F63ED7U, 0x1810A3FCU, 0x764D2A9DU,
+    0x64ABD770U, 0xF87C6357U, 0xB07AE715U, 0x175649C0U, 0xD9D63B38U, 0x84A7CB23U, 0x24778AD6U, 0x23545AB9U,
+    0x1F001B0AU, 0xF1DFCE19U, 0xFF319F6AU, 0x1E666157U, 0x9947FBACU, 0xD87F7EB7U, 0x652289E8U, 0x3260BFE6U,
+    0xCDC4EF09U, 0x366CD43FU, 0x5DD7DE16U, 0xDE3B5892U, 0x9BDE2822U, 0xD2E88628U, 0x4D58E232U, 0xCAC616E3U,
+    0x08CB7DE0U, 0x50C017A7U, 0x1DF35BE0U, 0x1834132EU, 0x62128301U, 0x48835B8EU, 0xF57FB0ADU, 0xF2E91E43U,
+    0x4A48D367U, 0x10D8DDAAU, 0x425FAECEU, 0x616AA428U, 0x0AB499D3U, 0xF2A6067FU, 0x775C83C2U, 0xA3883C61U,
+    0x78738A5AU, 0x8CAFBDD7U, 0x6F63A62DU, 0xCBBFF4EFU, 0x818D67C1U, 0x2645CA55U, 0x36D9CAD2U, 0xA8288D61U,
+    0xC277C912U, 0x1426049BU, 0x4612C459U, 0xC444C5C8U, 0x91B24DF3U, 0x1700AD43U, 0xD4E54929U, 0x10D5FDFCU,
+    0xBE00CC94U, 0x1EEECE70U, 0xF53E1380U, 0xF1ECC3E7U, 0xB328F8C7U, 0x9405933EU, 0x71C1B309U, 0x2EF3450BU,
+    0x9C12887BU, 0x20AB9FB5U, 0x2EC29247U, 0x2F327B6DU, 0x550C90A7U, 0x721FE76BU, 0x96CB314AU, 0x1679E279U,
+    0x4189DFF4U, 0x9794E884U, 0xE6E29731U, 0x996BED88U, 0x365F5F0EU, 0xFDBBB49AU, 0x486CA467U, 0x42727132U,
+    0x5D8DB815U, 0x9F09E5BCU, 0x25318D39U, 0x74F71C05U, 0x30010C0DU, 0x68084B58U, 0xEE2C90AAU, 0x4702E774U,
+    0x24D6BDA6U, 0x7DF77248U, 0x6EEF169FU, 0xA6948EF6U, 0x91B45153U, 0xD1F20ACFU, 0x3398207EU, 0x4BF56863U,
+    0xB25F3EDDU, 0x035D407FU, 0x89852952U, 0x55C06437U, 0x10D86D32U, 0x4832754CU, 0x5BD4714EU, 0x6E5445C1U,
+    0x090B69F5U, 0x2AD56614U, 0x9D072750U, 0x045DDB3BU, 0xB4C576EAU, 0x17F9877DU, 0x6B49BA27U, 0x1D296996U,
+    0xACCCC654U, 0x14AD6AE2U, 0x9089D988U, 0x50722CBEU, 0xA4049407U, 0x777030F3U, 0x27FC00A8U, 0x71EA49C2U,
+    0x663DE064U, 0x83DD9797U, 0x3FA3FD94U, 0x438C860DU, 0xDE41319DU, 0x39928C70U, 0xDDE7B717U, 0x3BDF082BU,
+    0x3715A080U, 0x5C93805AU, 0x921110D8U, 0xE80FAF80U, 0x6C4BFFDBU, 0x0F903876U, 0x185915A5U, 0x62BBCB61U,
+    0xB989C7BDU, 0x401004F2U, 0xD2277549U, 0xF6B6EBBBU, 0x22DBAA14U, 0x0A2F2689U, 0x76836433U, 0x3B091A94U,
+    0x0EAA3A51U, 0xC2A31DAEU, 0xEDAF1226U, 0x5C4DC26DU, 0x9C7A2D97U, 0x56C0833FU, 0x03F6F009U, 0x8C402B99U,
+    0x316D07B4U, 0x3915200CU, 0x5BC3D8C4U, 0x92F54BADU, 0xC6A5CA4EU, 0xCD37A736U, 0xA9E69492U, 0xAB6842DDU,
+    0xDE6319EFU, 0x8C76528BU, 0x6837DBFCU, 0xABA1AE31U, 0x15DFA1AEU, 0x00DAFB0CU, 0x664D64B7U, 0x05ED3065U,
+    0x29BF5657U, 0x3AFF47B9U, 0xF96AF3BEU, 0x75DF9328U, 0x3080ABF6U, 0x8C6615CBU, 0x040622FAU, 0x1DE4D9A4U,
+    0xB33D8F1BU, 0x5709CD36U, 0xE9424EA4U, 0xBE13B523U, 0x331AAAF0U, 0xA8654FA5U, 0xC1D20F3FU, 0x0BCD785BU,
+    0x76F92304U, 0x8B7B7217U, 0x8953A6C6U, 0xE26E6F00U, 0xEBEF584AU, 0x9BB7DAC4U, 0xBA66AACFU, 0xCF761D02U,
+    0xD12DF1B1U, 0xC1998C77U, 0xADC3DA48U, 0x86A05DF7U, 0xF480C62FU, 0xF0AC9AECU, 0xDDBC5C3FU, 0x6DDED01FU,
+    0xC790B6DBU, 0x2A3A25A3U, 0x9AAF0093U, 0x53AD0457U, 0xB6B42D29U, 0x7E804BA7U, 0x07DA0EAAU, 0x76A1597BU,
+    0x2A12162DU, 0xB7DCFDE5U, 0xFAFEDB89U, 0xFDBE896CU, 0x76E4FCA9U, 0x0670803EU, 0x156E85FFU, 0x87FD073EU,
+    0x28336761U, 0x86182AEAU, 0xBD4DAFE7U, 0xB36E6D8FU, 0x3967955BU, 0xBF3148D7U, 0x8416DF30U, 0x432DC735U,
+    0x6125CE70U, 0xC9B8CB30U, 0xFD6CBFA2U, 0x00A4E46CU, 0x05A0DD5AU, 0x476F21D2U, 0x1262845CU, 0xB9496170U,
+    0xE0566B01U, 0x52993755U, 0x50B7D51EU, 0xC4F1335FU, 0x6E13E430U, 0x5DA92E85U, 0xC3B21D36U, 0x32A1A4B7U,
+    0x08D4B1EAU, 0x21F716E4U, 0x698F77FFU, 0x2780030CU, 0x2D408DA0U, 0xCD4F99A5U, 0x20D3A2B3U, 0x0A5D2F42U,
+    0xF9B4CBDAU, 0x11D0BE7DU, 0xC1DB9BBDU, 0x17AB81A2U, 0xCA5C6A08U, 0x17552E55U, 0x0027F014U, 0x7F8607E1U,
+    0x640B148DU, 0x4196DEBEU, 0x872AFDDAU, 0xB6256B34U, 0x897BFEF3U, 0x059EBFB9U, 0x4F6A68A8U, 0x2A4A5AC4U,
+    0x4FBCF82DU, 0x985AD795U, 0xC7F48D4DU, 0x0DA63A20U, 0x5F57A4B1U, 0x3F149538U, 0x800120CCU, 0x86DD71B6U,
+    0xDEC9F560U, 0xBF11654DU, 0x6B0701ACU, 0xB08CD0C0U, 0xB2485551U, 0x0EFB1EC3U, 0x72953B06U, 0xA33540C0U,
+    0x7BDC06CCU, 0x45E0FA29U, 0x4EC8CAD6U, 0x41F3E8DEU, 0x647CD864U, 0x9B31BED9U, 0xC397A4D4U, 0x5877C5E3U,
+    0x6913DAF0U, 0x3C3ABA46U, 0x18465F75U, 0x55F5BDD2U, 0xC6926E5DU, 0x2EACED44U, 0x0E423E1CU, 0x87C461E9U,
+    0xFD29F3D6U, 0xE7CA7C22U, 0x35916FC5U, 0xE0088DD7U, 0xFFE26A6EU, 0xC6FDB0C1U, 0x0893745DU, 0x7CB2AD6BU,
+    0x9D6ECD7BU, 0x723E6A11U, 0xC6A9CFF7U, 0xDF7329BAU, 0xC9B55100U, 0xB70DB2E2U, 0x24BA7460U, 0x7DE58AD8U,
+    0x742C150DU, 0x0C188194U, 0x667E1629U, 0x01767A9FU, 0xBEFDFDEFU, 0x4556367EU, 0xD913D9ECU, 0xB9BA8BFCU,
+    0x97C427A8U, 0x31C36EF1U, 0x36C59456U, 0xA8D8B5A8U, 0xB40ECCCFU, 0x2D891234U, 0x576F8956U, 0x2CE3CE99U,
+    0xB920D6AAU, 0x5E6B9C2AU, 0x3ECC5F11U, 0x4A0BFDFBU, 0xF4E16D3BU, 0x8E2C86E2U, 0x84D4E9A9U, 0xB4FCD1EEU,
+    0xEFC9352EU, 0x61392F44U, 0x2138C8D9U, 0x1B0AFC81U, 0x6A4AFBD8U, 0x1C2F84B4U, 0x538C994EU, 0xCC2254DCU,
+    0x552AD6C6U, 0xC096190BU, 0xB8701A64U, 0x9569605AU, 0x26EE523FU, 0x0F117F11U, 0xB5F4F5CBU, 0xFC2DBC34U,
+    0xEEBC34CCU, 0x5DE8605EU, 0xDD9B8E67U, 0xEF3392B8U, 0x17C99B58U, 0x61BC57E1U, 0xC6835110U, 0x3ED84871U,
+    0xDDDD1C2DU, 0xA118AF46U, 0x2C21D7F3U, 0x59987AD9U, 0xC0549EFAU, 0x864FFC06U, 0x56AE79E5U, 0x36228922U,
+    0xAD38DC93U, 0x67AAE855U, 0x3826829BU, 0xE7CAA40DU, 0x51B13399U, 0x0ED7A948U, 0x0569F0B2U, 0x65A7887FU,
+    0x974C8836U, 0xD1F9B392U, 0x214A827BU, 0x21CF98DCU, 0x9F405547U, 0xDC3A74E1U, 0x42EB67DFU, 0x9DFE5FD4U,
+    0x5EA4677BU, 0x7AACBAA2U, 0xF6552388U, 0x2B55BA41U, 0x086E5986U, 0x2A218347U, 0x39E6E389U, 0xD49EE540U,
+    0xFB49E956U, 0xFFCA0F1CU, 0x8A59C52BU, 0xFA94C5C1U, 0xD3CFC50FU, 0xAE5ADB86U, 0xC5476243U, 0x853B8621U,
+    0x94792C87U, 0x61107B4CU, 0x2A1A2C80U, 0x12BF4390U, 0x2688893CU, 0x78E4C4A8U, 0x7BDBE5C2U, 0x3AC4EAF4U,
+    0x268A67F7U, 0xBF920D2BU, 0xA365B193U, 0x3D0B7CBDU, 0xDC51A463U, 0xDD27DDE1U, 0x6919949AU, 0x9529A828U,
+    0xCE68B4EDU, 0x09209F44U, 0xCA984E63U, 0x8270237CU, 0x7E32B90FU, 0x8EF5A7E7U, 0x561408F1U, 0x212A9DB5U,
+    0x4D7E6F51U, 0x19A5ABF9U, 0xB5D6DF82U, 0x61DD9602U, 0x36169F3AU, 0xC4A1A283U, 0x6DED727AU, 0x8D39A9B8U,
+    0x825C326BU, 0x5B2746EDU, 0x34007700U, 0xD255F4FCU, 0x4D590180U, 0x71E0E13FU, 0x89B295F3U
+};
+
 // Classify a value by its biased exponent and its fraction.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac)
 {
@@ -840,8 +909,8 @@ void _Math_MakeReciprocal(_Math_Exact *e, unsigned int d)
 // Make a constant as a value, untrimmed.
 void _Math_MakeConstant(_Math_Exact *e, _Math_Constant which)
 {
-    const unsigned int limbs[_MATH_CONSTANTS][_MATH_CONST_LIMBS] = {{_MATH_LN2_LIMBS}, {_MATH_LOG2E_LIMBS}, {_MATH_LOG10E_LIMBS}};
-    const int units[_MATH_CONSTANTS] = {_MATH_LN2_UNIT, _MATH_LOG2E_UNIT, _MATH_LOG10E_UNIT};
+    const unsigned int limbs[_MATH_CONSTANTS][_MATH_CONST_LIMBS] = {{_MATH_LN2_LIMBS}, {_MATH_LOG2E_LIMBS}, {_MATH_LOG10E_LIMBS}, {_MATH_PI_LIMBS}};
+    const int units[_MATH_CONSTANTS] = {_MATH_LN2_UNIT, _MATH_LOG2E_UNIT, _MATH_LOG10E_UNIT, _MATH_PI_UNIT};
 
     _Math_WideSet(&e->me_sig, 0);
     memcpy(e->me_sig.mw_limb, limbs[which], sizeof(limbs[which]));
@@ -925,6 +994,29 @@ void _Math_ExpExact(_Math_Exact *value, const _Math_Exact *t)
     value->me_unit += (int) n;
 }
 
+// Take e to a nonzero working value t less 1, clamped past every range.
+void _Math_ExpM1Clamped(_Math_Exact *em1, const _Math_Exact *t)
+{
+    long n;
+    _Math_Exact r;
+    _Math_Exact one;
+    _Math_Exact clamped = *t;
+
+    if (t->me_unit + _Math_WideTop(&t->me_sig) > _MATH_EXP_CLAMP_EXP) {
+        _Math_MakeExact(&clamped, t->me_negative ? -_MATH_EXP_CLAMP : _MATH_EXP_CLAMP);
+    }
+    n = _Math_ReduceExp(&r, &clamped);
+    _Math_ExpM1Exact(em1, &r);
+    if (n != 0) {
+        _Math_MakeExact(&one, 1.0L);
+        _Math_AddExact(em1, &one, em1);
+        em1->me_unit += (int) n;
+        one.me_negative = 1;
+        _Math_AddExact(em1, em1, &one);
+    }
+    _Math_TrimExact(em1);
+}
+
 // Split u into m - 1 and m + 1, u being m times 2 to the returned e.
 int _Math_SplitLog(_Math_Exact *num, _Math_Exact *den, const _Math_Exact *u)
 {
@@ -976,6 +1068,28 @@ void _Math_LogExact(_Math_Exact *log, const _Math_Exact *num, const _Math_Exact 
     if (e != 0) {
         _Math_WorkAdd(log, &part, log);
     }
+}
+
+// Take the natural logarithm of 1 plus a nonzero working value u above -1.
+void _Math_Log1pExact(_Math_Exact *log, const _Math_Exact *u)
+{
+    int e = 0;
+    _Math_Exact w;
+    _Math_Exact one;
+    _Math_Exact num;
+    _Math_Exact den;
+    int top = u->me_unit + _Math_WideTop(&u->me_sig);
+
+    _Math_MakeExact(&one, 1.0L);
+    if (top <= (u->me_negative ? _MATH_LOG1P_LOW_EXP : _MATH_LOG1P_HIGH_EXP)) {
+        num = *u;
+        _Math_WorkAdd(&den, &one, &one);
+        _Math_WorkAdd(&den, &den, &num);
+    } else {
+        _Math_AddExact(&w, &one, u);
+        e = _Math_SplitLog(&num, &den, &w);
+    }
+    _Math_LogExact(log, &num, &den, e);
 }
 
 // Find whether x is 10 to the power k, k positive.
@@ -1121,10 +1235,7 @@ long double _Math_TakeExp(long double x, _Math_Base base, _Math_Type type)
 // Take e to x less 1, within 2 ulps of type.
 long double _Math_TakeExpm1(long double x, _Math_Type type)
 {
-    long n;
     _Math_Exact t;
-    _Math_Exact r;
-    _Math_Exact one;
     _Math_Exact value;
 
     if (isnan(x)) {
@@ -1136,19 +1247,8 @@ long double _Math_TakeExpm1(long double x, _Math_Type type)
     if (x == 0) {
         return x;
     }
-    if (fabsl(x) > _MATH_EXP_CLAMP) {
-        x = copysignl(_MATH_EXP_CLAMP, x);
-    }
     _Math_MakeExact(&t, x);
-    n = _Math_ReduceExp(&r, &t);
-    _Math_ExpM1Exact(&value, &r);
-    if (n != 0) {
-        _Math_MakeExact(&one, 1.0L);
-        _Math_AddExact(&value, &one, &value);
-        value.me_unit += (int) n;
-        one.me_negative = 1;
-        _Math_AddExact(&value, &value, &one);
-    }
+    _Math_ExpM1Clamped(&value, &t);
     value.me_sticky = 1;
     return _Math_RoundRange(&value, type);
 }
@@ -1200,11 +1300,7 @@ long double _Math_TakeLog(long double x, _Math_Base base, _Math_Type type)
 // Take the natural logarithm of 1 plus x, within 2 ulps of type.
 long double _Math_TakeLog1p(long double x, _Math_Type type)
 {
-    int e = 0;
     _Math_Exact u;
-    _Math_Exact one;
-    _Math_Exact num;
-    _Math_Exact den;
     _Math_Exact value;
 
     if (isnan(x)) {
@@ -1219,16 +1315,8 @@ long double _Math_TakeLog1p(long double x, _Math_Type type)
     if (isinf(x) || x == 0) {
         return x;
     }
-    _Math_MakeExact(&num, x);
-    _Math_MakeExact(&one, 1.0L);
-    if (x >= _MATH_LOG1P_LOW && x < _MATH_LOG1P_HIGH) {
-        _Math_WorkAdd(&den, &one, &one);
-        _Math_WorkAdd(&den, &den, &num);
-    } else {
-        _Math_AddExact(&u, &one, &num);
-        e = _Math_SplitLog(&num, &den, &u);
-    }
-    _Math_LogExact(&value, &num, &den, e);
+    _Math_MakeExact(&u, x);
+    _Math_Log1pExact(&value, &u);
     value.me_sticky = 1;
     return _Math_RoundRange(&value, type);
 }
@@ -1281,6 +1369,709 @@ long double _Math_TakePow(long double x, long double y, _Math_Type type)
     }
     value.me_negative = negative;
     return _Math_RoundRange(&value, type);
+}
+
+// Nudge a working value toward its true magnitude, a unit below or above.
+void _Math_NudgeExact(_Math_Exact *e, _Math_Step step)
+{
+    int shift;
+    _Math_Wide one;
+
+    if (step == _MATH_STEP_DOWN) {
+        shift = _MATH_WORK_BITS - 1 - _Math_WideTop(&e->me_sig);
+        _Math_WideShiftLeft(&e->me_sig, shift);
+        e->me_unit -= shift;
+        _Math_WideSet(&one, _MATH_LOW_BIT);
+        _Math_WideSubtract(&e->me_sig, &one);
+    }
+    e->me_sticky = 1;
+}
+
+// Take the square root of a positive working value a by its reciprocal.
+void _Math_WorkRoot(_Math_Exact *root, const _Math_Exact *a)
+{
+    long double m;
+    long double s;
+    _Math_Wide top;
+    _Math_Exact y;
+    _Math_Exact one;
+    _Math_Exact step;
+    _Math_Exact scaled = *a;
+    int exp = a->me_unit + _Math_WideTop(&a->me_sig);
+    int half = (exp - (exp & 1)) / 2;
+
+    scaled.me_unit -= 2 * half;
+    top = scaled.me_sig;
+    _Math_WideAlign(&top, _MATH_LDOUBLE_INT_SHIFT - _Math_WideTop(&top));
+    m = _Math_JoinLDouble(exp - 2 * half, _Math_WideReadLow(&top));
+    s = m;
+    for (int i = 0; i < _MATH_ROOT_GUESSES; i++) {
+        s = (s + m / s) / 2;
+    }
+    _Math_MakeExact(&y, 1 / s);
+    _Math_MakeExact(&one, 1.0L);
+    for (int i = 0; i < _MATH_ROOT_STEPS; i++) {
+        _Math_WorkMultiply(&step, &y, &y);
+        _Math_WorkMultiply(&step, &scaled, &step);
+        step.me_negative = 1;
+        _Math_WorkAdd(&step, &one, &step);
+        _Math_WorkMultiply(&step, &y, &step);
+        step.me_unit--;
+        _Math_WorkAdd(&y, &y, &step);
+    }
+    _Math_WorkMultiply(root, &scaled, &y);
+    root->me_unit += half;
+}
+
+// Make quarters of pi as a working value.
+void _Math_MakeQuarters(_Math_Exact *e, unsigned int quarters)
+{
+    _Math_Exact count;
+
+    _Math_MakeConstant(e, _MATH_CONST_PI);
+    _Math_MakeExact(&count, (long double) quarters);
+    _Math_WorkMultiply(e, e, &count);
+    e->me_unit += _MATH_QUARTER_EXP;
+}
+
+// Reduce an x of 1 or more to r in [-pi/4, pi/4], returning its quadrant.
+unsigned int _Math_ReduceTrig(_Math_Exact *r, long double x)
+{
+    int exp;
+    int point;
+    int first = 0;
+    _Math_Wide one;
+    _Math_Wide part;
+    _Math_Wide chunk;
+    _Math_Exact half_pi;
+    unsigned int quadrant = 0;
+    uint64_t sig = _Math_SplitLDouble(x, &exp);
+    int unit = exp - _MATH_LDOUBLE_INT_SHIFT;
+
+    if (unit > _MATH_QUADRANT_BITS) {
+        first = (unit - _MATH_QUADRANT_BITS) / _MATH_LIMB_BITS;
+    }
+    _Math_WideSet(&chunk, 0);
+    for (int i = 0; i < _MATH_TRIG_WINDOW; i++) {
+        chunk.mw_limb[i] = _Math_TwoOverPi[first + _MATH_TRIG_WINDOW - 1 - i];
+    }
+    _Math_WideSet(&part, sig);
+    _Math_WideMultiply(&r->me_sig, &part, &chunk);
+    point = _MATH_LIMB_BITS * (first + _MATH_TRIG_WINDOW) - unit;
+    for (int i = _MATH_QUADRANT_BITS - 1; i >= 0; i--) {
+        if (point + i < _MATH_WIDE_BITS) {
+            quadrant = quadrant << 1 | _Math_WideReadBit(&r->me_sig, point + i);
+        }
+    }
+    _Math_WideShiftLeft(&r->me_sig, _MATH_WIDE_BITS - point);
+    _Math_WideShiftRight(&r->me_sig, _MATH_WIDE_BITS - point);
+    r->me_unit = -point;
+    r->me_negative = 0;
+    r->me_sticky = 0;
+    if (_Math_WideReadBit(&r->me_sig, point - 1) != 0) {
+        _Math_WideSet(&one, _MATH_LOW_BIT);
+        _Math_WideShiftLeft(&one, point);
+        _Math_WideSubtract(&one, &r->me_sig);
+        r->me_sig = one;
+        r->me_negative = 1;
+        quadrant++;
+    }
+    _Math_TrimExact(r);
+    _Math_MakeQuarters(&half_pi, _MATH_HALF_PI);
+    _Math_WorkMultiply(r, r, &half_pi);
+    return quadrant & _MATH_QUADRANT_MASK;
+}
+
+// Take the sine or the cosine of a reduced r by its series.
+void _Math_TrigExact(_Math_Exact *value, const _Math_Exact *r, _Math_Trig which)
+{
+    _Math_Exact z;
+    _Math_Exact one;
+    _Math_Exact series;
+    unsigned int n = which == _MATH_TRIG_SIN ? _MATH_TRIG_TERMS - 1 : _MATH_TRIG_TERMS;
+
+    _Math_WorkMultiply(&z, r, r);
+    _Math_MakeExact(&one, 1.0L);
+    series = one;
+    for (; n >= 2; n -= 2) {
+        _Math_WorkMultiply(&series, &z, &series);
+        _Math_WorkDivideSmall(&series, n * (n - 1));
+        series.me_negative = 1;
+        _Math_WorkAdd(&series, &one, &series);
+    }
+    if (which == _MATH_TRIG_SIN) {
+        _Math_WorkMultiply(value, r, &series);
+    } else {
+        *value = series;
+    }
+}
+
+// Take the arc tangent of num over den, both positive.
+void _Math_AtanExact(_Math_Exact *value, const _Math_Exact *num, const _Math_Exact *den)
+{
+    _Math_Exact t;
+    _Math_Exact z;
+    _Math_Exact one;
+    _Math_Exact root;
+    _Math_Exact term;
+    _Math_Exact quarter;
+    _Bool swap = 0;
+
+    _Math_WorkDivide(&t, num, den);
+    if (t.me_unit + _Math_WideTop(&t.me_sig) >= 0) {
+        _Math_WorkDivide(&t, den, num);
+        swap = 1;
+    }
+    if (t.me_unit + _Math_WideTop(&t.me_sig) < _MATH_TINY_EXP) {
+        *value = t;
+        _Math_NudgeExact(value, _MATH_STEP_DOWN);
+    } else {
+        _Math_MakeExact(&one, 1.0L);
+        for (int i = 0; i < _MATH_ATAN_HALVINGS; i++) {
+            _Math_WorkMultiply(&z, &t, &t);
+            _Math_WorkAdd(&z, &z, &one);
+            _Math_WorkRoot(&root, &z);
+            _Math_WorkAdd(&root, &root, &one);
+            _Math_WorkDivide(&t, &t, &root);
+        }
+        _Math_WorkMultiply(&z, &t, &t);
+        _Math_MakeReciprocal(value, 2 * _MATH_ATAN_TERMS - 1);
+        for (int k = _MATH_ATAN_TERMS - 2; k >= 0; k--) {
+            _Math_WorkMultiply(value, &z, value);
+            value->me_negative = 1;
+            _Math_MakeReciprocal(&term, (unsigned int) (2 * k + 1));
+            _Math_WorkAdd(value, &term, value);
+        }
+        _Math_WorkMultiply(value, &t, value);
+        value->me_unit += _MATH_ATAN_HALVINGS;
+    }
+    if (swap) {
+        _Math_MakeQuarters(&quarter, _MATH_HALF_PI);
+        value->me_negative = 1;
+        _Math_WorkAdd(value, &quarter, value);
+    }
+}
+
+// Take a tiny x's function, x nudged by step, to type.
+long double _Math_TakeTiny(long double x, _Math_Step step, _Math_Type type)
+{
+    _Math_Exact value;
+
+    _Math_MakeExact(&value, x);
+    _Math_NudgeExact(&value, step);
+    return _Math_RoundRange(&value, type);
+}
+
+// Take quarters of pi to type, with sign's sign.
+long double _Math_TakeQuarters(unsigned int quarters, long double sign, _Math_Type type)
+{
+    _Math_Exact value;
+
+    _Math_MakeQuarters(&value, quarters);
+    value.me_negative = signbit(sign) != 0;
+    value.me_sticky = 1;
+    return _Math_RoundExact(&value, type);
+}
+
+// Take the sine, the cosine or the tangent of x, within 2 ulps of type.
+long double _Math_TakeTrig(long double x, _Math_Trig which, _Math_Type type)
+{
+    _Bool odd;
+    _Bool flip;
+    _Math_Exact r;
+    _Math_Exact sine;
+    _Math_Exact value;
+    _Math_Exact cosine;
+    unsigned int quadrant = 0;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (isinf(x)) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (x == 0) {
+        return which == _MATH_TRIG_COS ? 1.0L : x;
+    }
+    if (fabsl(x) < _MATH_TINY && which == _MATH_TRIG_COS) {
+        return _Math_TakeTiny(1.0L, _MATH_STEP_DOWN, type);
+    }
+    if (fabsl(x) < _MATH_TINY) {
+        return _Math_TakeTiny(x, which == _MATH_TRIG_SIN ? _MATH_STEP_DOWN : _MATH_STEP_UP, type);
+    }
+    if (fabsl(x) < 1) {
+        _Math_MakeExact(&r, fabsl(x));
+    } else {
+        quadrant = _Math_ReduceTrig(&r, fabsl(x));
+    }
+    odd = (quadrant & _MATH_QUADRANT_ODD) != 0;
+    switch (which) {
+        case _MATH_TRIG_SIN: {
+            _Math_TrigExact(&value, &r, odd ? _MATH_TRIG_COS : _MATH_TRIG_SIN);
+            flip = ((quadrant & _MATH_QUADRANT_HALF) != 0) != (signbit(x) != 0);
+        } break;
+        case _MATH_TRIG_COS: {
+            _Math_TrigExact(&value, &r, odd ? _MATH_TRIG_SIN : _MATH_TRIG_COS);
+            flip = ((quadrant + _MATH_QUADRANT_ODD) & _MATH_QUADRANT_HALF) != 0;
+        } break;
+        default: {
+            _Math_TrigExact(&sine, &r, _MATH_TRIG_SIN);
+            _Math_TrigExact(&cosine, &r, _MATH_TRIG_COS);
+            _Math_WorkDivide(&value, odd ? &cosine : &sine, odd ? &sine : &cosine);
+            flip = odd != (signbit(x) != 0);
+        } break;
+    }
+    if (flip) {
+        value.me_negative = ! value.me_negative;
+    }
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take the arc sine or the arc cosine of x, within 2 ulps of type.
+long double _Math_TakeArc(long double x, _Math_Trig which, _Math_Type type)
+{
+    _Math_Exact one;
+    _Math_Exact low;
+    _Math_Exact high;
+    _Math_Exact side;
+    _Math_Exact root;
+    _Math_Exact value;
+    _Math_Exact whole;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (fabsl(x) > 1) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (which == _MATH_TRIG_SIN && x == 0) {
+        return x;
+    }
+    if (which == _MATH_TRIG_SIN && fabsl(x) < _MATH_TINY) {
+        return _Math_TakeTiny(x, _MATH_STEP_UP, type);
+    }
+    if (which == _MATH_TRIG_SIN && fabsl(x) == 1) {
+        return _Math_TakeQuarters(_MATH_HALF_PI, x, type);
+    }
+    if (which == _MATH_TRIG_COS && x == 1) {
+        return 0.0L;
+    }
+    if (which == _MATH_TRIG_COS && (x == 0 || x == -1)) {
+        return _Math_TakeQuarters(x == 0 ? _MATH_HALF_PI : _MATH_WHOLE_PI, 1.0L, type);
+    }
+    _Math_MakeExact(&side, fabsl(x));
+    _Math_MakeExact(&one, 1.0L);
+    _Math_WorkAdd(&high, &one, &side);
+    side.me_negative = 1;
+    _Math_WorkAdd(&low, &one, &side);
+    side.me_negative = 0;
+    _Math_WorkMultiply(&low, &low, &high);
+    _Math_WorkRoot(&root, &low);
+    if (which == _MATH_TRIG_SIN) {
+        _Math_AtanExact(&value, &side, &root);
+        value.me_negative = x < 0;
+    } else {
+        _Math_AtanExact(&value, &root, &side);
+    }
+    if (which == _MATH_TRIG_COS && x < 0) {
+        _Math_MakeQuarters(&whole, _MATH_WHOLE_PI);
+        value.me_negative = 1;
+        _Math_WorkAdd(&value, &whole, &value);
+    }
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take the arc tangent of y over x by both signs, within 2 ulps of type.
+long double _Math_TakeAtan2(long double y, long double x, _Math_Type type)
+{
+    _Math_Exact num;
+    _Math_Exact den;
+    _Math_Exact value;
+    _Math_Exact whole;
+
+    if (isnan(x) || isnan(y)) {
+        return x + y;
+    }
+    if (y == 0) {
+        return signbit(x) ? _Math_TakeQuarters(_MATH_WHOLE_PI, y, type) : y;
+    }
+    if (isinf(y) && isinf(x)) {
+        return _Math_TakeQuarters(x > 0 ? _MATH_QUARTER_PI : _MATH_THREE_QUARTER_PI, y, type);
+    }
+    if (isinf(y) || x == 0) {
+        return _Math_TakeQuarters(_MATH_HALF_PI, y, type);
+    }
+    if (isinf(x)) {
+        return x > 0 ? copysignl(0.0L, y) : _Math_TakeQuarters(_MATH_WHOLE_PI, y, type);
+    }
+    _Math_MakeExact(&num, fabsl(y));
+    _Math_MakeExact(&den, fabsl(x));
+    _Math_AtanExact(&value, &num, &den);
+    if (x < 0) {
+        _Math_MakeQuarters(&whole, _MATH_WHOLE_PI);
+        value.me_negative = 1;
+        _Math_WorkAdd(&value, &whole, &value);
+    }
+    value.me_negative = signbit(y) != 0;
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take the hyperbolic sine, cosine or tangent of x, within 2 ulps of type.
+long double _Math_TakeHyperbolic(long double x, _Math_Trig which, _Math_Type type)
+{
+    _Math_Exact t;
+    _Math_Exact em1;
+    _Math_Exact one;
+    _Math_Exact sum;
+    _Math_Exact part;
+    _Math_Exact value;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (isinf(x)) {
+        return which == _MATH_TRIG_COS ? HUGE_VALL : which == _MATH_TRIG_SIN ? x : copysignl(1.0L, x);
+    }
+    if (x == 0) {
+        return which == _MATH_TRIG_COS ? 1.0L : x;
+    }
+    if (fabsl(x) < _MATH_TINY && which == _MATH_TRIG_COS) {
+        return _Math_TakeTiny(1.0L, _MATH_STEP_UP, type);
+    }
+    if (fabsl(x) < _MATH_TINY) {
+        return _Math_TakeTiny(x, which == _MATH_TRIG_SIN ? _MATH_STEP_UP : _MATH_STEP_DOWN, type);
+    }
+    _Math_MakeExact(&t, fabsl(x));
+    if (which == _MATH_TRIG_TAN) {
+        t.me_unit++;
+    }
+    _Math_ExpM1Clamped(&em1, &t);
+    _Math_MakeExact(&one, 1.0L);
+    switch (which) {
+        case _MATH_TRIG_SIN: {
+            _Math_WorkAdd(&sum, &em1, &one);
+            _Math_WorkDivide(&part, &em1, &sum);
+            _Math_WorkAdd(&value, &em1, &part);
+            value.me_unit--;
+        } break;
+        case _MATH_TRIG_COS: {
+            _Math_WorkAdd(&sum, &em1, &one);
+            _Math_WorkMultiply(&part, &em1, &em1);
+            _Math_WorkDivide(&value, &part, &sum);
+            value.me_unit--;
+            _Math_WorkAdd(&value, &one, &value);
+        } break;
+        default: {
+            _Math_WorkAdd(&sum, &one, &one);
+            _Math_WorkAdd(&sum, &em1, &sum);
+            _Math_WorkDivide(&value, &em1, &sum);
+        } break;
+    }
+    value.me_negative = which != _MATH_TRIG_COS && x < 0;
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take the inverse hyperbolic sine, cosine or tangent of x, within 2 ulps.
+long double _Math_TakeArcHyperbolic(long double x, _Math_Trig which, _Math_Type type)
+{
+    _Math_Exact a;
+    _Math_Exact u;
+    _Math_Exact one;
+    _Math_Exact sum;
+    _Math_Exact part;
+    _Math_Exact root;
+    _Math_Exact value;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if ((which == _MATH_TRIG_COS && x < 1) || (which == _MATH_TRIG_TAN && fabsl(x) > 1)) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (which == _MATH_TRIG_TAN && fabsl(x) == 1) {
+        return x > 0 ? -_Math_RaisePole() : _Math_RaisePole();
+    }
+    if (isinf(x) || x == 0) {
+        return x;
+    }
+    if (which == _MATH_TRIG_COS && x == 1) {
+        return 0.0L;
+    }
+    if (fabsl(x) < _MATH_TINY) {
+        return _Math_TakeTiny(x, which == _MATH_TRIG_SIN ? _MATH_STEP_DOWN : _MATH_STEP_UP, type);
+    }
+    _Math_MakeExact(&a, fabsl(x));
+    _Math_MakeExact(&one, 1.0L);
+    switch (which) {
+        case _MATH_TRIG_SIN: {
+            _Math_MultiplyExact(&part, &a, &a);
+            _Math_WorkAdd(&sum, &part, &one);
+            _Math_WorkRoot(&root, &sum);
+            _Math_WorkAdd(&root, &root, &one);
+            _Math_WorkDivide(&part, &part, &root);
+            _Math_WorkAdd(&u, &a, &part);
+        } break;
+        case _MATH_TRIG_COS: {
+            _Math_WorkAdd(&sum, &a, &one);
+            one.me_negative = 1;
+            _Math_WorkAdd(&u, &a, &one);
+            _Math_WorkMultiply(&part, &u, &sum);
+            _Math_WorkRoot(&root, &part);
+            _Math_WorkAdd(&u, &u, &root);
+        } break;
+        default: {
+            a.me_negative = 1;
+            _Math_AddExact(&sum, &one, &a);
+            a.me_negative = 0;
+            _Math_WorkDivide(&u, &a, &sum);
+            u.me_unit++;
+        } break;
+    }
+    _Math_Log1pExact(&value, &u);
+    if (which == _MATH_TRIG_TAN) {
+        value.me_unit--;
+    }
+    value.me_negative = which != _MATH_TRIG_COS && x < 0;
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take the arc cosine of x.
+double acos(double x)
+{
+    return (double) _Math_TakeArc(x, _MATH_TRIG_COS, _MATH_TYPE_DOUBLE);
+}
+
+// Take the arc cosine of x.
+float acosf(float x)
+{
+    return (float) _Math_TakeArc(x, _MATH_TRIG_COS, _MATH_TYPE_FLOAT);
+}
+
+// Take the arc cosine of x.
+long double acosl(long double x)
+{
+    return _Math_TakeArc(x, _MATH_TRIG_COS, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the arc sine of x.
+double asin(double x)
+{
+    return (double) _Math_TakeArc(x, _MATH_TRIG_SIN, _MATH_TYPE_DOUBLE);
+}
+
+// Take the arc sine of x.
+float asinf(float x)
+{
+    return (float) _Math_TakeArc(x, _MATH_TRIG_SIN, _MATH_TYPE_FLOAT);
+}
+
+// Take the arc sine of x.
+long double asinl(long double x)
+{
+    return _Math_TakeArc(x, _MATH_TRIG_SIN, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the arc tangent of x.
+double atan(double x)
+{
+    return (double) _Math_TakeAtan2(x, 1.0L, _MATH_TYPE_DOUBLE);
+}
+
+// Take the arc tangent of x.
+float atanf(float x)
+{
+    return (float) _Math_TakeAtan2(x, 1.0L, _MATH_TYPE_FLOAT);
+}
+
+// Take the arc tangent of x.
+long double atanl(long double x)
+{
+    return _Math_TakeAtan2(x, 1.0L, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the arc tangent of y over x by both signs.
+double atan2(double y, double x)
+{
+    return (double) _Math_TakeAtan2(y, x, _MATH_TYPE_DOUBLE);
+}
+
+// Take the arc tangent of y over x by both signs.
+float atan2f(float y, float x)
+{
+    return (float) _Math_TakeAtan2(y, x, _MATH_TYPE_FLOAT);
+}
+
+// Take the arc tangent of y over x by both signs.
+long double atan2l(long double y, long double x)
+{
+    return _Math_TakeAtan2(y, x, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the cosine of x.
+double cos(double x)
+{
+    return (double) _Math_TakeTrig(x, _MATH_TRIG_COS, _MATH_TYPE_DOUBLE);
+}
+
+// Take the cosine of x.
+float cosf(float x)
+{
+    return (float) _Math_TakeTrig(x, _MATH_TRIG_COS, _MATH_TYPE_FLOAT);
+}
+
+// Take the cosine of x.
+long double cosl(long double x)
+{
+    return _Math_TakeTrig(x, _MATH_TRIG_COS, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the sine of x.
+double sin(double x)
+{
+    return (double) _Math_TakeTrig(x, _MATH_TRIG_SIN, _MATH_TYPE_DOUBLE);
+}
+
+// Take the sine of x.
+float sinf(float x)
+{
+    return (float) _Math_TakeTrig(x, _MATH_TRIG_SIN, _MATH_TYPE_FLOAT);
+}
+
+// Take the sine of x.
+long double sinl(long double x)
+{
+    return _Math_TakeTrig(x, _MATH_TRIG_SIN, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the tangent of x.
+double tan(double x)
+{
+    return (double) _Math_TakeTrig(x, _MATH_TRIG_TAN, _MATH_TYPE_DOUBLE);
+}
+
+// Take the tangent of x.
+float tanf(float x)
+{
+    return (float) _Math_TakeTrig(x, _MATH_TRIG_TAN, _MATH_TYPE_FLOAT);
+}
+
+// Take the tangent of x.
+long double tanl(long double x)
+{
+    return _Math_TakeTrig(x, _MATH_TRIG_TAN, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the inverse hyperbolic cosine of x.
+double acosh(double x)
+{
+    return (double) _Math_TakeArcHyperbolic(x, _MATH_TRIG_COS, _MATH_TYPE_DOUBLE);
+}
+
+// Take the inverse hyperbolic cosine of x.
+float acoshf(float x)
+{
+    return (float) _Math_TakeArcHyperbolic(x, _MATH_TRIG_COS, _MATH_TYPE_FLOAT);
+}
+
+// Take the inverse hyperbolic cosine of x.
+long double acoshl(long double x)
+{
+    return _Math_TakeArcHyperbolic(x, _MATH_TRIG_COS, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the inverse hyperbolic sine of x.
+double asinh(double x)
+{
+    return (double) _Math_TakeArcHyperbolic(x, _MATH_TRIG_SIN, _MATH_TYPE_DOUBLE);
+}
+
+// Take the inverse hyperbolic sine of x.
+float asinhf(float x)
+{
+    return (float) _Math_TakeArcHyperbolic(x, _MATH_TRIG_SIN, _MATH_TYPE_FLOAT);
+}
+
+// Take the inverse hyperbolic sine of x.
+long double asinhl(long double x)
+{
+    return _Math_TakeArcHyperbolic(x, _MATH_TRIG_SIN, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the inverse hyperbolic tangent of x.
+double atanh(double x)
+{
+    return (double) _Math_TakeArcHyperbolic(x, _MATH_TRIG_TAN, _MATH_TYPE_DOUBLE);
+}
+
+// Take the inverse hyperbolic tangent of x.
+float atanhf(float x)
+{
+    return (float) _Math_TakeArcHyperbolic(x, _MATH_TRIG_TAN, _MATH_TYPE_FLOAT);
+}
+
+// Take the inverse hyperbolic tangent of x.
+long double atanhl(long double x)
+{
+    return _Math_TakeArcHyperbolic(x, _MATH_TRIG_TAN, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the hyperbolic cosine of x.
+double cosh(double x)
+{
+    return (double) _Math_TakeHyperbolic(x, _MATH_TRIG_COS, _MATH_TYPE_DOUBLE);
+}
+
+// Take the hyperbolic cosine of x.
+float coshf(float x)
+{
+    return (float) _Math_TakeHyperbolic(x, _MATH_TRIG_COS, _MATH_TYPE_FLOAT);
+}
+
+// Take the hyperbolic cosine of x.
+long double coshl(long double x)
+{
+    return _Math_TakeHyperbolic(x, _MATH_TRIG_COS, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the hyperbolic sine of x.
+double sinh(double x)
+{
+    return (double) _Math_TakeHyperbolic(x, _MATH_TRIG_SIN, _MATH_TYPE_DOUBLE);
+}
+
+// Take the hyperbolic sine of x.
+float sinhf(float x)
+{
+    return (float) _Math_TakeHyperbolic(x, _MATH_TRIG_SIN, _MATH_TYPE_FLOAT);
+}
+
+// Take the hyperbolic sine of x.
+long double sinhl(long double x)
+{
+    return _Math_TakeHyperbolic(x, _MATH_TRIG_SIN, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the hyperbolic tangent of x.
+double tanh(double x)
+{
+    return (double) _Math_TakeHyperbolic(x, _MATH_TRIG_TAN, _MATH_TYPE_DOUBLE);
+}
+
+// Take the hyperbolic tangent of x.
+float tanhf(float x)
+{
+    return (float) _Math_TakeHyperbolic(x, _MATH_TRIG_TAN, _MATH_TYPE_FLOAT);
+}
+
+// Take the hyperbolic tangent of x.
+long double tanhl(long double x)
+{
+    return _Math_TakeHyperbolic(x, _MATH_TRIG_TAN, _MATH_TYPE_LDOUBLE);
 }
 
 // Take e to x.

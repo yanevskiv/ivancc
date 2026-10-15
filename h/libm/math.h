@@ -108,7 +108,7 @@
 
 // A constant's limbs, 192 bits, the least significant first, each
 // constant's limbs, and the exponent of its lowest bit.
-#define _MATH_CONSTANTS     3
+#define _MATH_CONSTANTS     4
 #define _MATH_CONST_LIMBS   6
 #define _MATH_LN2_LIMBS     0x7298B62DU, 0x40F34326U, 0x03F2F6AFU, 0xC9E3B398U, 0xD1CF79ABU, 0xB17217F7U
 #define _MATH_LN2_UNIT      (-192)
@@ -116,6 +116,8 @@
 #define _MATH_LOG2E_UNIT    (-191)
 #define _MATH_LOG10E_LIMBS  0x45C9A202U, 0x3EE34602U, 0xAD33DC32U, 0x355BAAAFU, 0x37287195U, 0xDE5BD8A9U
 #define _MATH_LOG10E_UNIT   (-193)
+#define _MATH_PI_LIMBS      0x8A67CC74U, 0x29024E08U, 0x80DC1CD1U, 0xC4C6628BU, 0x2168C234U, 0xC90FDAA2U
+#define _MATH_PI_UNIT       (-190)
 
 // The magnitude past which every exponential overflows or underflows, and
 // its exponent.
@@ -133,13 +135,50 @@
 // The terms of a logarithm's series.
 #define _MATH_LOG_TERMS 34
 
-// The bounds of log1p's argument taken without forming 1 plus it.
-#define _MATH_LOG1P_LOW  (-0.25L)
-#define _MATH_LOG1P_HIGH 0.5L
+// The greatest exponents of a negative and a positive argument log1p takes
+// without forming 1 plus it.
+#define _MATH_LOG1P_LOW_EXP  (-3)
+#define _MATH_LOG1P_HIGH_EXP (-2)
 
 // Ten, and its greatest power a long double holds exactly.
 #define _MATH_TEN          10U
 #define _MATH_LDOUBLE_TENS 27
+
+// The long double Heron steps of a working square root's guess, and the
+// Newton steps of its reciprocal past them.
+#define _MATH_ROOT_GUESSES 6
+#define _MATH_ROOT_STEPS   2
+
+// The magnitude below which a function is its argument or 1, nudged, and its
+// exponent.
+#define _MATH_TINY     0x1p-60L
+#define _MATH_TINY_EXP (-60)
+
+// The limbs of 2/pi past its point, the most significant first, as many as
+// the largest long double's reduction reads, and the limbs one reads.
+#define _MATH_TWO_OVER_PI_LIMBS 519
+#define _MATH_TRIG_WINDOW       10
+
+// The bits of a reduced argument's quadrant, their mask, its bit of an odd
+// quarter turn and its bit of a half turn.
+#define _MATH_QUADRANT_BITS 2
+#define _MATH_QUADRANT_MASK 3U
+#define _MATH_QUADRANT_ODD  1U
+#define _MATH_QUADRANT_HALF 2U
+
+// The greatest n of the sine's and the cosine's series' n!.
+#define _MATH_TRIG_TERMS 44
+
+// The halvings of an arc tangent's argument, and the terms of its series.
+#define _MATH_ATAN_HALVINGS 2
+#define _MATH_ATAN_TERMS    36
+
+// The quarters of pi in pi/4, pi/2, 3pi/4 and pi, and a quarter's exponent.
+#define _MATH_QUARTER_PI       1U
+#define _MATH_HALF_PI          2U
+#define _MATH_THREE_QUARTER_PI 3U
+#define _MATH_WHOLE_PI         4U
+#define _MATH_QUARTER_EXP      (-2)
 
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
@@ -248,9 +287,18 @@ enum _Math_Base {
 // Which constant a working value is made of.
 typedef enum _Math_Constant _Math_Constant;
 enum _Math_Constant {
-    _MATH_CONST_LN2,   // the natural logarithm of 2
-    _MATH_CONST_LOG2E, // the base-2 logarithm of e
-    _MATH_CONST_LOG10E // the base-10 logarithm of e
+    _MATH_CONST_LN2,    // the natural logarithm of 2
+    _MATH_CONST_LOG2E,  // the base-2 logarithm of e
+    _MATH_CONST_LOG10E, // the base-10 logarithm of e
+    _MATH_CONST_PI      // pi
+};
+
+// Which trigonometric or hyperbolic function is taken, by its circular name.
+typedef enum _Math_Trig _Math_Trig;
+enum _Math_Trig {
+    _MATH_TRIG_SIN, // the sine's, or its inverse's
+    _MATH_TRIG_COS, // the cosine's, or its inverse's
+    _MATH_TRIG_TAN  // the tangent's, or its inverse's
 };
 
 // Whether a power's exponent is an integer, and which.
@@ -275,6 +323,9 @@ struct _Math_Exact {
     _Bool      me_negative; // whether its sign is negative
     _Bool      me_sticky;   // whether nonzero bits lie below its lowest
 };
+
+// The bits of 2/pi past its point, 32 to a limb, the most significant first.
+extern const unsigned int _Math_TwoOverPi[_MATH_TWO_OVER_PI_LIMBS];
 
 // The classification and sign of a value of each type.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
@@ -347,8 +398,10 @@ long         _Math_ReadNearest(const _Math_Exact *e);
 long         _Math_ReduceExp(_Math_Exact *r, const _Math_Exact *t);
 void         _Math_ExpM1Exact(_Math_Exact *em1, const _Math_Exact *r);
 void         _Math_ExpExact(_Math_Exact *value, const _Math_Exact *t);
+void         _Math_ExpM1Clamped(_Math_Exact *em1, const _Math_Exact *t);
 int          _Math_SplitLog(_Math_Exact *num, _Math_Exact *den, const _Math_Exact *u);
 void         _Math_LogExact(_Math_Exact *log, const _Math_Exact *num, const _Math_Exact *den, int e);
+void         _Math_Log1pExact(_Math_Exact *log, const _Math_Exact *u);
 _Bool        _Math_IsPowerTen(long double x, long k);
 _Math_Parity _Math_ReadParity(long double y);
 _Bool        _Math_PowerExact(_Math_Exact *value, long double x, long double y);
@@ -359,6 +412,92 @@ long double  _Math_TakeExpm1(long double x, _Math_Type type);
 long double  _Math_TakeLog(long double x, _Math_Base base, _Math_Type type);
 long double  _Math_TakeLog1p(long double x, _Math_Type type);
 long double  _Math_TakePow(long double x, long double y, _Math_Type type);
+
+// The trigonometric and hyperbolic functions' cores.
+void         _Math_NudgeExact(_Math_Exact *e, _Math_Step step);
+void         _Math_WorkRoot(_Math_Exact *root, const _Math_Exact *a);
+void         _Math_MakeQuarters(_Math_Exact *e, unsigned int quarters);
+unsigned int _Math_ReduceTrig(_Math_Exact *r, long double x);
+void         _Math_TrigExact(_Math_Exact *value, const _Math_Exact *r, _Math_Trig which);
+void         _Math_AtanExact(_Math_Exact *value, const _Math_Exact *num, const _Math_Exact *den);
+long double  _Math_TakeTiny(long double x, _Math_Step step, _Math_Type type);
+long double  _Math_TakeQuarters(unsigned int quarters, long double sign, _Math_Type type);
+long double  _Math_TakeTrig(long double x, _Math_Trig which, _Math_Type type);
+long double  _Math_TakeArc(long double x, _Math_Trig which, _Math_Type type);
+long double  _Math_TakeAtan2(long double y, long double x, _Math_Type type);
+long double  _Math_TakeHyperbolic(long double x, _Math_Trig which, _Math_Type type);
+long double  _Math_TakeArcHyperbolic(long double x, _Math_Trig which, _Math_Type type);
+
+// Trigonometric functions
+// [C99:7.12.1p2]:  a domain error, of an infinity too by its footnote 203
+// [C99:7.12.4.1]:  acos, in [0, pi], a domain error outside [-1, +1]
+// [C99:7.12.4.2]:  asin, in [-pi/2, +pi/2], the same
+// [C99:7.12.4.3]:  atan, in [-pi/2, +pi/2]
+// [C99:7.12.4.4]:  atan2, of y/x in [-pi, +pi] by both signs
+// [C99:7.12.4.5]:  cos, of x in radians
+// [C99:7.12.4.6]:  sin, the same
+// [C99:7.12.4.7]:  tan, the same
+// [C99:F.9.1.1]:   acos(1) +0, invalid for |x| > 1
+// [C99:F.9.1.2]:   asin of a zero, invalid for |x| > 1
+// [C99:F.9.1.3]:   atan of a zero and an infinity
+// [C99:F.9.1.4]:   atan2 of zeros and infinities, raising nothing of zeros
+// [C99:F.9.1.5]:   cos of a zero, invalid of an infinity
+// [C99:F.9.1.6]:   sin, the same
+// [C99:F.9.1.7]:   tan, the same
+double      acos(double x);
+float       acosf(float x);
+long double acosl(long double x);
+double      asin(double x);
+float       asinf(float x);
+long double asinl(long double x);
+double      atan(double x);
+float       atanf(float x);
+long double atanl(long double x);
+double      atan2(double y, double x);
+float       atan2f(float y, float x);
+long double atan2l(long double y, long double x);
+double      cos(double x);
+float       cosf(float x);
+long double cosl(long double x);
+double      sin(double x);
+float       sinf(float x);
+long double sinl(long double x);
+double      tan(double x);
+float       tanf(float x);
+long double tanl(long double x);
+
+// Hyperbolic functions
+// [C99:7.12.1p4]:  an exact infinity from finite arguments, divide-by-zero
+// [C99:7.12.5.1]:  acosh, in [0, +inf], a domain error below 1
+// [C99:7.12.5.2]:  asinh
+// [C99:7.12.5.3]:  atanh, a domain error outside [-1, +1], a range error of 1
+// [C99:7.12.5.4]:  cosh, a range error if x's magnitude is too large
+// [C99:7.12.5.5]:  sinh, the same
+// [C99:7.12.5.6]:  tanh
+// [C99:F.9.2.1]:   acosh of 1 and +inf, invalid below 1
+// [C99:F.9.2.2]:   asinh of a zero and an infinity
+// [C99:F.9.2.3]:   atanh of a zero, and of 1 divide-by-zero, invalid past 1
+// [C99:F.9.2.4]:   cosh of a zero and an infinity
+// [C99:F.9.2.5]:   sinh, the same
+// [C99:F.9.2.6]:   tanh of a zero, and of an infinity 1
+double      acosh(double x);
+float       acoshf(float x);
+long double acoshl(long double x);
+double      asinh(double x);
+float       asinhf(float x);
+long double asinhl(long double x);
+double      atanh(double x);
+float       atanhf(float x);
+long double atanhl(long double x);
+double      cosh(double x);
+float       coshf(float x);
+long double coshl(long double x);
+double      sinh(double x);
+float       sinhf(float x);
+long double sinhl(long double x);
+double      tanh(double x);
+float       tanhf(float x);
+long double tanhl(long double x);
 
 // Exponential and logarithmic functions
 // [C99:7.12.1p2]:  a domain error, EDOM and invalid
