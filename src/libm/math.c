@@ -104,6 +104,46 @@ const unsigned int _Math_TwoOverPi[_MATH_TWO_OVER_PI_LIMBS] = {
     0x825C326BU, 0x5B2746EDU, 0x34007700U, 0xD255F4FCU, 0x4D590180U, 0x71E0E13FU, 0x89B295F3U
 };
 
+// The magnitudes of Stirling's coefficients as limbs of constants.
+const unsigned int _Math_Stirling[_MATH_STIRLING_TERMS][_MATH_CONST_LIMBS] = {
+    {0xAAAAAAAAU, 0xAAAAAAAAU, 0xAAAAAAAAU, 0xAAAAAAAAU, 0xAAAAAAAAU, 0xAAAAAAAAU},
+    {0x60B60B60U, 0x0B60B60BU, 0xB60B60B6U, 0x60B60B60U, 0x0B60B60BU, 0xB60B60B6U},
+    {0x00D00D00U, 0x0D00D00DU, 0xD00D00D0U, 0x00D00D00U, 0x0D00D00DU, 0xD00D00D0U},
+    {0xC09C09C0U, 0x09C09C09U, 0x9C09C09CU, 0xC09C09C0U, 0x09C09C09U, 0x9C09C09CU},
+    {0x4E700DCAU, 0xFE46AE1DU, 0x2A3C5631U, 0x7539C037U, 0xC7F91AB8U, 0xDCA8F158U},
+    {0xE3E40FB5U, 0x5586CCC9U, 0x9E3E40FBU, 0xB5586CCCU, 0xC9E3E40FU, 0xFB5586CCU},
+    {0x20D20D20U, 0x0D20D20DU, 0xD20D20D2U, 0x20D20D20U, 0x0D20D20DU, 0xD20D20D2U},
+    {0x9CBEE103U, 0x1436587AU, 0x8BADCFF2U, 0x03254769U, 0x7A9CBEE1U, 0xF2143658U},
+    {0xB1C0F033U, 0xD0C3B7F4U, 0xC0F033FFU, 0xC3B7F4B1U, 0xF033FFD0U, 0xB7F4B1C0U},
+    {0x4AA70223U, 0x48B14C1FU, 0xCC3EA607U, 0xEDCE7312U, 0xC0F9CF6DU, 0xB23B3808U},
+    {0x167002D3U, 0x9EA72219U, 0x59C00B4EU, 0x7A9C8864U, 0x67002D3AU, 0xD6722191U},
+    {0xE6660D55U, 0xB44A9292U, 0xE07CA39DU, 0x3F712EB9U, 0x6660D55BU, 0x9CD9292EU},
+    {0x740DA740U, 0x0DA740DAU, 0xA740DA74U, 0x40DA740DU, 0xDA740DA7U, 0x8911A740U},
+    {0xD250842CU, 0x94D92E2FU, 0xB48FF1B3U, 0xFF6EEC24U, 0xE255BF59U, 0x8D0CC570U},
+    {0x234D582BU, 0xDCB00698U, 0x4469CCAEU, 0x19EE4FDCU, 0x3708D1C2U, 0xA8D1044DU},
+    {0x9ABBC406U, 0xBBC40616U, 0xC406169AU, 0x06169ABBU, 0x169ABBC4U, 0xE8844D8AU},
+    {0x9DBCC486U, 0x676F3121U, 0x19DBCC48U, 0x8676F312U, 0x219DBCC4U, 0xB694D07BU},
+    {0x3F07A1F8U, 0xDA88C079U, 0x49761634U, 0xA6024D5CU, 0xF23376AEU, 0xA2288CECU},
+    {0x7350B881U, 0x350B8812U, 0x50B88127U, 0x0B881273U, 0xEA012735U, 0xA1BBCDE4U},
+    {0xAF642A24U, 0x43581714U, 0x4AF642A2U, 0x24358171U, 0x03D4642AU, 0xB4005BDEU},
+    {0x8573ED1EU, 0xEEECAC9EU, 0xEAE46D98U, 0xC3A9E6DAU, 0x78FBAAE3U, 0xDE466B7CU},
+    {0x151661B4U, 0x72037C5EU, 0xD884644BU, 0x40509F4FU, 0x77729BCBU, 0x977D7628U},
+    {0xD3226A6FU, 0x83DA6597U, 0x2D4F335CU, 0x0B6B0A35U, 0x5AF0BED9U, 0xE2E1337FU},
+    {0xAD457156U, 0x09D8D881U, 0x86CDEEA2U, 0xB4F92FF9U, 0x8AD89016U, 0xB9E09405U},
+    {0xB08640E9U, 0x478F4715U, 0xC8BF3F7CU, 0x0326AB4CU, 0xE71AC7C8U, 0xA5F7EEF9U},
+    {0x8CB9CEBDU, 0x694DEEF0U, 0x6C86491AU, 0xDA64925CU, 0x7954084CU, 0xA0EF80E5U},
+    {0xF4826900U, 0xC758797BU, 0x0CE0256EU, 0x9790760BU, 0xDA17DD99U, 0xA8EBFE48U},
+    {0x128B1478U, 0x3BA1B5EFU, 0x6CBEC2EFU, 0x24C95AB5U, 0x3556FB17U, 0xBF582A43U},
+    {0xE86D69D5U, 0x45C0EB78U, 0x04316DCBU, 0x7770E671U, 0x3E6C7D0EU, 0xE940B372U},
+    {0xBD60A7D4U, 0x174B18C9U, 0x451835E1U, 0xF8CC3B4FU, 0x89672663U, 0x989A1506U}
+};
+
+// The units of Stirling's coefficients.
+const int _Math_StirlingUnits[_MATH_STIRLING_TERMS] = {
+    -195, -200, -202, -202, -202, -201, -199, -197, -194, -191, -188, -184, -180, -176, -172,
+    -168, -163, -158, -153, -148, -143, -137, -132, -126, -120, -114, -108, -102, -96, -89
+};
+
 // Classify a value by its biased exponent and its fraction.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac)
 {
@@ -909,8 +949,8 @@ void _Math_MakeReciprocal(_Math_Exact *e, unsigned int d)
 // Make a constant as a value, untrimmed.
 void _Math_MakeConstant(_Math_Exact *e, _Math_Constant which)
 {
-    const unsigned int limbs[_MATH_CONSTANTS][_MATH_CONST_LIMBS] = {{_MATH_LN2_LIMBS}, {_MATH_LOG2E_LIMBS}, {_MATH_LOG10E_LIMBS}, {_MATH_PI_LIMBS}};
-    const int units[_MATH_CONSTANTS] = {_MATH_LN2_UNIT, _MATH_LOG2E_UNIT, _MATH_LOG10E_UNIT, _MATH_PI_UNIT};
+    const unsigned int limbs[_MATH_CONSTANTS][_MATH_CONST_LIMBS] = {{_MATH_LN2_LIMBS}, {_MATH_LOG2E_LIMBS}, {_MATH_LOG10E_LIMBS}, {_MATH_PI_LIMBS}, {_MATH_INV_ROOT_PI_LIMBS}, {_MATH_LN_ROOT_2PI_LIMBS}};
+    const int units[_MATH_CONSTANTS] = {_MATH_LN2_UNIT, _MATH_LOG2E_UNIT, _MATH_LOG10E_UNIT, _MATH_PI_UNIT, _MATH_INV_ROOT_PI_UNIT, _MATH_LN_ROOT_2PI_UNIT};
 
     _Math_WideSet(&e->me_sig, 0);
     memcpy(e->me_sig.mw_limb, limbs[which], sizeof(limbs[which]));
@@ -1840,6 +1880,318 @@ long double _Math_TakeArcHyperbolic(long double x, _Math_Trig which, _Math_Type 
     return _Math_RoundRange(&value, type);
 }
 
+// Take erf of an a in (0, split) by its series of positive terms.
+void _Math_ErfExact(_Math_Exact *value, long double a)
+{
+    _Math_Exact z;
+    _Math_Exact one;
+    _Math_Exact side;
+    _Math_Exact decay;
+    _Math_Exact series;
+    _Math_Exact constant;
+    unsigned int n = _MATH_ERF_TERMS_BASE + _MATH_ERF_TERMS_STEP * (1 + (unsigned int) a);
+
+    _Math_MakeExact(&side, a);
+    _Math_MultiplyExact(&z, &side, &side);
+    z.me_unit++;
+    _Math_MakeExact(&one, 1.0L);
+    series = one;
+    for (; n >= 1; n--) {
+        _Math_WorkMultiply(&series, &z, &series);
+        _Math_WorkDivideSmall(&series, 2 * n + 1);
+        _Math_WorkAdd(&series, &one, &series);
+    }
+    z.me_unit--;
+    z.me_negative = 1;
+    _Math_ExpExact(&decay, &z);
+    _Math_TrimExact(&decay);
+    _Math_WorkMultiply(value, &series, &decay);
+    _Math_WorkMultiply(value, &side, value);
+    _Math_MakeConstant(&constant, _MATH_CONST_INV_ROOT_PI);
+    _Math_WorkMultiply(value, &constant, value);
+    value->me_unit++;
+}
+
+// Take erfc of an a from the split on by its continued fraction.
+void _Math_ErfcExact(_Math_Exact *value, long double a)
+{
+    _Math_Exact z;
+    _Math_Exact num;
+    _Math_Exact den;
+    _Math_Exact half;
+    _Math_Exact next;
+    _Math_Exact part;
+    _Math_Exact side;
+    _Math_Exact count;
+    _Math_Exact decay;
+    _Math_Exact prev_num;
+    _Math_Exact prev_den;
+    _Math_Exact constant;
+
+    _Math_MakeExact(&side, a);
+    _Math_MakeExact(&prev_num, 1.0L);
+    num = side;
+    prev_den = side;
+    _Math_MultiplyExact(&z, &side, &side);
+    _Math_MakeExact(&half, _MATH_HALF);
+    _Math_WorkAdd(&den, &z, &half);
+    for (int k = 3; k <= _MATH_ERFC_TERMS; k++) {
+        _Math_MakeExact(&count, (long double) (k - 1));
+        _Math_WorkMultiply(&part, &side, &num);
+        _Math_WorkMultiply(&next, &count, &prev_num);
+        next.me_unit--;
+        prev_num = num;
+        _Math_WorkAdd(&num, &part, &next);
+        _Math_WorkMultiply(&part, &side, &den);
+        _Math_WorkMultiply(&next, &count, &prev_den);
+        next.me_unit--;
+        prev_den = den;
+        _Math_WorkAdd(&den, &part, &next);
+    }
+    z.me_negative = 1;
+    _Math_ExpExact(&decay, &z);
+    _Math_TrimExact(&decay);
+    _Math_WorkDivide(value, &num, &den);
+    _Math_WorkMultiply(value, &decay, value);
+    _Math_MakeConstant(&constant, _MATH_CONST_INV_ROOT_PI);
+    _Math_WorkMultiply(value, &constant, value);
+}
+
+// Make Stirling's kth coefficient, from 0, as a value, untrimmed.
+void _Math_MakeStirling(_Math_Exact *e, int k)
+{
+    _Math_WideSet(&e->me_sig, 0);
+    memcpy(e->me_sig.mw_limb, _Math_Stirling[k], sizeof(_Math_Stirling[k]));
+    e->me_unit = _Math_StirlingUnits[k];
+    e->me_negative = (k & 1) != 0;
+    e->me_sticky = 0;
+}
+
+// Take the logarithm of gamma of a y from the threshold on by Stirling.
+void _Math_StirlingExact(_Math_Exact *log, const _Math_Exact *y)
+{
+    int e;
+    _Math_Exact w;
+    _Math_Exact z;
+    _Math_Exact one;
+    _Math_Exact num;
+    _Math_Exact den;
+    _Math_Exact part;
+    _Math_Exact series;
+    _Math_Exact constant;
+
+    _Math_MakeExact(&one, 1.0L);
+    _Math_WorkDivide(&w, &one, y);
+    _Math_WorkMultiply(&z, &w, &w);
+    _Math_MakeStirling(&series, _MATH_STIRLING_TERMS - 1);
+    for (int k = _MATH_STIRLING_TERMS - 2; k >= 0; k--) {
+        _Math_WorkMultiply(&series, &z, &series);
+        _Math_MakeStirling(&constant, k);
+        _Math_WorkAdd(&series, &constant, &series);
+    }
+    _Math_WorkMultiply(&series, &w, &series);
+    e = _Math_SplitLog(&num, &den, y);
+    _Math_LogExact(log, &num, &den, e);
+    _Math_MakeExact(&part, -_MATH_HALF);
+    _Math_WorkAdd(&part, y, &part);
+    _Math_WorkMultiply(log, &part, log);
+    part = *y;
+    part.me_negative = 1;
+    _Math_WorkAdd(log, log, &part);
+    _Math_MakeConstant(&constant, _MATH_CONST_LN_ROOT_2PI);
+    _Math_WorkAdd(log, log, &constant);
+    _Math_WorkAdd(log, log, &series);
+}
+
+// Take the logarithm of |gamma| of an x off the poles, returning its sign.
+_Bool _Math_LogGammaExact(_Math_Exact *log, long double x)
+{
+    int e;
+    long whole;
+    long double rest;
+    long double turn;
+    _Bool negative;
+    _Math_Exact y;
+    _Math_Exact r;
+    _Math_Exact one;
+    _Math_Exact num;
+    _Math_Exact den;
+    _Math_Exact part;
+    _Math_Exact sine;
+    _Math_Exact product;
+
+    _Math_MakeExact(&one, 1.0L);
+    _Math_MakeExact(&y, x);
+    if (x >= _MATH_STIRLING_FROM) {
+        _Math_StirlingExact(log, &y);
+        return 0;
+    }
+    whole = (long) x;
+    if (x < whole) {
+        whole--;
+    }
+    if (x > -_MATH_STIRLING_FROM) {
+        product = y;
+        for (long i = whole + 1; i < _MATH_STIRLING_FROM; i++) {
+            _Math_WorkAdd(&y, &y, &one);
+            _Math_WorkMultiply(&product, &product, &y);
+        }
+        _Math_WorkAdd(&y, &y, &one);
+        _Math_StirlingExact(log, &y);
+        negative = product.me_negative;
+        product.me_negative = 0;
+        e = _Math_SplitLog(&num, &den, &product);
+        _Math_LogExact(&part, &num, &den, e);
+        part.me_negative = ! part.me_negative;
+        _Math_WorkAdd(log, log, &part);
+        return negative;
+    }
+    rest = x - (long double) whole;
+    if (rest > _MATH_HALF) {
+        rest -= 1;
+        whole++;
+    }
+    negative = (rest < 0) != ((whole & 1) != 0);
+    turn = fabsl(rest) > _MATH_SINE_TURN ? _MATH_HALF - fabsl(rest) : fabsl(rest);
+    sine = one;
+    if (turn != 0) {
+        _Math_MakeExact(&part, turn);
+        _Math_MakeConstant(&r, _MATH_CONST_PI);
+        _Math_WorkMultiply(&r, &r, &part);
+        _Math_TrigExact(&sine, &r, fabsl(rest) > _MATH_SINE_TURN ? _MATH_TRIG_COS : _MATH_TRIG_SIN);
+    }
+    _Math_MakeConstant(&r, _MATH_CONST_PI);
+    _Math_WorkDivide(&r, &r, &sine);
+    e = _Math_SplitLog(&num, &den, &r);
+    _Math_LogExact(log, &num, &den, e);
+    y.me_negative = 0;
+    _Math_WorkAdd(&y, &y, &one);
+    _Math_StirlingExact(&part, &y);
+    part.me_negative = 1;
+    _Math_WorkAdd(log, log, &part);
+    return negative;
+}
+
+// Take erf of x, within 2 ulps of type.
+long double _Math_TakeErf(long double x, _Math_Type type)
+{
+    _Math_Exact one;
+    _Math_Exact value;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (isinf(x)) {
+        return copysignl(1.0L, x);
+    }
+    if (x == 0) {
+        return x;
+    }
+    if (fabsl(x) < _MATH_ERF_SPLIT) {
+        _Math_ErfExact(&value, fabsl(x));
+    } else {
+        _Math_ErfcExact(&value, fabsl(x));
+        _Math_MakeExact(&one, 1.0L);
+        value.me_negative = 1;
+        _Math_WorkAdd(&value, &one, &value);
+    }
+    value.me_negative = x < 0;
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take erfc of x, within 2 ulps of type.
+long double _Math_TakeErfc(long double x, _Math_Type type)
+{
+    _Math_Exact base;
+    _Math_Exact value;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (isinf(x)) {
+        return x > 0 ? 0.0L : 2.0L;
+    }
+    if (x == 0) {
+        return 1.0L;
+    }
+    if (fabsl(x) < _MATH_ERF_SPLIT) {
+        _Math_ErfExact(&value, fabsl(x));
+        _Math_MakeExact(&base, 1.0L);
+        value.me_negative = x > 0;
+        _Math_WorkAdd(&value, &base, &value);
+    } else {
+        _Math_ErfcExact(&value, fabsl(x));
+    }
+    if (x <= -_MATH_ERF_SPLIT) {
+        _Math_MakeExact(&base, 2.0L);
+        value.me_negative = 1;
+        _Math_WorkAdd(&value, &base, &value);
+    }
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take the logarithm of |gamma| of x, within 2 ulps of type.
+long double _Math_TakeLgamma(long double x, _Math_Type type)
+{
+    _Math_Exact value;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (isinf(x)) {
+        return HUGE_VALL;
+    }
+    if (x == 1 || x == 2) {
+        return 0.0L;
+    }
+    if (x == 0 || (x < 0 && _Math_ReadParity(x) != _MATH_PARITY_NONE)) {
+        return -_Math_RaisePole();
+    }
+    _Math_LogGammaExact(&value, x);
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take gamma of x, within 2 ulps of type, of an integer exact.
+long double _Math_TakeTgamma(long double x, _Math_Type type)
+{
+    _Math_Wide factor;
+    _Math_Exact log;
+    _Math_Exact value;
+    _Bool negative;
+
+    if (isnan(x)) {
+        return x + x;
+    }
+    if (x == 0) {
+        return signbit(x) ? _Math_RaisePole() : -_Math_RaisePole();
+    }
+    if (isinf(x) && x > 0) {
+        return x;
+    }
+    if (isinf(x) || (x < 0 && _Math_ReadParity(x) != _MATH_PARITY_NONE)) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (x > 0 && x <= _MATH_FACTORIAL_MAX && _Math_ReadParity(x) != _MATH_PARITY_NONE) {
+        _Math_WideSet(&value.me_sig, _MATH_LOW_BIT);
+        value.me_unit = 0;
+        value.me_negative = 0;
+        value.me_sticky = 0;
+        for (int k = 2; k < (int) x; k++) {
+            _Math_WideSet(&factor, (unsigned long long) k);
+            _Math_WideMultiply(&value.me_sig, &value.me_sig, &factor);
+        }
+        return _Math_RoundRange(&value, type);
+    }
+    negative = _Math_LogGammaExact(&log, x);
+    _Math_ExpExact(&value, &log);
+    value.me_negative = negative;
+    value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
 // Take the arc cosine of x.
 double acos(double x)
 {
@@ -2469,6 +2821,78 @@ float sqrtf(float x)
 long double sqrtl(long double x)
 {
     return _Math_TakeRoot(x, _MATH_ROOT_SQUARE, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the error function of x.
+double erf(double x)
+{
+    return (double) _Math_TakeErf(x, _MATH_TYPE_DOUBLE);
+}
+
+// Take the error function of x.
+float erff(float x)
+{
+    return (float) _Math_TakeErf(x, _MATH_TYPE_FLOAT);
+}
+
+// Take the error function of x.
+long double erfl(long double x)
+{
+    return _Math_TakeErf(x, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the complementary error function of x.
+double erfc(double x)
+{
+    return (double) _Math_TakeErfc(x, _MATH_TYPE_DOUBLE);
+}
+
+// Take the complementary error function of x.
+float erfcf(float x)
+{
+    return (float) _Math_TakeErfc(x, _MATH_TYPE_FLOAT);
+}
+
+// Take the complementary error function of x.
+long double erfcl(long double x)
+{
+    return _Math_TakeErfc(x, _MATH_TYPE_LDOUBLE);
+}
+
+// Take the natural logarithm of the magnitude of gamma of x.
+double lgamma(double x)
+{
+    return (double) _Math_TakeLgamma(x, _MATH_TYPE_DOUBLE);
+}
+
+// Take the natural logarithm of the magnitude of gamma of x.
+float lgammaf(float x)
+{
+    return (float) _Math_TakeLgamma(x, _MATH_TYPE_FLOAT);
+}
+
+// Take the natural logarithm of the magnitude of gamma of x.
+long double lgammal(long double x)
+{
+    return _Math_TakeLgamma(x, _MATH_TYPE_LDOUBLE);
+}
+
+// Take gamma of x.
+double tgamma(double x)
+{
+    return (double) _Math_TakeTgamma(x, _MATH_TYPE_DOUBLE);
+}
+
+// Take gamma of x.
+float tgammaf(float x)
+{
+    return (float) _Math_TakeTgamma(x, _MATH_TYPE_FLOAT);
+}
+
+// Take gamma of x.
+long double tgammal(long double x)
+{
+    return _Math_TakeTgamma(x, _MATH_TYPE_LDOUBLE);
 }
 
 // Round x up to an integer.

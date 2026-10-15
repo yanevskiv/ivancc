@@ -108,16 +108,20 @@
 
 // A constant's limbs, 192 bits, the least significant first, each
 // constant's limbs, and the exponent of its lowest bit.
-#define _MATH_CONSTANTS     4
-#define _MATH_CONST_LIMBS   6
-#define _MATH_LN2_LIMBS     0x7298B62DU, 0x40F34326U, 0x03F2F6AFU, 0xC9E3B398U, 0xD1CF79ABU, 0xB17217F7U
-#define _MATH_LN2_UNIT      (-192)
-#define _MATH_LOG2E_LIMBS   0xDD695A58U, 0xEB577AA8U, 0x691D3E88U, 0xBE87FED0U, 0x5C17F0BBU, 0xB8AA3B29U
-#define _MATH_LOG2E_UNIT    (-191)
-#define _MATH_LOG10E_LIMBS  0x45C9A202U, 0x3EE34602U, 0xAD33DC32U, 0x355BAAAFU, 0x37287195U, 0xDE5BD8A9U
-#define _MATH_LOG10E_UNIT   (-193)
-#define _MATH_PI_LIMBS      0x8A67CC74U, 0x29024E08U, 0x80DC1CD1U, 0xC4C6628BU, 0x2168C234U, 0xC90FDAA2U
-#define _MATH_PI_UNIT       (-190)
+#define _MATH_CONSTANTS         6
+#define _MATH_CONST_LIMBS       6
+#define _MATH_LN2_LIMBS         0x7298B62DU, 0x40F34326U, 0x03F2F6AFU, 0xC9E3B398U, 0xD1CF79ABU, 0xB17217F7U
+#define _MATH_LN2_UNIT          (-192)
+#define _MATH_LOG2E_LIMBS       0xDD695A58U, 0xEB577AA8U, 0x691D3E88U, 0xBE87FED0U, 0x5C17F0BBU, 0xB8AA3B29U
+#define _MATH_LOG2E_UNIT        (-191)
+#define _MATH_LOG10E_LIMBS      0x45C9A202U, 0x3EE34602U, 0xAD33DC32U, 0x355BAAAFU, 0x37287195U, 0xDE5BD8A9U
+#define _MATH_LOG10E_UNIT       (-193)
+#define _MATH_PI_LIMBS          0x8A67CC74U, 0x29024E08U, 0x80DC1CD1U, 0xC4C6628BU, 0x2168C234U, 0xC90FDAA2U
+#define _MATH_PI_UNIT           (-190)
+#define _MATH_INV_ROOT_PI_LIMBS 0xAC3E7517U, 0x1409A0EBU, 0x6BFEC344U, 0x71D48A7FU, 0x14DB688DU, 0x906EBA82U
+#define _MATH_INV_ROOT_PI_UNIT  (-192)
+#define _MATH_LN_ROOT_2PI_LIMBS 0x13458B4DU, 0xCFB08F8DU, 0x44192023U, 0x94BC9001U, 0x25F5A534U, 0xEB3F8E43U
+#define _MATH_LN_ROOT_2PI_UNIT  (-192)
 
 // The magnitude past which every exponential overflows or underflows, and
 // its exponent.
@@ -179,6 +183,25 @@
 #define _MATH_THREE_QUARTER_PI 3U
 #define _MATH_WHOLE_PI         4U
 #define _MATH_QUARTER_EXP      (-2)
+
+// The magnitude below which erf takes its series, and the series' terms, a
+// base and more for each unit of the magnitude.
+#define _MATH_ERF_SPLIT      6.0L
+#define _MATH_ERF_TERMS_BASE 20U
+#define _MATH_ERF_TERMS_STEP 25U
+
+// The terms of erfc's continued fraction from the split on.
+#define _MATH_ERFC_TERMS 80
+
+// The fraction of an x past which sin(pi x) is taken as a cosine.
+#define _MATH_SINE_TURN 0.25L
+
+// The least argument Stirling's series takes, and its terms.
+#define _MATH_STIRLING_FROM  24
+#define _MATH_STIRLING_TERMS 30
+
+// The greatest integer whose gamma is taken as an exact factorial.
+#define _MATH_FACTORIAL_MAX 64
 
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
@@ -287,10 +310,12 @@ enum _Math_Base {
 // Which constant a working value is made of.
 typedef enum _Math_Constant _Math_Constant;
 enum _Math_Constant {
-    _MATH_CONST_LN2,    // the natural logarithm of 2
-    _MATH_CONST_LOG2E,  // the base-2 logarithm of e
-    _MATH_CONST_LOG10E, // the base-10 logarithm of e
-    _MATH_CONST_PI      // pi
+    _MATH_CONST_LN2,         // the natural logarithm of 2
+    _MATH_CONST_LOG2E,       // the base-2 logarithm of e
+    _MATH_CONST_LOG10E,      // the base-10 logarithm of e
+    _MATH_CONST_PI,          // pi
+    _MATH_CONST_INV_ROOT_PI, // 1 over the square root of pi
+    _MATH_CONST_LN_ROOT_2PI  // the natural logarithm of the root of 2 pi
 };
 
 // Which trigonometric or hyperbolic function is taken, by its circular name.
@@ -326,6 +351,11 @@ struct _Math_Exact {
 
 // The bits of 2/pi past its point, 32 to a limb, the most significant first.
 extern const unsigned int _Math_TwoOverPi[_MATH_TWO_OVER_PI_LIMBS];
+
+// The magnitudes of Stirling's coefficients, B2k over 2k(2k - 1), as limbs
+// of constants, and their units; the first is positive, and signs alternate.
+extern const unsigned int _Math_Stirling[_MATH_STIRLING_TERMS][_MATH_CONST_LIMBS];
+extern const int          _Math_StirlingUnits[_MATH_STIRLING_TERMS];
 
 // The classification and sign of a value of each type.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
@@ -427,6 +457,17 @@ long double  _Math_TakeArc(long double x, _Math_Trig which, _Math_Type type);
 long double  _Math_TakeAtan2(long double y, long double x, _Math_Type type);
 long double  _Math_TakeHyperbolic(long double x, _Math_Trig which, _Math_Type type);
 long double  _Math_TakeArcHyperbolic(long double x, _Math_Trig which, _Math_Type type);
+
+// The error and gamma functions' cores.
+void        _Math_ErfExact(_Math_Exact *value, long double a);
+void        _Math_ErfcExact(_Math_Exact *value, long double a);
+void        _Math_MakeStirling(_Math_Exact *e, int k);
+void        _Math_StirlingExact(_Math_Exact *log, const _Math_Exact *y);
+_Bool       _Math_LogGammaExact(_Math_Exact *log, long double x);
+long double _Math_TakeErf(long double x, _Math_Type type);
+long double _Math_TakeErfc(long double x, _Math_Type type);
+long double _Math_TakeLgamma(long double x, _Math_Type type);
+long double _Math_TakeTgamma(long double x, _Math_Type type);
 
 // Trigonometric functions
 // [C99:7.12.1p2]:  a domain error, of an infinity too by its footnote 203
@@ -598,6 +639,28 @@ long double powl(long double x, long double y);
 double      sqrt(double x);
 float       sqrtf(float x);
 long double sqrtl(long double x);
+
+// Error and gamma functions
+// [C99:7.12.8.1]: erf, the error function
+// [C99:7.12.8.2]: erfc, 1 - erf x, a range error if x is too large
+// [C99:7.12.8.3]: lgamma, ln |gamma x|, a range error if x is too large
+// [C99:7.12.8.4]: tgamma, a domain or range error of a negative integer or 0
+// [C99:F.9.5.1]:  erf of a zero and an infinity
+// [C99:F.9.5.2]:  erfc of an infinity
+// [C99:F.9.5.3]:  lgamma of 1, 2 and the infinities, of a pole divide-by-zero
+// [C99:F.9.5.4]:  tgamma, a zero divide-by-zero, a negative integer invalid
+double      erf(double x);
+float       erff(float x);
+long double erfl(long double x);
+double      erfc(double x);
+float       erfcf(float x);
+long double erfcl(long double x);
+double      lgamma(double x);
+float       lgammaf(float x);
+long double lgammal(long double x);
+double      tgamma(double x);
+float       tgammaf(float x);
+long double tgammal(long double x);
 
 // Nearest integer functions
 // [C99:7.12.9.1]: ceil, the least integer not below x
