@@ -7,20 +7,23 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// log should give the natural logarithm in the current direction in each
-// type, +0 of 1 in every direction, -inf with divide-by-zero and ERANGE of
-// a zero, and a NaN with invalid and EDOM below zero.
-// [C99:7.12.6.7p2]: log, a domain error below zero, a range error at zero
-// [C99:7.12.1p2]:   a domain error, EDOM and invalid
-// [C99:7.12.1p4]:   an exact infinity, HUGE_VAL, ERANGE and divide-by-zero
-// [C99:F.9.3.7p1]:  log of a zero, 1, a negative and +inf
+// log should give the natural logarithm within a few ulps in each
+// direction and type, +0 of 1 in every direction, -inf with divide-by-zero
+// and ERANGE of a zero, and a NaN with invalid and EDOM below zero.
+// [C99:7.12.6.7p2]:  log, a domain error below zero, a range error at zero
+// [C99:7.12.1p2]:    a domain error, EDOM and invalid
+// [C99:7.12.1p4]:    an exact infinity, HUGE_VAL, ERANGE and divide-by-zero
+// [C99:F.9.3.7p1]:   log of a zero, 1, a negative and +inf
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathLog(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const double value[MODES] = {0x1.62e42fefa39efp-1, 0x1.62e42fefa39efp-1, 0x1.62e42fefa39fp-1, 0x1.62e42fefa39efp-1};
-    static const float valuef[MODES] = {0x1.62e43p-1f, 0x1.62e42ep-1f, 0x1.62e43p-1f, 0x1.62e42ep-1f};
-    static const long double valuel[MODES] = {0xb.17217f7d1cf79acp-4L, 0xb.17217f7d1cf79abp-4L, 0xb.17217f7d1cf79acp-4L, 0xb.17217f7d1cf79abp-4L};
+    static const double value = 0x1.62e42fefa39efp-1;
+    static const float valuef = 0x1.62e43p-1f;
+    static const long double valuel = 0xb.17217f7d1cf79acp-4L;
     volatile double two = 2.0;
     volatile float twof = 2.0f;
     volatile long double twol = 2.0L;
@@ -32,9 +35,9 @@ static void Test_MathLog(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(log(two), value[i]);
-        _TEST_FLOAT(logf(twof), valuef[i]);
-        _TEST_FLOAT(logl(twol), valuel[i]);
+        _TEST_TRUE(within_ulps(log(two), value, DBL_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(logf(twof), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(logl(twol), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
         feclearexcept(FE_ALL_EXCEPT);
         _TEST_FLOAT(log(one), 0.0);

@@ -37,6 +37,22 @@
 #include <stdint.h>
 #include <string.h>
 
+// The terms of e to r less 1 over r, 1/k! from k = 1.
+const long double _Math_ExpTerms[_MATH_EXP_TERMS] = {
+    0x8p-3L, 0x8p-4L, 0xa.aaaaaaaaaaaaaabp-6L, 0xa.aaaaaaaaaaaaaabp-8L, 0x8.888888888888889p-10L,
+    0xb.60b60b60b60b60bp-13L, 0xd.00d00d00d00d00dp-16L, 0xd.00d00d00d00d00dp-19L, 0xb.8ef1d2ab6399c7dp-22L,
+    0x9.3f27dbbc4fae397p-25L, 0xd.7322b3faa271c7fp-29L, 0x8.f76c77fc6c4bdaap-32L, 0xb.092309d43684be5p-36L,
+    0xc.9cba54603e4e906p-40L, 0xd.73f9f399dc0f88fp-44L
+};
+
+// The terms of the logarithm's series, 1/(2k + 1) from k = 1.
+const long double _Math_LogTerms[_MATH_LOG_TERMS] = {
+    0xa.aaaaaaaaaaaaaabp-5L, 0xc.ccccccccccccccdp-6L, 0x9.249249249249249p-6L, 0xe.38e38e38e38e38ep-7L,
+    0xb.a2e8ba2e8ba2e8cp-7L, 0x9.d89d89d89d89d8ap-7L, 0x8.888888888888889p-7L, 0xf.0f0f0f0f0f0f0f1p-8L,
+    0xd.79435e50d79435ep-8L, 0xc.30c30c30c30c30cp-8L, 0xb.21642c8590b2164p-8L, 0xa.3d70a3d70a3d70ap-8L,
+    0x9.7b425ed097b425fp-8L
+};
+
 // Classify a value by its biased exponent and its fraction.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac)
 {
@@ -199,11 +215,28 @@ long double _Math_RaiseDomain(long double x, long double y)
     return (x * y) / (x * y);
 }
 
+// Raise the pole error, an exact -inf from a finite argument.
+long double _Math_RaisePole(void)
+{
+    errno = ERANGE;
+    feraiseexcept(FE_DIVBYZERO);
+    return -HUGE_VALL;
+}
+
 // Check y, x scaled, for a range error.
 void _Math_CheckScaled(long double x, long double y)
 {
-    if (isfinite(x) && x != 0 && (isinf(y) || y == 0)) {
+    if (x == x && x != 0 && fabsl(x) != HUGE_VALL && (y == 0 || fabsl(y) == HUGE_VALL)) {
         errno = ERANGE;
+    }
+}
+
+// Check y, a function of x, for a range error and a nonzero y below least.
+void _Math_CheckRange(long double x, long double y, long double least)
+{
+    _Math_CheckScaled(x, y);
+    if (y == y && y != 0 && fabsl(y) < least) {
+        feraiseexcept(FE_UNDERFLOW | FE_INEXACT);
     }
 }
 
@@ -303,6 +336,152 @@ long double _Math_TakeFma(long double x, long double y, long double z, _Exact_Ty
     _Exact_MakeValue(&addend, z);
     _Exact_AddValues(&sum, &product, &addend);
     return _Exact_RoundValue(&sum, type);
+}
+
+// Reduce x to r, e or 2 to x being 2 to the returned n times e to r.
+int _Math_ReduceExp(long double x, _Math_Base base, long double *r)
+{
+    long double t = base == _MATH_BASE_2 ? x : x * _MATH_LOG2E;
+    int n = (int) t;
+
+    if (t - n > _MATH_HALF) {
+        n++;
+    } else if (n - t > _MATH_HALF) {
+        n--;
+    }
+    if (base == _MATH_BASE_2) {
+        *r = (x - n) * _MATH_LN2;
+    } else {
+        *r = x - n * _MATH_LN2_HIGH - n * _MATH_LN2_LOW;
+    }
+    return n;
+}
+
+// Sum e to a reduced r less 1 by Taylor's series.
+long double _Math_SumExp(long double r)
+{
+    long double sum = 0;
+
+    for (int k = _MATH_EXP_TERMS - 1; k >= 0; k--) {
+        sum = sum * r + _Math_ExpTerms[k];
+    }
+    return r * sum;
+}
+
+// Sum the natural logarithm of 1 plus a small f as 2 atanh(f/(2 + f)).
+long double _Math_SumLog(long double f)
+{
+    long double s = f / (2 + f);
+    long double square = s * s;
+    long double sum = 0;
+
+    for (int k = _MATH_LOG_TERMS - 1; k >= 0; k--) {
+        sum = sum * square + _Math_LogTerms[k];
+    }
+    return f - s * (f - 2 * square * sum);
+}
+
+// Take e or 2 to x.
+long double _Math_TakeExp(long double x, _Math_Base base)
+{
+    long double r;
+    int n;
+
+    if (x != x || x == HUGE_VALL) {
+        return x + x;
+    }
+    if (x == -HUGE_VALL) {
+        return 0;
+    }
+    if (fabsl(x) > _MATH_EXP_CLAMP) {
+        x = copysignl(_MATH_EXP_CLAMP, x);
+    }
+    n = _Math_ReduceExp(x, base, &r);
+    return _Math_ScaleLDouble(1 + _Math_SumExp(r), n);
+}
+
+// Take e to x less 1.
+long double _Math_TakeExpm1(long double x)
+{
+    long double r;
+    long double sum;
+    int n;
+
+    if (x != x || x == HUGE_VALL) {
+        return x + x;
+    }
+    if (x == -HUGE_VALL) {
+        return -1;
+    }
+    if (x < -_MATH_EXPM1_FLOOR) {
+        x = -_MATH_EXPM1_FLOOR;
+    } else if (x > _MATH_EXP_CLAMP) {
+        x = _MATH_EXP_CLAMP;
+    }
+    n = _Math_ReduceExp(x, _MATH_BASE_E, &r);
+    sum = _Math_SumExp(r);
+    if (n == 0) {
+        return sum;
+    }
+    if (n > _MATH_EXPM1_WIDE) {
+        return _Math_ScaleLDouble(1 + sum, n);
+    }
+    return _Math_ScaleLDouble(1 + sum, n) - 1;
+}
+
+// Take the logarithm of x to base.
+long double _Math_TakeLog(long double x, _Math_Base base)
+{
+    int e;
+    long double m;
+    long double log;
+
+    if (x != x || x == HUGE_VALL) {
+        return x + x;
+    }
+    if (x < 0) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (x == 0) {
+        return _Math_RaisePole();
+    }
+    if (x == 1) {
+        return 0;
+    }
+    m = _Exact_SplitLDouble(x, &e) * _MATH_LDOUBLE_UNIT;
+    if (m > _MATH_SQRT_TWO) {
+        m *= _MATH_HALF;
+        e++;
+    }
+    log = _Math_SumLog(m - 1);
+    if (base == _MATH_BASE_2) {
+        return e + log * _MATH_LOG2E;
+    }
+    if (base == _MATH_BASE_10) {
+        return e * _MATH_LOG10_2 + log * _MATH_LOG10E;
+    }
+    return e * _MATH_LN2_HIGH + (e * _MATH_LN2_LOW + log);
+}
+
+// Take the natural logarithm of 1 plus x.
+long double _Math_TakeLog1p(long double x)
+{
+    long double u;
+
+    if (x != x || x == HUGE_VALL) {
+        return x + x;
+    }
+    if (x < -1) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (x == -1) {
+        return _Math_RaisePole();
+    }
+    if (fabsl(x) < _MATH_LOG1P_TINY) {
+        return x;
+    }
+    u = 1 + x;
+    return _Math_TakeLog(u, _MATH_BASE_E) + (x - (u - 1)) / u;
 }
 
 // Take the arc cosine of x.
@@ -542,55 +721,82 @@ long double tanhl(long double x)
 // Take e to x.
 double exp(double x)
 {
-    return __prec_math_exp(x);
+    double y = (double) _Math_TakeExp(x, _MATH_BASE_E);
+
+    _Math_CheckRange(x, y, DBL_MIN);
+    return y;
 }
 
 // Take e to x.
 float expf(float x)
 {
-    return __prec_math_expf(x);
+    float y = (float) _Math_TakeExp(x, _MATH_BASE_E);
+
+    _Math_CheckRange(x, y, FLT_MIN);
+    return y;
 }
 
 // Take e to x.
 long double expl(long double x)
 {
-    return __prec_math_expl(x);
+    long double y = _Math_TakeExp(x, _MATH_BASE_E);
+
+    _Math_CheckRange(x, y, LDBL_MIN);
+    return y;
 }
 
 // Take 2 to x.
 double exp2(double x)
 {
-    return __prec_math_exp2(x);
+    double y = (double) _Math_TakeExp(x, _MATH_BASE_2);
+
+    _Math_CheckRange(x, y, DBL_MIN);
+    return y;
 }
 
 // Take 2 to x.
 float exp2f(float x)
 {
-    return __prec_math_exp2f(x);
+    float y = (float) _Math_TakeExp(x, _MATH_BASE_2);
+
+    _Math_CheckRange(x, y, FLT_MIN);
+    return y;
 }
 
 // Take 2 to x.
 long double exp2l(long double x)
 {
-    return __prec_math_exp2l(x);
+    long double y = _Math_TakeExp(x, _MATH_BASE_2);
+
+    _Math_CheckRange(x, y, LDBL_MIN);
+    return y;
 }
 
 // Take e to x, less 1.
 double expm1(double x)
 {
-    return __prec_math_expm1(x);
+    double y = (double) _Math_TakeExpm1(x);
+
+    _Math_CheckRange(x, y, DBL_MIN);
+    return y;
 }
 
 // Take e to x, less 1.
 float expm1f(float x)
 {
-    return __prec_math_expm1f(x);
+    float y = (float) _Math_TakeExpm1(x);
+
+    _Math_CheckRange(x, y, FLT_MIN);
+    return y;
 }
 
 // Take e to x, less 1.
 long double expm1l(long double x)
 {
-    return __prec_math_expm1l(x);
+    long double y = _Math_TakeExpm1(x);
+
+    _Math_CheckRange(x, y, LDBL_MIN);
+    return y;
 }
 
 // Break value into a fraction and a power of 2.
@@ -668,73 +874,82 @@ long double ldexpl(long double x, int exp)
 // Take the natural logarithm of x.
 double log(double x)
 {
-    return __prec_math_log(x);
+    return (double) _Math_TakeLog(x, _MATH_BASE_E);
 }
 
 // Take the natural logarithm of x.
 float logf(float x)
 {
-    return __prec_math_logf(x);
+    return (float) _Math_TakeLog(x, _MATH_BASE_E);
 }
 
 // Take the natural logarithm of x.
 long double logl(long double x)
 {
-    return __prec_math_logl(x);
+    return _Math_TakeLog(x, _MATH_BASE_E);
 }
 
 // Take the base-10 logarithm of x.
 double log10(double x)
 {
-    return __prec_math_log10(x);
+    return (double) _Math_TakeLog(x, _MATH_BASE_10);
 }
 
 // Take the base-10 logarithm of x.
 float log10f(float x)
 {
-    return __prec_math_log10f(x);
+    return (float) _Math_TakeLog(x, _MATH_BASE_10);
 }
 
 // Take the base-10 logarithm of x.
 long double log10l(long double x)
 {
-    return __prec_math_log10l(x);
+    return _Math_TakeLog(x, _MATH_BASE_10);
 }
 
 // Take the natural logarithm of 1 plus x.
 double log1p(double x)
 {
-    return __prec_math_log1p(x);
+    double y = (double) _Math_TakeLog1p(x);
+
+    _Math_CheckRange(x, y, DBL_MIN);
+    return y;
 }
 
 // Take the natural logarithm of 1 plus x.
 float log1pf(float x)
 {
-    return __prec_math_log1pf(x);
+    float y = (float) _Math_TakeLog1p(x);
+
+    _Math_CheckRange(x, y, FLT_MIN);
+    return y;
 }
 
 // Take the natural logarithm of 1 plus x.
 long double log1pl(long double x)
 {
-    return __prec_math_log1pl(x);
+    long double y = _Math_TakeLog1p(x);
+
+    _Math_CheckRange(x, y, LDBL_MIN);
+    return y;
 }
 
 // Take the base-2 logarithm of x.
 double log2(double x)
 {
-    return __prec_math_log2(x);
+    return (double) _Math_TakeLog(x, _MATH_BASE_2);
 }
 
 // Take the base-2 logarithm of x.
 float log2f(float x)
 {
-    return __prec_math_log2f(x);
+    return (float) _Math_TakeLog(x, _MATH_BASE_2);
 }
 
 // Take the base-2 logarithm of x.
 long double log2l(long double x)
 {
-    return __prec_math_log2l(x);
+    return _Math_TakeLog(x, _MATH_BASE_2);
 }
 
 // Extract x's exponent as a floating value.

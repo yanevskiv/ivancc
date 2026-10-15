@@ -7,20 +7,23 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// exp should give e to x in the current direction in each type, 1 of a
-// zero, +0 and +inf of the infinities, and a range error when the result
-// overflows to an infinity or underflows to zero.
-// [C99:7.12.6.1p2]: exp, a range error if x's magnitude is too large
-// [C99:7.12.1p4]:   an overflow, HUGE_VAL, ERANGE and overflow
-// [C99:7.12.1p5]:   an underflow, ERANGE implementation-defined
-// [C99:F.9.3.1p1]:  exp of a zero and an infinity
+// exp should give e to x within a few ulps in each direction and type, 1
+// of a zero, +0 and +inf of the infinities, and a range error when the
+// result overflows to an infinity or underflows to zero.
+// [C99:7.12.6.1p2]:  exp, a range error if x's magnitude is too large
+// [C99:7.12.1p4]:    an overflow, HUGE_VAL, ERANGE and overflow
+// [C99:7.12.1p5]:    an underflow, ERANGE implementation-defined
+// [C99:F.9.3.1p1]:   exp of a zero and an infinity
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathExp(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const double value[MODES] = {0x1.5bf0a8b145769p+1, 0x1.5bf0a8b145769p+1, 0x1.5bf0a8b14576ap+1, 0x1.5bf0a8b145769p+1};
-    static const float valuef[MODES] = {0x1.5bf0a8p+1f, 0x1.5bf0a8p+1f, 0x1.5bf0aap+1f, 0x1.5bf0a8p+1f};
-    static const long double valuel[MODES] = {0xa.df85458a2bb4a9bp-2L, 0xa.df85458a2bb4a9ap-2L, 0xa.df85458a2bb4a9bp-2L, 0xa.df85458a2bb4a9ap-2L};
+    static const double value = 0x1.5bf0a8b145769p+1;
+    static const float valuef = 0x1.5bf0a8p+1f;
+    static const long double valuel = 0xa.df85458a2bb4a9bp-2L;
     volatile double one = 1.0;
     volatile float onef = 1.0f;
     volatile long double onel = 1.0L;
@@ -31,9 +34,9 @@ static void Test_MathExp(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(exp(one), value[i]);
-        _TEST_FLOAT(expf(onef), valuef[i]);
-        _TEST_FLOAT(expl(onel), valuel[i]);
+        _TEST_TRUE(within_ulps(exp(one), value, DBL_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(expf(onef), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(expl(onel), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);

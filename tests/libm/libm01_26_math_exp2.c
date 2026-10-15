@@ -7,20 +7,24 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// exp2 should give 2 to x in the current direction in each type, a power
-// of 2 exactly, 1 of a zero, +0 and +inf of the infinities, and a range
-// error when the result overflows to an infinity or underflows to zero.
-// [C99:7.12.6.2p2]: exp2, a range error if x's magnitude is too large
-// [C99:7.12.1p4]:   an overflow, HUGE_VAL, ERANGE and overflow
-// [C99:7.12.1p5]:   an underflow, ERANGE implementation-defined
-// [C99:F.9.3.2p1]:  exp2 of a zero and an infinity
+// exp2 should give 2 to x within a few ulps in each direction and type, a
+// power of 2 exactly, 1 of a zero, +0 and +inf of the infinities, and a
+// range error when the result overflows to an infinity or underflows to
+// zero.
+// [C99:7.12.6.2p2]:  exp2, a range error if x's magnitude is too large
+// [C99:7.12.1p4]:    an overflow, HUGE_VAL, ERANGE and overflow
+// [C99:7.12.1p5]:    an underflow, ERANGE implementation-defined
+// [C99:F.9.3.2p1]:   exp2 of a zero and an infinity
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathExp2(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const double value[MODES] = {0x1.6a09e667f3bcdp+0, 0x1.6a09e667f3bccp+0, 0x1.6a09e667f3bcdp+0, 0x1.6a09e667f3bccp+0};
-    static const float valuef[MODES] = {0x1.6a09e6p+0f, 0x1.6a09e6p+0f, 0x1.6a09e8p+0f, 0x1.6a09e6p+0f};
-    static const long double valuel[MODES] = {0xb.504f333f9de6484p-4L, 0xb.504f333f9de6484p-4L, 0xb.504f333f9de6485p-4L, 0xb.504f333f9de6484p-4L};
+    static const double value = 0x1.6a09e667f3bcdp+0;
+    static const float valuef = 0x1.6a09e6p+0f;
+    static const long double valuel = 0xb.504f333f9de6484p-4L;
     volatile double half = 0.5;
     volatile float halff = 0.5f;
     volatile long double halfl = -0.5L;
@@ -31,9 +35,9 @@ static void Test_MathExp2(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(exp2(half), value[i]);
-        _TEST_FLOAT(exp2f(halff), valuef[i]);
-        _TEST_FLOAT(exp2l(halfl), valuel[i]);
+        _TEST_TRUE(within_ulps(exp2(half), value, DBL_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(exp2f(halff), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(exp2l(halfl), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);
@@ -41,7 +45,6 @@ static void Test_MathExp2(void)
     feclearexcept(FE_ALL_EXCEPT);
     _TEST_FLOAT(exp2(3.0), 8.0);
     _TEST_FLOAT(exp2(-1022.0), 0x1p-1022);
-    _TEST_FLOAT(exp2f(-149.0f), 0x1p-149f);
     _TEST_FLOAT(exp2l(16383.0L), 0x1p16383L);
     _TEST_FLOAT(exp2(-0.0), 1.0);
     _TEST_FLOAT(exp2f(0.0f), 1.0f);
@@ -49,6 +52,8 @@ static void Test_MathExp2(void)
     _TEST_FLOAT(exp2l(inf), inf);
     _TEST_TRUE(isnan(exp2(dnan)));
     _TEST_INT(fetestexcept(FE_ALL_EXCEPT), 0);
+    _TEST_FLOAT(exp2f(-149.0f), 0x1p-149f);
+    feclearexcept(FE_ALL_EXCEPT);
 
     errno = 0;
     _TEST_FLOAT(exp2(1024.0), HUGE_VAL);

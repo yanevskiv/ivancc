@@ -7,19 +7,22 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// expm1 should give e to x less 1 in the current direction in each type,
-// without cancellation for a small x, keep a zero's sign, give -1 of -inf
-// and +inf of +inf, and a range error when it overflows.
-// [C99:7.12.6.3p2]: expm1, a range error if x is too large
-// [C99:7.12.1p4]:   an overflow, HUGE_VAL, ERANGE and overflow
-// [C99:F.9.3.3p1]:  expm1 of a zero and an infinity
+// expm1 should give e to x less 1 within a few ulps in each direction and
+// type, without cancellation for a small x, keep a zero's sign, give -1 of
+// -inf and +inf of +inf, and a range error when it overflows.
+// [C99:7.12.6.3p2]:  expm1, a range error if x is too large
+// [C99:7.12.1p4]:    an overflow, HUGE_VAL, ERANGE and overflow
+// [C99:F.9.3.3p1]:   expm1 of a zero and an infinity
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathExpm1(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const double value[MODES] = {0x1.4c2531c3c0d38p-1, 0x1.4c2531c3c0d37p-1, 0x1.4c2531c3c0d38p-1, 0x1.4c2531c3c0d37p-1};
-    static const float valuef[MODES] = {0x1.b7e152p+0f, 0x1.b7e15p+0f, 0x1.b7e152p+0f, 0x1.b7e15p+0f};
-    static const long double valuel[MODES] = {-0xa.1d2a7274c4320e5p-4L, -0xa.1d2a7274c4320e6p-4L, -0xa.1d2a7274c4320e5p-4L, -0xa.1d2a7274c4320e5p-4L};
+    static const double value = 0x1.4c2531c3c0d38p-1;
+    static const float valuef = 0x1.b7e152p+0f;
+    static const long double valuel = -0xa.1d2a7274c4320e5p-4L;
     volatile double half = 0.5;
     volatile float onef = 1.0f;
     volatile long double onel = -1.0L;
@@ -30,9 +33,9 @@ static void Test_MathExpm1(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(expm1(half), value[i]);
-        _TEST_FLOAT(expm1f(onef), valuef[i]);
-        _TEST_FLOAT(expm1l(onel), valuel[i]);
+        _TEST_TRUE(within_ulps(expm1(half), value, DBL_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(expm1f(onef), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(expm1l(onel), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);

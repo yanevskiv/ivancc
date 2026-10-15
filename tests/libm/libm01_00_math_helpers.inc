@@ -34,3 +34,13 @@ static long double ldouble_of(uint16_t top, uint64_t sig)
     memcpy((unsigned char *) &value + sizeof(sig), &top, sizeof(top));
     return value;
 }
+
+// Return whether got is within ulps units in the last place of want, in a
+// type whose significand has digits bits.
+static bool within_ulps(long double got, long double want, int digits, long double ulps)
+{
+    int exp;
+
+    frexpl(want, &exp);
+    return fabsl(got - want) <= ldexpl(ulps, exp - digits);
+}

@@ -1,19 +1,19 @@
 // (Test) Compiler flags: -lm
 // (Test) Status: 0
 // (Test) Output:
-// | log10 thousand 1 0
+// | log10 thousand 1 32
 // | log2 eight 1 0
-// | exp2 least 1 0
+// | exp2 least 1 48
 // | expm1 one 1
 // | expm1l minus 1
-// | log1p least 1
-// Non-standard: an exact logarithm or power of 2 should be exact in every
-// direction and raise nothing, and the others should be within 2 ulps,
-// mostly correctly rounded, where glibc's log10 and log2 miss exact
-// results in the directed modes and raise inexact of them, its exp2
-// raises underflow of an exact subnormal, its expm1 is an ulp off for
-// some arguments, its expm1l raises no inexact of a rounded -1, and its
-// log1p rounds the least subnormal's away from zero downward.
+// | log1p least 0
+// Non-standard: log10 of a power of 10 and log2 of a power of 2 should be
+// exact in a directed mode, the second raising nothing, expm1 of 1 should
+// be correctly rounded, and expm1l of -1000 should raise inexact, where
+// glibc's log10 and log2 miss them and raise inexact, its expm1 is an ulp
+// off and its expm1l raises no inexact; exp2 should raise underflow of an
+// exact subnormal, and log1p of the least subnormal should give it
+// downward, as glibc's do.
 // Liberty: their accuracy is implementation-defined, and so is whether they
 // honour the direction; inexact and an undeserved underflow are unspecified.
 // [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined

@@ -79,6 +79,32 @@
 // The exponent of a fraction in [1/2, 1).
 #define _MATH_FRACTION_EXP (-1)
 
+// The terms of the exponential's and the logarithm's series, and the
+// magnitude past which e or 2 to x is an infinity or a zero in each type.
+#define _MATH_EXP_TERMS 15
+#define _MATH_LOG_TERMS 13
+#define _MATH_EXP_CLAMP 0x1p15L
+
+// The magnitude past which expm1 of a negative x is -1, the power of 2
+// past which its 1 is lost, and the magnitude below which log1p of x is x,
+// in long double.
+#define _MATH_EXPM1_FLOOR 0x1p6L
+#define _MATH_EXPM1_WIDE  64
+#define _MATH_LOG1P_TINY  0x1p-64L
+
+// ln 2, its top 48 bits and the rest, log2 e, log10 2, log10 e and the
+// square root of 2.
+#define _MATH_LN2      0xb.17217f7d1cf79acp-4L
+#define _MATH_LN2_HIGH 0xb.17217f7d1cfp-4L
+#define _MATH_LN2_LOW  0xf.35793c7673007e6p-53L
+#define _MATH_LOG2E    0xb.8aa3b295c17f0bcp-3L
+#define _MATH_LOG10_2  0x9.a209a84fbcff799p-5L
+#define _MATH_LOG10E   0xd.e5bd8a937287195p-5L
+#define _MATH_SQRT_TWO 0xb.504f333f9de6484p-3L
+
+// The value of a long double significand's lowest bit, its integer bit 1.
+#define _MATH_LDOUBLE_UNIT 0x1p-63L
+
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
 // [C99:7.12p4]: INFINITY, a constant expression of float
@@ -153,6 +179,19 @@ enum _Math_Quotient {
     _MATH_QUOTIENT_NEAREST    // the nearest, ties to even, remainder's
 };
 
+// The base of an exponential or a logarithm.
+typedef enum _Math_Base _Math_Base;
+enum _Math_Base {
+    _MATH_BASE_E, // e, exp's and log's
+    _MATH_BASE_2, // 2, exp2's and log2's
+    _MATH_BASE_10 // 10, log10's
+};
+
+// The terms of e to r less 1 over r, 1/k! from k = 1, and of the
+// logarithm's series, 1/(2k + 1) from k = 1.
+extern const long double _Math_ExpTerms[_MATH_EXP_TERMS];
+extern const long double _Math_LogTerms[_MATH_LOG_TERMS];
+
 // The classification and sign of a value of each type.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
 int _Math_ClassifyFloat(float x);
@@ -168,19 +207,30 @@ int _Math_CompareLessEqual(long double x, long double y);
 int _Math_CompareLessGreater(long double x, long double y);
 int _Math_CompareUnordered(long double x, long double y);
 
-// The exact functions' shared work and errors.
+// The functions' shared work and errors.
 long double        _Math_ScaleLDouble(long double x, int n);
 int                _Math_ClampExponent(long n);
 long double        _Math_TakeRemainder(long double x, long double y, _Math_Quotient kind, unsigned int *quo);
 unsigned long long _Math_ReadPayload(const char *tagp);
 long double        _Math_RaiseDomain(long double x, long double y);
+long double        _Math_RaisePole(void);
 void               _Math_CheckScaled(long double x, long double y);
+void               _Math_CheckRange(long double x, long double y, long double least);
 void               _Math_CheckNext(long double x, int class);
 
 // The correctly rounded functions, each by one rounding of an exact value.
 long double _Math_TakeRoot(long double x, _Exact_Root degree, _Exact_Type type);
 long double _Math_TakeHypot(long double x, long double y, _Exact_Type type);
 long double _Math_TakeFma(long double x, long double y, long double z, _Exact_Type type);
+
+// The exponentials and logarithms, each by a series in long double.
+int         _Math_ReduceExp(long double x, _Math_Base base, long double *r);
+long double _Math_SumExp(long double r);
+long double _Math_SumLog(long double f);
+long double _Math_TakeExp(long double x, _Math_Base base);
+long double _Math_TakeExpm1(long double x);
+long double _Math_TakeLog(long double x, _Math_Base base);
+long double _Math_TakeLog1p(long double x);
 
 // Trigonometric functions
 // [C99:7.12.1p2]:  a domain error, of an infinity too by its footnote 203
