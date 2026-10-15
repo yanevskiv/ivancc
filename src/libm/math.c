@@ -53,6 +53,27 @@ const long double _Math_LogTerms[_MATH_LOG_TERMS] = {
     0x9.7b425ed097b425fp-8L
 };
 
+// The natural logarithm of each step of the logarithm's table, its top 64
+// bits.
+const long double _Math_LogStepHigh[_MATH_LOG_STEP_COUNT] = {
+    -0xa.9157039c51ebe71p-5L, -0x9.34b1089a6dc93c2p-5L, -0xf.cc8e3659d9bcbedp-6L, -0xd.49f69e456cf1b79p-6L,
+    -0xa.dfa035aa1ed8fdcp-6L, -0x8.8bc74113f23def2p-6L, -0xc.99af2eaca4c4571p-7L, -0x8.42cc5acf1d03445p-7L,
+    -0x8.20aec4f3a222381p-8L, 0x0p+0L,                  0xf.c14d873c1980268p-9L,  0xf.85186008b15330cp-8L,
+    0xb.78694572b5a5cdfp-7L,  0xf.1383b7157972f4fp-7L,  0x9.4aa97c0ffa91a6p-6L,   0xa.ff983853c9e9e44p-6L,
+    0xc.a92d4e7a2b5a3b2p-6L,  0xe.47fbe3cd4d10d61p-6L,  0xf.dc8c36af1f1546bp-6L,  0x8.b3ae55d5d30701dp-5L,
+    0x9.74715d708e984e1p-5L,  0xa.30c5e10e2f613e8p-5L,  0xa.e8dedfac04e5284p-5L
+};
+
+// The natural logarithm of each step of the logarithm's table, the rest.
+const long double _Math_LogStepLow[_MATH_LOG_STEP_COUNT] = {
+    0xf.d36714d2f2bbbeep-70L,  0x8.2913127eaac7abap-71L,  0xd.7cc833faf3927c5p-72L,  -0xb.ea77a5c80dccdcfp-71L,
+    -0xa.4bb3f20818b6961p-73L, 0xc.74be038d217e1c4p-71L,  0xa.85704ccb6bdda33p-74L,  -0xf.f66fd40cdcb04bfp-74L,
+    0x8.c38a2b2777621f2p-73L,  0x0p+0L,                   -0xe.07d87086eb028a9p-75L, -0xc.da3a4453343b396p-75L,
+    0x9.3373da336c819cap-73L,  0xa.87ffe1fe9e155dcp-72L,  0xb.b8e203edf4d10ap-72L,   -0xc.1df5f8dedc45019p-71L,
+    0x9.83a9c5c4b3b1328p-74L,  0xb.b03de5ff734495cp-72L,  -0xa.b993c86b2d35f6ep-71L, -0xc.e0aa3be4747dc1p-72L,
+    0xc.c91a85081b3cdeep-70L,  0xb.7b37b33c734415ep-70L,  0xd.8e0f71ff84567cep-70L
+};
+
 // Classify a value by its biased exponent and its fraction.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac)
 {
@@ -240,6 +261,14 @@ void _Math_CheckRange(long double x, long double y, long double least)
     }
 }
 
+// Check z, x to y, for a range error and a nonzero z below least.
+void _Math_CheckPower(long double x, long double y, long double z, long double least)
+{
+    if (y == y && fabsl(y) != HUGE_VALL) {
+        _Math_CheckRange(x, z, least);
+    }
+}
+
 // Check a step from x to a value of class for a range error.
 void _Math_CheckNext(long double x, int class)
 {
@@ -357,6 +386,19 @@ int _Math_ReduceExp(long double x, _Math_Base base, long double *r)
     return n;
 }
 
+// Split a positive x into m in [sqrt(1/2), sqrt 2] and a power of 2.
+int _Math_SplitFraction(long double x, long double *m)
+{
+    int e;
+
+    *m = _Exact_SplitLDouble(x, &e) * _MATH_LDOUBLE_UNIT;
+    if (*m > _MATH_SQRT_TWO) {
+        *m *= _MATH_HALF;
+        e++;
+    }
+    return e;
+}
+
 // Sum e to a reduced r less 1 by Taylor's series.
 long double _Math_SumExp(long double r)
 {
@@ -448,11 +490,7 @@ long double _Math_TakeLog(long double x, _Math_Base base)
     if (x == 1) {
         return 0;
     }
-    m = _Exact_SplitLDouble(x, &e) * _MATH_LDOUBLE_UNIT;
-    if (m > _MATH_SQRT_TWO) {
-        m *= _MATH_HALF;
-        e++;
-    }
+    e = _Math_SplitFraction(x, &m);
     log = _Math_SumLog(m - 1);
     if (base == _MATH_BASE_2) {
         return e + log * _MATH_LOG2E;
@@ -482,6 +520,133 @@ long double _Math_TakeLog1p(long double x)
     }
     u = 1 + x;
     return _Math_TakeLog(u, _MATH_BASE_E) + (x - (u - 1)) / u;
+}
+
+// Split x into its top 32 bits and the rest, by Veltkamp's method.
+long double _Math_SplitHalves(long double x, long double *low)
+{
+    long double c = x * _MATH_SPLIT;
+    long double high = c - (c - x);
+
+    *low = x - high;
+    return high;
+}
+
+// Add x and y into a rounded sum and its error, by Knuth's method.
+long double _Math_AddParts(long double x, long double y, long double *error)
+{
+    long double sum = x + y;
+    long double z = sum - x;
+
+    *error = (x - (sum - z)) + (y - z);
+    return sum;
+}
+
+// Multiply x by y into a rounded product and its error, by Dekker's method.
+long double _Math_MultiplyParts(long double x, long double y, long double *error)
+{
+    long double x_low;
+    long double y_low;
+    long double x_high = _Math_SplitHalves(x, &x_low);
+    long double y_high = _Math_SplitHalves(y, &y_low);
+    long double product = x * y;
+
+    *error = ((x_high * y_high - product) + x_high * y_low + x_low * y_high) + x_low * y_low;
+    return product;
+}
+
+// Take the natural logarithm of a positive x as a high and a low part.
+long double _Math_TakeLogParts(long double x, long double *low)
+{
+    long double m;
+    long double s_low;
+    long double p_low;
+    long double q_low;
+    long double error;
+    long double rest;
+    long double sum = 0;
+    int e = _Math_SplitFraction(x, &m);
+    int j = (int) (m * _MATH_LOG_STEPS + _MATH_HALF);
+    long double c = (long double) j / _MATH_LOG_STEPS;
+    long double d = m - c;
+    long double s = d / (m + c);
+    long double square = s * s;
+    long double p = _Math_MultiplyParts(2 * c, s, &p_low);
+    long double q = _Math_MultiplyParts(d, s, &q_low);
+    long double high = _Math_AddParts(e * _MATH_LN2_HIGH, _Math_LogStepHigh[j - _MATH_LOG_STEP_FIRST], &error);
+
+    s_low = (((d - p) - q) - (p_low + q_low)) / (m + c);
+    for (int k = _MATH_POW_TERMS - 1; k >= 0; k--) {
+        sum = sum * square + _Math_LogTerms[k];
+    }
+    high = _Math_AddParts(high, 2 * s, &rest);
+    rest += error + (e * _MATH_LN2_LOW + _Math_LogStepLow[j - _MATH_LOG_STEP_FIRST] + 2 * s_low + 2 * s * square * sum);
+    return _Math_AddParts(high, rest, low);
+}
+
+// Read whether a finite nonzero y is an integer, and which.
+_Math_Parity _Math_ReadParity(long double y)
+{
+    int exp;
+    unsigned long long sig = _Exact_SplitLDouble(y, &exp);
+    int point = _EXACT_LDOUBLE_INT_SHIFT - exp;
+
+    if (point < 0) {
+        return _MATH_PARITY_EVEN;
+    }
+    if (point > _EXACT_LDOUBLE_INT_SHIFT || (sig & ~(_EXACT_ALL_BITS << point)) != 0) {
+        return _MATH_PARITY_NONE;
+    }
+    return (sig >> point & _EXACT_LOW_BIT) != 0 ? _MATH_PARITY_ODD : _MATH_PARITY_EVEN;
+}
+
+// Take x to y.
+long double _Math_TakePow(long double x, long double y)
+{
+    long double low;
+    long double high;
+    long double t;
+    long double t_low;
+    long double r;
+    long double result;
+    _Math_Parity parity;
+    _Bool negative;
+    int n;
+
+    if (y == 0 || x == 1) {
+        return 1;
+    }
+    if (x != x || y != y) {
+        return x + y;
+    }
+    if (fabsl(y) == HUGE_VALL) {
+        return fabsl(x) == 1 ? 1 : (fabsl(x) < 1) == (y < 0) ? HUGE_VALL : 0;
+    }
+    parity = _Math_ReadParity(y);
+    negative = (x == 0 ? signbit(x) != 0 : x < 0) && parity == _MATH_PARITY_ODD;
+    if (x == 0 && y < 0) {
+        return negative ? _Math_RaisePole() : -_Math_RaisePole();
+    }
+    if (x == 0 || fabsl(x) == HUGE_VALL) {
+        result = (x == 0) == (y < 0) ? HUGE_VALL : 0;
+        return negative ? -result : result;
+    }
+    if (x < 0 && parity == _MATH_PARITY_NONE) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (fabsl(y) > _MATH_POW_CLAMP) {
+        y = copysignl(_MATH_POW_CLAMP, y);
+    }
+    high = _Math_TakeLogParts(fabsl(x), &low);
+    t = _Math_MultiplyParts(y, high, &t_low);
+    t_low += y * low;
+    if (fabsl(t) > _MATH_EXP_CLAMP) {
+        t = copysignl(_MATH_EXP_CLAMP, t);
+        t_low = 0;
+    }
+    n = _Math_ReduceExp(t, _MATH_BASE_E, &r);
+    result = 1 + _Math_SumExp(r + t_low);
+    return _Math_ScaleLDouble(negative ? -result : result, n);
 }
 
 // Take the arc cosine of x.
@@ -1118,19 +1283,28 @@ long double hypotl(long double x, long double y)
 // Raise x to the power y.
 double pow(double x, double y)
 {
-    return __prec_math_pow(x, y);
+    double z = (double) _Math_TakePow(x, y);
+
+    _Math_CheckPower(x, y, z, DBL_MIN);
+    return z;
 }
 
 // Raise x to the power y.
 float powf(float x, float y)
 {
-    return __prec_math_powf(x, y);
+    float z = (float) _Math_TakePow(x, y);
+
+    _Math_CheckPower(x, y, z, FLT_MIN);
+    return z;
 }
 
 // Raise x to the power y.
 long double powl(long double x, long double y)
 {
-    return __prec_math_powl(x, y);
+    long double z = _Math_TakePow(x, y);
+
+    _Math_CheckPower(x, y, z, LDBL_MIN);
+    return z;
 }
 
 // Take the nonnegative square root of x.

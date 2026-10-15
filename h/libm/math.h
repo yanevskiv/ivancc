@@ -105,6 +105,18 @@
 // The value of a long double significand's lowest bit, its integer bit 1.
 #define _MATH_LDOUBLE_UNIT 0x1p-63L
 
+// 2 to 32 plus 1, which splits a long double into two halves of 32 bits.
+#define _MATH_SPLIT 0x1.00000001p32L
+
+// The steps of the logarithm's table, j/32 for j from 23 to 45, the terms
+// of its series pow takes, and the magnitude past which x to y is an
+// infinity or a zero for every x but 1 and -1.
+#define _MATH_LOG_STEPS      32
+#define _MATH_LOG_STEP_FIRST 23
+#define _MATH_LOG_STEP_COUNT 23
+#define _MATH_POW_TERMS      6
+#define _MATH_POW_CLAMP      0x1p80L
+
 // Mathematics
 // [C99:7.12p3]: HUGE_VAL, HUGE_VALF and HUGE_VALL
 // [C99:7.12p4]: INFINITY, a constant expression of float
@@ -187,10 +199,23 @@ enum _Math_Base {
     _MATH_BASE_10 // 10, log10's
 };
 
+// Whether a finite value is an integer, and which.
+typedef enum _Math_Parity _Math_Parity;
+enum _Math_Parity {
+    _MATH_PARITY_NONE, // not an integer
+    _MATH_PARITY_EVEN, // an even integer
+    _MATH_PARITY_ODD   // an odd integer
+};
+
 // The terms of e to r less 1 over r, 1/k! from k = 1, and of the
 // logarithm's series, 1/(2k + 1) from k = 1.
 extern const long double _Math_ExpTerms[_MATH_EXP_TERMS];
 extern const long double _Math_LogTerms[_MATH_LOG_TERMS];
+
+// The natural logarithm of each step of the logarithm's table, its top 64
+// bits and the rest.
+extern const long double _Math_LogStepHigh[_MATH_LOG_STEP_COUNT];
+extern const long double _Math_LogStepLow[_MATH_LOG_STEP_COUNT];
 
 // The classification and sign of a value of each type.
 int _Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
@@ -216,6 +241,7 @@ long double        _Math_RaiseDomain(long double x, long double y);
 long double        _Math_RaisePole(void);
 void               _Math_CheckScaled(long double x, long double y);
 void               _Math_CheckRange(long double x, long double y, long double least);
+void               _Math_CheckPower(long double x, long double y, long double z, long double least);
 void               _Math_CheckNext(long double x, int class);
 
 // The correctly rounded functions, each by one rounding of an exact value.
@@ -223,14 +249,21 @@ long double _Math_TakeRoot(long double x, _Exact_Root degree, _Exact_Type type);
 long double _Math_TakeHypot(long double x, long double y, _Exact_Type type);
 long double _Math_TakeFma(long double x, long double y, long double z, _Exact_Type type);
 
-// The exponentials and logarithms, each by a series in long double.
-int         _Math_ReduceExp(long double x, _Math_Base base, long double *r);
-long double _Math_SumExp(long double r);
-long double _Math_SumLog(long double f);
-long double _Math_TakeExp(long double x, _Math_Base base);
-long double _Math_TakeExpm1(long double x);
-long double _Math_TakeLog(long double x, _Math_Base base);
-long double _Math_TakeLog1p(long double x);
+// The exponentials, logarithms and powers, each by a series in long double.
+int          _Math_ReduceExp(long double x, _Math_Base base, long double *r);
+int          _Math_SplitFraction(long double x, long double *m);
+long double  _Math_SumExp(long double r);
+long double  _Math_SumLog(long double f);
+long double  _Math_TakeExp(long double x, _Math_Base base);
+long double  _Math_TakeExpm1(long double x);
+long double  _Math_TakeLog(long double x, _Math_Base base);
+long double  _Math_TakeLog1p(long double x);
+long double  _Math_SplitHalves(long double x, long double *low);
+long double  _Math_AddParts(long double x, long double y, long double *error);
+long double  _Math_MultiplyParts(long double x, long double y, long double *error);
+long double  _Math_TakeLogParts(long double x, long double *low);
+_Math_Parity _Math_ReadParity(long double y);
+long double  _Math_TakePow(long double x, long double y);
 
 // Trigonometric functions
 // [C99:7.12.1p2]:  a domain error, of an infinity too by its footnote 203
