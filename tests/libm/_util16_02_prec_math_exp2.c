@@ -1,6 +1,6 @@
 // (Test) Compiler flags: -lm
 // (Test) Status: 0
-// A test file for <_prec_math.h> _prec_exp2.
+// A test file for <_prec_math.h> __prec_math_exp2.
 
 // Include helpers.
 #include "_util16_00_prec_math_helpers.inc"
@@ -8,8 +8,8 @@
 // Defines.
 #define MODES 4
 
-// _prec_exp2 should give 2 to x in the current direction in each type, a power
-// of 2 exactly, 1 of a zero, +0 and +inf of the infinities, and a range
+// __prec_math_exp2 should give 2 to x in the current direction in each type, a
+// power of 2 exactly, 1 of a zero, +0 and +inf of the infinities, and a range
 // error when the result overflows to an infinity or underflows to zero.
 static void Test_PrecMathExp2(void)
 {
@@ -27,40 +27,40 @@ static void Test_PrecMathExp2(void)
     for (int i = 0; i < MODES; i++) {
         _Fpu_WriteRound(modes[i]);
         _Fpu_ClearFlags(_FPU_EXCEPTS);
-        _TEST_FLOAT(_prec_exp2(half), value[i]);
-        _TEST_FLOAT(_prec_exp2f(halff), valuef[i]);
-        _TEST_FLOAT(_prec_exp2l(halfl), valuel[i]);
+        _TEST_FLOAT(__prec_math_exp2(half), value[i]);
+        _TEST_FLOAT(__prec_math_exp2f(halff), valuef[i]);
+        _TEST_FLOAT(__prec_math_exp2l(halfl), valuel[i]);
         _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_INEXACT);
     }
     _Fpu_WriteRound(_FPU_TONEAREST);
 
     _Fpu_ClearFlags(_FPU_EXCEPTS);
-    _TEST_FLOAT(_prec_exp2(3.0), 8.0);
-    _TEST_FLOAT(_prec_exp2(-1022.0), 0x1p-1022);
-    _TEST_FLOAT(_prec_exp2f(-149.0f), 0x1p-149f);
-    _TEST_FLOAT(_prec_exp2l(16383.0L), 0x1p16383L);
-    _TEST_FLOAT(_prec_exp2(-0.0), 1.0);
-    _TEST_FLOAT(_prec_exp2f(0.0f), 1.0f);
-    _TEST_FLOAT(_prec_exp2(-inf), 0.0);
-    _TEST_FLOAT(_prec_exp2l(inf), inf);
-    _TEST_TRUE(_Exact_IsNan(_prec_exp2(dnan)));
+    _TEST_FLOAT(__prec_math_exp2(3.0), 8.0);
+    _TEST_FLOAT(__prec_math_exp2(-1022.0), 0x1p-1022);
+    _TEST_FLOAT(__prec_math_exp2f(-149.0f), 0x1p-149f);
+    _TEST_FLOAT(__prec_math_exp2l(16383.0L), 0x1p16383L);
+    _TEST_FLOAT(__prec_math_exp2(-0.0), 1.0);
+    _TEST_FLOAT(__prec_math_exp2f(0.0f), 1.0f);
+    _TEST_FLOAT(__prec_math_exp2(-inf), 0.0);
+    _TEST_FLOAT(__prec_math_exp2l(inf), inf);
+    _TEST_TRUE(_Exact_IsNan(__prec_math_exp2(dnan)));
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), 0);
 
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_exp2(1024.0), _EXACT_INFINITY);
+    _TEST_FLOAT(__prec_math_exp2(1024.0), _EXACT_INFINITY);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_OVERFLOW | _FPU_INEXACT);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_exp2(-1080.0), 0.0);
+    _TEST_FLOAT(__prec_math_exp2(-1080.0), 0.0);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_UNDERFLOW | _FPU_INEXACT);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_exp2f(128.0f), _EXACT_INFINITY);
+    _TEST_FLOAT(__prec_math_exp2f(128.0f), _EXACT_INFINITY);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_exp2l(-16446.0L), 0.0L);
+    _TEST_FLOAT(__prec_math_exp2l(-16446.0L), 0.0L);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
     _Err_Errno = 0;

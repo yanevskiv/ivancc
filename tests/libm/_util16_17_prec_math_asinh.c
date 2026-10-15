@@ -1,6 +1,6 @@
 // (Test) Compiler flags: -lm
 // (Test) Status: 0
-// A test file for <_prec_math.h> _prec_asinh.
+// A test file for <_prec_math.h> __prec_math_asinh.
 
 // Include helpers.
 #include "_util16_00_prec_math_helpers.inc"
@@ -8,7 +8,7 @@
 // Defines.
 #define MODES 4
 
-// _prec_asinh should give the inverse hyperbolic sine of x in the current
+// __prec_math_asinh should give the inverse hyperbolic sine of x in the current
 // direction in each type, keep a zero's and an infinity's sign raising
 // nothing, and give a subnormal x itself with underflow.
 static void Test_PrecMathAsinh(void)
@@ -27,23 +27,23 @@ static void Test_PrecMathAsinh(void)
     for (int i = 0; i < MODES; i++) {
         _Fpu_WriteRound(modes[i]);
         _Fpu_ClearFlags(_FPU_EXCEPTS);
-        _TEST_FLOAT(_prec_asinh(five), value[i]);
-        _TEST_FLOAT(_prec_asinhf(halff), valuef[i]);
-        _TEST_FLOAT(_prec_asinhl(threel), valuel[i]);
+        _TEST_FLOAT(__prec_math_asinh(five), value[i]);
+        _TEST_FLOAT(__prec_math_asinhf(halff), valuef[i]);
+        _TEST_FLOAT(__prec_math_asinhl(threel), valuel[i]);
         _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_INEXACT);
     }
     _Fpu_WriteRound(_FPU_TONEAREST);
 
     _Fpu_ClearFlags(_FPU_EXCEPTS);
-    _TEST_FLOAT(_prec_asinh(0.0), 0.0);
-    _TEST_FLOAT(_prec_asinhf(-0.0f), -0.0f);
-    _TEST_FLOAT(_prec_asinhl(-inf), -_EXACT_INFINITY);
-    _TEST_FLOAT(_prec_asinh(inf), inf);
-    _TEST_TRUE(_Exact_IsNan(_prec_asinh(dnan)));
+    _TEST_FLOAT(__prec_math_asinh(0.0), 0.0);
+    _TEST_FLOAT(__prec_math_asinhf(-0.0f), -0.0f);
+    _TEST_FLOAT(__prec_math_asinhl(-inf), -_EXACT_INFINITY);
+    _TEST_FLOAT(__prec_math_asinh(inf), inf);
+    _TEST_TRUE(_Exact_IsNan(__prec_math_asinh(dnan)));
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), 0);
 
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_asinh(0x1p-1074), 0x1p-1074);
+    _TEST_FLOAT(__prec_math_asinh(0x1p-1074), 0x1p-1074);
     _TEST_INT(_Err_Errno, 0);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_UNDERFLOW | _FPU_INEXACT);
     _Fpu_ClearFlags(_FPU_EXCEPTS);

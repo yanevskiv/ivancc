@@ -1,6 +1,6 @@
 // (Test) Compiler flags: -lm
 // (Test) Status: 0
-// A test file for <_prec_math.h> _prec_acosh.
+// A test file for <_prec_math.h> __prec_math_acosh.
 
 // Include helpers.
 #include "_util16_00_prec_math_helpers.inc"
@@ -8,8 +8,8 @@
 // Defines.
 #define MODES 4
 
-// _prec_acosh should give the nonnegative inverse hyperbolic cosine of x in the
-// current direction in each type, +0 of 1 and +inf of +inf raising
+// __prec_math_acosh should give the nonnegative inverse hyperbolic cosine of x
+// in the current direction in each type, +0 of 1 and +inf of +inf raising
 // nothing, and a NaN with invalid and EDOM below 1.
 static void Test_PrecMathAcosh(void)
 {
@@ -27,28 +27,28 @@ static void Test_PrecMathAcosh(void)
     for (int i = 0; i < MODES; i++) {
         _Fpu_WriteRound(modes[i]);
         _Fpu_ClearFlags(_FPU_EXCEPTS);
-        _TEST_FLOAT(_prec_acosh(half), value[i]);
-        _TEST_FLOAT(_prec_acoshf(halff), valuef[i]);
-        _TEST_FLOAT(_prec_acoshl(quarterl), valuel[i]);
+        _TEST_FLOAT(__prec_math_acosh(half), value[i]);
+        _TEST_FLOAT(__prec_math_acoshf(halff), valuef[i]);
+        _TEST_FLOAT(__prec_math_acoshl(quarterl), valuel[i]);
         _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_INEXACT);
     }
     _Fpu_WriteRound(_FPU_TONEAREST);
 
     _Fpu_ClearFlags(_FPU_EXCEPTS);
-    _TEST_FLOAT(_prec_acosh(1.0), 0.0);
-    _TEST_FLOAT(_prec_acoshf(1.0f), 0.0f);
-    _TEST_FLOAT(_prec_acoshl(1.0L), 0.0L);
-    _TEST_FLOAT(_prec_acosh(inf), inf);
-    _TEST_TRUE(_Exact_IsNan(_prec_acosh(dnan)));
+    _TEST_FLOAT(__prec_math_acosh(1.0), 0.0);
+    _TEST_FLOAT(__prec_math_acoshf(1.0f), 0.0f);
+    _TEST_FLOAT(__prec_math_acoshl(1.0L), 0.0L);
+    _TEST_FLOAT(__prec_math_acosh(inf), inf);
+    _TEST_TRUE(_Exact_IsNan(__prec_math_acosh(dnan)));
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), 0);
 
     _Err_Errno = 0;
-    _TEST_TRUE(_Exact_IsNan(_prec_acosh(0.5)));
+    _TEST_TRUE(_Exact_IsNan(__prec_math_acosh(0.5)));
     _TEST_INT(_Err_Errno, _SYS_EDOM);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_INVALID);
     _Err_Errno = 0;
     _Fpu_ClearFlags(_FPU_EXCEPTS);
-    _TEST_TRUE(_Exact_IsNan(_prec_acoshf((float) -inf)));
+    _TEST_TRUE(_Exact_IsNan(__prec_math_acoshf((float) -inf)));
     _TEST_INT(_Err_Errno, _SYS_EDOM);
     _Err_Errno = 0;
     _Fpu_ClearFlags(_FPU_EXCEPTS);

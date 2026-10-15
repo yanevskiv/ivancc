@@ -1468,451 +1468,451 @@ long double _Prec_Math_TakeTgamma(long double x, _Exact_Type type)
 }
 
 // Take the arc cosine of x.
-double _prec_acos(double x)
+double __prec_math_acos(double x)
 {
     return (double) _Prec_Math_TakeArc(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the arc cosine of x.
-float _prec_acosf(float x)
+float __prec_math_acosf(float x)
 {
     return (float) _Prec_Math_TakeArc(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_FLOAT);
 }
 
 // Take the arc cosine of x.
-long double _prec_acosl(long double x)
+long double __prec_math_acosl(long double x)
 {
     return _Prec_Math_TakeArc(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the arc sine of x.
-double _prec_asin(double x)
+double __prec_math_asin(double x)
 {
     return (double) _Prec_Math_TakeArc(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the arc sine of x.
-float _prec_asinf(float x)
+float __prec_math_asinf(float x)
 {
     return (float) _Prec_Math_TakeArc(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_FLOAT);
 }
 
 // Take the arc sine of x.
-long double _prec_asinl(long double x)
+long double __prec_math_asinl(long double x)
 {
     return _Prec_Math_TakeArc(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the arc tangent of x.
-double _prec_atan(double x)
+double __prec_math_atan(double x)
 {
     return (double) _Prec_Math_TakeAtan2(x, 1.0L, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the arc tangent of x.
-float _prec_atanf(float x)
+float __prec_math_atanf(float x)
 {
     return (float) _Prec_Math_TakeAtan2(x, 1.0L, _EXACT_TYPE_FLOAT);
 }
 
 // Take the arc tangent of x.
-long double _prec_atanl(long double x)
+long double __prec_math_atanl(long double x)
 {
     return _Prec_Math_TakeAtan2(x, 1.0L, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the arc tangent of y over x by both signs.
-double _prec_atan2(double y, double x)
+double __prec_math_atan2(double y, double x)
 {
     return (double) _Prec_Math_TakeAtan2(y, x, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the arc tangent of y over x by both signs.
-float _prec_atan2f(float y, float x)
+float __prec_math_atan2f(float y, float x)
 {
     return (float) _Prec_Math_TakeAtan2(y, x, _EXACT_TYPE_FLOAT);
 }
 
 // Take the arc tangent of y over x by both signs.
-long double _prec_atan2l(long double y, long double x)
+long double __prec_math_atan2l(long double y, long double x)
 {
     return _Prec_Math_TakeAtan2(y, x, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the cosine of x.
-double _prec_cos(double x)
+double __prec_math_cos(double x)
 {
     return (double) _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the cosine of x.
-float _prec_cosf(float x)
+float __prec_math_cosf(float x)
 {
     return (float) _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_FLOAT);
 }
 
 // Take the cosine of x.
-long double _prec_cosl(long double x)
+long double __prec_math_cosl(long double x)
 {
     return _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the sine of x.
-double _prec_sin(double x)
+double __prec_math_sin(double x)
 {
     return (double) _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the sine of x.
-float _prec_sinf(float x)
+float __prec_math_sinf(float x)
 {
     return (float) _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_FLOAT);
 }
 
 // Take the sine of x.
-long double _prec_sinl(long double x)
+long double __prec_math_sinl(long double x)
 {
     return _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the tangent of x.
-double _prec_tan(double x)
+double __prec_math_tan(double x)
 {
     return (double) _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the tangent of x.
-float _prec_tanf(float x)
+float __prec_math_tanf(float x)
 {
     return (float) _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_FLOAT);
 }
 
 // Take the tangent of x.
-long double _prec_tanl(long double x)
+long double __prec_math_tanl(long double x)
 {
     return _Prec_Math_TakeTrig(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the inverse hyperbolic cosine of x.
-double _prec_acosh(double x)
+double __prec_math_acosh(double x)
 {
     return (double) _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the inverse hyperbolic cosine of x.
-float _prec_acoshf(float x)
+float __prec_math_acoshf(float x)
 {
     return (float) _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_FLOAT);
 }
 
 // Take the inverse hyperbolic cosine of x.
-long double _prec_acoshl(long double x)
+long double __prec_math_acoshl(long double x)
 {
     return _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the inverse hyperbolic sine of x.
-double _prec_asinh(double x)
+double __prec_math_asinh(double x)
 {
     return (double) _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the inverse hyperbolic sine of x.
-float _prec_asinhf(float x)
+float __prec_math_asinhf(float x)
 {
     return (float) _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_FLOAT);
 }
 
 // Take the inverse hyperbolic sine of x.
-long double _prec_asinhl(long double x)
+long double __prec_math_asinhl(long double x)
 {
     return _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the inverse hyperbolic tangent of x.
-double _prec_atanh(double x)
+double __prec_math_atanh(double x)
 {
     return (double) _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the inverse hyperbolic tangent of x.
-float _prec_atanhf(float x)
+float __prec_math_atanhf(float x)
 {
     return (float) _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_FLOAT);
 }
 
 // Take the inverse hyperbolic tangent of x.
-long double _prec_atanhl(long double x)
+long double __prec_math_atanhl(long double x)
 {
     return _Prec_Math_TakeArcHyperbolic(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the hyperbolic cosine of x.
-double _prec_cosh(double x)
+double __prec_math_cosh(double x)
 {
     return (double) _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the hyperbolic cosine of x.
-float _prec_coshf(float x)
+float __prec_math_coshf(float x)
 {
     return (float) _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_FLOAT);
 }
 
 // Take the hyperbolic cosine of x.
-long double _prec_coshl(long double x)
+long double __prec_math_coshl(long double x)
 {
     return _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_COS, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the hyperbolic sine of x.
-double _prec_sinh(double x)
+double __prec_math_sinh(double x)
 {
     return (double) _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the hyperbolic sine of x.
-float _prec_sinhf(float x)
+float __prec_math_sinhf(float x)
 {
     return (float) _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_FLOAT);
 }
 
 // Take the hyperbolic sine of x.
-long double _prec_sinhl(long double x)
+long double __prec_math_sinhl(long double x)
 {
     return _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_SIN, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the hyperbolic tangent of x.
-double _prec_tanh(double x)
+double __prec_math_tanh(double x)
 {
     return (double) _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the hyperbolic tangent of x.
-float _prec_tanhf(float x)
+float __prec_math_tanhf(float x)
 {
     return (float) _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_FLOAT);
 }
 
 // Take the hyperbolic tangent of x.
-long double _prec_tanhl(long double x)
+long double __prec_math_tanhl(long double x)
 {
     return _Prec_Math_TakeHyperbolic(x, _PREC_MATH_TRIG_TAN, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take e to x.
-double _prec_exp(double x)
+double __prec_math_exp(double x)
 {
     return (double) _Prec_Math_TakeExp(x, _PREC_MATH_BASE_E, _EXACT_TYPE_DOUBLE);
 }
 
 // Take e to x.
-float _prec_expf(float x)
+float __prec_math_expf(float x)
 {
     return (float) _Prec_Math_TakeExp(x, _PREC_MATH_BASE_E, _EXACT_TYPE_FLOAT);
 }
 
 // Take e to x.
-long double _prec_expl(long double x)
+long double __prec_math_expl(long double x)
 {
     return _Prec_Math_TakeExp(x, _PREC_MATH_BASE_E, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take 2 to x.
-double _prec_exp2(double x)
+double __prec_math_exp2(double x)
 {
     return (double) _Prec_Math_TakeExp(x, _PREC_MATH_BASE_2, _EXACT_TYPE_DOUBLE);
 }
 
 // Take 2 to x.
-float _prec_exp2f(float x)
+float __prec_math_exp2f(float x)
 {
     return (float) _Prec_Math_TakeExp(x, _PREC_MATH_BASE_2, _EXACT_TYPE_FLOAT);
 }
 
 // Take 2 to x.
-long double _prec_exp2l(long double x)
+long double __prec_math_exp2l(long double x)
 {
     return _Prec_Math_TakeExp(x, _PREC_MATH_BASE_2, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take e to x, less 1.
-double _prec_expm1(double x)
+double __prec_math_expm1(double x)
 {
     return (double) _Prec_Math_TakeExpm1(x, _EXACT_TYPE_DOUBLE);
 }
 
 // Take e to x, less 1.
-float _prec_expm1f(float x)
+float __prec_math_expm1f(float x)
 {
     return (float) _Prec_Math_TakeExpm1(x, _EXACT_TYPE_FLOAT);
 }
 
 // Take e to x, less 1.
-long double _prec_expm1l(long double x)
+long double __prec_math_expm1l(long double x)
 {
     return _Prec_Math_TakeExpm1(x, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the natural logarithm of x.
-double _prec_log(double x)
+double __prec_math_log(double x)
 {
     return (double) _Prec_Math_TakeLog(x, _PREC_MATH_BASE_E, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the natural logarithm of x.
-float _prec_logf(float x)
+float __prec_math_logf(float x)
 {
     return (float) _Prec_Math_TakeLog(x, _PREC_MATH_BASE_E, _EXACT_TYPE_FLOAT);
 }
 
 // Take the natural logarithm of x.
-long double _prec_logl(long double x)
+long double __prec_math_logl(long double x)
 {
     return _Prec_Math_TakeLog(x, _PREC_MATH_BASE_E, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the base-10 logarithm of x.
-double _prec_log10(double x)
+double __prec_math_log10(double x)
 {
     return (double) _Prec_Math_TakeLog(x, _PREC_MATH_BASE_10, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the base-10 logarithm of x.
-float _prec_log10f(float x)
+float __prec_math_log10f(float x)
 {
     return (float) _Prec_Math_TakeLog(x, _PREC_MATH_BASE_10, _EXACT_TYPE_FLOAT);
 }
 
 // Take the base-10 logarithm of x.
-long double _prec_log10l(long double x)
+long double __prec_math_log10l(long double x)
 {
     return _Prec_Math_TakeLog(x, _PREC_MATH_BASE_10, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the natural logarithm of 1 plus x.
-double _prec_log1p(double x)
+double __prec_math_log1p(double x)
 {
     return (double) _Prec_Math_TakeLog1p(x, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the natural logarithm of 1 plus x.
-float _prec_log1pf(float x)
+float __prec_math_log1pf(float x)
 {
     return (float) _Prec_Math_TakeLog1p(x, _EXACT_TYPE_FLOAT);
 }
 
 // Take the natural logarithm of 1 plus x.
-long double _prec_log1pl(long double x)
+long double __prec_math_log1pl(long double x)
 {
     return _Prec_Math_TakeLog1p(x, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the base-2 logarithm of x.
-double _prec_log2(double x)
+double __prec_math_log2(double x)
 {
     return (double) _Prec_Math_TakeLog(x, _PREC_MATH_BASE_2, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the base-2 logarithm of x.
-float _prec_log2f(float x)
+float __prec_math_log2f(float x)
 {
     return (float) _Prec_Math_TakeLog(x, _PREC_MATH_BASE_2, _EXACT_TYPE_FLOAT);
 }
 
 // Take the base-2 logarithm of x.
-long double _prec_log2l(long double x)
+long double __prec_math_log2l(long double x)
 {
     return _Prec_Math_TakeLog(x, _PREC_MATH_BASE_2, _EXACT_TYPE_LDOUBLE);
 }
 
 // Raise x to the power y.
-double _prec_pow(double x, double y)
+double __prec_math_pow(double x, double y)
 {
     return (double) _Prec_Math_TakePow(x, y, _EXACT_TYPE_DOUBLE);
 }
 
 // Raise x to the power y.
-float _prec_powf(float x, float y)
+float __prec_math_powf(float x, float y)
 {
     return (float) _Prec_Math_TakePow(x, y, _EXACT_TYPE_FLOAT);
 }
 
 // Raise x to the power y.
-long double _prec_powl(long double x, long double y)
+long double __prec_math_powl(long double x, long double y)
 {
     return _Prec_Math_TakePow(x, y, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the error function of x.
-double _prec_erf(double x)
+double __prec_math_erf(double x)
 {
     return (double) _Prec_Math_TakeErf(x, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the error function of x.
-float _prec_erff(float x)
+float __prec_math_erff(float x)
 {
     return (float) _Prec_Math_TakeErf(x, _EXACT_TYPE_FLOAT);
 }
 
 // Take the error function of x.
-long double _prec_erfl(long double x)
+long double __prec_math_erfl(long double x)
 {
     return _Prec_Math_TakeErf(x, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the complementary error function of x.
-double _prec_erfc(double x)
+double __prec_math_erfc(double x)
 {
     return (double) _Prec_Math_TakeErfc(x, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the complementary error function of x.
-float _prec_erfcf(float x)
+float __prec_math_erfcf(float x)
 {
     return (float) _Prec_Math_TakeErfc(x, _EXACT_TYPE_FLOAT);
 }
 
 // Take the complementary error function of x.
-long double _prec_erfcl(long double x)
+long double __prec_math_erfcl(long double x)
 {
     return _Prec_Math_TakeErfc(x, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
-double _prec_lgamma(double x)
+double __prec_math_lgamma(double x)
 {
     return (double) _Prec_Math_TakeLgamma(x, _EXACT_TYPE_DOUBLE);
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
-float _prec_lgammaf(float x)
+float __prec_math_lgammaf(float x)
 {
     return (float) _Prec_Math_TakeLgamma(x, _EXACT_TYPE_FLOAT);
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
-long double _prec_lgammal(long double x)
+long double __prec_math_lgammal(long double x)
 {
     return _Prec_Math_TakeLgamma(x, _EXACT_TYPE_LDOUBLE);
 }
 
 // Take gamma of x.
-double _prec_tgamma(double x)
+double __prec_math_tgamma(double x)
 {
     return (double) _Prec_Math_TakeTgamma(x, _EXACT_TYPE_DOUBLE);
 }
 
 // Take gamma of x.
-float _prec_tgammaf(float x)
+float __prec_math_tgammaf(float x)
 {
     return (float) _Prec_Math_TakeTgamma(x, _EXACT_TYPE_FLOAT);
 }
 
 // Take gamma of x.
-long double _prec_tgammal(long double x)
+long double __prec_math_tgammal(long double x)
 {
     return _Prec_Math_TakeTgamma(x, _EXACT_TYPE_LDOUBLE);
 }

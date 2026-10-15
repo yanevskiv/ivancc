@@ -308,289 +308,289 @@ long double _Math_TakeFma(long double x, long double y, long double z, _Exact_Ty
 // Take the arc cosine of x.
 double acos(double x)
 {
-    return _prec_acos(x);
+    return __prec_math_acos(x);
 }
 
 // Take the arc cosine of x.
 float acosf(float x)
 {
-    return _prec_acosf(x);
+    return __prec_math_acosf(x);
 }
 
 // Take the arc cosine of x.
 long double acosl(long double x)
 {
-    return _prec_acosl(x);
+    return __prec_math_acosl(x);
 }
 
 // Take the arc sine of x.
 double asin(double x)
 {
-    return _prec_asin(x);
+    return __prec_math_asin(x);
 }
 
 // Take the arc sine of x.
 float asinf(float x)
 {
-    return _prec_asinf(x);
+    return __prec_math_asinf(x);
 }
 
 // Take the arc sine of x.
 long double asinl(long double x)
 {
-    return _prec_asinl(x);
+    return __prec_math_asinl(x);
 }
 
 // Take the arc tangent of x.
 double atan(double x)
 {
-    return _prec_atan(x);
+    return __prec_math_atan(x);
 }
 
 // Take the arc tangent of x.
 float atanf(float x)
 {
-    return _prec_atanf(x);
+    return __prec_math_atanf(x);
 }
 
 // Take the arc tangent of x.
 long double atanl(long double x)
 {
-    return _prec_atanl(x);
+    return __prec_math_atanl(x);
 }
 
 // Take the arc tangent of y over x by both signs.
 double atan2(double y, double x)
 {
-    return _prec_atan2(y, x);
+    return __prec_math_atan2(y, x);
 }
 
 // Take the arc tangent of y over x by both signs.
 float atan2f(float y, float x)
 {
-    return _prec_atan2f(y, x);
+    return __prec_math_atan2f(y, x);
 }
 
 // Take the arc tangent of y over x by both signs.
 long double atan2l(long double y, long double x)
 {
-    return _prec_atan2l(y, x);
+    return __prec_math_atan2l(y, x);
 }
 
 // Take the cosine of x.
 double cos(double x)
 {
-    return _prec_cos(x);
+    return __prec_math_cos(x);
 }
 
 // Take the cosine of x.
 float cosf(float x)
 {
-    return _prec_cosf(x);
+    return __prec_math_cosf(x);
 }
 
 // Take the cosine of x.
 long double cosl(long double x)
 {
-    return _prec_cosl(x);
+    return __prec_math_cosl(x);
 }
 
 // Take the sine of x.
 double sin(double x)
 {
-    return _prec_sin(x);
+    return __prec_math_sin(x);
 }
 
 // Take the sine of x.
 float sinf(float x)
 {
-    return _prec_sinf(x);
+    return __prec_math_sinf(x);
 }
 
 // Take the sine of x.
 long double sinl(long double x)
 {
-    return _prec_sinl(x);
+    return __prec_math_sinl(x);
 }
 
 // Take the tangent of x.
 double tan(double x)
 {
-    return _prec_tan(x);
+    return __prec_math_tan(x);
 }
 
 // Take the tangent of x.
 float tanf(float x)
 {
-    return _prec_tanf(x);
+    return __prec_math_tanf(x);
 }
 
 // Take the tangent of x.
 long double tanl(long double x)
 {
-    return _prec_tanl(x);
+    return __prec_math_tanl(x);
 }
 
 // Take the inverse hyperbolic cosine of x.
 double acosh(double x)
 {
-    return _prec_acosh(x);
+    return __prec_math_acosh(x);
 }
 
 // Take the inverse hyperbolic cosine of x.
 float acoshf(float x)
 {
-    return _prec_acoshf(x);
+    return __prec_math_acoshf(x);
 }
 
 // Take the inverse hyperbolic cosine of x.
 long double acoshl(long double x)
 {
-    return _prec_acoshl(x);
+    return __prec_math_acoshl(x);
 }
 
 // Take the inverse hyperbolic sine of x.
 double asinh(double x)
 {
-    return _prec_asinh(x);
+    return __prec_math_asinh(x);
 }
 
 // Take the inverse hyperbolic sine of x.
 float asinhf(float x)
 {
-    return _prec_asinhf(x);
+    return __prec_math_asinhf(x);
 }
 
 // Take the inverse hyperbolic sine of x.
 long double asinhl(long double x)
 {
-    return _prec_asinhl(x);
+    return __prec_math_asinhl(x);
 }
 
 // Take the inverse hyperbolic tangent of x.
 double atanh(double x)
 {
-    return _prec_atanh(x);
+    return __prec_math_atanh(x);
 }
 
 // Take the inverse hyperbolic tangent of x.
 float atanhf(float x)
 {
-    return _prec_atanhf(x);
+    return __prec_math_atanhf(x);
 }
 
 // Take the inverse hyperbolic tangent of x.
 long double atanhl(long double x)
 {
-    return _prec_atanhl(x);
+    return __prec_math_atanhl(x);
 }
 
 // Take the hyperbolic cosine of x.
 double cosh(double x)
 {
-    return _prec_cosh(x);
+    return __prec_math_cosh(x);
 }
 
 // Take the hyperbolic cosine of x.
 float coshf(float x)
 {
-    return _prec_coshf(x);
+    return __prec_math_coshf(x);
 }
 
 // Take the hyperbolic cosine of x.
 long double coshl(long double x)
 {
-    return _prec_coshl(x);
+    return __prec_math_coshl(x);
 }
 
 // Take the hyperbolic sine of x.
 double sinh(double x)
 {
-    return _prec_sinh(x);
+    return __prec_math_sinh(x);
 }
 
 // Take the hyperbolic sine of x.
 float sinhf(float x)
 {
-    return _prec_sinhf(x);
+    return __prec_math_sinhf(x);
 }
 
 // Take the hyperbolic sine of x.
 long double sinhl(long double x)
 {
-    return _prec_sinhl(x);
+    return __prec_math_sinhl(x);
 }
 
 // Take the hyperbolic tangent of x.
 double tanh(double x)
 {
-    return _prec_tanh(x);
+    return __prec_math_tanh(x);
 }
 
 // Take the hyperbolic tangent of x.
 float tanhf(float x)
 {
-    return _prec_tanhf(x);
+    return __prec_math_tanhf(x);
 }
 
 // Take the hyperbolic tangent of x.
 long double tanhl(long double x)
 {
-    return _prec_tanhl(x);
+    return __prec_math_tanhl(x);
 }
 
 // Take e to x.
 double exp(double x)
 {
-    return _prec_exp(x);
+    return __prec_math_exp(x);
 }
 
 // Take e to x.
 float expf(float x)
 {
-    return _prec_expf(x);
+    return __prec_math_expf(x);
 }
 
 // Take e to x.
 long double expl(long double x)
 {
-    return _prec_expl(x);
+    return __prec_math_expl(x);
 }
 
 // Take 2 to x.
 double exp2(double x)
 {
-    return _prec_exp2(x);
+    return __prec_math_exp2(x);
 }
 
 // Take 2 to x.
 float exp2f(float x)
 {
-    return _prec_exp2f(x);
+    return __prec_math_exp2f(x);
 }
 
 // Take 2 to x.
 long double exp2l(long double x)
 {
-    return _prec_exp2l(x);
+    return __prec_math_exp2l(x);
 }
 
 // Take e to x, less 1.
 double expm1(double x)
 {
-    return _prec_expm1(x);
+    return __prec_math_expm1(x);
 }
 
 // Take e to x, less 1.
 float expm1f(float x)
 {
-    return _prec_expm1f(x);
+    return __prec_math_expm1f(x);
 }
 
 // Take e to x, less 1.
 long double expm1l(long double x)
 {
-    return _prec_expm1l(x);
+    return __prec_math_expm1l(x);
 }
 
 // Break value into a fraction and a power of 2.
@@ -668,73 +668,73 @@ long double ldexpl(long double x, int exp)
 // Take the natural logarithm of x.
 double log(double x)
 {
-    return _prec_log(x);
+    return __prec_math_log(x);
 }
 
 // Take the natural logarithm of x.
 float logf(float x)
 {
-    return _prec_logf(x);
+    return __prec_math_logf(x);
 }
 
 // Take the natural logarithm of x.
 long double logl(long double x)
 {
-    return _prec_logl(x);
+    return __prec_math_logl(x);
 }
 
 // Take the base-10 logarithm of x.
 double log10(double x)
 {
-    return _prec_log10(x);
+    return __prec_math_log10(x);
 }
 
 // Take the base-10 logarithm of x.
 float log10f(float x)
 {
-    return _prec_log10f(x);
+    return __prec_math_log10f(x);
 }
 
 // Take the base-10 logarithm of x.
 long double log10l(long double x)
 {
-    return _prec_log10l(x);
+    return __prec_math_log10l(x);
 }
 
 // Take the natural logarithm of 1 plus x.
 double log1p(double x)
 {
-    return _prec_log1p(x);
+    return __prec_math_log1p(x);
 }
 
 // Take the natural logarithm of 1 plus x.
 float log1pf(float x)
 {
-    return _prec_log1pf(x);
+    return __prec_math_log1pf(x);
 }
 
 // Take the natural logarithm of 1 plus x.
 long double log1pl(long double x)
 {
-    return _prec_log1pl(x);
+    return __prec_math_log1pl(x);
 }
 
 // Take the base-2 logarithm of x.
 double log2(double x)
 {
-    return _prec_log2(x);
+    return __prec_math_log2(x);
 }
 
 // Take the base-2 logarithm of x.
 float log2f(float x)
 {
-    return _prec_log2f(x);
+    return __prec_math_log2f(x);
 }
 
 // Take the base-2 logarithm of x.
 long double log2l(long double x)
 {
-    return _prec_log2l(x);
+    return __prec_math_log2l(x);
 }
 
 // Extract x's exponent as a floating value.
@@ -903,19 +903,19 @@ long double hypotl(long double x, long double y)
 // Raise x to the power y.
 double pow(double x, double y)
 {
-    return _prec_pow(x, y);
+    return __prec_math_pow(x, y);
 }
 
 // Raise x to the power y.
 float powf(float x, float y)
 {
-    return _prec_powf(x, y);
+    return __prec_math_powf(x, y);
 }
 
 // Raise x to the power y.
 long double powl(long double x, long double y)
 {
-    return _prec_powl(x, y);
+    return __prec_math_powl(x, y);
 }
 
 // Take the nonnegative square root of x.
@@ -939,73 +939,73 @@ long double sqrtl(long double x)
 // Take the error function of x.
 double erf(double x)
 {
-    return _prec_erf(x);
+    return __prec_math_erf(x);
 }
 
 // Take the error function of x.
 float erff(float x)
 {
-    return _prec_erff(x);
+    return __prec_math_erff(x);
 }
 
 // Take the error function of x.
 long double erfl(long double x)
 {
-    return _prec_erfl(x);
+    return __prec_math_erfl(x);
 }
 
 // Take the complementary error function of x.
 double erfc(double x)
 {
-    return _prec_erfc(x);
+    return __prec_math_erfc(x);
 }
 
 // Take the complementary error function of x.
 float erfcf(float x)
 {
-    return _prec_erfcf(x);
+    return __prec_math_erfcf(x);
 }
 
 // Take the complementary error function of x.
 long double erfcl(long double x)
 {
-    return _prec_erfcl(x);
+    return __prec_math_erfcl(x);
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
 double lgamma(double x)
 {
-    return _prec_lgamma(x);
+    return __prec_math_lgamma(x);
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
 float lgammaf(float x)
 {
-    return _prec_lgammaf(x);
+    return __prec_math_lgammaf(x);
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
 long double lgammal(long double x)
 {
-    return _prec_lgammal(x);
+    return __prec_math_lgammal(x);
 }
 
 // Take gamma of x.
 double tgamma(double x)
 {
-    return _prec_tgamma(x);
+    return __prec_math_tgamma(x);
 }
 
 // Take gamma of x.
 float tgammaf(float x)
 {
-    return _prec_tgammaf(x);
+    return __prec_math_tgammaf(x);
 }
 
 // Take gamma of x.
 long double tgammal(long double x)
 {
-    return _prec_tgammal(x);
+    return __prec_math_tgammal(x);
 }
 
 // Round x up to an integer.

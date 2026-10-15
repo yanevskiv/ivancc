@@ -1,6 +1,6 @@
 // (Test) Compiler flags: -lm
 // (Test) Status: 0
-// A test file for <_prec_math.h> _prec_log.
+// A test file for <_prec_math.h> __prec_math_log.
 
 // Include helpers.
 #include "_util16_00_prec_math_helpers.inc"
@@ -8,8 +8,8 @@
 // Defines.
 #define MODES 4
 
-// _prec_log should give the natural logarithm in the current direction in each
-// type, +0 of 1 in every direction, -inf with divide-by-zero and ERANGE of
+// __prec_math_log should give the natural logarithm in the current direction in
+// each type, +0 of 1 in every direction, -inf with divide-by-zero and ERANGE of
 // a zero, and a NaN with invalid and EDOM below zero.
 static void Test_PrecMathLog(void)
 {
@@ -28,38 +28,38 @@ static void Test_PrecMathLog(void)
     for (int i = 0; i < MODES; i++) {
         _Fpu_WriteRound(modes[i]);
         _Fpu_ClearFlags(_FPU_EXCEPTS);
-        _TEST_FLOAT(_prec_log(two), value[i]);
-        _TEST_FLOAT(_prec_logf(twof), valuef[i]);
-        _TEST_FLOAT(_prec_logl(twol), valuel[i]);
+        _TEST_FLOAT(__prec_math_log(two), value[i]);
+        _TEST_FLOAT(__prec_math_logf(twof), valuef[i]);
+        _TEST_FLOAT(__prec_math_logl(twol), valuel[i]);
         _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_INEXACT);
         _Fpu_ClearFlags(_FPU_EXCEPTS);
-        _TEST_FLOAT(_prec_log(one), 0.0);
+        _TEST_FLOAT(__prec_math_log(one), 0.0);
         _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), 0);
     }
     _Fpu_WriteRound(_FPU_TONEAREST);
 
-    _TEST_FLOAT(_prec_log(0x1p-1074), -0x1.74385446d71c3p+9);
+    _TEST_FLOAT(__prec_math_log(0x1p-1074), -0x1.74385446d71c3p+9);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
-    _TEST_FLOAT(_prec_logl(inf), inf);
-    _TEST_TRUE(_Exact_IsNan(_prec_log(dnan)));
+    _TEST_FLOAT(__prec_math_logl(inf), inf);
+    _TEST_TRUE(_Exact_IsNan(__prec_math_log(dnan)));
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), 0);
 
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_log(zero), -_EXACT_INFINITY);
+    _TEST_FLOAT(__prec_math_log(zero), -_EXACT_INFINITY);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_DIVBYZERO);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_logf(-0.0f), -_EXACT_INFINITY);
+    _TEST_FLOAT(__prec_math_logf(-0.0f), -_EXACT_INFINITY);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
     _Err_Errno = 0;
-    _TEST_TRUE(_Exact_IsNan(_prec_log(-one)));
+    _TEST_TRUE(_Exact_IsNan(__prec_math_log(-one)));
     _TEST_INT(_Err_Errno, _SYS_EDOM);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_INVALID);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
     _Err_Errno = 0;
-    _TEST_TRUE(_Exact_IsNan(_prec_logl(-inf)));
+    _TEST_TRUE(_Exact_IsNan(__prec_math_logl(-inf)));
     _TEST_INT(_Err_Errno, _SYS_EDOM);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_INVALID);
     _Fpu_ClearFlags(_FPU_EXCEPTS);

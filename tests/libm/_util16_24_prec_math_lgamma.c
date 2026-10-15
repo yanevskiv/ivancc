@@ -1,6 +1,6 @@
 // (Test) Compiler flags: -lm
 // (Test) Status: 0
-// A test file for <_prec_math.h> _prec_lgamma.
+// A test file for <_prec_math.h> __prec_math_lgamma.
 
 // Include helpers.
 #include "_util16_00_prec_math_helpers.inc"
@@ -8,10 +8,10 @@
 // Defines.
 #define MODES 4
 
-// _prec_lgamma should give the natural logarithm of |gamma| of x in the current
-// direction in each type, +0 of 1 and 2 exactly, +inf of the infinities
-// raising nothing, +inf with divide-by-zero of a pole, and a range error
-// when its result overflows.
+// __prec_math_lgamma should give the natural logarithm of |gamma| of x in the
+// current direction in each type, +0 of 1 and 2 exactly, +inf of the
+// infinities raising nothing, +inf with divide-by-zero of a pole, and a range
+// error when its result overflows.
 static void Test_PrecMathLgamma(void)
 {
     static const int modes[MODES] = {_FPU_TONEAREST, _FPU_DOWNWARD, _FPU_UPWARD, _FPU_TOWARDZERO};
@@ -28,35 +28,35 @@ static void Test_PrecMathLgamma(void)
     for (int i = 0; i < MODES; i++) {
         _Fpu_WriteRound(modes[i]);
         _Fpu_ClearFlags(_FPU_EXCEPTS);
-        _TEST_FLOAT(_prec_lgamma(five), value[i]);
-        _TEST_FLOAT(_prec_lgammaf(fivef), valuef[i]);
-        _TEST_FLOAT(_prec_lgammal(fivel), valuel[i]);
+        _TEST_FLOAT(__prec_math_lgamma(five), value[i]);
+        _TEST_FLOAT(__prec_math_lgammaf(fivef), valuef[i]);
+        _TEST_FLOAT(__prec_math_lgammal(fivel), valuel[i]);
         _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_INEXACT);
     }
     _Fpu_WriteRound(_FPU_TONEAREST);
 
-    _TEST_FLOAT(_prec_lgamma(-0.75), 0x1.93616060ea5ep+0);
+    _TEST_FLOAT(__prec_math_lgamma(-0.75), 0x1.93616060ea5ep+0);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
-    _TEST_FLOAT(_prec_lgamma(1.0), 0.0);
-    _TEST_FLOAT(_prec_lgammaf(2.0f), 0.0f);
-    _TEST_FLOAT(_prec_lgammal(2.0L), 0.0L);
-    _TEST_FLOAT(_prec_lgamma(inf), inf);
-    _TEST_FLOAT(_prec_lgammal(-inf), inf);
-    _TEST_TRUE(_Exact_IsNan(_prec_lgamma(dnan)));
+    _TEST_FLOAT(__prec_math_lgamma(1.0), 0.0);
+    _TEST_FLOAT(__prec_math_lgammaf(2.0f), 0.0f);
+    _TEST_FLOAT(__prec_math_lgammal(2.0L), 0.0L);
+    _TEST_FLOAT(__prec_math_lgamma(inf), inf);
+    _TEST_FLOAT(__prec_math_lgammal(-inf), inf);
+    _TEST_TRUE(_Exact_IsNan(__prec_math_lgamma(dnan)));
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), 0);
 
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_lgamma(zero), _EXACT_INFINITY);
+    _TEST_FLOAT(__prec_math_lgamma(zero), _EXACT_INFINITY);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_DIVBYZERO);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_lgammal(-3.0L), _EXACT_INFINITY);
+    _TEST_FLOAT(__prec_math_lgammal(-3.0L), _EXACT_INFINITY);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_DIVBYZERO);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
     _Err_Errno = 0;
-    _TEST_FLOAT(_prec_lgamma(0x1.fffffffffffffp+1023), _EXACT_INFINITY);
+    _TEST_FLOAT(__prec_math_lgamma(0x1.fffffffffffffp+1023), _EXACT_INFINITY);
     _TEST_INT(_Err_Errno, _SYS_ERANGE);
     _TEST_INT(_Fpu_TestFlags(_FPU_EXCEPTS), _FPU_OVERFLOW | _FPU_INEXACT);
     _Fpu_ClearFlags(_FPU_EXCEPTS);
