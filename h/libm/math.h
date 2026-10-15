@@ -117,8 +117,13 @@
 #define _MATH_LOG10E_LIMBS  0x45C9A202U, 0x3EE34602U, 0xAD33DC32U, 0x355BAAAFU, 0x37287195U, 0xDE5BD8A9U
 #define _MATH_LOG10E_UNIT   (-193)
 
-// The magnitude past which every exponential overflows or underflows.
-#define _MATH_EXP_CLAMP 0x1p15L
+// The magnitude past which every exponential overflows or underflows, and
+// its exponent.
+#define _MATH_EXP_CLAMP     0x1p15L
+#define _MATH_EXP_CLAMP_EXP 15
+
+// The power pow takes as a square root.
+#define _MATH_POW_ROOT 0.5L
 
 // The halvings of an exponential's reduced argument, and the greatest
 // divisor of its series.
@@ -248,6 +253,14 @@ enum _Math_Constant {
     _MATH_CONST_LOG10E // the base-10 logarithm of e
 };
 
+// Whether a power's exponent is an integer, and which.
+typedef enum _Math_Parity _Math_Parity;
+enum _Math_Parity {
+    _MATH_PARITY_NONE, // not an integer
+    _MATH_PARITY_EVEN, // an even integer
+    _MATH_PARITY_ODD   // an odd integer
+};
+
 // An unsigned integer of limbs, the least significant first.
 typedef struct _Math_Wide _Math_Wide;
 struct _Math_Wide {
@@ -323,25 +336,29 @@ long double        _Math_TakeHypot(long double x, long double y, _Math_Type type
 long double        _Math_TakeFma(long double x, long double y, long double z, _Math_Type type);
 
 // The approximated functions' working values, their cores and their errors.
-void        _Math_TrimExact(_Math_Exact *e);
-void        _Math_WorkMultiply(_Math_Exact *product, const _Math_Exact *a, const _Math_Exact *b);
-void        _Math_WorkAdd(_Math_Exact *sum, const _Math_Exact *a, const _Math_Exact *b);
-void        _Math_WorkDivide(_Math_Exact *quotient, const _Math_Exact *a, const _Math_Exact *b);
-void        _Math_WorkDivideSmall(_Math_Exact *e, unsigned int d);
-void        _Math_MakeReciprocal(_Math_Exact *e, unsigned int d);
-void        _Math_MakeConstant(_Math_Exact *e, _Math_Constant which);
-long        _Math_ReadNearest(const _Math_Exact *e);
-long        _Math_ReduceExp(_Math_Exact *r, const _Math_Exact *t);
-void        _Math_ExpM1Exact(_Math_Exact *em1, const _Math_Exact *r);
-int         _Math_SplitLog(_Math_Exact *num, _Math_Exact *den, const _Math_Exact *u);
-void        _Math_LogExact(_Math_Exact *log, const _Math_Exact *num, const _Math_Exact *den, int e);
-_Bool       _Math_IsPowerTen(long double x, long k);
-long double _Math_RaisePole(void);
-long double _Math_RoundRange(const _Math_Exact *value, _Math_Type type);
-long double _Math_TakeExp(long double x, _Math_Base base, _Math_Type type);
-long double _Math_TakeExpm1(long double x, _Math_Type type);
-long double _Math_TakeLog(long double x, _Math_Base base, _Math_Type type);
-long double _Math_TakeLog1p(long double x, _Math_Type type);
+void         _Math_TrimExact(_Math_Exact *e);
+void         _Math_WorkMultiply(_Math_Exact *product, const _Math_Exact *a, const _Math_Exact *b);
+void         _Math_WorkAdd(_Math_Exact *sum, const _Math_Exact *a, const _Math_Exact *b);
+void         _Math_WorkDivide(_Math_Exact *quotient, const _Math_Exact *a, const _Math_Exact *b);
+void         _Math_WorkDivideSmall(_Math_Exact *e, unsigned int d);
+void         _Math_MakeReciprocal(_Math_Exact *e, unsigned int d);
+void         _Math_MakeConstant(_Math_Exact *e, _Math_Constant which);
+long         _Math_ReadNearest(const _Math_Exact *e);
+long         _Math_ReduceExp(_Math_Exact *r, const _Math_Exact *t);
+void         _Math_ExpM1Exact(_Math_Exact *em1, const _Math_Exact *r);
+void         _Math_ExpExact(_Math_Exact *value, const _Math_Exact *t);
+int          _Math_SplitLog(_Math_Exact *num, _Math_Exact *den, const _Math_Exact *u);
+void         _Math_LogExact(_Math_Exact *log, const _Math_Exact *num, const _Math_Exact *den, int e);
+_Bool        _Math_IsPowerTen(long double x, long k);
+_Math_Parity _Math_ReadParity(long double y);
+_Bool        _Math_PowerExact(_Math_Exact *value, long double x, long double y);
+long double  _Math_RaisePole(void);
+long double  _Math_RoundRange(const _Math_Exact *value, _Math_Type type);
+long double  _Math_TakeExp(long double x, _Math_Base base, _Math_Type type);
+long double  _Math_TakeExpm1(long double x, _Math_Type type);
+long double  _Math_TakeLog(long double x, _Math_Base base, _Math_Type type);
+long double  _Math_TakeLog1p(long double x, _Math_Type type);
+long double  _Math_TakePow(long double x, long double y, _Math_Type type);
 
 // Exponential and logarithmic functions
 // [C99:7.12.1p2]:  a domain error, EDOM and invalid
@@ -420,10 +437,12 @@ long double scalblnl(long double x, long int n);
 // [C99:7.12.7.1]: cbrt, the real cube root
 // [C99:7.12.7.2]: fabs, fabsf and fabsl
 // [C99:7.12.7.3]: hypot, without undue overflow or underflow
+// [C99:7.12.7.4]: pow, a domain error of a negative x and a non-integer y
 // [C99:7.12.7.5]: sqrt, a domain error below zero
 // [C99:F.3p1]:    sqrt, IEC 60559's square root
 // [C99:F.9.4.1]:  cbrt of a zero and an infinity
 // [C99:F.9.4.3]:  hypot of a zero, and of an infinity even with a NaN
+// [C99:F.9.4.4]:  pow of a zero, 1, -1, an infinity and a NaN, and by them
 // [C99:F.9.4.5]:  sqrt, fully specified by IEC 60559
 double      cbrt(double x);
 float       cbrtf(float x);
@@ -434,6 +453,9 @@ long double fabsl(long double x);
 double      hypot(double x, double y);
 float       hypotf(float x, float y);
 long double hypotl(long double x, long double y);
+double      pow(double x, double y);
+float       powf(float x, float y);
+long double powl(long double x, long double y);
 double      sqrt(double x);
 float       sqrtf(float x);
 long double sqrtl(long double x);

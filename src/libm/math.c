@@ -444,12 +444,19 @@ void _Math_WideMultiply(_Math_Wide *to, const _Math_Wide *a, const _Math_Wide *b
     *to = product;
 }
 
-// Raise base to the kth power into to.
+// Raise base to the kth power into to, by squaring.
 void _Math_WidePower(_Math_Wide *to, const _Math_Wide *base, int k)
 {
+    _Math_Wide square = *base;
+
     _Math_WideSet(to, _MATH_LOW_BIT);
-    for (int i = 0; i < k; i++) {
-        _Math_WideMultiply(to, to, base);
+    for (; k > 0; k >>= 1) {
+        if ((k & 1) != 0) {
+            _Math_WideMultiply(to, to, &square);
+        }
+        if (k > 1) {
+            _Math_WideMultiply(&square, &square, &square);
+        }
     }
 }
 
@@ -900,6 +907,24 @@ void _Math_ExpM1Exact(_Math_Exact *em1, const _Math_Exact *r)
     }
 }
 
+// Take e to a nonzero working value t, clamped past every range.
+void _Math_ExpExact(_Math_Exact *value, const _Math_Exact *t)
+{
+    long n;
+    _Math_Exact r;
+    _Math_Exact one;
+    _Math_Exact clamped = *t;
+
+    if (t->me_unit + _Math_WideTop(&t->me_sig) > _MATH_EXP_CLAMP_EXP) {
+        _Math_MakeExact(&clamped, t->me_negative ? -_MATH_EXP_CLAMP : _MATH_EXP_CLAMP);
+    }
+    n = _Math_ReduceExp(&r, &clamped);
+    _Math_ExpM1Exact(value, &r);
+    _Math_MakeExact(&one, 1.0L);
+    _Math_AddExact(value, &one, value);
+    value->me_unit += (int) n;
+}
+
 // Split u into m - 1 and m + 1, u being m times 2 to the returned e.
 int _Math_SplitLog(_Math_Exact *num, _Math_Exact *den, const _Math_Exact *u)
 {
@@ -973,6 +998,71 @@ _Bool _Math_IsPowerTen(long double x, long k)
     return _Math_WideCompare(&power, &value) == 0;
 }
 
+// Read whether a finite nonzero y is an integer, and which.
+_Math_Parity _Math_ReadParity(long double y)
+{
+    int exp;
+    uint64_t sig = _Math_SplitLDouble(y, &exp);
+    int point = _MATH_LDOUBLE_INT_SHIFT - exp;
+
+    if (point < 0) {
+        return _MATH_PARITY_EVEN;
+    }
+    if (point > _MATH_LDOUBLE_INT_SHIFT || (sig & ~(UINT64_MAX << point)) != 0) {
+        return _MATH_PARITY_NONE;
+    }
+    return (sig >> point & _MATH_LOW_BIT) != 0 ? _MATH_PARITY_ODD : _MATH_PARITY_EVEN;
+}
+
+// Make a positive x to a nonzero y, both finite, when it is exact.
+_Bool _Math_PowerExact(_Math_Exact *value, long double x, long double y)
+{
+    int exp;
+    _Math_Wide odd;
+    _Math_Wide rest;
+    _Math_Exact power;
+    uint64_t sig = _Math_SplitLDouble(x, &exp);
+    int unit = exp - _MATH_LDOUBLE_INT_SHIFT;
+
+    for (; (sig & _MATH_LOW_BIT) == 0; sig >>= 1) {
+        unit++;
+    }
+    _Math_WideSet(&odd, sig);
+    value->me_negative = 0;
+    value->me_sticky = 0;
+    if (sig == _MATH_LOW_BIT && unit == 0) {
+        _Math_WideSet(&value->me_sig, _MATH_LOW_BIT);
+        value->me_unit = 0;
+        return 1;
+    }
+    if (sig == _MATH_LOW_BIT) {
+        _Math_MakeExact(&power, (long double) unit);
+        _Math_MakeExact(value, y);
+        _Math_MultiplyExact(&power, &power, value);
+        rest = power.me_sig;
+        if (_Math_WideAlign(&rest, power.me_unit)) {
+            return 0;
+        }
+        _Math_WideSet(&value->me_sig, _MATH_LOW_BIT);
+        value->me_negative = 0;
+        if (power.me_unit + _Math_WideTop(&power.me_sig) > _MATH_EXP_CLAMP_EXP) {
+            value->me_unit = power.me_negative ? -(int) _MATH_EXP_CLAMP : (int) _MATH_EXP_CLAMP;
+        } else {
+            value->me_unit = (int) _Math_ReadNearest(&power);
+        }
+        return 1;
+    }
+    if (y < 1 || y >= _MATH_WIDE_BITS || _Math_ReadParity(y) == _MATH_PARITY_NONE) {
+        return 0;
+    }
+    if ((int) y * (_Math_WideTop(&odd) + 1) >= _MATH_WIDE_BITS) {
+        return 0;
+    }
+    _Math_WidePower(&value->me_sig, &odd, (int) y);
+    value->me_unit = unit * (int) y;
+    return 1;
+}
+
 // Raise the pole error, an exact -inf from a finite argument.
 long double _Math_RaisePole(void)
 {
@@ -995,10 +1085,7 @@ long double _Math_RoundRange(const _Math_Exact *value, _Math_Type type)
 // Take e or 2 to x, within 2 ulps of type.
 long double _Math_TakeExp(long double x, _Math_Base base, _Math_Type type)
 {
-    long n;
     _Math_Exact t;
-    _Math_Exact r;
-    _Math_Exact one;
     _Math_Exact value;
     _Math_Exact constant;
 
@@ -1026,11 +1113,7 @@ long double _Math_TakeExp(long double x, _Math_Base base, _Math_Type type)
         _Math_MakeConstant(&constant, _MATH_CONST_LN2);
         _Math_WorkMultiply(&t, &t, &constant);
     }
-    n = _Math_ReduceExp(&r, &t);
-    _Math_ExpM1Exact(&value, &r);
-    _Math_MakeExact(&one, 1.0L);
-    _Math_AddExact(&value, &one, &value);
-    value.me_unit += (int) n;
+    _Math_ExpExact(&value, &t);
     value.me_sticky = 1;
     return _Math_RoundRange(&value, type);
 }
@@ -1147,6 +1230,56 @@ long double _Math_TakeLog1p(long double x, _Math_Type type)
     }
     _Math_LogExact(&value, &num, &den, e);
     value.me_sticky = 1;
+    return _Math_RoundRange(&value, type);
+}
+
+// Take x to y, within 2 ulps of type.
+long double _Math_TakePow(long double x, long double y, _Math_Type type)
+{
+    int e;
+    _Bool negative;
+    _Math_Exact u;
+    _Math_Exact num;
+    _Math_Exact den;
+    _Math_Exact log;
+    _Math_Exact value;
+    long double result;
+    _Math_Parity parity;
+
+    if (y == 0 || x == 1) {
+        return 1.0L;
+    }
+    if (isnan(x) || isnan(y)) {
+        return x + y;
+    }
+    if (isinf(y)) {
+        return fabsl(x) == 1 ? 1.0L : (fabsl(x) < 1) == (y < 0) ? HUGE_VALL : 0.0L;
+    }
+    parity = _Math_ReadParity(y);
+    negative = signbit(x) && parity == _MATH_PARITY_ODD;
+    if (x == 0 && y < 0) {
+        return negative ? _Math_RaisePole() : -_Math_RaisePole();
+    }
+    if (x == 0 || isinf(x)) {
+        result = (x == 0) == (y < 0) ? HUGE_VALL : 0.0L;
+        return negative ? -result : result;
+    }
+    if (x < 0 && parity == _MATH_PARITY_NONE) {
+        return _Math_RaiseDomain(x, 0);
+    }
+    if (x > 0 && y == _MATH_POW_ROOT) {
+        return _Math_TakeRoot(x, _MATH_ROOT_SQUARE, type);
+    }
+    if (! _Math_PowerExact(&value, fabsl(x), y)) {
+        _Math_MakeExact(&u, fabsl(x));
+        e = _Math_SplitLog(&num, &den, &u);
+        _Math_LogExact(&log, &num, &den, e);
+        _Math_MakeExact(&u, y);
+        _Math_WorkMultiply(&log, &u, &log);
+        _Math_ExpExact(&value, &log);
+        value.me_sticky = 1;
+    }
+    value.me_negative = negative;
     return _Math_RoundRange(&value, type);
 }
 
@@ -1509,6 +1642,24 @@ float hypotf(float x, float y)
 long double hypotl(long double x, long double y)
 {
     return _Math_TakeHypot(x, y, _MATH_TYPE_LDOUBLE);
+}
+
+// Raise x to the power y.
+double pow(double x, double y)
+{
+    return (double) _Math_TakePow(x, y, _MATH_TYPE_DOUBLE);
+}
+
+// Raise x to the power y.
+float powf(float x, float y)
+{
+    return (float) _Math_TakePow(x, y, _MATH_TYPE_FLOAT);
+}
+
+// Raise x to the power y.
+long double powl(long double x, long double y)
+{
+    return _Math_TakePow(x, y, _MATH_TYPE_LDOUBLE);
 }
 
 // Take the nonnegative square root of x.

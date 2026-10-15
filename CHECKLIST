@@ -308,7 +308,7 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
             - [x] exponential and logarithmic, within 2 ulps: `exp`, `exp2`, `expm1`, `log`, `log10`, `log1p`, `log2`
             - [x] absolute value: `fabs`
             - [x] power, correctly rounded: `cbrt`, `hypot`, `sqrt`
-            - [ ] power: `pow`
+            - [x] power, within 2 ulps: `pow`
             - [ ] error and gamma: `erf`, `erfc`, `lgamma`, `tgamma`
             - [x] nearest integer: `ceil`, `floor`, `nearbyint`, `rint`, `lrint`, `llrint`, `round`, `lround`, `llround`, `trunc`
             - [x] remainder: `fmod`, `remainder`, `remquo`
