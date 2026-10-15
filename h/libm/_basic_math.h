@@ -162,6 +162,54 @@
 #define _BASIC_MATH_ROOT_GUESS_2 0x1.85efp-5L
 #define _BASIC_MATH_ROOT_STEPS   4
 
+// The terms of erf's Maclaurin series below 1/2, 2/sqrt(pi), its nearest
+// long double and the rest, and 1/sqrt(pi).
+#define _BASIC_MATH_ERF_TERMS             13
+#define _BASIC_MATH_TWO_OVER_ROOT_PI_HIGH 0x9.06eba8214db688dp-3L
+#define _BASIC_MATH_TWO_OVER_ROOT_PI_LOW  0xe.3a914fed7fd8688p-68L
+#define _BASIC_MATH_INV_ROOT_PI           0x9.06eba8214db688dp-4L
+
+// The nodes of erfc's table, j/4 for j from 2 to 16, the terms of e to x^2
+// times erfc's Taylor series at each, the magnitude from which it takes
+// Laplace's continued fraction, that fraction's terms, the magnitude past
+// which erf is 1, and the one past which erfc is 0 in every type.
+#define _BASIC_MATH_ERFC_NODES        4
+#define _BASIC_MATH_ERFC_NODE_FIRST   2
+#define _BASIC_MATH_ERFC_NODE_COUNT   15
+#define _BASIC_MATH_ERFC_TAYLOR_TERMS 17
+#define _BASIC_MATH_ERFC_FRACTION     0x8.4p-1L
+#define _BASIC_MATH_ERFC_TERMS        32
+#define _BASIC_MATH_ERF_ONE           0x1p3L
+#define _BASIC_MATH_ERFC_CLAMP        0x1p7L
+
+// The point lgamma's Taylor series is taken at, its terms, the least x
+// Stirling's series takes, its terms, the magnitude past which lgamma of x
+// is x(ln x - 1), and ln sqrt(2 pi), its nearest long double and the rest.
+#define _BASIC_MATH_GAMMA_CENTER     2
+#define _BASIC_MATH_GAMMA_TERMS      35
+#define _BASIC_MATH_STIRLING_FROM    10
+#define _BASIC_MATH_STIRLING_TERMS   10
+#define _BASIC_MATH_STIRLING_WIDE    0x1p64L
+#define _BASIC_MATH_LN_ROOT_2PI_HIGH 0xe.b3f8e4325f5a535p-4L
+#define _BASIC_MATH_LN_ROOT_2PI_LOW  (-0xd.686dffd77cdbfb8p-69L)
+
+// The first unit interval (-n - 1, -n) of lgamma's zeros' table, the count
+// of its zeros, two an interval, and the x from which lgamma takes them.
+#define _BASIC_MATH_GAMMA_ZERO_FIRST 2
+#define _BASIC_MATH_GAMMA_ZERO_COUNT 44
+#define _BASIC_MATH_GAMMA_REFLECT    (-24)
+
+// The greatest integer whose gamma is a product, its last factor rounded
+// alone, the magnitude past which gamma of x is an infinity in every type,
+// the one below which it is 1/x, the power of 2 a huge or tiny result is
+// scaled by, ln pi, and a quarter turn of pi times x.
+#define _BASIC_MATH_FACTORIAL_MAX 27
+#define _BASIC_MATH_GAMMA_CLAMP   0x1p11L
+#define _BASIC_MATH_GAMMA_TINY    0x1p-64L
+#define _BASIC_MATH_GAMMA_SHIFT   64
+#define _BASIC_MATH_LN_PI         0x9.28682473d0de85fp-3L
+#define _BASIC_MATH_QUARTER       0.25L
+
 // The classes fpclassify gives, and ilogb's results of a zero and a NaN.
 #define _BASIC_MATH_FP_INFINITE  1
 #define _BASIC_MATH_FP_NAN       0
@@ -245,6 +293,29 @@ extern const long double _Basic_Math_CosTerms[_BASIC_MATH_COS_TERMS];
 extern const long double _Basic_Math_AtanStepHigh[_BASIC_MATH_ATAN_STEP_COUNT];
 extern const long double _Basic_Math_AtanStepLow[_BASIC_MATH_ATAN_STEP_COUNT];
 
+// The terms of erf's Maclaurin series, 2/sqrt(pi) (-1)^k/(k!(2k + 1)) from
+// k = 1.
+extern const long double _Basic_Math_ErfTerms[_BASIC_MATH_ERF_TERMS];
+
+// e to x^2 times erfc of each node of erfc's table, its top 64 bits and the
+// rest, and its slope, 2x times it less 2/sqrt(pi), its top 64 bits and the
+// rest.
+extern const long double _Basic_Math_ErfcValueHigh[_BASIC_MATH_ERFC_NODE_COUNT];
+extern const long double _Basic_Math_ErfcValueLow[_BASIC_MATH_ERFC_NODE_COUNT];
+extern const long double _Basic_Math_ErfcSlopeHigh[_BASIC_MATH_ERFC_NODE_COUNT];
+extern const long double _Basic_Math_ErfcSlopeLow[_BASIC_MATH_ERFC_NODE_COUNT];
+
+// The terms of lgamma's Taylor series at 2, 1 less Euler's constant, then
+// (-1)^k (zeta(k) - 1)/k from k = 2, and of Stirling's series, B2k/(2k(2k
+// - 1)) from k = 1.
+extern const long double _Basic_Math_GammaTerms[_BASIC_MATH_GAMMA_TERMS];
+extern const long double _Basic_Math_StirlingTerms[_BASIC_MATH_STIRLING_TERMS];
+
+// lgamma's zeros from -2 to -24, the one above and the one below each
+// interval's middle in turn, their top 64 bits and the rest.
+extern const long double _Basic_Math_GammaZeroHigh[_BASIC_MATH_GAMMA_ZERO_COUNT];
+extern const long double _Basic_Math_GammaZeroLow[_BASIC_MATH_GAMMA_ZERO_COUNT];
+
 // The classification and sign of a value of each type.
 int _Basic_Math_ClassifyFields(unsigned int exp, unsigned int exp_max, unsigned long long frac);
 int _Basic_Math_ClassifyFloat(float x);
@@ -269,6 +340,7 @@ long double        _Basic_Math_RaiseDomain(long double x, long double y);
 long double        _Basic_Math_RaisePole(void);
 void               _Basic_Math_CheckScaled(long double x, long double y);
 long double        _Basic_Math_CheckRange(long double x, long double y, long double least);
+long double        _Basic_Math_CheckOverflow(long double x, long double y);
 long double        _Basic_Math_CheckPower(long double x, long double y, long double z, long double least);
 void               _Basic_Math_CheckNext(long double x, int class);
 
@@ -305,6 +377,22 @@ long double  _Basic_Math_TakeAtan2(long double y, long double x);
 long double  _Basic_Math_TakeArc(long double x, _Basic_Math_Trig which);
 long double  _Basic_Math_TakeHyperbolic(long double x, _Basic_Math_Trig which);
 long double  _Basic_Math_TakeArcHyperbolic(long double x, _Basic_Math_Trig which);
+
+// The error and gamma functions, each by series in long double.
+long double _Basic_Math_SumExpParts(long double high, long double low, int *n);
+long double _Basic_Math_SumErf(long double x, long double *low);
+long double _Basic_Math_SumErfc(long double x, int *n);
+long double _Basic_Math_TakeErf(long double x);
+long double _Basic_Math_TakeErfc(long double x);
+long double _Basic_Math_SinPi(long double x);
+int         _Basic_Math_ShiftGamma(long double x, long double *t);
+long double _Basic_Math_SumLgamma(long double t);
+long double _Basic_Math_SumStirling(long double x, long double *low);
+long double _Basic_Math_SumLgammaZero(long double x);
+long double _Basic_Math_SumTgamma(long double x);
+long double _Basic_Math_TakeLgamma(long double x, int *n);
+long double _Basic_Math_TakeTgamma(long double x, int *n);
+long double _Basic_Math_TakeNearest(long double (*take)(long double, int *), long double x);
 
 // Trigonometric functions
 double      __basic_math_acos(double x);

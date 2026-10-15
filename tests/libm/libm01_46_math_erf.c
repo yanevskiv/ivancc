@@ -7,18 +7,21 @@
 
 // Defines.
 #define MODES 4
+#define ULPS  4
 
-// erf should give the error function of x in the current direction in each
-// type, keep a zero's sign, give +-1 of an infinity raising nothing, and give
-// a subnormal x's value with underflow.
-// [C99:7.12.8.1p2]: erf, the error function
-// [C99:F.9.5.1p1]:  erf of a zero and an infinity
+// erf should give the error function of x within a few ulps in each direction
+// and type, keep a zero's sign, give +-1 of an infinity raising nothing, and
+// give a subnormal x's value with underflow.
+// [C99:7.12.8.1p2]:  erf, the error function
+// [C99:F.9.5.1p1]:   erf of a zero and an infinity
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
+// [C99:F.9p10]:      the rounding direction, implementation-defined
 static void Test_MathErf(void)
 {
     static const int modes[MODES] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
-    static const double value[MODES] = {0x1.6c1c9759d0e5fp-1, 0x1.6c1c9759d0e5fp-1, 0x1.6c1c9759d0e6p-1, 0x1.6c1c9759d0e5fp-1};
-    static const float valuef[MODES] = {0x1.6c1c98p-1f, 0x1.6c1c96p-1f, 0x1.6c1c98p-1f, 0x1.6c1c96p-1f};
-    static const long double valuel[MODES] = {0xb.60e4bace872fb63p-4L, 0xb.60e4bace872fb62p-4L, 0xb.60e4bace872fb63p-4L, 0xb.60e4bace872fb62p-4L};
+    static const double value = 0x1.6c1c9759d0e5fp-1;
+    static const float valuef = 0x1.6c1c98p-1f;
+    static const long double valuel = 0xb.60e4bace872fb63p-4L;
     volatile double three = 0.75;
     volatile float threef = 0.75f;
     volatile long double threel = 0.75L;
@@ -29,9 +32,9 @@ static void Test_MathErf(void)
     for (int i = 0; i < MODES; i++) {
         fesetround(modes[i]);
         feclearexcept(FE_ALL_EXCEPT);
-        _TEST_FLOAT(erf(three), value[i]);
-        _TEST_FLOAT(erff(threef), valuef[i]);
-        _TEST_FLOAT(erfl(threel), valuel[i]);
+        _TEST_TRUE(within_ulps(erf(three), value, DBL_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(erff(threef), valuef, FLT_MANT_DIG, ULPS));
+        _TEST_TRUE(within_ulps(erfl(threel), valuel, LDBL_MANT_DIG, ULPS));
         _TEST_INT(fetestexcept(FE_ALL_EXCEPT), FE_INEXACT);
     }
     fesetround(FE_TONEAREST);

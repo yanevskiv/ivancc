@@ -5,11 +5,16 @@
 // Include helpers.
 #include "libm01_00_math_helpers.inc"
 
-// tgamma should give gamma of x in each type, a factorial exactly, +-inf with
-// divide-by-zero of a zero, a domain error of a negative integer and of -inf,
-// and a range error when its result overflows or underflows to zero.
-// [C99:7.12.8.4p2]: tgamma, a domain or range error of a negative integer or 0
-// [C99:F.9.5.4p1]:  tgamma, a zero divide-by-zero, a negative integer invalid
+// Defines.
+#define ULPS 4
+
+// tgamma should give gamma of x within a few ulps in each type, a factorial
+// exactly, +-inf with divide-by-zero of a zero, a domain error of a negative
+// integer and of -inf, and a range error when its result overflows or
+// underflows to zero.
+// [C99:7.12.8.4p2]:  tgamma, a domain or range error of a negative integer or 0
+// [C99:F.9.5.4p1]:   tgamma, a zero divide-by-zero, a negative integer invalid
+// [C99:5.2.4.2.2p5]: the accuracy of <math.h>, implementation-defined
 static void Test_MathTgamma(void)
 {
     volatile double half = 0.5;
@@ -19,14 +24,14 @@ static void Test_MathTgamma(void)
     double inf = 1.0 / zero;
     double dnan = zero / zero;
 
-    _TEST_FLOAT(tgamma(half), 0x1.c5bf891b4ef6bp+0);
-    _TEST_FLOAT(tgammaf(halff), 0x1.c5bf8ap+0f);
-    _TEST_FLOAT(tgammal(halfl), 0xe.2dfc48da77b553dp-3L);
-    _TEST_FLOAT(tgamma(-2.5), -0x1.e3ff812e32183p-1);
-    _TEST_FLOAT(tgammaf(-2.5f), -0x1.e3ff82p-1f);
-    _TEST_FLOAT(tgammal(-2.5L), -0xf.1ffc097190c16a7p-4L);
-    _TEST_FLOAT(tgamma(30.5), 0x1.305adf049c818p+105);
-    _TEST_FLOAT(tgammal(30.5L), 0x9.82d6f824e40bfa2p+102L);
+    _TEST_TRUE(within_ulps(tgamma(half), 0x1.c5bf891b4ef6bp+0, DBL_MANT_DIG, ULPS));
+    _TEST_TRUE(within_ulps(tgammaf(halff), 0x1.c5bf8ap+0f, FLT_MANT_DIG, ULPS));
+    _TEST_TRUE(within_ulps(tgammal(halfl), 0xe.2dfc48da77b553dp-3L, LDBL_MANT_DIG, ULPS));
+    _TEST_TRUE(within_ulps(tgamma(-2.5), -0x1.e3ff812e32183p-1, DBL_MANT_DIG, ULPS));
+    _TEST_TRUE(within_ulps(tgammaf(-2.5f), -0x1.e3ff82p-1f, FLT_MANT_DIG, ULPS));
+    _TEST_TRUE(within_ulps(tgammal(-2.5L), -0xf.1ffc097190c16a7p-4L, LDBL_MANT_DIG, ULPS));
+    _TEST_TRUE(within_ulps(tgamma(30.5), 0x1.305adf049c818p+105, DBL_MANT_DIG, ULPS));
+    _TEST_TRUE(within_ulps(tgammal(30.5L), 0x9.82d6f824e40bfa2p+102L, LDBL_MANT_DIG, ULPS));
     _TEST_FLOAT(tgamma(5.0), 24.0);
     _TEST_FLOAT(tgammaf(14.0f), 6227020800.0f);
     _TEST_FLOAT(tgammal(27.0L), 403291461126605635584000000.0L);

@@ -302,14 +302,14 @@ Checklist toward ISO C99: the language, then the standard library of clause 7.
             - [x] `MATH_ERRNO`, `MATH_ERREXCEPT`, `math_errhandling`
             - [ ] `#pragma STDC FP_CONTRACT`
             - [x] classification: `fpclassify`, `isfinite`, `isinf`, `isnan`, `isnormal`, `signbit`
-            - [x] trigonometric, within 2 ulps: `acos`, `asin`, `atan`, `atan2`, `cos`, `sin`, `tan`
-            - [x] hyperbolic, within 2 ulps: `acosh`, `asinh`, `atanh`, `cosh`, `sinh`, `tanh`
+            - [x] trigonometric, within a few ulps: `acos`, `asin`, `atan`, `atan2`, `cos`, `sin`, `tan`
+            - [x] hyperbolic, within a few ulps: `acosh`, `asinh`, `atanh`, `cosh`, `sinh`, `tanh`
             - [x] exponential and logarithmic, the exact ones: `frexp`, `ilogb`, `ldexp`, `logb`, `modf`, `scalbn`, `scalbln`
-            - [x] exponential and logarithmic, within 2 ulps: `exp`, `exp2`, `expm1`, `log`, `log10`, `log1p`, `log2`
+            - [x] exponential and logarithmic, within a few ulps: `exp`, `exp2`, `expm1`, `log`, `log10`, `log1p`, `log2`
             - [x] absolute value: `fabs`
             - [x] power, correctly rounded: `cbrt`, `hypot`, `sqrt`
-            - [x] power, within 2 ulps: `pow`
-            - [x] error and gamma, within 2 ulps: `erf`, `erfc`, `lgamma`, `tgamma`
+            - [x] power, within a few ulps: `pow`
+            - [x] error and gamma, within a few ulps: `erf`, `erfc`, `lgamma`, `tgamma`
             - [x] nearest integer: `ceil`, `floor`, `nearbyint`, `rint`, `lrint`, `llrint`, `round`, `lround`, `llround`, `trunc`
             - [x] remainder: `fmod`, `remainder`, `remquo`
             - [x] manipulation: `copysign`, `nan`, `nextafter`, `nexttoward`

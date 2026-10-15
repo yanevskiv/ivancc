@@ -32,7 +32,6 @@
 #include <_exact.h>
 #include <_fp.h>
 #include <_fpu.h>
-#include <_prec_math.h>
 #include <_str.h>
 #include <_sys.h>
 
@@ -101,6 +100,98 @@ const long double _Basic_Math_AtanStepLow[_BASIC_MATH_ATAN_STEP_COUNT] = {
     -0xe.9512d9cb614336p-71L, -0xe.ab9bdba460376fap-70L, 0x8.4f92bd2003ce26dp-70L, 0xd.fc88bd978751a07p-70L,
     0x9.6d41396c34a2b82p-69L, 0xb.906bc2ccb886e8fp-69L, 0x8.44df1c4409fe77ap-69L, 0xc.d43f9522bed64f7p-71L,
     0xa.392f179f290385p-71L, -0xd.3496ab7bd6eef0bp-70L, -0xe.c453a7722da0bb6p-69L, -0xe.ce675d1fc8f8cbbp-70L
+};
+
+// The terms of erf's Maclaurin series, 2/sqrt(pi) (-1)^k/(k!(2k + 1)) from
+// k = 1.
+const long double _Basic_Math_ErfTerms[_BASIC_MATH_ERF_TERMS] = {
+    -0xc.093a3581bcf3612p-5L,  0xe.71790d0215f0dafp-7L,   -0xd.c167189445a86fp-9L,   0xa.b2de6873529f72cp-11L,
+    -0xe.016da00205c2c4dp-14L, 0xf.cd1937cdc4dbbd3p-17L,  -0xf.a692e1f06175af3p-20L, 0xd.cf364ee328d1404p-23L,
+    -0xa.fba17621f38cf8bp-26L, 0xf.e62b9031260de6dp-30L,  -0xa.8eb8c0e2e9b6424p-33L, 0xc.f356af2ad397e41p-37L,
+    -0xe.c229e5862374ef7p-41L
+};
+
+// e to x^2 times erfc of each node of erfc's table, its top 64 bits.
+const long double _Basic_Math_ErfcValueHigh[_BASIC_MATH_ERFC_NODE_COUNT] = {
+    0x9.d9de1e4c5879655p-4L, 0x8.1c6aa751ec19c28p-4L, 0xd.aec3c07cab590c1p-5L, 0xb.c534909c3b3d005p-5L,
+    0xa.4a6d7fd156b4273p-5L, 0x9.1e7e178ee3f013bp-5L, 0x8.2c338da963baf62p-5L, 0xe.ca2236b13c98e58p-6L,
+    0xd.7dd9f9db9a1d661p-6L, 0xc.64f5b47f93eb489p-6L, 0xb.74c13e914e9667p-6L,  0xa.a53d046a5da27d3p-6L,
+    0x9.f054cd077489f9cp-6L, 0x9.51578ce0a497c0cp-6L, 0x8.c4995f8470aa213p-6L
+};
+
+// e to x^2 times erfc of each node of erfc's table, the rest.
+const long double _Basic_Math_ErfcValueLow[_BASIC_MATH_ERFC_NODE_COUNT] = {
+    0xf.529dbcefe16215cp-69L,  -0x8.4d3614599434167p-69L, 0xa.88fe4634cddb0adp-71L,  0xf.2e801e32323abfdp-72L,
+    0xf.7c3c363883cfdacp-70L,  0x8.207598c611f81c3p-72L,  0xf.871fc40eceb0c54p-71L,  -0xc.c5410b2247b3ad2p-73L,
+    -0x8.17942848cb14912p-71L, 0xc.6270e6d72c1f84ap-71L,  -0xe.a7bce26b25cbde5p-71L, -0x8.3644cdaf7239ecfp-71L,
+    -0xb.2de5db1979d1599p-74L, -0x9.40d467e516adb2dp-74L, 0xd.5093a3e73c4f2edp-76L
+};
+
+// The slope of e to x^2 times erfc at each node, its top 64 bits.
+const long double _Basic_Math_ErfcSlopeHigh[_BASIC_MATH_ERFC_NODE_COUNT] = {
+    -0x8.33f931f642f3ac5p-4L, -0xb.c66eaa8f728cdbfp-5L, -0x8.be271f8be0280b3p-5L, -0xd.5d566dfd4583452p-6L,
+    -0xa.78cc4222657b5b7p-6L, -0x8.61ea9c223223bcep-6L, -0xd.ab81a77e9fb92b3p-7L, -0xb.538695d9ba087cp-7L,
+    -0x9.8436bf80d64291p-7L,  -0x8.182bc099804c6fp-7L,  -0xd.eb57268a58b7739p-8L, -0xc.1542915c3450647p-8L,
+    -0xa.942e9758f7b9c9fp-8L, -0x9.553281d66d08847p-8L, -0x8.4a49139ba18cf4ep-8L
+};
+
+// The slope of e to x^2 times erfc at each node, the rest.
+const long double _Basic_Math_ErfcSlopeLow[_BASIC_MATH_ERFC_NODE_COUNT] = {
+    -0xd.2284e2eb1e4ebb5p-69L, 0xe.2e18833d44021a9p-70L,  -0xe.6146f9813186973p-70L, 0x9.2cad329600315d5p-74L,
+    0xb.14dec5e7181bdcap-71L,  -0xe.6ef2d0457d444b1p-73L, -0xe.e02dbcc31000bcap-73L, -0xc.9ceafca3db59b67p-77L,
+    0xb.6b216e5013abcc8p-72L,  0x9.2389d8cdcfa855fp-73L,  -0xe.17be6f770c53ce4p-74L, 0xc.ab6479f9ac437ecp-75L,
+    -0xe.72ce7c892569c9cp-73L, -0xa.0546834b10186eep-73L, 0xb.fcd34c6e82843d1p-74L
+};
+
+// The terms of lgamma's Taylor series at 2, 1 less Euler's constant, then
+// (-1)^k (zeta(k) - 1)/k from k = 2.
+const long double _Basic_Math_GammaTerms[_BASIC_MATH_GAMMA_TERMS] = {
+    0xd.8773039049e70b6p-5L,   0xa.51a6625307d3231p-5L,   -0x8.9f000d2abb03409p-7L,  0xa.8991563ec241b6p-9L,
+    -0xf.2027e10c7af8c37p-11L, 0xb.d6eb756db617ea5p-12L,  -0x9.c562e15fc703e76p-13L, 0x8.59b57c31cb745f3p-14L,
+    -0xe.9fea63b697e3e38p-16L, 0xd.093d878beb2d19dp-17L,  -0xb.c6f2debe40f7797p-18L, 0xa.c06e77337581126p-19L,
+    -0x9.e5e4b1e7112142bp-20L, 0x9.2cbd1cf9a555c81p-21L,  -0x8.8d975bb3caa08e4p-22L, 0x8.03266f5917879dp-23L,
+    -0xf.13006c9e7e975dap-25L, 0xe.3b5dd9f83d26bb3p-26L,  -0xd.7ad365dfc54bb2cp-27L, 0xc.cdc9e1038587a06p-28L,
+    -0xc.31639a6f9f56366p-29L, 0xb.a34ed667d6e6593p-30L,  -0xb.21a54223d75681bp-31L, 0xa.aad43bffe9614f1p-32L,
+    -0xa.3d8b3c92c68720ap-33L, 0x9.d8ae9597e085e28p-34L,  -0x9.7b4d4fd5f1efcbdp-35L, 0x9.2499519ba1a620cp-36L,
+    -0x8.d3e13761291e29fp-37L, 0x8.888b7349f6cbc72p-38L,  -0x8.421265e2a1ec141p-39L, 0x8.0001371fb227a6bp-40L,
+    -0xf.83e28a7e4f8505dp-42L, 0xf.0f1013557e6bd3bp-43L,  -0xe.a0eab72f7170ebcp-44L
+};
+
+// The terms of Stirling's series, B2k/(2k(2k - 1)) from k = 1.
+const long double _Basic_Math_StirlingTerms[_BASIC_MATH_STIRLING_TERMS] = {
+    0xa.aaaaaaaaaaaaaabp-7L,   -0xb.60b60b60b60b60bp-12L, 0xd.00d00d00d00d00dp-14L,  -0x9.c09c09c09c09c0ap-14L,
+    0xd.ca8f158c7f91ab8p-14L,  -0xf.b5586ccc9e3e41p-13L,  0xd.20d20d20d20d20dp-11L,  -0xf.21436587a9cbee1p-9L,
+    0xb.7f4b1c0f033ffd1p-6L,   -0xb.23b3808c0f9cf6ep-3L
+};
+
+// lgamma's zeros from -2 to -24, their top 64 bits.
+const long double _Basic_Math_GammaZeroHigh[_BASIC_MATH_GAMMA_ZERO_COUNT] = {
+    -0x9.d3fe4b007c360abp-2L, -0xa.fda0850dec8065ep-2L, -0xc.9306de4f2cd7beep-2L, -0xf.d238aa3e17f285cp-2L,
+    -0x8.14273c2ccac0618p-1L, -0x9.fbabbd37757e6a2p-1L, -0xa.04352bf85b6c865p-1L, -0xb.ff497ac8fa06afcp-1L,
+    -0xc.00b592c4be4676cp-1L, -0xd.ffe5fbb5c377fe8p-1L, -0xe.0019fef6ff0f5bfp-1L, -0xf.fffcbfc0ace7879p-1L,
+    -0x8.0001a01459fc9f6p+0L, -0x8.ffffd1c425e81p+0L,   -0x9.00002e3bb47d86dp+0L, -0x9.fffffb606bdfdcdp+0L,
+    -0xa.0000049f93bb992p+0L, -0xa.ffffff9466e9f1bp+0L, -0xb.0000006b9915316p+0L, -0xb.fffffff70893874p+0L,
+    -0xc.00000008f76c773p+0L, -0xc.ffffffff4f6dcf6p+0L, -0xd.00000000b09230ap+0L, -0xd.fffffffff36345bp+0L,
+    -0xe.000000000c9cba5p+0L, -0xe.ffffffffff28c06p+0L, -0xf.0000000000d73fap+0L, -0xf.fffffffffff28cp+0L,
+    -0x8.000000000006bap+1L,  -0x8.7fffffffffff9abp+1L, -0x8.800000000000655p+1L, -0x8.fffffffffffffa6p+1L,
+    -0x9.00000000000005ap+1L, -0x9.7fffffffffffffbp+1L, -0x9.800000000000005p+1L, -0xap+1L,
+    -0xap+1L,                 -0xa.8p+1L,               -0xa.8p+1L,               -0xbp+1L,
+    -0xbp+1L,                 -0xb.8p+1L,               -0xb.8p+1L,               -0xcp+1L
+};
+
+// lgamma's zeros from -2 to -24, the rest.
+const long double _Basic_Math_GammaZeroLow[_BASIC_MATH_GAMMA_ZERO_COUNT] = {
+    0x9.b0675072fc769e6p-71L,  -0xc.ad25a320f575fa6p-67L, -0xb.e699ad3d9ba6545p-68L, -0xd.4561291236cc321p-68L,
+    -0xe.7c2c3786044ab06p-66L, -0xd.0aa4076988501d8p-68L, -0x9.315b9654e537b32p-66L, 0xa.c4a74d0b38481c7p-66L,
+    -0xf.85b2da2c70b970dp-69L, 0xa.765268f700b783p-66L,   0xe.df48c919e1f5536p-66L,  -0xa.7a0ad48ac32a74cp-66L,
+    -0xc.b3cec1cec857667p-68L, 0xd.e6c5aa2db698607p-66L,  -0xd.b087fdb86a3bd6fp-65L, -0xc.55cef4a0a8f8d3ap-69L,
+    -0xf.68bb2bc2a883c06p-65L, -0xd.b6b34ab6f463417p-66L, 0x9.a69640056fc6d05p-66L,  0xf.0437ca678586d0fp-65L,
+    -0xa.b3e07812879c3c9p-67L, -0xb.fcbd2ffe3abeaa4p-67L, 0xf.e65f08b91bf0724p-66L,  0x8.c3cf6b83ec5dd12p-65L,
+    -0x8.bd29cebd8ae31efp-65L, -0xc.6604ef30371f89dp-68L, 0xc.6642f1bdf07a161p-68L,  -0xc.18cc43ea25ce5cap-65L,
+    0xc.18cc4bd7b680d89p-65L,  -0x9.c47e7a93e1c46a1p-64L, 0x9.c47e7a97778935ap-64L,  0x9.e18ee5f6697ba6ap-67L,
+    -0x9.e18ee5f65261d98p-67L, -0x8.5b25cbf5f545ceep-64L, 0x8.5b25cbf5f547e48p-64L,  0xf.2a15d2010112853p-65L,
+    -0xf.2a15d2010112828p-65L, 0xb.8dc77b6e7ab8c6p-69L,   -0xb.8dc77b6e7ab8c5fp-69L, 0x8.671cb6dbfc294a3p-73L,
+    -0x8.671cb6dbfc294a2p-73L, 0xb.b0da098b1c0ceccp-78L,  -0xb.b0da098b1c0ceccp-78L, 0xf.96780cb97abbe65p-83L
 };
 
 // Classify a value by its biased exponent and its fraction.
@@ -287,6 +378,15 @@ long double _Basic_Math_CheckRange(long double x, long double y, long double lea
     _Basic_Math_CheckScaled(x, y);
     if (y == y && y != 0 && __basic_math_fabsl(y) < least) {
         _Fpu_RaiseFlags(_FPU_UNDERFLOW | _FPU_INEXACT);
+    }
+    return y;
+}
+
+// Check y, a function of x that is never tiny, for an overflow's range error.
+long double _Basic_Math_CheckOverflow(long double x, long double y)
+{
+    if (x == x && __basic_math_fabsl(x) != _EXACT_INFINITY && __basic_math_fabsl(y) == _EXACT_INFINITY) {
+        _Err_Errno = _SYS_ERANGE;
     }
     return y;
 }
@@ -949,6 +1049,378 @@ long double _Basic_Math_TakeArcHyperbolic(long double x, _Basic_Math_Trig which)
     return which != _BASIC_MATH_TRIG_COS && x < 0 ? -result : result;
 }
 
+// Sum e to a high and a low part as a fraction scaled by 2 to the nth.
+long double _Basic_Math_SumExpParts(long double high, long double low, int *n)
+{
+    long double r;
+
+    if (__basic_math_fabsl(high) > _BASIC_MATH_EXP_CLAMP) {
+        high = __basic_math_copysignl(_BASIC_MATH_EXP_CLAMP, high);
+        low = 0;
+    }
+    *n = _Basic_Math_ReduceExp(high, _BASIC_MATH_BASE_E, &r);
+    return 1 + _Basic_Math_SumExp(r + low);
+}
+
+// Sum erf of an x below 1/2 by its Maclaurin series, a high part and a low.
+long double _Basic_Math_SumErf(long double x, long double *low)
+{
+    long double square = x * x;
+    long double sum = 0;
+    long double high;
+
+    for (int k = _BASIC_MATH_ERF_TERMS - 1; k >= 0; k--) {
+        sum = sum * square + _Basic_Math_ErfTerms[k];
+    }
+    high = _Basic_Math_MultiplyParts(x, _BASIC_MATH_TWO_OVER_ROOT_PI_HIGH, low);
+    *low += x * (_BASIC_MATH_TWO_OVER_ROOT_PI_LOW + square * sum);
+    return high;
+}
+
+// Sum erfc of an x of 1/2 or more as a fraction scaled by 2 to the nth.
+long double _Basic_Math_SumErfc(long double x, int *n)
+{
+    long double square_low;
+    long double square = _Basic_Math_MultiplyParts(x, x, &square_low);
+    long double exp = _Basic_Math_SumExpParts(-square, -square_low, n);
+    long double fraction = 0;
+    long double sum = 0;
+    long double node;
+    long double h;
+    long double power;
+    long double next;
+    long double value;
+    long double slope;
+    int j;
+
+    if (x >= _BASIC_MATH_ERFC_FRACTION) {
+        for (int k = _BASIC_MATH_ERFC_TERMS; k > 0; k--) {
+            fraction = k * _BASIC_MATH_HALF / (x + fraction);
+        }
+        return exp * (_BASIC_MATH_INV_ROOT_PI / (x + fraction));
+    }
+    j = (int) (x * _BASIC_MATH_ERFC_NODES + _BASIC_MATH_HALF);
+    node = (long double) j / _BASIC_MATH_ERFC_NODES;
+    j -= _BASIC_MATH_ERFC_NODE_FIRST;
+    h = x - node;
+    value = _Basic_Math_ErfcValueHigh[j];
+    slope = _Basic_Math_ErfcSlopeHigh[j];
+    power = h;
+    for (int k = 1; k < _BASIC_MATH_ERFC_TAYLOR_TERMS; k++) {
+        sum += slope * power;
+        next = (2 * node * slope + 2 * value) / (k + 1);
+        value = slope;
+        slope = next;
+        power *= h;
+    }
+    value = _Basic_Math_ErfcValueHigh[j] + (_Basic_Math_ErfcValueLow[j] + h * _Basic_Math_ErfcSlopeLow[j] + sum);
+    return exp * value;
+}
+
+// Take the error function of x.
+long double _Basic_Math_TakeErf(long double x)
+{
+    long double a = __basic_math_fabsl(x);
+    long double low;
+    long double result;
+    int n;
+
+    if (x != x) {
+        return x + x;
+    }
+    if (x == 0) {
+        return x;
+    }
+    if (a == _EXACT_INFINITY) {
+        return x > 0 ? 1 : -1;
+    }
+    if (a < _BASIC_MATH_HALF) {
+        result = _Basic_Math_SumErf(x, &low);
+        return result + low;
+    }
+    if (a > _BASIC_MATH_ERF_ONE) {
+        a = _BASIC_MATH_ERF_ONE;
+    }
+    result = _Basic_Math_SumErfc(a, &n);
+    result = 1 - _Basic_Math_ScaleLDouble(result, n);
+    return x < 0 ? -result : result;
+}
+
+// Take the complementary error function of x.
+long double _Basic_Math_TakeErfc(long double x)
+{
+    long double a = __basic_math_fabsl(x);
+    long double low;
+    long double error;
+    long double result;
+    int n;
+
+    if (x != x) {
+        return x + x;
+    }
+    if (x == 0) {
+        return 1;
+    }
+    if (a == _EXACT_INFINITY) {
+        return x > 0 ? 0 : 2;
+    }
+    if (a < _BASIC_MATH_HALF) {
+        result = _Basic_Math_SumErf(x, &low);
+        result = _Basic_Math_AddParts(1, -result, &error);
+        return result + (error - low);
+    }
+    if (x < 0 && a > _BASIC_MATH_ERF_ONE) {
+        a = _BASIC_MATH_ERF_ONE;
+    }
+    if (a > _BASIC_MATH_ERFC_CLAMP) {
+        a = _BASIC_MATH_ERFC_CLAMP;
+    }
+    result = _Basic_Math_SumErfc(a, &n);
+    result = _Basic_Math_ScaleLDouble(result, n);
+    return x < 0 ? 2 - result : result;
+}
+
+// Take the sine of pi times an x below 2^63 in magnitude.
+long double _Basic_Math_SinPi(long double x)
+{
+    long long n = (long long) x;
+    long double r = x - (long double) n;
+    long double a;
+    long double turn;
+    long double p;
+    long double p_low;
+    long double sine;
+
+    if (r > _BASIC_MATH_HALF) {
+        r -= 1;
+        n++;
+    } else if (r < -_BASIC_MATH_HALF) {
+        r += 1;
+        n--;
+    }
+    a = __basic_math_fabsl(r);
+    turn = a > _BASIC_MATH_QUARTER ? _BASIC_MATH_HALF - a : a;
+    p = _Basic_Math_MultiplyParts(turn, _BASIC_MATH_PI_HIGH, &p_low);
+    p_low += turn * _BASIC_MATH_PI_LOW;
+    sine = a > _BASIC_MATH_QUARTER ? _Basic_Math_SumCos(p, p_low) : _Basic_Math_SumSin(p, p_low);
+    return (r < 0) != ((n & 1) != 0) ? -sine : sine;
+}
+
+// Shift an x from -2 to 10 by the returned m, t being x + m less 2.
+int _Basic_Math_ShiftGamma(long double x, long double *t)
+{
+    int n = (int) (x + (_BASIC_MATH_GAMMA_CENTER + _BASIC_MATH_HALF));
+
+    *t = x + (_BASIC_MATH_GAMMA_CENTER - n);
+    return 2 * _BASIC_MATH_GAMMA_CENTER - n;
+}
+
+// Sum the logarithm of gamma of 2 plus a t within 1/2 by Taylor's series.
+long double _Basic_Math_SumLgamma(long double t)
+{
+    long double sum = 0;
+
+    for (int k = _BASIC_MATH_GAMMA_TERMS - 1; k >= 0; k--) {
+        sum = sum * t + _Basic_Math_GammaTerms[k];
+    }
+    return t * sum;
+}
+
+// Sum lgamma of an x of 10 or more by Stirling's series, a high and a low.
+long double _Basic_Math_SumStirling(long double x, long double *low)
+{
+    long double ln_low;
+    long double p_low;
+    long double error;
+    long double rest;
+    long double ln = _Basic_Math_TakeLogParts(x, &ln_low);
+    long double w = x - _BASIC_MATH_HALF;
+    long double p = _Basic_Math_MultiplyParts(w, ln, &p_low);
+    long double inverse = 1 / x;
+    long double square = inverse * inverse;
+    long double sum = 0;
+    long double high;
+
+    for (int k = _BASIC_MATH_STIRLING_TERMS - 1; k >= 0; k--) {
+        sum = sum * square + _Basic_Math_StirlingTerms[k];
+    }
+    high = _Basic_Math_AddParts(p, -x, &error);
+    rest = error + (p_low + w * ln_low) + (_BASIC_MATH_LN_ROOT_2PI_LOW + inverse * sum);
+    high = _Basic_Math_AddParts(high, _BASIC_MATH_LN_ROOT_2PI_HIGH, &error);
+    return _Basic_Math_AddParts(high, rest + error, low);
+}
+
+// Sum lgamma of an x from -24 to -2 from its zero nearest in its half.
+long double _Basic_Math_SumLgammaZero(long double x)
+{
+    int n = (int) -x;
+    int lower = x <= -n - _BASIC_MATH_HALF;
+    int i = 2 * (n - _BASIC_MATH_GAMMA_ZERO_FIRST) + lower;
+    int m = n + _BASIC_MATH_GAMMA_CENTER + lower;
+    long double zero = _Basic_Math_GammaZeroHigh[i];
+    long double zero_low = _Basic_Math_GammaZeroLow[i];
+    long double h = (x - zero) - zero_low;
+    long double t = x + (m - _BASIC_MATH_GAMMA_CENTER);
+    long double t0 = (zero + (m - _BASIC_MATH_GAMMA_CENTER)) + zero_low;
+    long double ratio = 1;
+    long double excess = 0;
+    long double power = 1;
+    long double q = 0;
+    long double sum = 0;
+    long double u;
+    _Bool near = 1;
+
+    for (int k = 0; k < m; k++) {
+        ratio *= ((zero + k) + zero_low) / (x + k);
+        u = -h / (x + k);
+        excess += u + excess * u;
+        near = near && __basic_math_fabsl(u) <= _BASIC_MATH_HALF;
+    }
+    for (int k = 0; k < _BASIC_MATH_GAMMA_TERMS; k++) {
+        q = t * q + power;
+        power *= t0;
+        sum += _Basic_Math_GammaTerms[k] * q;
+    }
+    if (near && __basic_math_fabsl(excess) <= _BASIC_MATH_HALF) {
+        return _Basic_Math_TakeLog1p(excess) + h * sum;
+    }
+    return _Basic_Math_TakeLog(ratio, _BASIC_MATH_BASE_E) + h * sum;
+}
+
+// Sum gamma of an x from -2 to 10 by lgamma's series at 2.
+long double _Basic_Math_SumTgamma(long double x)
+{
+    long double t;
+    int m = _Basic_Math_ShiftGamma(x, &t);
+    long double gamma = _Basic_Math_TakeExp(_Basic_Math_SumLgamma(t), _BASIC_MATH_BASE_E);
+
+    for (int k = 1; k <= -m; k++) {
+        gamma *= x - k;
+    }
+    for (int k = m - 1; k >= 0; k--) {
+        gamma /= x + k;
+    }
+    return gamma;
+}
+
+// Take ln |gamma| of x as a fraction scaled by 2 to the nth.
+long double _Basic_Math_TakeLgamma(long double x, int *n)
+{
+    long double t;
+    long double low;
+    long double result;
+    long double product = 1;
+    int m;
+
+    *n = 0;
+    if (x != x) {
+        return x + x;
+    }
+    if (__basic_math_fabsl(x) == _EXACT_INFINITY) {
+        return _EXACT_INFINITY;
+    }
+    if (x == 1 || x == 2) {
+        return 0;
+    }
+    if (x == 0 || (x < 0 && _Basic_Math_ReadParity(x) != _BASIC_MATH_PARITY_NONE)) {
+        return -_Basic_Math_RaisePole();
+    }
+    if (x >= _BASIC_MATH_STIRLING_WIDE) {
+        *n = _BASIC_MATH_GAMMA_SHIFT;
+        return _Basic_Math_ScaleLDouble(x, -_BASIC_MATH_GAMMA_SHIFT) * (_Basic_Math_TakeLog(x, _BASIC_MATH_BASE_E) - 1);
+    }
+    if (x >= _BASIC_MATH_STIRLING_FROM) {
+        result = _Basic_Math_SumStirling(x, &low);
+        return result + low;
+    }
+    if (x > -_BASIC_MATH_GAMMA_CENTER) {
+        m = _Basic_Math_ShiftGamma(x, &t);
+        result = _Basic_Math_SumLgamma(t);
+        if (m > 0) {
+            for (int k = 0; k < m - 1; k++) {
+                result -= _Basic_Math_TakeLog(__basic_math_fabsl(x + k), _BASIC_MATH_BASE_E);
+            }
+            return result - _Basic_Math_TakeLog1p(t);
+        }
+        for (int k = 1; k <= -m; k++) {
+            product *= x - k;
+        }
+        return result + _Basic_Math_TakeLog(product, _BASIC_MATH_BASE_E);
+    }
+    if (x > _BASIC_MATH_GAMMA_REFLECT) {
+        return _Basic_Math_SumLgammaZero(x);
+    }
+    result = _Basic_Math_SumStirling(-x, &low);
+    t = _BASIC_MATH_LN_PI - _Basic_Math_TakeLog(__basic_math_fabsl(_Basic_Math_SinPi(x)), _BASIC_MATH_BASE_E);
+    return (t - _Basic_Math_TakeLog(-x, _BASIC_MATH_BASE_E)) - (result + low);
+}
+
+// Take gamma of x as a fraction scaled by 2 to the nth.
+long double _Basic_Math_TakeTgamma(long double x, int *n)
+{
+    long double low;
+    long double factor;
+    long double result;
+
+    *n = 0;
+    if (x != x) {
+        return x + x;
+    }
+    if (x == 0) {
+        return _BASIC_MATH_SIGNBIT(x) != 0 ? _Basic_Math_RaisePole() : -_Basic_Math_RaisePole();
+    }
+    if (x == _EXACT_INFINITY) {
+        return x;
+    }
+    if (x == -_EXACT_INFINITY || (x < 0 && _Basic_Math_ReadParity(x) != _BASIC_MATH_PARITY_NONE)) {
+        return _Basic_Math_RaiseDomain(x, 0);
+    }
+    if (x > 0 && x <= _BASIC_MATH_FACTORIAL_MAX && _Basic_Math_ReadParity(x) != _BASIC_MATH_PARITY_NONE) {
+        result = 1;
+        for (int k = 2; k < (int) x; k++) {
+            result *= k;
+        }
+        return result;
+    }
+    if (x > _BASIC_MATH_GAMMA_CLAMP) {
+        x = _BASIC_MATH_GAMMA_CLAMP;
+    }
+    if (x >= _BASIC_MATH_STIRLING_FROM) {
+        result = _Basic_Math_SumStirling(x, &low);
+        return _Basic_Math_SumExpParts(result, low, n);
+    }
+    if (__basic_math_fabsl(x) < _BASIC_MATH_GAMMA_TINY) {
+        *n = _BASIC_MATH_GAMMA_SHIFT;
+        return 1 / _Basic_Math_ScaleLDouble(x, _BASIC_MATH_GAMMA_SHIFT);
+    }
+    if (x > -_BASIC_MATH_GAMMA_CENTER) {
+        return _Basic_Math_SumTgamma(x);
+    }
+    factor = -_BASIC_MATH_PI_HIGH / (x * _Basic_Math_SinPi(x));
+    if (-x < _BASIC_MATH_STIRLING_FROM) {
+        return factor / _Basic_Math_SumTgamma(-x);
+    }
+    result = _Basic_Math_SumStirling(-x, &low);
+    return factor * _Basic_Math_SumExpParts(-result, -low, n);
+}
+
+// Take a fraction of x to nearest, then scale it in the rounding direction.
+long double _Basic_Math_TakeNearest(long double (*take)(long double, int *), long double x)
+{
+    int round = _Fpu_ReadRound();
+    long double result;
+    int n;
+
+    if (round != _FPU_TONEAREST) {
+        _Fpu_WriteRound(_FPU_TONEAREST);
+    }
+    result = take(x, &n);
+    if (round != _FPU_TONEAREST) {
+        _Fpu_WriteRound(round);
+    }
+    return _Basic_Math_ScaleLDouble(result, n);
+}
+
 // Take the arc cosine of x.
 double __basic_math_acos(double x)
 {
@@ -1583,73 +2055,73 @@ long double __basic_math_sqrtl(long double x)
 // Take the error function of x.
 double __basic_math_erf(double x)
 {
-    return __prec_math_erf(x);
+    return (double) _Basic_Math_CheckRange(x, (double) _Basic_Math_TakeErf(x), _BASIC_MATH_DBL_MIN);
 }
 
 // Take the error function of x.
 float __basic_math_erff(float x)
 {
-    return __prec_math_erff(x);
+    return (float) _Basic_Math_CheckRange(x, (float) _Basic_Math_TakeErf(x), _BASIC_MATH_FLT_MIN);
 }
 
 // Take the error function of x.
 long double __basic_math_erfl(long double x)
 {
-    return __prec_math_erfl(x);
+    return _Basic_Math_CheckRange(x, _Basic_Math_TakeErf(x), _BASIC_MATH_LDBL_MIN);
 }
 
 // Take the complementary error function of x.
 double __basic_math_erfc(double x)
 {
-    return __prec_math_erfc(x);
+    return (double) _Basic_Math_CheckRange(x, (double) _Basic_Math_TakeErfc(x), _BASIC_MATH_DBL_MIN);
 }
 
 // Take the complementary error function of x.
 float __basic_math_erfcf(float x)
 {
-    return __prec_math_erfcf(x);
+    return (float) _Basic_Math_CheckRange(x, (float) _Basic_Math_TakeErfc(x), _BASIC_MATH_FLT_MIN);
 }
 
 // Take the complementary error function of x.
 long double __basic_math_erfcl(long double x)
 {
-    return __prec_math_erfcl(x);
+    return _Basic_Math_CheckRange(x, _Basic_Math_TakeErfc(x), _BASIC_MATH_LDBL_MIN);
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
 double __basic_math_lgamma(double x)
 {
-    return __prec_math_lgamma(x);
+    return (double) _Basic_Math_CheckOverflow(x, (double) _Basic_Math_TakeNearest(_Basic_Math_TakeLgamma, x));
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
 float __basic_math_lgammaf(float x)
 {
-    return __prec_math_lgammaf(x);
+    return (float) _Basic_Math_CheckOverflow(x, (float) _Basic_Math_TakeNearest(_Basic_Math_TakeLgamma, x));
 }
 
 // Take the natural logarithm of the magnitude of gamma of x.
 long double __basic_math_lgammal(long double x)
 {
-    return __prec_math_lgammal(x);
+    return _Basic_Math_CheckOverflow(x, _Basic_Math_TakeNearest(_Basic_Math_TakeLgamma, x));
 }
 
 // Take gamma of x.
 double __basic_math_tgamma(double x)
 {
-    return __prec_math_tgamma(x);
+    return (double) _Basic_Math_CheckRange(x, (double) _Basic_Math_TakeNearest(_Basic_Math_TakeTgamma, x), _BASIC_MATH_DBL_MIN);
 }
 
 // Take gamma of x.
 float __basic_math_tgammaf(float x)
 {
-    return __prec_math_tgammaf(x);
+    return (float) _Basic_Math_CheckRange(x, (float) _Basic_Math_TakeNearest(_Basic_Math_TakeTgamma, x), _BASIC_MATH_FLT_MIN);
 }
 
 // Take gamma of x.
 long double __basic_math_tgammal(long double x)
 {
-    return __prec_math_tgammal(x);
+    return _Basic_Math_CheckRange(x, _Basic_Math_TakeNearest(_Basic_Math_TakeTgamma, x), _BASIC_MATH_LDBL_MIN);
 }
 
 // Round x up to an integer.
